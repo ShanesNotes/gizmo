@@ -1,0 +1,353 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Gizmo — Art Direction Bible</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --void:#0C0A16;--void2:#15102A;--panel:#181334;--panel2:#1F1942;--edge:rgba(255,247,232,.14);
+  --lumen:#FFF7E8;--dim:rgba(255,247,232,.64);--faint:rgba(255,247,232,.4);
+  --mint:#5BE6A4;--cyan:#54D8FF;--violet:#A98BFF;--gold:#FFD24A;--coral:#FF6B7E;--pink:#FF79C6;--orange:#FF9D5C;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Nunito',sans-serif;color:var(--lumen);line-height:1.6;
+  background:radial-gradient(140% 60% at 50% 0%,#1B1440,#0C0A16 60%) fixed,var(--void);}
+.wrap{max-width:1080px;margin:0 auto;padding:0 26px 120px}
+h1,h2,h3,.fred{font-family:'Fredoka',sans-serif;font-weight:700;letter-spacing:.2px}
+section{padding:46px 0;border-top:1px solid var(--edge)}
+section:first-of-type{border-top:0}
+h2{font-size:30px;margin-bottom:6px;display:flex;align-items:center;gap:12px}
+h2 .no{font-size:14px;font-weight:800;font-family:'Nunito';color:var(--gold);
+  border:1.5px solid rgba(255,210,74,.4);border-radius:99px;padding:3px 11px;letter-spacing:1px}
+h3{font-size:19px;margin:26px 0 10px;color:var(--lumen)}
+p{margin:10px 0;color:rgba(255,247,232,.86)}
+.lead{font-size:18px;color:var(--dim)}
+.ey{font-size:12px;font-weight:900;letter-spacing:2px;text-transform:uppercase;color:var(--cyan)}
+.grid{display:grid;gap:14px}
+.g2{grid-template-columns:1fr 1fr}.g3{grid-template-columns:repeat(3,1fr)}.g4{grid-template-columns:repeat(4,1fr)}
+.card{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--edge);
+  border-radius:16px;padding:18px 20px;box-shadow:0 18px 40px rgba(0,0,0,.35)}
+.pill{display:inline-block;font-size:11px;font-weight:900;letter-spacing:1px;text-transform:uppercase;
+  padding:4px 11px;border-radius:99px;background:rgba(255,247,232,.08);color:var(--dim)}
+ul{margin:10px 0 10px 4px;list-style:none}
+li{position:relative;padding-left:22px;margin:7px 0;color:rgba(255,247,232,.86)}
+li:before{content:"";position:absolute;left:2px;top:10px;width:8px;height:8px;border-radius:50%;background:var(--cyan)}
+b,strong{color:#fff;font-weight:900}
+code{font-family:ui-monospace,Menlo,monospace;font-size:.86em;background:rgba(255,247,232,.08);
+  padding:2px 7px;border-radius:6px;color:var(--mint)}
+/* cover */
+.cover{min-height:74vh;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;border:0}
+.cover img{width:118px;height:118px;filter:drop-shadow(0 0 40px rgba(84,216,255,.4))}
+.logo{font-size:84px;line-height:.9;margin-top:14px;letter-spacing:-1.5px;
+  background:linear-gradient(180deg,#fff 6%,#9FF4D4 34%,#54D8FF 60%,#A98BFF 100%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 0 36px rgba(84,216,255,.35))}
+.logo-sub{font-family:'Fredoka';font-weight:600;font-size:26px;letter-spacing:10px;color:var(--gold);margin-top:2px;padding-left:10px}
+.cover .tag{margin-top:18px;font-size:17px;letter-spacing:3px;text-transform:uppercase;color:var(--dim)}
+.cover .meta{margin-top:26px;font-size:13px;color:var(--faint);letter-spacing:1px}
+/* swatches */
+.sw{border-radius:14px;padding:16px;height:118px;display:flex;flex-direction:column;justify-content:space-between;border:1px solid rgba(255,255,255,.1)}
+.sw .nm{font-family:'Fredoka';font-weight:700;font-size:17px}
+.sw .hx{font-size:12px;font-weight:800;opacity:.8;font-family:ui-monospace,monospace}
+.sw .ro{font-size:11px;font-weight:800;opacity:.7}
+.specimen{font-family:'Fredoka';font-weight:700;line-height:1}
+.asset{display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px;padding:16px;
+  background:radial-gradient(80% 80% at 50% 35%,#1a1538,#0e0b1e);border:1px solid var(--edge);border-radius:16px}
+.asset img{height:104px}
+.asset .cap{font-family:'Fredoka';font-weight:600;font-size:15px}
+.asset .sp{font-size:12px;color:var(--dim)}
+.screen{border-radius:16px;overflow:hidden;border:1px solid var(--edge);box-shadow:0 24px 50px rgba(0,0,0,.45)}
+.screen img{width:100%;display:block}
+.cap2{font-size:13px;color:var(--dim);margin-top:8px}
+table{width:100%;border-collapse:collapse;margin:14px 0;font-size:14px}
+th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--edge)}
+th{font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--faint);font-weight:900}
+td b{font-weight:900}
+.dotc{display:inline-block;width:12px;height:12px;border-radius:50%;vertical-align:-1px;margin-right:7px}
+.calloutbox{background:linear-gradient(120deg,rgba(84,216,255,.1),rgba(169,139,255,.08));
+  border:1px solid rgba(84,216,255,.3);border-radius:16px;padding:18px 22px;margin:18px 0}
+.calloutbox .eybig{font-family:'Fredoka';font-weight:700;font-size:20px;color:var(--cyan);margin-bottom:4px}
+a{color:var(--cyan)}
+.tt{font-size:12px;color:var(--faint);text-transform:uppercase;letter-spacing:2px;font-weight:900;margin-bottom:14px}
+</style></head>
+<body><div class="wrap">
+
+<section class="cover">
+  <img src="assets/emblem.svg" alt="emblem">
+  <div class="logo">GIZMO</div>
+  <div class="tag" style="margin-top:8px">Art Direction Bible · "Lumen &amp; Static"</div>
+  <p class="lead" style="max-width:620px;margin-top:22px">A spark relighting the dark. The complete visual direction for a kid-friendly bullet-heaven — ready for <b>claude.ai/design</b> and Claude&nbsp;Code.</p>
+  <div class="meta">v1.0 · Primary direction: <b style="color:var(--lumen)">Lumen &amp; Static</b> · Prepared for handoff</div>
+</section>
+
+<section>
+  <h2><span class="no">01</span> The Concept</h2>
+  <p class="lead">Gizmo is a <b>bullet-heaven / survivors-like</b> with an unusually deep "juice" layer. The gameplay is proven and fun. This bible re-skins the placeholder art into one cohesive, premium, dopamine-forward identity.</p>
+  <div class="grid g2" style="margin-top:20px">
+    <div class="card">
+      <div class="ey">The World — "The Hush"</div>
+      <p>A vast, dormant machine-cosmos drained of color. When <b>Shape Storms</b> roll in — waves of charged geometric debris — the dark briefly comes alive. The player's job is to ride the storm and light it up.</p>
+    </div>
+    <div class="card">
+      <div class="ey">The Hero — "Gizmo"</div>
+      <p>A tiny, plucky <b>spark-bot</b>: a glowing cyan core in a friendly chassis. Reads as a comma of light even at 16px. Gizmo sweeps up loose <b>Sparks</b>, cracks <b>Caches</b>, and discharges brilliant <b>Novas</b>.</p>
+    </div>
+  </div>
+  <div class="calloutbox">
+    <div class="eybig">The fiction IS the design philosophy</div>
+    <p style="margin:0">A disciplined dark, minimal void where <b>light = reward</b>. Every dopamine burst is earned and distilled against calm negative space. The world justifies the aesthetic: you are literally bringing color back to the dark.</p>
+  </div>
+</section>
+
+<section>
+  <h2><span class="no">02</span> Design Pillars</h2>
+  <div class="grid g2">
+    <div class="card"><h3 style="margin-top:0;color:var(--mint)">1 · Distilled dopamine</h3><p>Calm, readable core gameplay. Bright, loud payoffs. The quieter the field, the harder a Nova or Cache-crack hits. Minimalism makes the pop land.</p></div>
+    <div class="card"><h3 style="margin-top:0;color:var(--cyan)">2 · Juice is the design</h3><p>Feedback isn't decoration — it's the product. Screen-shake, squash, particles, escalating numbers and audio-synced pulses are first-class, not afterthoughts.</p></div>
+    <div class="card"><h3 style="margin-top:0;color:var(--violet)">3 · Confident, friendly geometry</h3><p>Flat vector forms, rounded but never babyish, with bold outlines and soft inner glow. Premium-mobile restraint (Alto / Monument Valley) on a neon-dark field (Geometry Wars).</p></div>
+    <div class="card"><h3 style="margin-top:0;color:var(--gold)">4 · Every shape is alive</h3><p>Enemies have faces and attitude. This is the anti-generic move: the "storm" has personality, so the world feels handcrafted, not asset-flipped.</p></div>
+  </div>
+  <div class="card" style="margin-top:14px"><h3 style="margin-top:0;color:var(--coral)">5 · Read it in a glance — at couch distance</h3><p>Mixed ages, busy screens. The HUD must stay legible against the loudest moment. Color-code every system; surface meters only when they matter (Hades / Dead Space contextual HUD).</p></div>
+</section>
+
+<section>
+  <h2><span class="no">03</span> Color System</h2>
+  <p class="lead">A deep indigo void, a warm-white light, four locked "charge" hues for the feedback economies, and a tight accent set. Jewel-neon, not candy.</p>
+
+  <div class="tt" style="margin-top:26px">Base &amp; surface</div>
+  <div class="grid g4">
+    <div class="sw" style="background:#0C0A16"><div><div class="nm">Void</div><div class="hx">#0C0A16</div></div><div class="ro">Space base</div></div>
+    <div class="sw" style="background:#15102A"><div><div class="nm">Field</div><div class="hx">#15102A</div></div><div class="ro">Raised playfield</div></div>
+    <div class="sw" style="background:#181334"><div><div class="nm">Dark Glass</div><div class="hx">#181334 / .72α</div></div><div class="ro">HUD panels</div></div>
+    <div class="sw" style="background:#FFF7E8;color:#15102A;border-color:rgba(0,0,0,.1)"><div><div class="nm">Lumen</div><div class="hx">#FFF7E8</div></div><div class="ro">Warm white · text</div></div>
+  </div>
+
+  <div class="tt" style="margin-top:26px">The four charge hues <span style="color:var(--faint)">— locked to the feedback economies</span></div>
+  <div class="grid g4">
+    <div class="sw" style="background:#5BE6A4;color:#0c2018"><div><div class="nm">Flow · Mint</div><div class="hx">#5BE6A4</div></div><div class="ro">Streak / current</div></div>
+    <div class="sw" style="background:#54D8FF;color:#072430"><div><div class="nm">Clutch · Cyan</div><div class="hx">#54D8FF</div></div><div class="ro">Near-miss / static</div></div>
+    <div class="sw" style="background:#A98BFF;color:#241653"><div><div class="nm">Echo · Violet</div><div class="hx">#A98BFF</div></div><div class="ro">Resonance window</div></div>
+    <div class="sw" style="background:#FFD24A;color:#3a2806"><div><div class="nm">Surge · Gold</div><div class="hx">#FFD24A</div></div><div class="ro">Stored discharge</div></div>
+  </div>
+
+  <div class="tt" style="margin-top:26px">Accents</div>
+  <div class="grid g3">
+    <div class="sw" style="background:#FF6B7E;color:#3a0e16"><div><div class="nm">Coral</div><div class="hx">#FF6B7E</div></div><div class="ro">Health · Bounty · danger</div></div>
+    <div class="sw" style="background:#FF79C6;color:#3a0a2a"><div><div class="nm">Pink</div><div class="hx">#FF79C6</div></div><div class="ro">Epic · Flow-hot</div></div>
+    <div class="sw" style="background:#FF9D5C;color:#3a1c08"><div><div class="nm">Orange</div><div class="hx">#FF9D5C</div></div><div class="ro">Heat · big-shape burn</div></div>
+  </div>
+
+  <h3>Usage rules</h3>
+  <ul>
+    <li><b>Enemies are cool &amp; matte, low-glow.</b> They are the storm/dark. Indigo, dusty coral, charcoal. This keeps the field calm.</li>
+    <li><b>Pickups &amp; the player are bright &amp; high-glow.</b> Sparks, Caches, Gizmo's core — these own the light, so they read instantly as "good / get this."</li>
+    <li><b>Each system keeps its hue everywhere</b> — meter, icon, callout, particle, and the upgrade that feeds it. Color is the player's instant value-read.</li>
+    <li><b>Gold is sacred.</b> Reserve it for Surge, Caches, score and "best/evolve." Don't dilute it on chrome.</li>
+  </ul>
+
+  <h3>Rarity ladder</h3>
+  <table>
+    <tr><th>Tier</th><th>Hue</th><th>Treatment</th></tr>
+    <tr><td><b>Common</b></td><td><span class="dotc" style="background:#9892B4"></span>Stone #9892B4</td><td>Flat border, no glow</td></tr>
+    <tr><td><b>Uncommon</b></td><td><span class="dotc" style="background:#5BE6A4"></span>Mint #5BE6A4</td><td>Subtle outer glow</td></tr>
+    <tr><td><b>Rare</b></td><td><span class="dotc" style="background:#54D8FF"></span>Cyan #54D8FF</td><td>Medium glow + sheen</td></tr>
+    <tr><td><b>Epic</b></td><td><span class="dotc" style="background:#FF79C6"></span>Pink #FF79C6</td><td>Strong glow, lifts on hover</td></tr>
+    <tr><td><b>Evolve</b></td><td><span class="dotc" style="background:#FFD24A"></span>Gold #FFD24A</td><td>Max glow, double frame, corner flourish</td></tr>
+  </table>
+</section>
+
+<section>
+  <h2><span class="no">04</span> Typography</h2>
+  <p class="lead">Two rounded-geometric families, both free Google Fonts. Friendly enough for kids, confident enough to read premium — and they render beautifully at every size.</p>
+  <div class="grid g2" style="margin-top:18px">
+    <div class="card">
+      <div class="ey" style="color:var(--gold)">Display &amp; Numbers — Fredoka</div>
+      <div class="specimen" style="font-size:54px;margin:8px 0">Gizmo</div>
+      <div class="specimen" style="font-size:40px;color:var(--gold)">128,540</div>
+      <p>Wordmarks, screen titles, card names, and every dopamine number (score, combos, <code>+250</code> pops). Weights 600–700.</p>
+    </div>
+    <div class="card">
+      <div class="ey" style="color:var(--cyan)">UI &amp; Body — Nunito</div>
+      <div style="font-weight:900;font-size:30px;margin:8px 0">Clutch Burst ready</div>
+      <div style="font-weight:800;font-size:16px;color:var(--dim)">Sweep shards without dropping flow.</div>
+      <div style="font-weight:900;font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--faint);margin-top:8px">Run Score · Level · Bounty</div>
+      <p>Labels, stats, descriptions, eyebrows. Weights 800–900 for presence on the dark field.</p>
+    </div>
+  </div>
+  <h3>Scale &amp; rules</h3>
+  <ul>
+    <li><b>Hero numbers</b> use Fredoka with a tonal gradient + glow; they should <i>scale up and settle</i> on change (juice).</li>
+    <li><b>Eyebrows / labels</b>: Nunito 900, uppercase, <code>letter-spacing 1.5–2px</code>, dimmed. Never the star — they frame the value.</li>
+    <li><b>Minimum 11px.</b> Tabular figures for anything that ticks. Sentence case for body, ALL-CAPS only for short callouts &amp; eyebrows.</li>
+  </ul>
+</section>
+
+<section>
+  <h2><span class="no">05</span> Form Language</h2>
+  <div class="grid g2">
+    <div class="card"><h3 style="margin-top:0">Construction</h3><ul>
+      <li>Built from circles, rounded triangles, rounded squares, hexagons, diamonds.</li>
+      <li>Generous corner radii — friendly, stable, readable small.</li>
+      <li><b>Confident outline</b> (cool dark, ~6px at 200px) for cel-style definition.</li>
+      <li><b>Soft outer glow</b> only on energized things; matte for inert.</li>
+    </ul></div>
+    <div class="card"><h3 style="margin-top:0">Light &amp; life</h3><ul>
+      <li>Single soft top light → subtle top sheen, cool underside.</li>
+      <li>One bright focal core per hero element (Gizmo's lens, a Cache core).</li>
+      <li>Enemies get <b>faces</b> — eyes + brow set their attitude.</li>
+      <li>Flat fills with a single tonal gradient; no rendered realism.</li>
+    </ul></div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="no">06</span> Asset Catalog <span class="pill" style="margin-left:8px">sample set — production-ready SVG</span></h2>
+  <h3>The hero</h3>
+  <div class="grid g3">
+    <div class="asset"><img src="assets/gizmo.svg" style="height:150px"><div class="cap">Gizmo</div><div class="sp">Player · spark-bot. Cyan core, gold fins, thruster surge.</div></div>
+    <div class="asset"><img src="assets/emblem.svg" style="height:150px"><div class="cap">Emblem</div><div class="sp">Badge / app icon / loader. Illuminated initial "G" cradling a spark.</div></div>
+    <div class="asset"><img src="assets/pickup-cache-open.svg" style="height:150px"><div class="cap">Cache — cracked</div><div class="sp">The payoff frame. Gold light burst + reward.</div></div>
+  </div>
+  <h3>The storm — enemies <span style="font-weight:800;color:var(--faint);font-size:14px">(cool · matte · alive)</span></h3>
+  <div class="grid g3">
+    <div class="asset"><img src="assets/enemy-drifter.svg"><div class="cap">Drifter</div><div class="sp">Basic mob · indigo triangle</div></div>
+    <div class="asset"><img src="assets/enemy-bumper.svg"><div class="cap">Bumper</div><div class="sp">Heavy knocker · coral square</div></div>
+    <div class="asset"><img src="assets/enemy-behemoth.svg"><div class="cap">Behemoth</div><div class="sp">Big-shape · burn it for a Cache</div></div>
+  </div>
+  <h3>Pickups <span style="font-weight:800;color:var(--faint);font-size:14px">(bright · glowing · "get this")</span></h3>
+  <div class="grid g4">
+    <div class="asset"><img src="assets/pickup-spark.svg"><div class="cap">Spark</div><div class="sp">XP shard</div></div>
+    <div class="asset"><img src="assets/pickup-cache.svg"><div class="cap">Cache</div><div class="sp">Loot · closed</div></div>
+    <div class="asset"><img src="assets/pickup-heart.svg"><div class="cap">Heart</div><div class="sp">Health</div></div>
+    <div class="asset"><img src="assets/pickup-cache-open.svg"><div class="cap">Cache open</div><div class="sp">Reward burst</div></div>
+  </div>
+  <h3>Iconography &amp; rarity</h3>
+  <div class="screen" style="background:#0e0b1e;padding:18px"><img src="screens/asset-sheet-icons-rarity-emblem.png" alt="icons and rarity"></div>
+  <p class="cap2">Ability / charge icons (Boost · Flow · Clutch · Echo · Surge · Bounty) on dark-glass chips, and the five-tier rarity ladder. Per-upgrade icons are a production set to expand — these lock the style.</p>
+</section>
+
+<section>
+  <h2><span class="no">07</span> The Four Economies</h2>
+  <p class="lead">The game's signature is four parallel reward loops running at once. Each gets a locked hue, icon, and motion so players track them without reading.</p>
+  <table>
+    <tr><th>System</th><th>Hue</th><th>Icon</th><th>Feeling</th><th>Payoff</th></tr>
+    <tr><td><b>Flow</b></td><td><span class="dotc" style="background:#5BE6A4"></span>Mint</td><td>Current / waves</td><td>Uninterrupted sweeping</td><td>Flow Rush — field-wide pull</td></tr>
+    <tr><td><b>Clutch</b></td><td><span class="dotc" style="background:#54D8FF"></span>Cyan</td><td>Pulse spike</td><td>Daring near-misses</td><td>Clutch Burst — detonate, snap-boost</td></tr>
+    <tr><td><b>Echo</b></td><td><span class="dotc" style="background:#A98BFF"></span>Violet</td><td>Concentric rings</td><td>A power window open</td><td>Echo Rush — extend &amp; chain</td></tr>
+    <tr><td><b>Surge</b></td><td><span class="dotc" style="background:#FFD24A"></span>Gold</td><td>Lightning bolt</td><td>Charge building</td><td>Surge Burst — big stored discharge</td></tr>
+  </table>
+  <p>Plus <b style="color:var(--coral)">Bounty</b> (coral chase chains) and <b style="color:var(--gold)">Cache</b> (gold loot). The HUD cluster (see next) stacks these so a glance reads the whole board.</p>
+</section>
+
+<section>
+  <h2><span class="no">08</span> Screens</h2>
+  <p class="lead">Four key screens, built as faithful HTML/CSS so Claude Code can lift them directly. Open the live files in <code>/design-handoff</code>.</p>
+
+  <h3>Title — key art</h3>
+  <div class="screen"><img src="screens/screen-title.png" alt="title"></div>
+  <p class="cap2"><code>mockup-title.html</code> — wordmark gradient + glow, Gizmo on the surge arc, the distant storm peeking from the dark. The whole brand in one frame.</p>
+
+  <h3>In-game HUD — the centerpiece</h3>
+  <div class="screen"><img src="screens/screen-hud.png" alt="hud"></div>
+  <p class="cap2"><code>mockup-hud.html</code> — dark-glass panels keep the field readable; the four economies sit in a bottom cluster (Echo / Flow / Surge + the Clutch banner); a <code>+250 CLUTCH!</code> pop shows the number style. Score, hearts, stats, bounty, build, XP &amp; run meters, Boost.</p>
+
+  <div class="grid g2" style="margin-top:24px">
+    <div>
+      <h3>Level-up</h3>
+      <div class="screen"><img src="screens/screen-levelup.png" alt="levelup"></div>
+      <p class="cap2"><code>mockup-levelup.html</code> — rarity ladder in action (Rare / Epic / Evolve), hotkeys, reroll.</p>
+    </div>
+    <div>
+      <h3>Results</h3>
+      <div class="screen"><img src="screens/screen-results.png" alt="results"></div>
+      <p class="cap2"><code>mockup-results.html</code> — big score, records, color-coded run awards, "Run it back."</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="no">09</span> Motion, Juice &amp; VFX</h2>
+  <p class="lead">The most important section. Borrowed from Balatro and the Vlambeer "game-feel" school: feedback is layered, high-density, and synced.</p>
+  <div class="grid g2">
+    <div class="card"><h3 style="margin-top:0;color:var(--mint)">Always-on game feel</h3><ul>
+      <li><b>Squash &amp; stretch</b> on Gizmo's thrust, pickups popping, enemies dying.</li>
+      <li><b>Screen-shake</b> scaled to event weight — a tap on a Spark, a thump on a Cache-crack.</li>
+      <li><b>Particles</b> in the system's hue: spark trails, Cache confetti, Nova rings.</li>
+      <li><b>Hit-stop</b> (1–3 frame freeze) on big pops to sell impact.</li>
+    </ul></div>
+    <div class="card"><h3 style="margin-top:0;color:var(--gold)">The big beats</h3><ul>
+      <li><b>Level-up Nova:</b> field dims a beat, then a hue-shifting shockwave relights it. The minimalism → payoff moment.</li>
+      <li><b>Cache crack:</b> gold flash, light beam, reward arcs out, chunky number.</li>
+      <li><b>Economy bursts:</b> each (Flow/Clutch/Echo/Surge) detonates in its own color so the player knows <i>which</i> joy just fired.</li>
+    </ul></div>
+  </div>
+  <div class="calloutbox">
+    <div class="eybig">Audio-visual sync — the Balatro lesson</div>
+    <p style="margin:0">Numbers escalate in pitch <i>and</i> size together. A scoring chain should feel like a slot-machine cascade: each tick lands a sound, a scale-bump, and a shake in lockstep. The dual channel is what turns arithmetic into a jackpot.</p>
+  </div>
+  <p><span class="ey" style="color:var(--coral)">Accessibility</span> &nbsp;Honor <code>prefers-reduced-motion</code>: keep color/scale feedback, drop shake and heavy particles. Never rely on color alone — pair every hue with an icon and motion.</p>
+</section>
+
+<section>
+  <h2><span class="no">10</span> Alternate Directions</h2>
+  <p class="lead">The primary above is <b>Lumen &amp; Static</b>: characterful but disciplined. Two dials on either side, included so claude.ai/design can explore the edges.</p>
+  <div class="grid g2">
+    <div class="card"><h3 style="margin-top:0">A · Paper Tinkerer <span class="pill">warmer</span></h3><p>Elevate the original hand-painted/watercolor "inventor" world into a cohesive, premium storybook craft look. Warm paper, ink lines, gouache texture. Lower contrast, cozier, more handmade. Best if you want charm over arcade punch.</p></div>
+    <div class="card"><h3 style="margin-top:0">B · Pure Neon Vector <span class="pill">cooler</span></h3><p>Strip the faces: Gizmo becomes a pure glyph of light, enemies become clean signed shapes. Maximal Geometry-Wars minimalism and arcade purity. Best if you want the most abstract, "distilled" reading of <i>Gizmo</i>.</p></div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="no">11</span> References — the blend</h2>
+  <div class="grid g2">
+    <div class="card"><ul>
+      <li><b>Balatro</b> — juice <i>is</i> the design; audio-synced escalation; minimalism that detonates.</li>
+      <li><b>Geometry Wars</b> — neon-on-dark, glowing geometric storms. The genre's native look.</li>
+      <li><b>Vampire Survivors / 20 Minutes Till Dawn / Brotato</b> — survivors-like density, build &amp; level-up loops.</li>
+    </ul></div>
+    <div class="card"><ul>
+      <li><b>Alto's Odyssey / Monument Valley</b> — flat-vector premium restraint; "each frame worthy of display."</li>
+      <li><b>Hades</b> — striking yet non-intrusive HUD under heavy action.</li>
+      <li><b>Astro Bot</b> — premium, lovable robot mascot; expression through a strong, simple silhouette.</li>
+    </ul></div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="no">12</span> Handoff</h2>
+  <div class="calloutbox" style="background:linear-gradient(120deg,rgba(91,230,164,.1),rgba(255,210,74,.08));border-color:rgba(91,230,164,.3)">
+    <div class="eybig" style="color:var(--mint)">Continuity with the shipped code = a cheap Claude Code pass</div>
+    <p style="margin:0">The charge hues map almost 1:1 to the existing CSS variables. The real work is: deepen the base to the Void, swap the cream "paper" panels for <b>dark glass</b>, add the <b>type + glow</b> system, and apply the asset language. Token churn is minimal.</p>
+  </div>
+  <h3>Token map — existing → new</h3>
+  <table>
+    <tr><th>Existing var</th><th>Was</th><th>New</th><th>Note</th></tr>
+    <tr><td><code>--ink</code> / bg</td><td>#17121f / #24172d</td><td><b>#0C0A16 Void</b></td><td>Deepen; field #15102A</td></tr>
+    <tr><td><code>--paper</code></td><td>cream rgba</td><td><b>Dark glass #181334 .72α</b></td><td>The big change</td></tr>
+    <tr><td><code>--mint</code></td><td>#70e6a8</td><td>#5BE6A4</td><td>Flow — near-identical</td></tr>
+    <tr><td><code>--cyan</code></td><td>#59dbff</td><td>#54D8FF</td><td>Clutch</td></tr>
+    <tr><td><code>--violet</code></td><td>#b78cff</td><td>#A98BFF</td><td>Echo</td></tr>
+    <tr><td><code>--gold</code></td><td>#ffd35a</td><td>#FFD24A</td><td>Surge</td></tr>
+    <tr><td><code>--coral</code> / <code>--pink</code></td><td>#ff6584 / #ff79c6</td><td>#FF6B7E / #FF79C6</td><td>Keep</td></tr>
+    <tr><td>font-family</td><td>Arial</td><td><b>Fredoka + Nunito</b></td><td>Add web fonts</td></tr>
+  </table>
+  <h3>What's in this folder</h3>
+  <ul>
+    <li><code>assets/*.svg</code> — production-ready vector: Gizmo, 3 enemies, Spark, Cache (+open), Heart, icons, rarity, emblem.</li>
+    <li><code>mockup-*.html</code> — the four screens, real CSS to lift.</li>
+    <li><code>screens/*.png</code> — rendered references.</li>
+    <li><code>ART-DIRECTION.md</code> — this bible in portable text.</li>
+    <li><code>HANDOFF-claude-design.md</code> — paste-ready prompts for claude.ai/design + next steps.</li>
+  </ul>
+  <h3>Asset production checklist <span style="font-weight:800;color:var(--faint);font-size:14px">(for the build-out)</span></h3>
+  <ul>
+    <li>Gizmo: idle, thrust, hit, death-spark, boost states (+ a 2-frame squash loop).</li>
+    <li>Enemy family expansion: 2–3 more archetypes + a true boss "Storm Core."</li>
+    <li>Per-upgrade icon set (~24) in the established chip style.</li>
+    <li>Particle atlas: sparks, confetti, Nova rings, hue bursts ×4.</li>
+    <li>Cache tiers (common→gold), pickup variants, Bounty marker.</li>
+    <li>Wordmark as outlined SVG (font-independent) + favicon from the emblem.</li>
+  </ul>
+</section>
+
+<section style="text-align:center;border-top:1px solid var(--edge)">
+  <img src="assets/gizmo.svg" style="height:120px">
+  <p class="fred" style="font-size:22px;margin-top:10px">A spark relighting the dark.</p>
+  <p style="color:var(--faint)">Gizmo · Art Direction Bible v1.0</p>

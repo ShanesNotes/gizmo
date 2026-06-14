@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 320" width="300" height="320" font-family="'Nunito',sans-serif" role="img" aria-label="Boss — The Storm-Seal, a counterfeit master-seal">
+  <defs>
+    <radialGradient id="bs-body" cx="0.5" cy="0.44" r="0.62"><stop offset="0" stop-color="#352B4E"/><stop offset="1" stop-color="#1C1630"/></radialGradient>
+    <radialGradient id="bs-core" cx="0.5" cy="0.42" r="0.6"><stop offset="0" stop-color="#5A4A3A"/><stop offset="0.6" stop-color="#2A2238"/><stop offset="1" stop-color="#140F22"/></radialGradient>
+    <pattern id="bs-st" width="10" height="10" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1.1" fill="#C45A40" opacity="0.22"/></pattern>
+    <filter id="bs-g" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+
+  <!-- broken false ray crown (counterfeit illumination — uneven) -->
+  <circle cx="150" cy="160" r="136" fill="none" stroke="#A87A2E" stroke-width="16" stroke-dasharray="3 19 2 9 4 14" opacity="0.7"/>
+
+  <!-- grand false crown -->
+  <path d="M96 64 L116 26 L150 54 L184 24 L206 66 L188 84 L112 84 Z" fill="#A87A2E" stroke="#15121F" stroke-width="5" stroke-linejoin="round" transform="rotate(-4 150 60)"/>
+  <g fill="#7E2531" stroke="#E8BC88" stroke-width="2"><circle cx="116" cy="44" r="5"/><circle cx="150" cy="44" r="5"/><circle cx="184" cy="44" r="5"/></g>
+
+  <!-- seal body -->
+  <circle cx="150" cy="160" r="118" fill="url(#bs-body)" stroke="#14111E" stroke-width="7"/>
+  <circle cx="150" cy="160" r="118" fill="url(#bs-st)"/>
+  <!-- ornate gold rings, with a cracked/broken arc (counterfeit) -->
+  <circle cx="150" cy="160" r="104" fill="none" stroke="#A87A2E" stroke-width="5" stroke-dasharray="250 26 90 14"/>
+  <circle cx="150" cy="160" r="92" fill="none" stroke="#7A5020" stroke-width="2.5" opacity="0.7"/>
+
+  <!-- craquelure across body -->
+  <g stroke="#14111E" stroke-width="3" fill="none" opacity="0.8" stroke-linecap="round">
+    <path d="M150 160 L92 96 M150 160 L66 150 M150 160 L100 224 M150 160 L214 214 M150 160 L222 110"/>
+  </g>
+
+  <!-- four embedded cracked sub-seals -->
+  <g>
+    <g transform="translate(96,116)"><circle r="17" fill="#7E2531" stroke="#15121F" stroke-width="3"/><circle r="17" fill="none" stroke="#A87A2E" stroke-width="1.5"/><path d="M-9 -5 L7 9" stroke="#3A0E16" stroke-width="3"/></g>
+    <g transform="translate(204,116)"><circle r="17" fill="#7E2531" stroke="#15121F" stroke-width="3"/><circle r="17" fill="none" stroke="#A87A2E" stroke-width="1.5"/><path d="M9 -6 L-6 8" stroke="#3A0E16" stroke-width="3"/></g>
+    <g transform="translate(96,210)"><circle r="17" fill="#7E2531" stroke="#15121F" stroke-width="3"/><circle r="17" fill="none" stroke="#A87A2E" stroke-width="1.5"/><path d="M-8 6 L8 -6" stroke="#3A0E16" stroke-width="3"/></g>
+    <g transform="translate(204,210)"><circle r="17" fill="#7E2531" stroke="#15121F" stroke-width="3"/><circle r="17" fill="none" stroke="#A87A2E" stroke-width="1.5"/><path d="M8 6 L-7 -7" stroke="#3A0E16" stroke-width="3"/></g>
+  </g>
+
+  <!-- central false core (hollow authority) -->
+  <circle cx="150" cy="160" r="42" fill="url(#bs-core)" stroke="#14111E" stroke-width="4"/>
+  <circle cx="150" cy="160" r="42" fill="none" stroke="#A87A2E" stroke-width="2" opacity="0.7"/>
+  <!-- cracked counterfeit sigil in the core -->
+  <path d="M156 138 L138 162 L150 162 L143 182 L162 156 L150 156 Z" fill="#3A2D1A" stroke="#A87A2E" stroke-width="1.5" opacity="0.9"/>
+  <path d="M150 120 L150 200" stroke="#14111E" stroke-width="2.5" opacity="0.6"/>
+
+  <!-- hollow eyes -->
+  <ellipse cx="126" cy="142" rx="13" ry="15" fill="#0E0B12"/><ellipse cx="174" cy="142" rx="13" ry="15" fill="#0E0B12"/>
+  <circle cx="129" cy="146" r="5" fill="#C45A40" filter="url(#bs-g)"/><circle cx="177" cy="146" r="5" fill="#C45A40" filter="url(#bs-g)"/>
+  <path d="M108 122 L140 132 M192 122 L160 132" stroke="#14111E" stroke-width="6" stroke-linecap="round"/>
+
+  <text x="150" y="306" text-anchor="middle" font-size="15" font-weight="900" fill="#C9A24A" letter-spacing="2">THE STORM-SEAL</text>
+</svg>

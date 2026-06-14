@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 220" width="220" height="220" role="img" aria-label="Behemoth big-shape enemy">
+  <defs>
+    <linearGradient id="bh-b" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#34304E"/><stop offset="1" stop-color="#211E33"/>
+    </linearGradient>
+    <radialGradient id="bh-core" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#FFF1C2"/><stop offset="0.45" stop-color="#FFB23E"/><stop offset="1" stop-color="#E0561C"/>
+    </radialGradient>
+    <filter id="bh-glow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <!-- rounded hexagon -->
+  <path d="M110 22 Q120 22 128 28 L184 64 Q192 70 192 82 L192 138 Q192 150 184 156 L128 192 Q120 198 110 198 Q100 198 92 192 L36 156 Q28 150 28 138 L28 82 Q28 70 36 64 L92 28 Q100 22 110 22 Z"
+        fill="url(#bh-b)" stroke="#14111E" stroke-width="6" stroke-linejoin="round"/>
+  <!-- glowing fault cracks -->
+  <g stroke="#FF8A3D" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none" filter="url(#bh-glow)" opacity="0.95">
+    <path d="M110 110 L70 48 M110 110 L40 96 M110 110 L66 168 M110 110 L168 150 M110 110 L176 86"/>
+  </g>
+  <!-- hot core -->
+  <circle cx="110" cy="110" r="24" fill="url(#bh-core)" filter="url(#bh-glow)"/>
+  <circle cx="110" cy="110" r="24" fill="none" stroke="#FFE7A6" stroke-width="2" opacity="0.8"/>
+  <!-- eyes (gritted, determined) -->
+  <g>
+    <ellipse cx="90" cy="78" rx="12" ry="13" fill="#FFF7E8"/>
+    <ellipse cx="130" cy="78" rx="12" ry="13" fill="#FFF7E8"/>
+    <circle cx="92" cy="81" r="6" fill="#14111E"/>
+    <circle cx="128" cy="81" r="6" fill="#14111E"/>
+    <path d="M76 64 L102 72" stroke="#14111E" stroke-width="6" stroke-linecap="round"/>
+    <path d="M144 64 L118 72" stroke="#14111E" stroke-width="6" stroke-linecap="round"/>
+  </g>
+</svg>

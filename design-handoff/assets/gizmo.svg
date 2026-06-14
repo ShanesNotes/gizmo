@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 440" width="400" height="440" role="img" aria-label="Gizmo, the spark-bot mascot">
+  <defs>
+    <!-- Body form: warm cream top into cool violet shadow -->
+    <linearGradient id="g-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFDF6"/>
+      <stop offset="0.55" stop-color="#F4ECFF"/>
+      <stop offset="1" stop-color="#D9CBFF"/>
+    </linearGradient>
+    <!-- Core lens: white-hot center to cyan -->
+    <radialGradient id="g-core" cx="0.42" cy="0.38" r="0.75">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="0.28" stop-color="#C9F6FF"/>
+      <stop offset="0.62" stop-color="#54D8FF"/>
+      <stop offset="1" stop-color="#1E86C8"/>
+    </radialGradient>
+    <!-- Thruster light -->
+    <linearGradient id="g-thrust" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#54D8FF" stop-opacity="0.95"/>
+      <stop offset="0.55" stop-color="#7AE6FF" stop-opacity="0.45"/>
+      <stop offset="1" stop-color="#7AE6FF" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="g-fin" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFE07A"/>
+      <stop offset="1" stop-color="#FFB23E"/>
+    </linearGradient>
+    <filter id="glow-cyan" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="9" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="glow-soft" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur stdDeviation="14"/>
+    </filter>
+  </defs>
+
+  <!-- Ambient ground glow -->
+  <ellipse cx="200" cy="372" rx="92" ry="20" fill="#54D8FF" opacity="0.30" filter="url(#glow-soft)"/>
+
+  <!-- Thruster plume -->
+  <path d="M168 296 C182 330 182 360 200 410 C218 360 218 330 232 296 Z" fill="url(#g-thrust)" filter="url(#glow-cyan)"/>
+  <path d="M186 300 C192 326 192 348 200 384 C208 348 208 326 214 300 Z" fill="#EAFBFF" opacity="0.85"/>
+
+  <!-- Side thruster fins -->
+  <g stroke="#3A2E5E" stroke-width="4" stroke-linejoin="round">
+    <path d="M132 232 C108 236 100 258 116 276 C128 264 134 250 138 236 Z" fill="url(#g-fin)"/>
+    <path d="M268 232 C292 236 300 258 284 276 C272 264 266 250 262 236 Z" fill="url(#g-fin)"/>
+  </g>
+
+  <!-- Spark antenna -->
+  <g filter="url(#glow-cyan)">
+    <path d="M204 70 L190 104 L206 100 L196 132 L222 92 L204 98 Z" fill="#FFE07A" stroke="#FFF3C4" stroke-width="2" stroke-linejoin="round"/>
+  </g>
+
+  <!-- Body -->
+  <g filter="url(#glow-cyan)">
+    <path d="M200 100 C250 124 272 172 272 212 C272 264 244 300 200 300 C156 300 128 264 128 212 C128 172 150 124 200 100 Z"
+          fill="url(#g-body)" stroke="#3A2E5E" stroke-width="6" stroke-linejoin="round"/>
+  </g>
+  <!-- Top sheen -->
+  <path d="M200 116 C232 132 250 162 252 196 C236 168 214 150 200 146 C186 150 164 168 148 196 C150 162 168 132 200 116 Z"
+        fill="#FFFFFF" opacity="0.55"/>
+
+  <!-- Core lens -->
+  <circle cx="200" cy="206" r="62" fill="#0E0B1A"/>
+  <circle cx="200" cy="206" r="56" fill="url(#g-core)" filter="url(#glow-cyan)"/>
+  <!-- inner ring -->
+  <circle cx="200" cy="206" r="56" fill="none" stroke="#EAFBFF" stroke-width="3" opacity="0.7"/>
+  <!-- catchlights -->
+  <circle cx="180" cy="186" r="14" fill="#FFFFFF" opacity="0.95"/>
+  <circle cx="216" cy="224" r="7" fill="#FFFFFF" opacity="0.65"/>
+
+  <!-- Cheek vents (personality) -->
+  <g fill="#3A2E5E" opacity="0.55">
+    <rect x="150" y="250" width="20" height="7" rx="3.5"/>
+    <rect x="230" y="250" width="20" height="7" rx="3.5"/>
+  </g>
+
+  <!-- Static crackle accents -->
+  <g stroke="#54D8FF" stroke-width="3" stroke-linecap="round" opacity="0.9" filter="url(#glow-cyan)">
+    <path d="M96 150 l16 8 l-10 10" fill="none"/>
+    <path d="M304 150 l-16 8 l10 10" fill="none"/>
+  </g>
+</svg>

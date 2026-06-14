@@ -1,0 +1,25 @@
+# --- archives / exports (redundant with design-handoff/) ---
+*.zip
+
+# --- FUSE mount artifacts ---
+.fuse_hidden*
+
+# --- scratch / preview render folders ---
+**/_preview/
+**/_prev*/
+**/_verify/
+
+# --- dependencies / build caches (for when dev lands here) ---
+node_modules/
+dist/
+.cache/
+.vite/
+*.log
+
+# --- OS / editor junk ---
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/
+*.swp

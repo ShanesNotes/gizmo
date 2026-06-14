@@ -1,0 +1,120 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@700;800;900&family=Cormorant+Garamond:wght@600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --void:#0C0A16;--ink:#211B17;--lumen:#FFF7E8;--dim:rgba(255,247,232,.62);
+  --gold:#E8BC88;--gold2:#A87A2E;--bole:#7A5020;--oxblood:#7E2531;
+  --mint:#5BE6A4;--cyan:#54D8FF;--violet:#A98BFF;--surge:#FFD24A;--coral:#FF6B7E;
+}
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Nunito',sans-serif}
+body{width:1280px;height:720px;overflow:hidden;color:var(--lumen);position:relative;
+  background:radial-gradient(120% 90% at 50% 20%,#1C1540 0%,#130E2A 48%,#0A0814 86%)}
+.stip{position:absolute;inset:0;opacity:.45;background-image:radial-gradient(rgba(232,188,136,.14) 1px,transparent 1px);background-size:15px 15px}
+.frame{position:absolute;inset:14px;border:2px solid var(--gold2);border-radius:8px;box-shadow:inset 0 0 0 1px rgba(232,188,136,.4);pointer-events:none}
+.sealc{position:absolute;width:22px;height:22px;transform:rotate(45deg);background:var(--oxblood);border:2px solid var(--gold)}
+.tl{left:7px;top:7px}.tr{right:7px;top:7px}.bl{left:7px;bottom:7px}.br{right:7px;bottom:7px}
+.ent{position:absolute}
+/* illuminated panels */
+.panel{position:absolute;background:rgba(20,15,34,.82);border:2px solid var(--gold2);border-radius:12px;
+  box-shadow:inset 0 0 0 1px rgba(232,188,136,.3),0 14px 34px rgba(0,0,0,.5)}
+.panel:before{content:"";position:absolute;inset:4px;border:1px dashed rgba(232,188,136,.3);border-radius:8px;pointer-events:none}
+.ey{font-family:'Cormorant Garamond',serif;font-size:13px;font-weight:700;letter-spacing:2px;color:var(--gold);text-transform:uppercase}
+.run{left:34px;top:34px;display:flex;gap:16px;align-items:center;padding:12px 17px}
+.run .sc{font-family:'Fredoka';font-weight:700;font-size:31px;color:var(--gold);line-height:1;text-shadow:0 0 16px rgba(232,188,136,.4)}
+.breath{display:flex;gap:5px}
+.breath i{width:15px;height:20px;background:rgba(255,247,232,.16);clip-path:polygon(50% 0,72% 38%,68% 74%,50% 100%,32% 74%,28% 38%)}
+.breath i.on{background:var(--coral);box-shadow:0 0 9px rgba(255,107,126,.6)}
+.stats{right:34px;top:34px;display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:10px}
+.stats .s{min-width:74px;padding:7px 11px;border-radius:9px;background:rgba(232,188,136,.06)}
+.stats .s b{display:block;font-family:'Fredoka';font-weight:700;font-size:19px;margin-top:1px}
+.lv b{color:var(--mint)}.pw b{color:var(--violet)}.ca b{color:var(--gold)}
+.verdict{left:50%;top:34px;transform:translateX(-50%);width:368px;padding:10px 14px 13px;display:grid;grid-template-columns:34px 1fr auto;gap:10px;align-items:center;border-color:rgba(255,107,126,.55)}
+.verdict .t{font-family:'Cormorant Garamond',serif;font-weight:700;font-size:19px;line-height:1;color:var(--lumen)}
+.verdict .d{font-size:12px;color:var(--dim);font-weight:800}
+.verdict .n{font-family:'Fredoka';font-weight:700;font-size:20px;color:var(--coral)}
+.bar{grid-column:1/-1;height:7px;border-radius:99px;background:rgba(232,188,136,.16);overflow:hidden;margin-top:3px}
+.bar i{display:block;height:100%;border-radius:99px}
+.build{left:34px;top:120px;width:236px;padding:11px 12px}
+.build .row{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px}
+.build .p{display:inline-flex;align-items:center;gap:6px;padding:5px 9px;border-radius:8px;background:rgba(232,188,136,.08);font-size:12px;font-weight:800}
+.build .p b{display:grid;place-items:center;min-width:17px;height:17px;border-radius:50%;background:var(--oxblood);font-size:10px}
+.build .p.seal{background:rgba(232,188,136,.16);color:var(--gold);box-shadow:inset 0 0 0 1.5px var(--gold2)}
+.dot{width:8px;height:8px;border-radius:50%}
+.prog{left:34px;bottom:34px;width:372px;padding:12px 14px}
+.prog .top{display:flex;justify-content:space-between;align-items:center}
+.prog .lvl{font-family:'Cormorant Garamond',serif;font-weight:700;font-size:16px;color:var(--gold)}
+.xp i{background:linear-gradient(90deg,var(--mint),var(--cyan),var(--surge))}
+/* covenant cluster */
+.cluster{position:absolute;left:50%;bottom:30px;transform:translateX(-50%);width:600px}
+.cluster img{width:600px;display:block}
+.cmeter{position:absolute;bottom:18px;width:64px;height:5px;border-radius:99px;background:rgba(232,188,136,.2);overflow:hidden}
+.cmeter i{display:block;height:100%;border-radius:99px}
+.rush{position:absolute;width:128px;height:128px;border-radius:50%;border:2px solid var(--mint);bottom:30px;
+  box-shadow:0 0 22px rgba(91,230,164,.4);animation:none}
+/* illumination callout */
+.callout{position:absolute;left:556px;top:300px;text-align:center}
+.aura{position:absolute;left:50%;top:54px;transform:translate(-50%,-50%);width:200px;height:200px;border-radius:50%;
+  background:radial-gradient(circle,rgba(232,188,136,.34),transparent 66%)}
+.callout .big{position:relative;font-family:'Fredoka';font-weight:700;font-size:46px;letter-spacing:1px;
+  background:linear-gradient(180deg,#FFF6E2,#E8BC88);-webkit-background-clip:text;background-clip:text;color:transparent;
+  -webkit-text-stroke:2.5px #211B17;filter:drop-shadow(0 0 18px rgba(232,188,136,.6))}
+.callout .num{position:relative;font-family:'Fredoka';font-weight:700;font-size:30px;color:var(--surge);margin-top:-4px;text-shadow:0 2px 0 rgba(33,27,23,.6)}
+.boost{position:absolute;right:34px;bottom:34px;width:120px;height:92px;border-radius:14px;display:grid;place-items:center;text-align:center;
+  background:var(--surge);color:#3A2806;border:2px solid var(--gold);box-shadow:0 0 0 5px rgba(255,210,74,.2),0 14px 30px rgba(0,0,0,.5)}
+.boost .bl{font-family:'Fredoka';font-weight:700;font-size:20px}
+.boost .bs{font-family:'Cormorant Garamond',serif;font-weight:700;font-size:12px;letter-spacing:2px;text-transform:uppercase;opacity:.8}
+</style></head>
+<body>
+  <div class="stip"></div>
+  <div class="frame"></div><div class="sealc tl"></div><div class="sealc tr"></div><div class="sealc bl"></div><div class="sealc br"></div>
+
+  <img class="ent" src="assets-fusion/enemy-counterfeit.svg" style="right:330px;top:150px;width:104px">
+  <img class="ent" src="assets/enemy-drifter.svg" style="left:380px;top:185px;width:74px">
+  <img class="ent" src="assets-fusion/cache-reliquary.svg" style="right:380px;bottom:250px;width:84px">
+  <img class="ent" src="assets/pickup-spark.svg" style="left:600px;top:250px;width:42px">
+  <img class="ent" src="assets/pickup-spark.svg" style="left:720px;top:370px;width:38px">
+  <img class="ent" src="assets/pickup-spark.svg" style="left:560px;bottom:300px;width:36px">
+  <img class="ent" src="assets-fusion/gizmo-illuminated.svg" style="left:50%;top:52%;transform:translate(-50%,-50%);width:188px">
+
+  <div class="callout"><div class="aura"></div><div class="big">ILLUMINED!</div><div class="num">+250</div></div>
+
+  <div class="panel run">
+    <div><div class="ey">Illumination</div><div class="sc">42,180</div></div>
+    <div class="breath"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i></div>
+  </div>
+  <div class="panel stats">
+    <div class="s lv"><span class="ey">Rank</span><b>VII</b></div>
+    <div class="s pw"><span class="ey">Power</span><b>×3</b></div>
+    <div class="s ca"><span class="ey">Reliquary</span><b>4</b></div>
+    <div class="s"><span class="ey">Vigil</span><b>6:12</b></div>
+  </div>
+  <div class="panel verdict">
+    <img src="assets-fusion/covenant-emblems.svg" style="object-fit:none;object-position:-512px -22px;width:34px;height:34px">
+    <div><div class="t">The Claiming</div><div class="d">Chase the gold — seal the bounty</div></div>
+    <div class="n">3<span style="color:var(--dim);font-size:13px">/5</span></div>
+    <div class="bar"><i style="width:60%;background:linear-gradient(90deg,var(--coral),var(--surge))"></i></div>
+  </div>
+  <div class="panel build">
+    <div class="ey">Covenant</div>
+    <div class="row">
+      <span class="p"><span class="dot" style="background:var(--cyan)"></span>Pulse Driver <b>3</b></span>
+      <span class="p"><span class="dot" style="background:var(--mint)"></span>Spark Magnet <b>2</b></span>
+      <span class="p seal">Echo Coil <b>✦</b></span>
+      <span class="p"><span class="dot" style="background:var(--violet)"></span>Nova Bloom <b>1</b></span>
+    </div>
+  </div>
+  <div class="panel prog">
+    <div class="top"><div class="lvl">Rank VII · Illuminating</div><div class="ey">340 to wake</div></div>
+    <div class="bar xp" style="margin-top:9px"><i style="width:72%"></i></div>
+  </div>
+
+  <div class="cluster">
+    <img src="assets-fusion/covenant-emblems.svg">
+    <div class="cmeter" style="left:48px"><i style="width:54%;background:var(--mint)"></i></div>
+    <div class="cmeter" style="left:198px"><i style="width:88%;background:var(--cyan)"></i></div>
+    <div class="cmeter" style="left:348px"><i style="width:40%;background:var(--violet)"></i></div>
+    <div class="cmeter" style="left:498px"><i style="width:100%;background:var(--surge)"></i></div>
+    <div class="rush" style="left:11px"></div>
+  </div>
+  <div class="boost"><div><div class="bl">BOOST</div><div class="bs">Snap Seal</div></div></div>
+</body></html>

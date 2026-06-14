@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" width="160" height="160" role="img" aria-label="Heart pickup">
+  <defs>
+    <linearGradient id="ht-b" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FF8A9B"/><stop offset="1" stop-color="#E0506A"/>
+    </linearGradient>
+    <filter id="ht-glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <g filter="url(#ht-glow)">
+    <path d="M80 140 C36 106 18 80 18 56 C18 36 34 22 54 22 C68 22 76 31 80 42 C84 31 92 22 106 22 C126 22 142 36 142 56 C142 80 124 106 80 140 Z"
+          fill="url(#ht-b)" stroke="#3A1E2A" stroke-width="6" stroke-linejoin="round"/>
+  </g>
+  <!-- shine -->
+  <path d="M52 44 C44 50 40 60 42 72 C50 58 60 50 70 48 C66 40 58 40 52 44 Z" fill="#FFD2DA" opacity="0.85"/>
+</svg>

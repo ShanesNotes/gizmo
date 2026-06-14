@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="240" height="240" role="img" aria-label="Gizmo emblem B — spark sigil">
+  <defs>
+    <radialGradient id="b-grd" cx="0.5" cy="0.44" r="0.6"><stop offset="0" stop-color="#1E1838"/><stop offset="0.72" stop-color="#130F28"/><stop offset="1" stop-color="#0B0914"/></radialGradient>
+    <radialGradient id="b-seal" cx="0.5" cy="0.42" r="0.6"><stop offset="0" stop-color="#9A3340"/><stop offset="1" stop-color="#5A1A24"/></radialGradient>
+    <radialGradient id="b-bolt" cx="0.5" cy="0.4" r="0.6"><stop offset="0" stop-color="#FFF6D6"/><stop offset="0.5" stop-color="#FFD24A"/><stop offset="1" stop-color="#E89A1E"/></radialGradient>
+    <pattern id="b-st" width="9" height="9" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1" fill="#E8BC88" opacity="0.26"/></pattern>
+    <filter id="b-g" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+  <!-- ray-tick crown -->
+  <circle cx="120" cy="120" r="108" fill="none" stroke="#E8BC88" stroke-width="14" stroke-dasharray="2 13" opacity="0.85" filter="url(#b-g)"/>
+  <!-- ground -->
+  <circle cx="120" cy="120" r="96" fill="url(#b-grd)" stroke="#211B17" stroke-width="4"/>
+  <circle cx="120" cy="120" r="96" fill="url(#b-st)"/>
+  <circle cx="120" cy="120" r="90" fill="none" stroke="#A87A2E" stroke-width="3"/>
+  <!-- oxblood wax seal -->
+  <circle cx="120" cy="120" r="66" fill="url(#b-seal)" stroke="#211B17" stroke-width="4" filter="url(#b-g)"/>
+  <circle cx="120" cy="120" r="66" fill="none" stroke="#E8BC88" stroke-width="2.5"/>
+  <circle cx="120" cy="120" r="56" fill="none" stroke="#7A1F2A" stroke-width="2"/>
+  <!-- bold surge bolt -->
+  <path d="M138 60 L86 128 L116 128 L104 182 L156 110 L126 110 Z" fill="url(#b-bolt)" stroke="#211B17" stroke-width="3.5" stroke-linejoin="round" filter="url(#b-g)"/>
+  <!-- cyan spark at the strike tip -->
+  <circle cx="104" cy="182" r="7" fill="#54D8FF" filter="url(#b-g)"/><circle cx="104" cy="182" r="3" fill="#FFFFFF"/>
+</svg>
