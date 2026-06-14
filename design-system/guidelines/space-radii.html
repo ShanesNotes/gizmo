@@ -1,0 +1,27 @@
+<!-- @dsCard group="Spacing" viewport="700x160" name="Corner radii" subtitle="Generous, rounded-but-not-babyish — 8 → 26px, pills, roundels" -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<link rel="stylesheet" href="../styles.css" />
+<style>
+  body { margin: 0; background: var(--void); font-family: var(--font-body); color: var(--lumen); }
+  .row { display: flex; gap: 14px; padding: 22px; align-items: flex-end; flex-wrap: wrap; }
+  .box { width: 78px; height: 78px; background: var(--field); border: 2px solid var(--gold-tarnished); display: flex; align-items: flex-end; justify-content: center; padding-bottom: 6px; }
+  .lab { font-size: 11px; font-weight: 900; color: var(--lumen-dim); }
+  .pill { width: 110px; height: 38px; border-radius: var(--r-pill); background: var(--field); border: 2px solid var(--gold-tarnished); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 900; color: var(--lumen-dim); }
+  .roundel { width: 66px; height: 66px; border-radius: 50%; }
+</style>
+</head>
+<body>
+  <div class="row">
+    <div class="box" style="border-radius:var(--r-sm)"><span class="lab">8 sm</span></div>
+    <div class="box" style="border-radius:var(--r-md)"><span class="lab">12 md</span></div>
+    <div class="box" style="border-radius:var(--r-lg)"><span class="lab">14 lg</span></div>
+    <div class="box" style="border-radius:var(--r-xl)"><span class="lab">20 xl</span></div>
+    <div class="box" style="border-radius:var(--r-2xl)"><span class="lab">26 2xl</span></div>
+    <div class="pill">99 pill</div>
+    <div class="box roundel"><span class="lab" style="align-self:center">50%</span></div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,88 @@
+/* ============================================================
+   THE LUMEN CODEX — COLOR TOKENS
+   "Light upon matter." Neon charge sits inside ancient pigment.
+   Rule: warm:cool ≈ 9:1. Only red & gold may saturate.
+   Gold carries light · red carries cost · ink makes it official.
+   ============================================================ */
+
+:root {
+  /* ---- THE VOID & SURFACES (the dark page) ---- */
+  --void: #0C0A16;          /* deepest space base */
+  --field: #15102A;         /* raised playfield */
+  --field-2: #1C1540;       /* warm-lifted field (top of radial) */
+  --panel: rgba(20, 15, 34, 0.82);   /* dark-glass HUD panel fill */
+  --panel-solid: #140F22;   /* opaque panel for cards */
+  --scrim: rgba(8, 6, 18, 0.66);     /* modal dim */
+
+  /* ---- THE LIGHT (warm-white ink) ---- */
+  --lumen: #FFF7E8;         /* warm-white text / ink */
+  --lumen-dim: rgba(255, 247, 232, 0.62);  /* secondary text */
+  --lumen-faint: rgba(255, 247, 232, 0.30); /* tertiary / hairlines */
+  --parchment: #F8F1E5;     /* charged empty space / mercy */
+
+  /* ---- THE MATTER (measured ancient pigments) ---- */
+  --gold-leaf: #E8BC88;     /* illumination / blessing / the warmth signature */
+  --gold-tarnished: #A87A2E;/* relic / route / rule-lines */
+  --bole: #7A5020;          /* gold shadow / ground */
+  --oxblood: #7E2531;       /* cost / wax-seal / contract */
+  --vermilion: #C45A40;     /* charged danger / heat */
+  --ink: #211B17;           /* witness / contour / verdict (warm brown-black) */
+  --lapis: #263D5E;         /* cold judgment (rare — an event) */
+  --ward-green: #365A49;    /* secrecy / slow growth (muted) */
+  --dusty-rose: #B07A83;    /* tenderness / enclosure */
+
+  /* ---- THE FOUR CHARGE HUES (neon, unchanged) ---- */
+  --flow:   #5BE6A4;        /* Flow · Thread  (mint) */
+  --clutch: #54D8FF;        /* Clutch · Breath (cyan) */
+  --echo:   #A98BFF;        /* Echo · Vigil   (violet) */
+  --surge:  #FFD24A;        /* Surge · Seal   (gold — THE HINGE) */
+
+  /* ---- ACCENTS ---- */
+  --coral:  #FF6B7E;        /* health · breath · bounty · danger */
+  --pink:   #FF79C6;        /* epic rarity · flow-hot */
+  --orange: #FF9D5C;        /* heat · big-shape burn */
+
+  /* ---- GLOW ALPHAS (for stipple radiance + soft outer glow) ---- */
+  --glow-gold:   rgba(232, 188, 136, 0.40);
+  --glow-flow:   rgba(91, 230, 164, 0.45);
+  --glow-clutch: rgba(84, 216, 255, 0.45);
+  --glow-echo:   rgba(169, 139, 255, 0.45);
+  --glow-surge:  rgba(255, 210, 74, 0.50);
+  --glow-coral:  rgba(255, 107, 126, 0.55);
+
+  /* stipple-radiance dot color (gold dust on dark) */
+  --stipple: rgba(232, 188, 136, 0.14);
+
+  /* ============================================================
+     SEMANTIC ALIASES — reach for these in components
+     ============================================================ */
+
+  /* text */
+  --text-strong: var(--lumen);
+  --text-body:   var(--lumen-dim);
+  --text-faint:  var(--lumen-faint);
+  --text-gold:   var(--gold-leaf);        /* manuscript labels / verdicts */
+  --text-on-gold:#3A2806;                 /* ink on gold-leaf ground */
+
+  /* surfaces */
+  --surface-bg:    var(--void);
+  --surface-field: var(--field);
+  --surface-card:  var(--panel);
+  --surface-inset: rgba(232, 188, 136, 0.06);  /* gold-dust inset cell */
+
+  /* lines (the page apparatus) */
+  --rule-gold:   var(--gold-tarnished);   /* gold-leaf rule-line on panels */
+  --rule-inner:  rgba(232, 188, 136, 0.30); /* dashed inner rule */
+  --rule-edge:   rgba(232, 188, 136, 0.40); /* 1px luminous edge */
+  --hairline:    rgba(255, 247, 232, 0.12);
+
+  /* the hinge */
+  --reward:      var(--gold-leaf);   /* every reward reads as illumination */
+  --seal:        var(--oxblood);     /* wax-seal / cost */
+
+  /* economy semantic map (covenants) */
+  --covenant-thread: var(--flow);
+  --covenant-breath: var(--clutch);
+  --covenant-vigil:  var(--echo);
+  --covenant-seal:   var(--surge);
+}

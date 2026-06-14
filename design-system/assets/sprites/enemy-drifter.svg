@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200" role="img" aria-label="Drifter enemy">
+  <defs>
+    <linearGradient id="dr-b" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#7A68B0"></stop><stop offset="1" stop-color="#4A3C75"></stop>
+    </linearGradient>
+  </defs>
+  
+  <path d="M100 34 Q122 40 134 70 L172 150 Q182 174 158 178 L42 178 Q18 174 28 150 L66 70 Q78 40 100 34 Z" fill="url(#dr-b)" stroke="#1C1730" stroke-width="6" stroke-linejoin="round"></path>
+  
+  <path d="M100 50 Q114 56 122 78 Q108 70 100 70 Q92 70 78 78 Q86 56 100 50 Z" fill="#A99BD6" opacity="0.7"></path>
+  
+  <g>
+    <ellipse cx="83" cy="118" rx="13" ry="15" fill="#FFF7E8"></ellipse>
+    <ellipse cx="117" cy="118" rx="13" ry="15" fill="#FFF7E8"></ellipse>
+    <circle cx="86" cy="122" r="6.5" fill="#1C1730"></circle>
+    <circle cx="114" cy="122" r="6.5" fill="#1C1730"></circle>
+    
+    <path d="M70 104 L96 112" stroke="#1C1730" stroke-width="6" stroke-linecap="round"></path>
+    <path d="M130 104 L104 112" stroke="#1C1730" stroke-width="6" stroke-linecap="round"></path>
+  </g>
+  
+  <path d="M88 150 Q100 144 112 150" fill="none" stroke="#1C1730" stroke-width="5" stroke-linecap="round"></path>
+</svg>

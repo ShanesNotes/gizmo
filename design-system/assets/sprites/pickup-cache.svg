@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180" width="180" height="180" role="img" aria-label="Cache loot container, closed">
+  <defs>
+    <linearGradient id="ca-b" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2C4A66"></stop><stop offset="1" stop-color="#152233"></stop>
+    </linearGradient>
+    <radialGradient id="ca-core" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#FFFFFF"></stop><stop offset="0.5" stop-color="#54D8FF"></stop><stop offset="1" stop-color="#1E7FB8"></stop>
+    </radialGradient>
+    <filter id="ca-glow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="5" result="b"></feGaussianBlur><feMerge><feMergeNode in="b"></feMergeNode><feMergeNode in="SourceGraphic"></feMergeNode></feMerge>
+    </filter>
+  </defs>
+  
+  <rect x="30" y="34" width="120" height="120" rx="26" fill="url(#ca-b)" stroke="#0C141F" stroke-width="6"></rect>
+  
+  <path d="M44 56 Q60 44 90 44 Q120 44 136 56 L120 70 Q90 62 60 70 Z" fill="#5C86A8" opacity="0.55"></path>
+  
+  <g fill="none" stroke="#FFD24A" stroke-width="7" stroke-linecap="round">
+    <path d="M44 64 L44 50 Q44 46 50 46 L64 46"></path>
+    <path d="M136 64 L136 50 Q136 46 130 46 L116 46"></path>
+    <path d="M44 124 L44 138 Q44 142 50 142 L64 142"></path>
+    <path d="M136 124 L136 138 Q136 142 130 142 L116 142"></path>
+  </g>
+  
+  <g filter="url(#ca-glow)">
+    <path d="M90 64 L110 94 L90 124 L70 94 Z" fill="url(#ca-core)" stroke="#EAFBFF" stroke-width="2"></path>
+  </g>
+  
+  <rect x="80" y="26" width="20" height="16" rx="5" fill="#FFD24A" stroke="#9A6B14" stroke-width="2"></rect>
+</svg>

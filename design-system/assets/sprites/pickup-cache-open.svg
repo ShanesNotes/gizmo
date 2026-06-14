@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180" width="180" height="180" role="img" aria-label="Cache cracked open, bursting with light">
+  <defs>
+    <linearGradient id="co-beam" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0" stop-color="#FFD24A" stop-opacity="0.95"></stop><stop offset="1" stop-color="#FFF6D6" stop-opacity="0"></stop>
+    </linearGradient>
+    <radialGradient id="co-flash" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#FFFFFF"></stop><stop offset="0.4" stop-color="#FFE89A"></stop><stop offset="1" stop-color="#FFD24A" stop-opacity="0"></stop>
+    </radialGradient>
+    <filter id="co-glow" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur stdDeviation="6" result="b"></feGaussianBlur><feMerge><feMergeNode in="b"></feMergeNode><feMergeNode in="SourceGraphic"></feMergeNode></feMerge>
+    </filter>
+  </defs>
+  
+  <g stroke="#FFD24A" stroke-width="5" stroke-linecap="round" opacity="0.85" filter="url(#co-glow)">
+    <path d="M90 86 L90 18"></path><path d="M90 86 L40 40"></path><path d="M90 86 L140 40"></path>
+    <path d="M90 86 L26 78"></path><path d="M90 86 L154 78"></path>
+  </g>
+  
+  <circle cx="90" cy="80" r="60" fill="url(#co-flash)"></circle>
+  
+  <path d="M70 150 L78 70 L102 70 L110 150 Z" fill="url(#co-beam)" filter="url(#co-glow)"></path>
+  
+  <path d="M40 108 Q40 150 70 154 L110 154 Q140 150 140 108 L122 96 L108 110 L90 92 L72 110 L58 96 Z" fill="#1B2C40" stroke="#0C141F" stroke-width="6" stroke-linejoin="round"></path>
+  <path d="M40 108 Q40 150 70 154 L110 154 Q140 150 140 108" fill="none" stroke="#FFD24A" stroke-width="4" opacity="0.9"></path>
+  
+  <g filter="url(#co-glow)">
+    <path d="M90 30 L99 56 L126 64 L99 72 L90 98 L81 72 L54 64 L81 56 Z" fill="#FFF3C4" stroke="#FFD24A" stroke-width="2"></path>
+  </g>
+  <circle cx="90" cy="64" r="8" fill="#FFFFFF"></circle>
+  
+  <circle cx="46" cy="58" r="3.5" fill="#FFF3C4"></circle><circle cx="138" cy="60" r="3" fill="#FFF3C4"></circle>
+</svg>

@@ -1,0 +1,25 @@
+<!-- @dsCard group="Colors" viewport="700x150" name="The Void & Surfaces" subtitle="The dark page — void, field, dark-glass panel" -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<link rel="stylesheet" href="../styles.css" />
+<style>
+  body { margin: 0; background: var(--void); font-family: var(--font-body); }
+  .row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; padding: 18px; }
+  .sw { border-radius: var(--r-md); height: 96px; display: flex; flex-direction: column; justify-content: flex-end; padding: 10px; border: 1px solid var(--hairline); }
+  .name { font-weight: 900; font-size: 12px; color: var(--lumen); letter-spacing: .3px; }
+  .hex { font-size: 11px; color: var(--lumen-dim); font-variant-numeric: tabular-nums; }
+  .glass { background: var(--panel); border: var(--border-gold); box-shadow: var(--edge-luminous); }
+</style>
+</head>
+<body>
+  <div class="row">
+    <div class="sw" style="background:var(--void)"><div class="name">Void</div><div class="hex">#0C0A16</div></div>
+    <div class="sw" style="background:var(--field)"><div class="name">Field</div><div class="hex">#15102A</div></div>
+    <div class="sw" style="background:var(--field-2)"><div class="name">Field-2</div><div class="hex">#1C1540</div></div>
+    <div class="sw glass"><div class="name">Dark Glass</div><div class="hex">panel .82α</div></div>
+    <div class="sw" style="background:var(--panel-solid)"><div class="name">Panel Solid</div><div class="hex">#140F22</div></div>
+  </div>
+</body>
+</html>

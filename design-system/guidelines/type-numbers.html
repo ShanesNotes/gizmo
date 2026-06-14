@@ -1,0 +1,28 @@
+<!-- @dsCard group="Type" viewport="700x180" name="Dopamine numbers" subtitle="Numbers are characters — gold inscription, scale-up-and-settle" -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<link rel="stylesheet" href="../styles.css" />
+<style>
+  body { margin: 0; background: radial-gradient(120% 90% at 50% 20%, #1C1540, #130E2A, #0A0814); font-family: var(--font-body); color: var(--lumen); }
+  .row { display: flex; align-items: baseline; gap: 28px; padding: 26px; flex-wrap: wrap; }
+  .num { font-family: var(--font-display); font-weight: 700; font-variant-numeric: tabular-nums; }
+  .score { font-size: 60px; color: var(--surge); text-shadow: 0 0 30px var(--glow-surge); }
+  .delta { font-size: 36px; color: var(--flow); }
+  .mult { font-size: 36px; color: var(--echo); }
+  .rank { font-size: 36px;
+    background: linear-gradient(180deg,#FFF6E2,var(--gold-leaf)); -webkit-background-clip: text; background-clip: text; color: transparent;
+    -webkit-text-stroke: 1.5px var(--ink); }
+  .cap { display: block; font-family: var(--font-manuscript); font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--lumen-dim); }
+</style>
+</head>
+<body>
+  <div class="row">
+    <div><span class="cap">Illumination</span><span class="num score">42,180</span></div>
+    <div><span class="cap">Delta</span><span class="num delta">+250</span></div>
+    <div><span class="cap">Power</span><span class="num mult">×3</span></div>
+    <div><span class="cap">Rank</span><span class="num rank">VII</span></div>
+  </div>
+</body>
+</html>

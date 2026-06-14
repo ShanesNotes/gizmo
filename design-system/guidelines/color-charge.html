@@ -1,0 +1,27 @@
+<!-- @dsCard group="Colors" viewport="700x180" name="The Four Charge Hues" subtitle="Neon light locked to the covenant economies — gold is the hinge" -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<link rel="stylesheet" href="../styles.css" />
+<style>
+  body { margin: 0; background: var(--void); font-family: var(--font-body); }
+  .lumen-stipple { position: absolute; inset: 0; opacity: .4; }
+  .row { position: relative; display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; padding: 20px; }
+  .sw { border-radius: var(--r-md); height: 120px; display: flex; flex-direction: column; justify-content: space-between; padding: 12px; background: var(--field); border: 1px solid var(--hairline); }
+  .dot { width: 28px; height: 28px; border-radius: 50%; }
+  .name { font-weight: 900; font-size: 13px; color: var(--lumen); }
+  .role { font-family: var(--font-manuscript); font-size: 12px; letter-spacing: 1.5px; text-transform: uppercase; }
+  .hex { font-size: 11px; color: var(--lumen-dim); font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body>
+  <div class="lumen-stipple"></div>
+  <div class="row">
+    <div class="sw"><div class="dot" style="background:var(--flow);box-shadow:0 0 16px var(--glow-flow)"></div><div><div class="name">Flow</div><div class="role" style="color:var(--flow)">Thread</div><div class="hex">#5BE6A4</div></div></div>
+    <div class="sw"><div class="dot" style="background:var(--clutch);box-shadow:0 0 16px var(--glow-clutch)"></div><div><div class="name">Clutch</div><div class="role" style="color:var(--clutch)">Breath</div><div class="hex">#54D8FF</div></div></div>
+    <div class="sw"><div class="dot" style="background:var(--echo);box-shadow:0 0 16px var(--glow-echo)"></div><div><div class="name">Echo</div><div class="role" style="color:var(--echo)">Vigil</div><div class="hex">#A98BFF</div></div></div>
+    <div class="sw" style="border-color:var(--gold-tarnished)"><div class="dot" style="background:var(--surge);box-shadow:0 0 18px var(--glow-surge)"></div><div><div class="name">Surge ✦</div><div class="role" style="color:var(--surge)">Seal · the hinge</div><div class="hex">#FFD24A</div></div></div>
+  </div>
+</body>
+</html>

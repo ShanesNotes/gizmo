@@ -1,0 +1,81 @@
+/* ============================================================
+   THE LUMEN CODEX — TYPE TOKENS
+   Three voices:
+   · Fredoka      — arcade display + dopamine numbers (gold-leaf inscription)
+   · Cormorant    — the manuscript voice (labels, verdicts, taglines)
+   · Nunito       — clean UI body
+   ============================================================ */
+
+:root {
+  /* ---- FAMILIES ---- */
+  --font-display: 'Fredoka', system-ui, sans-serif;          /* titles, numbers, wordmark */
+  --font-manuscript: 'Cormorant Garamond', Georgia, serif;   /* labels, verdicts, eyebrows */
+  --font-body: 'Nunito', system-ui, sans-serif;              /* UI, stats, descriptions */
+
+  /* ---- WEIGHTS ---- */
+  --w-display: 700;     /* @kind font */
+  --w-display-md: 600;  /* @kind font */
+  --w-manuscript: 700;  /* @kind font */
+  --w-body: 800;        /* @kind font */
+  --w-body-black: 900;  /* @kind font */
+
+  /* ---- DISPLAY SCALE (Fredoka — the inscription) ---- */
+  --type-hero: 124px;       /* title wordmark */
+  --type-display-1: 78px;   /* results score */
+  --type-display-2: 52px;   /* screen titles (LEVEL UP) */
+  --type-display-3: 40px;   /* card titles, panel scores */
+  --type-number-xl: 46px;   /* big dopamine number (+250 ILLUMINED) */
+  --type-number-lg: 31px;   /* panel score */
+  --type-number-md: 20px;   /* stat values, callout numbers */
+
+  /* ---- MANUSCRIPT SCALE (Cormorant — the voice) ---- */
+  --type-verdict: 25px;     /* italic tagline */
+  --type-label-lg: 20px;    /* plate / press-key */
+  --type-label: 16px;       /* panel rank labels */
+  --type-eyebrow: 13px;     /* UPPERCASE manuscript eyebrow */
+
+  /* ---- BODY SCALE (Nunito) ---- */
+  --type-body: 14px;        /* descriptions */
+  --type-body-sm: 12px;     /* fine print, pills */
+  --type-body-xs: 11px;     /* minimum legible */
+
+  /* ---- TRACKING ---- */
+  --track-tight: -2px;      /* hero wordmark */
+  --track-normal: 0;        /* @kind spacing */
+  --track-eyebrow: 2px;     /* manuscript eyebrows */
+  --track-plate: 4px;       /* sealed verdict plate */
+  --track-loose: 14px;      /* title subtitle spacing */
+
+  /* ---- LINE HEIGHT ---- */
+  --leading-tight: 1;       /* @kind font */
+  --leading-snug: 1.05;     /* @kind font */
+  --leading-body: 1.4;      /* @kind font */
+
+  /* ---- INK STROKE (gold-leafed inscription gets an ink contour) ---- */
+  --ink-stroke: 2.5px;      /* default text-stroke on gold display */
+  --ink-stroke-hero: 3px;   /* hero wordmark */
+}
+
+/* ---- INSCRIPTION RECIPE ----
+   Fredoka display, gold-leaf gradient fill, ink stroke, soft gold glow.
+   Apply .lumen-inscription to any dopamine title/number. */
+.lumen-inscription {
+  font-family: var(--font-display);
+  font-weight: var(--w-display);
+  background: linear-gradient(180deg, #FFF6E2 6%, #F0CE92 40%, var(--gold-leaf) 62%, var(--gold-tarnished) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-stroke: var(--ink-stroke) var(--ink);
+  filter: drop-shadow(0 3px 0 rgba(33, 27, 23, 0.5)) drop-shadow(0 0 30px var(--glow-gold));
+}
+
+/* ---- MANUSCRIPT EYEBROW ---- */
+.lumen-eyebrow {
+  font-family: var(--font-manuscript);
+  font-weight: var(--w-manuscript);
+  font-size: var(--type-eyebrow);
+  letter-spacing: var(--track-eyebrow);
+  text-transform: uppercase;
+  color: var(--gold-leaf);
+}

@@ -1,0 +1,25 @@
+<!-- @dsCard group="Type" viewport="700x200" name="Display — Fredoka inscription" subtitle="Gold-leaf gradient + ink stroke + soft glow = the inscription" -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<link rel="stylesheet" href="../styles.css" />
+<style>
+  body { margin: 0; background: radial-gradient(120% 90% at 50% 20%, #1C1540, #130E2A, #0A0814); font-family: var(--font-body); }
+  .pad { padding: 22px 26px; }
+  .word { font-family: var(--font-display); font-weight: 700; font-size: 84px; line-height: .92; letter-spacing: -2px;
+    background: linear-gradient(180deg,#FFF6E2 6%,#F0CE92 40%,var(--gold-leaf) 62%,var(--gold-tarnished) 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    -webkit-text-stroke: 3px var(--ink);
+    filter: drop-shadow(0 3px 0 rgba(33,27,23,.5)) drop-shadow(0 0 30px var(--glow-gold)); }
+  .meta { color: var(--lumen-dim); font-weight: 800; font-size: 12px; letter-spacing: 1px; margin-top: 10px; }
+  .meta b { color: var(--gold-leaf); }
+</style>
+</head>
+<body>
+  <div class="pad">
+    <div class="word">GIZMO</div>
+    <div class="meta"><b>Fredoka 700</b> · 124px hero · letter-spacing −2px · titles, wordmarks, every dopamine number</div>
+  </div>
+</body>
+</html>
