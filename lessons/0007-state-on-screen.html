@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0007 — State on Screen</title>
+<style>
+  :root{
+    --ink:#1a1d27; --muted:#5b6172; --line:#e4e7ef; --bg:#fbfcfe;
+    --accent:#6d5cff; --accent-soft:#efecff; --code-bg:#1c2030; --code-ink:#e7eaf3;
+    --ok:#1f9d6b; --warn:#c87a17; --warn-soft:#fff4e2;
+    --mono:"SF Mono",ui-monospace,"JetBrains Mono",Menlo,Consolas,monospace;
+    --sans:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);
+    line-height:1.65;font-size:17px;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:760px;margin:0 auto;padding:64px 28px 120px}
+  .kicker{font-family:var(--mono);font-size:13px;letter-spacing:.08em;
+    text-transform:uppercase;color:var(--accent);font-weight:600}
+  h1{font-size:2.15rem;line-height:1.15;margin:.3em 0 .2em;letter-spacing:-.02em}
+  .sub{color:var(--muted);font-size:1.05rem;margin-bottom:2.4em}
+  h2{font-size:1.35rem;margin:2.4em 0 .6em;letter-spacing:-.01em;
+    padding-bottom:.3em;border-bottom:1px solid var(--line)}
+  h3{font-size:1.05rem;margin:1.8em 0 .4em}
+  p{margin:.7em 0}
+  a{color:var(--accent);text-decoration:none;border-bottom:1px solid var(--accent-soft)}
+  a:hover{border-color:var(--accent)}
+  code{font-family:var(--mono);font-size:.88em;background:var(--accent-soft);
+    color:#4a3fcc;padding:.12em .4em;border-radius:5px}
+  kbd{font-family:var(--mono);font-size:.82em;background:#eef0f6;color:#404652;
+    border:1px solid #d4d8e4;border-bottom-width:2px;border-radius:5px;padding:.04em .4em}
+  pre{position:relative;background:var(--code-bg);color:var(--code-ink);padding:18px 20px;
+    border-radius:12px;overflow-x:auto;font-family:var(--mono);font-size:13.5px;
+    line-height:1.6;margin:1.2em 0;tab-size:4;-moz-tab-size:4}
+  pre code{background:none;color:inherit;padding:0;font-size:inherit}
+  .copy-btn{position:absolute;top:10px;right:10px;font-family:var(--sans);
+    font-size:12px;font-weight:600;color:#c7cce0;background:#2b3146;
+    border:1px solid #3b425c;border-radius:7px;padding:4px 10px;
+    cursor:pointer;opacity:.55;transition:opacity .15s,background .15s}
+  pre:hover .copy-btn{opacity:1}
+  .copy-btn:hover{background:#39415c}
+  .copy-btn.done{color:#bff5dc;border-color:#2c7a57;background:#1f3a2e}
+  .win{background:linear-gradient(135deg,#f3f1ff,#eafff5);border:1px solid #ddd9ff;
+    border-radius:14px;padding:18px 22px;margin:1.6em 0}
+  .win b{color:var(--accent)}
+  .note{background:var(--warn-soft);border-left:3px solid var(--warn);
+    border-radius:0 10px 10px 0;padding:14px 18px;margin:1.4em 0;font-size:.96em}
+  .grounding{background:#f1f6ff;border-left:3px solid #5c8cff;border-radius:0 10px 10px 0;
+    padding:14px 18px;margin:1.4em 0;font-size:.96em}
+  .grounding b{color:#3a63cc}
+  .steps{counter-reset:s;list-style:none;padding:0}
+  .steps li{counter-increment:s;position:relative;padding:4px 0 16px 42px;margin:0}
+  .steps li::before{content:counter(s);position:absolute;left:0;top:2px;
+    width:28px;height:28px;background:var(--accent);color:#fff;border-radius:50%;
+    display:grid;place-items:center;font-size:14px;font-weight:600;font-family:var(--mono)}
+  .ok{color:var(--ok);font-weight:600}
+  .cite{font-size:13px;color:var(--muted)}
+  footer{margin-top:3em;padding-top:1.4em;border-top:1px solid var(--line);
+    color:var(--muted);font-size:14px}
+  .ask{background:var(--accent-soft);border-radius:12px;padding:16px 20px;
+    margin:2em 0 0;font-size:.96em}
+  .ask b{color:var(--accent)}
+  .seq{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-family:var(--mono);
+    font-size:13px;color:var(--muted);margin:.4em 0 1.4em}
+  .seq .now{background:var(--accent);color:#fff;padding:3px 10px;border-radius:20px}
+  .seq .done{background:#eafff5;color:var(--ok);padding:3px 10px;border-radius:20px;border:1px solid #c6efd9}
+  .seq .next{border:1px dashed var(--line);padding:3px 10px;border-radius:20px}
+  .anno{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;margin:1.2em 0;font-size:.96em}
+  .anno code{white-space:nowrap}
+  .anno .d{color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="kicker">Gizmo → Godot · Lesson 0007</div>
+  <h1>State on Screen</h1>
+  <p class="sub">Connect the headless simulation to the scene: <code>Main</code> owns a <code>Simulation</code>, ticks it every frame, and shows <code>elapsed</code> climbing live. The data finally surfaces.</p>
+
+  <div class="seq">
+    <span class="done">0006 ✓</span>
+    <span>→</span>
+    <span class="now">0007 · state on screen</span>
+    <span>→</span>
+    <span class="next">0008 · the player moves</span>
+  </div>
+
+  <h2>The one idea</h2>
+  <p>
+    Two worlds have been separate: the <b>simulation</b> (pure data, tested headless) and the
+    <b>scene</b> (nodes you see). 0007 joins them. The <code>Main</code> node holds a
+    <code>Simulation</code> instance and its <code>state</code> dictionary, calls
+    <code>update_state</code> once per frame using the frame's <code>delta</code>, and writes a value
+    from <code>state</code> onto a Label. That's the shape of every Godot game: <b>a script owns the
+    model and renders it each frame.</b>
+  </p>
+
+  <div class="grounding">
+    <b>Clean split, on purpose.</b> The simulation never touches a node; the scene never computes
+    rules. The scene just <em>reads</em> state and draws it. That separation is exactly why the sim
+    stays testable — and it's how the seed is organized too.
+  </div>
+
+  <h2>Do it</h2>
+  <ol class="steps">
+    <li>
+      <b>Retire the sway.</b> Select the <code>Title</code> node → right-click → <b>Detach Script</b>
+      (the <code>title.gd</code> from 0003 was scaffolding; you can delete that file from the
+      FileSystem dock).
+    </li>
+    <li>
+      <b>Give <code>Main</code> a brain.</b> Select the <code>Main</code> node → <b>Attach Script</b>
+      → path <code>res://scripts/main.gd</code>, Inherits <code>Node3D</code> → <b>Create</b>.
+    </li>
+    <li>
+      <b>Replace</b> <code>main.gd</code> with this and save:
+      <pre><code>extends Node3D
+
+var sim := Simulation.new()
+var state: Dictionary = {}
+
+@onready var title: Label = %Title
+
+func _ready() -&gt; void:
+    state = sim.create_game_state()
+
+func _process(delta: float) -&gt; void:
+    sim.update_state(state, {}, delta)
+    title.text = "Elapsed: %.1f s" % state["elapsed"]</code></pre>
+    </li>
+    <li>
+      <b>Press Play</b> (<kbd>F5</kbd>). The label now reads <code>Elapsed: 0.3 s</code>,
+      <code>0.6 s</code>… <span class="ok">climbing in real time</span>, driven by the very
+      <code>update_state</code> your tests check.
+    </li>
+  </ol>
+
+  <h3>What each piece does</h3>
+  <div class="anno">
+    <code>var sim := Simulation.new()</code><span class="d">The scene owns one simulation instance for the whole run.</span>
+    <code>@onready var title := %Title</code><span class="d">Grabs the HUD Label once the node tree is ready.</span>
+    <code>_ready(): state = create_game_state()</code><span class="d">Build the opening state when the scene starts.</span>
+    <code>_process(delta): update_state(...)</code><span class="d">Advance the sim by the real frame time. <code>delta</code> becomes <code>dt</code> — clamped safely inside.</span>
+    <code>title.text = "%.1f" % …</code><span class="d">Render one field of state to the screen, every frame.</span>
+  </div>
+
+  <div class="note">
+    <b>Notice what you <em>didn't</em> do:</b> no game logic went into <code>main.gd</code>. It only
+    builds state, ticks it, and draws it. All the rules still live in the tested
+    <code>simulation.gd</code>. Keep that wall up — it's what keeps Gizmo provable.
+  </div>
+
+  <div class="win">
+    <b>That's the win.</b> The headless model and the visible scene are now one running game. From
+    here, "show it on screen" is always this move: read a field of <code>state</code>, draw it.
+  </div>
+
+  <h2>Prove it</h2>
+  <p>The timer climbs on screen — that's the proof. And your headless test still passes untouched:</p>
+  <pre><code>godot --headless --path godot --script res://tests/run_simulation_tests.gd</code></pre>
+  <p>The sim didn't change, so it's still <span class="ok">green</span>. Visual and headless agree.</p>
+
+  <h2>Mental model to keep</h2>
+  <ul>
+    <li><b>Script owns the model, renders each frame.</b> Build in <code>_ready</code>, advance + draw in <code>_process</code>.</li>
+    <li><b><code>@onready</code> + <code>$Name</code></b> = a safe reference to a child node.</li>
+    <li><b>The sim stays pure.</b> Logic in <code>simulation.gd</code>; the scene only reads and draws.</li>
+  </ul>
+
+  <div class="ask">
+    <b>Stuck or curious?</b> Ask: "why <code>@onready</code> instead of just <code>$Title</code> at
+    the top?", or "what happens if I show <code>state['phase']</code> too?" Next: <b>0008</b> — input
+    arrives, and the player actually moves around a scrolling world.
+  </div>
+
+  <footer>
+    Lesson 0007 of the Gizmo → Godot guide · Co-developing a designed bullet-heaven in Godot
+    with Claude Code + the teach skill · Built against Godot 4.6.2.stable.
+  </footer>
+
+</div>
+
+<script>
+  document.querySelectorAll('pre').forEach(function (pre) {
+    var btn = document.createElement('button');
+    btn.className = 'copy-btn'; btn.type = 'button'; btn.textContent = 'Copy';
+    pre.appendChild(btn);
+    btn.addEventListener('click', function () {
+      var code = pre.querySelector('code') || pre;
+      var text = code.textContent.replace(/\n+$/, '');
+      text = text.split('\n').map(function (line) {
+        var m = line.match(/^( +)/); if (!m) return line;
+        var n = m[1].length;
+        return '\t'.repeat(Math.floor(n / 4)) + ' '.repeat(n % 4) + line.slice(n);
+      }).join('\n');
+      navigator.clipboard.writeText(text).then(function () {
+        btn.textContent = 'Copied!'; btn.classList.add('done');
+        setTimeout(function () { btn.textContent = 'Copy'; btn.classList.remove('done'); }, 1400);
+      });
+    });
+  });
+</script>
+</body>
+</html>

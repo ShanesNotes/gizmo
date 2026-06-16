@@ -1,0 +1,33 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://ui/components/panel/panel.gd" id="1_2brvy"]
+[ext_resource type="Theme" path="res://ui/theme.tres" id="2_cmgdc"]
+
+[node name="LumenPanel" type="PanelContainer"]
+custom_minimum_size = Vector2(320, 116)
+theme = ExtResource("2_cmgdc")
+script = ExtResource("1_2brvy")
+
+[node name="Margin" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 12
+
+[node name="Stack" type="VBoxContainer" parent="Margin"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Eyebrow" type="Label" parent="Margin/Stack"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "COVENANT"
+uppercase = true
+
+[node name="Body" type="Label" parent="Margin/Stack"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Pulse Driver · Spark Magnet · Echo Coil"
+autowrap_mode = 3
