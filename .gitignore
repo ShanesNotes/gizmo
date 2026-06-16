@@ -23,3 +23,21 @@ desktop.ini
 .idea/
 .vscode/
 *.swp
+
+# --- Godot project caches / exports ---
+godot/.godot/
+godot/export/
+godot/exports/
+godot/builds/
+docs/godot/answer-key/.godot/
+*.translation
+
+# --- personal Claude Code settings (not for the published guide) ---
+.claude/settings.local.json
+
+# --- local AI/tool scratch (not source) ---
+.scratch/
+.claude/
+
+# --- generated key-art test iterations (storage path is a user decision; not source) ---
+art/generated/

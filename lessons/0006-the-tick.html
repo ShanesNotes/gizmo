@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 0006 — The Tick</title>
+<style>
+  :root{
+    --ink:#1a1d27; --muted:#5b6172; --line:#e4e7ef; --bg:#fbfcfe;
+    --accent:#6d5cff; --accent-soft:#efecff; --code-bg:#1c2030; --code-ink:#e7eaf3;
+    --ok:#1f9d6b; --warn:#c87a17; --warn-soft:#fff4e2;
+    --mono:"SF Mono",ui-monospace,"JetBrains Mono",Menlo,Consolas,monospace;
+    --sans:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);
+    line-height:1.65;font-size:17px;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:760px;margin:0 auto;padding:64px 28px 120px}
+  .kicker{font-family:var(--mono);font-size:13px;letter-spacing:.08em;
+    text-transform:uppercase;color:var(--accent);font-weight:600}
+  h1{font-size:2.15rem;line-height:1.15;margin:.3em 0 .2em;letter-spacing:-.02em}
+  .sub{color:var(--muted);font-size:1.05rem;margin-bottom:2.4em}
+  h2{font-size:1.35rem;margin:2.4em 0 .6em;letter-spacing:-.01em;
+    padding-bottom:.3em;border-bottom:1px solid var(--line)}
+  h3{font-size:1.05rem;margin:1.8em 0 .4em}
+  p{margin:.7em 0}
+  a{color:var(--accent);text-decoration:none;border-bottom:1px solid var(--accent-soft)}
+  a:hover{border-color:var(--accent)}
+  code{font-family:var(--mono);font-size:.88em;background:var(--accent-soft);
+    color:#4a3fcc;padding:.12em .4em;border-radius:5px}
+  kbd{font-family:var(--mono);font-size:.82em;background:#eef0f6;color:#404652;
+    border:1px solid #d4d8e4;border-bottom-width:2px;border-radius:5px;padding:.04em .4em}
+  pre{position:relative;background:var(--code-bg);color:var(--code-ink);padding:18px 20px;
+    border-radius:12px;overflow-x:auto;font-family:var(--mono);font-size:13.5px;
+    line-height:1.6;margin:1.2em 0;tab-size:4;-moz-tab-size:4}
+  pre code{background:none;color:inherit;padding:0;font-size:inherit}
+  .copy-btn{position:absolute;top:10px;right:10px;font-family:var(--sans);
+    font-size:12px;font-weight:600;color:#c7cce0;background:#2b3146;
+    border:1px solid #3b425c;border-radius:7px;padding:4px 10px;
+    cursor:pointer;opacity:.55;transition:opacity .15s,background .15s}
+  pre:hover .copy-btn{opacity:1}
+  .copy-btn:hover{background:#39415c}
+  .copy-btn.done{color:#bff5dc;border-color:#2c7a57;background:#1f3a2e}
+  .win{background:linear-gradient(135deg,#f3f1ff,#eafff5);border:1px solid #ddd9ff;
+    border-radius:14px;padding:18px 22px;margin:1.6em 0}
+  .win b{color:var(--accent)}
+  .note{background:var(--warn-soft);border-left:3px solid var(--warn);
+    border-radius:0 10px 10px 0;padding:14px 18px;margin:1.4em 0;font-size:.96em}
+  .grounding{background:#f1f6ff;border-left:3px solid #5c8cff;border-radius:0 10px 10px 0;
+    padding:14px 18px;margin:1.4em 0;font-size:.96em}
+  .grounding b{color:#3a63cc}
+  .steps{counter-reset:s;list-style:none;padding:0}
+  .steps li{counter-increment:s;position:relative;padding:4px 0 16px 42px;margin:0}
+  .steps li::before{content:counter(s);position:absolute;left:0;top:2px;
+    width:28px;height:28px;background:var(--accent);color:#fff;border-radius:50%;
+    display:grid;place-items:center;font-size:14px;font-weight:600;font-family:var(--mono)}
+  .label{display:inline-block;font-family:var(--mono);font-size:12px;font-weight:600;
+    color:#3a63cc;background:#e8f0ff;border:1px solid #cfe0ff;border-radius:6px;
+    padding:2px 9px;margin:.4em 0 -.2em}
+  .ok{color:var(--ok);font-weight:600}
+  .bad{color:#c0392b;font-weight:600}
+  .cite{font-size:13px;color:var(--muted)}
+  .cite code{background:#eef0f6;color:#404652}
+  footer{margin-top:3em;padding-top:1.4em;border-top:1px solid var(--line);
+    color:var(--muted);font-size:14px}
+  .ask{background:var(--accent-soft);border-radius:12px;padding:16px 20px;
+    margin:2em 0 0;font-size:.96em}
+  .ask b{color:var(--accent)}
+  .seq{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-family:var(--mono);
+    font-size:13px;color:var(--muted);margin:.4em 0 1.4em}
+  .seq .now{background:var(--accent);color:#fff;padding:3px 10px;border-radius:20px}
+  .seq .done{background:#eafff5;color:var(--ok);padding:3px 10px;border-radius:20px;border:1px solid #c6efd9}
+  .seq .next{border:1px dashed var(--line);padding:3px 10px;border-radius:20px}
+  .anno{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;margin:1.2em 0;font-size:.96em}
+  .anno code{white-space:nowrap}
+  .anno .d{color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="kicker">Gizmo → Godot · Lesson 0006</div>
+  <h1>The Tick</h1>
+  <p class="sub">Give the simulation a heartbeat: one function that advances the world by a slice of time — safely, so a lag spike can never break the game.</p>
+
+  <div class="seq">
+    <span class="done">0005 ✓</span>
+    <span>→</span>
+    <span class="now">0006 · the tick</span>
+    <span>→</span>
+    <span class="next">0007 · state on screen</span>
+  </div>
+
+  <h2>The one idea</h2>
+  <p>
+    So far the game state is frozen at <em>t = 0</em>. A game needs to <b>move forward in time</b>.
+    That's <code>update_state(state, input, dt)</code>: it takes the current state and
+    <code>dt</code> (the seconds elapsed since the last tick), advances everything by that slice,
+    and returns a list of <b>events</b> that happened (like "the run ended").
+  </p>
+  <p>
+    The crucial trick is the <b>dt clamp</b>. Normally <code>dt</code> is tiny (~0.016s at 60fps).
+    But if the game stalls — you alt-tab, the OS hiccups — the next <code>dt</code> could be half a
+    second. Simulate that in one jump and the player teleports, collisions tunnel through walls, the
+    run desyncs. So we cap each tick at <code>MAX_TICK_DT</code> (0.05s). If the machine lags, Gizmo
+    runs a hair slow instead of <em>breaking</em>.
+  </p>
+
+  <div class="grounding">
+    <b>Straight from the seed.</b> This mirrors <code>updateGameState()</code>'s
+    <code>Math.min(dt, 0.05)</code> in <code>game-src-phaser/src/game/simulation.ts</code>, with one defensive Godot-side improvement: negative editor/test values clamp to zero instead of rewinding time.
+  </div>
+
+  <h2>Do it — part 1: the tick function</h2>
+  <p>Open <code>scripts/simulation.gd</code>. Add the clamp constant beside your other constants:</p>
+  <div class="label">add near the top, with the other const lines</div>
+  <pre><code>const MAX_TICK_DT: float = 0.05</code></pre>
+
+  <p>Then add this function at the <b>bottom</b> of the file:</p>
+  <div class="label">append to the end of simulation.gd</div>
+  <pre><code>func update_state(state: Dictionary, input: Dictionary = {}, dt: float = 0.0) -&gt; Array:
+    if state.get("phase") != "playing":
+        return []
+
+    var events: Array = []
+    var safe_dt: float = clampf(dt, 0.0, MAX_TICK_DT)
+    state["elapsed"] = float(state["elapsed"]) + safe_dt
+
+    if float(state["elapsed"]) &gt;= float(state["run_duration"]):
+        state["phase"] = "complete"
+        events.append({"type": "complete"})
+
+    return events</code></pre>
+
+  <h3>What each piece does</h3>
+  <div class="anno">
+    <code>input := {}, dt := 0.0</code><span class="d">Default arguments — you can call <code>update_state(state)</code> and they fill in.</span>
+    <code>if phase != "playing": return []</code><span class="d">A finished or paused run doesn't advance. No work, no events.</span>
+    <code>clampf(dt, 0.0, MAX_TICK_DT)</code><span class="d">The clamp. <code>safe_dt</code> is never negative and never more than 0.05.</span>
+    <code>state["elapsed"] = … + safe_dt</code><span class="d">Time moves forward. <b>Dictionaries are references</b> — this edits the caller's state directly.</span>
+    <code>events.append({"type": "complete"})</code><span class="d">When the 240s run ends, flip to <code>complete</code> and report it. Events are how the sim tells the game "something happened."</span>
+  </div>
+
+  <h2>Do it — part 2: prove time moves</h2>
+  <p>
+    Open <code>tests/run_simulation_tests.gd</code>. Just <b>before</b> the
+    <code>if _failures == 0:</code> line, add a tick and three checks:
+  </p>
+  <div class="label">add inside _init(), before the pass/fail report</div>
+  <pre><code>var events := sim.update_state(state, {}, 0.25)
+_assert_approx(state["elapsed"], 0.05, "a big dt is clamped to one safe step")
+_assert_equal(state["phase"], "playing", "one tick keeps the run playing")
+_assert_equal(events.size(), 0, "an opening tick emits no events")
+
+var rewind_events := sim.update_state(state, {}, -1.0)
+_assert_approx(state["elapsed"], 0.05, "negative dt does not rewind time")
+_assert_equal(rewind_events.size(), 0, "negative dt emits no events")</code></pre>
+  <p>We pass a deliberately huge <code>dt</code> of <code>0.25</code> and a deliberately invalid negative <code>dt</code>. The first advances only <code>0.05</code>; the second does not rewind time. Run the tests:</p>
+  <pre><code>godot --headless --path godot --script res://tests/run_simulation_tests.gd</code></pre>
+  <p><code class="ok">Simulation tests passed</code> — now including the rules about time.</p>
+
+  <div class="win">
+    <b>That's the win.</b> The simulation has a heartbeat. <code>update_state</code> is the engine
+    of the whole game — every future system (movement, spawns, XP, the four economies) hangs off
+    this one function, and the dt clamp keeps it stable no matter how the machine behaves.
+  </div>
+
+  <div class="note">
+    <b>Make it bite:</b> change the clamp expectation from <code>0.05</code> to <code>0.25</code>
+    and rerun — you'll see a precise <span class="bad">FAIL</span> proving the clamp really is
+    holding the line. Change it back to green.
+  </div>
+
+  <h2>Mental model to keep</h2>
+  <ul>
+    <li><b><code>update_state(state, input, dt)</code></b> = advance the world one slice of time, return what happened.</li>
+    <li><b>Always clamp <code>dt</code></b> so a stall can't fast-forward the sim into chaos.</li>
+    <li><b>Events are the sim's outbox</b> — it returns a list of happenings; the game reacts to them later.</li>
+    <li><b>Dictionaries pass by reference</b> — <code>update_state</code> edits the state you hand it, in place.</li>
+  </ul>
+
+  <div class="ask">
+    <b>Stuck or curious?</b> Ask your teacher: "what happens if I tick 4,801 times — does the run
+    complete?" (yes — try a loop in the test), "why <code>clampf</code> instead of trusting <code>dt</code>?",
+    or "what other events will the sim emit later?" Next: <b>0007</b> — we leave headless behind and
+    drive <code>update_state</code> from the scene, so <code>elapsed</code> ticks up on screen.
+  </div>
+
+  <footer>
+    Lesson 0006 of the Gizmo → Godot guide · Co-developing a designed bullet-heaven in Godot
+    with Claude Code + the teach skill · Built against Godot 4.6.2.stable.
+  </footer>
+
+</div>
+
+<script>
+  // Copy buttons that emit tab-indented code (GDScript needs tabs, not spaces).
+  document.querySelectorAll('pre').forEach(function (pre) {
+    var btn = document.createElement('button');
+    btn.className = 'copy-btn';
+    btn.type = 'button';
+    btn.textContent = 'Copy';
+    pre.appendChild(btn);
+    btn.addEventListener('click', function () {
+      var code = pre.querySelector('code') || pre;
+      var text = code.textContent.replace(/\n+$/, '');
+      text = text.split('\n').map(function (line) {
+        var m = line.match(/^( +)/);
+        if (!m) return line;
+        var n = m[1].length;
+        return '\t'.repeat(Math.floor(n / 4)) + ' '.repeat(n % 4) + line.slice(n);
+      }).join('\n');
+      navigator.clipboard.writeText(text).then(function () {
+        btn.textContent = 'Copied!';
+        btn.classList.add('done');
+        setTimeout(function () { btn.textContent = 'Copy'; btn.classList.remove('done'); }, 1400);
+      });
+    });
+  });
+</script>
+</body>
+</html>
