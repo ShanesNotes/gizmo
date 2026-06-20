@@ -1,3 +1,5 @@
+*Historical — predates the 2026-06-20 reset to a 3D rogue-lite. File paths below reference docs that have since been removed (recoverable from git history); kept as a record of what was learned, not as live pointers.*
+
 # Workspace established: co-development Gizmo→Godot port, from-zero guide
 
 This workspace runs a **co-development** rebuild of Gizmo in Godot — a

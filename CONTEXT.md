@@ -3,9 +3,17 @@
 Orientation keystone. Read first; if other docs disagree, this wins.
 
 ## What the game is
-A **bullet-heaven / survivors-like**: **Gizmo**, a clanker, preserves the **spark
-of humanity** against encroaching dehumanized tech, across a **gouache cosmos of
-lost tech**. Premise canon: `design-handoff/NARRATIVE.md`.
+A **rogue-lite** in which **Gizmo**, a clanker, preserves the **spark of humanity**
+through increasingly difficult **waves of enemies, elites, and bosses**, across a
+**gouache cosmos of lost tech**. Genre tag: **rogue-lite**. Premise canon:
+`design-handoff/NARRATIVE.md`.
+
+## The loop
+Survive escalating **waves** (regular enemies -> **elites** -> **bosses**) while
+protecting the **Spark of Humanity** meter — keep it alive. Earn two currencies,
+**Sparks** (primary) and **Scrap** (secondary); build the run via the **Core Matrix**
+(ability loadout, keys 1/2/3) and **Gadgets** (L/R activated items), gaining XP and
+drafting upgrades.
 
 ## The direction (decided 2026-06-20)
 Built in **3D with a fixed Diablo-style camera** (looking down ~45°), not 2.5D
@@ -31,8 +39,10 @@ v1 is finished.
   `game-src-phaser/src/game/simulation.ts` — the source of truth to port. Port
   logic before scene polish.
 - **Feel reference (playable)** → root web build; `npx serve .` and play `index.html`
-- **Visual art** → generated fresh (AI / ludo) per the 3D direction. The old Lumen
-  Codex design system was dropped; recover palette/tokens from git history if wanted.
+- **Art direction** → character = `godot/assets/gizmo.glb`; UI & world look =
+  `design-handoff/gizmo-hud.png` (the canonical visual target); look governed by
+  `design-handoff/ART_DIRECTION.md`. Art is generated fresh (meshy.ai / ludo) to
+  match the HUD; do not hand-author.
 - **3D character model** → `godot/assets/gizmo.glb` (meshy.ai: 53-bone rig, no clips yet)
 - **The Godot build** → `godot/` (snake_case files, PascalCase nodes)
 - **Learning path** → `lessons/` (foundations 0001–0006 are dimension-agnostic and

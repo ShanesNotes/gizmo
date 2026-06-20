@@ -1,8 +1,9 @@
 # Mission: Build Gizmo in Godot (3D), from zero
 
 ## Why
-Build **Gizmo** — a bullet-heaven / survivors-like where a clanker preserves the
-spark of humanity from a rapidly dehumanized technological world (premise:
+Build **Gizmo** — a **rogue-lite** in which **Gizmo**, a clanker, preserves the
+**spark of humanity** through increasingly difficult **waves of enemies, elites, and
+bosses**, across a **gouache cosmos of lost tech** (premise:
 `design-handoff/NARRATIVE.md`) — in Godot as a **3D game with a fixed Diablo-style
 camera**, *co-developing it with an AI teacher* and deliberately slowing down to
 understand each piece instead of being handed a black box. The journey doubles as a
@@ -14,8 +15,10 @@ scope discipline over ambition. Orientation: `CONTEXT.md`.
 - Comfortable in Godot 3D: creating a project, scenes, GDScript, a `Camera3D` rig
 - Gizmo (`godot/assets/gizmo.glb`) moving on screen under the Diablo camera
 - The core loop ported from `simulation.ts` into GDScript I understand and can explain
-  (movement, spawning, XP/level, the economies)
-- A **playable v1**: move, fight, die, win/lose screen — finished, not perfect
+  (movement, escalating waves -> elites -> bosses, protecting the Spark of Humanity,
+  XP/level, the economies)
+- A **playable v1**: survive waves, protect the Spark, fight, die, win/lose screen —
+  finished, not perfect
 - A `lessons/` guide that reads cleanly from zero for someone else
 
 ## Constraints

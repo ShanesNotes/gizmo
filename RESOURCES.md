@@ -11,9 +11,17 @@
   truth lives. Use for: getting oriented; resolving "where does this live?".
 - `design-handoff/NARRATIVE.md` (repo)
   Premise/story canon. Use for: any fiction or premise question.
+- `design-handoff/ART_DIRECTION.md` (repo)
+  Governing look-and-feel doc — palette, brass UI frames, HUD anatomy. Use for: any
+  visual / art-direction decision.
+- `design-handoff/gizmo-hud.png` (repo)
+  Canonical UI/world art reference — the gouache cosmos look, brass/bronze filigree
+  frames, cyan/teal energy, violet spark motif. Use for: matching UI and world visuals.
+- `godot/assets/gizmo.glb` (repo)
+  Canonical character reference (meshy.ai, 53-bone rig). Use for: Gizmo's model.
 - `reference/game-balance-reference.md` (repo)
   Game-agnostic design foundation — formulas, TTK bands, spawn/upgrade math. Use
-  for: tuning intent and survivors-like balance principles.
+  for: tuning intent and rogue-lite (wave/elite/boss) balance principles.
 - `game-src-phaser/src/game/simulation.ts` (repo)
   Mechanics source of truth (pure logic). Use for: the exact rules to port.
 - Root web build (`index.html` + `assets/`, `npx serve .`)

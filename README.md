@@ -1,6 +1,6 @@
 # Gizmo
 
-A **bullet-heaven / survivors-like**: **Gizmo**, a clanker, preserves the **spark of humanity**, protecting it from ever-encroaching dehumanized technology, across a **gouache cosmos filled with lost tech**. Originally a Phaser/TS web prototype; **being rebuilt in Godot as a 3D game with a fixed Diablo-style camera**.
+A **rogue-lite** in which **Gizmo**, a clanker, preserves the **spark of humanity** through increasingly difficult **waves of enemies, elites, and bosses**, across a **gouache cosmos of lost tech**. Originally a Phaser/TS web prototype; **being rebuilt in Godot as a 3D game with a fixed Diablo-style camera**.
 
 **New here? Read `CONTEXT.md` first** — the orientation keystone (what the game is, the 3D direction, v1 scope, where each truth lives).
 
@@ -9,7 +9,7 @@ A **bullet-heaven / survivors-like**: **Gizmo**, a clanker, preserves the **spar
 - `godot/` — the **Godot build** (the active path). `godot/assets/gizmo.glb` is the 3D character (meshy.ai: 53-bone rig, no animation clips yet).
 - `game-src-phaser/` — the original **Phaser + TypeScript source**; `src/game/simulation.ts` is the mechanics source of truth to port. `node_modules` excluded.
 - `index.html`, `assets/` — the **playable web build** (feel reference). Serve the root and play it: `npx serve .`
-- `design-system/` — the **Lumen Codex** design system: tokens, components, UI motifs. The look/aesthetic.
+- `design-handoff/` — **art-direction references**: `NARRATIVE.md` (premise canon), `ART_DIRECTION.md` (the look), `gizmo-hud.png` (canonical UI & world visual target).
 - `reference/game-balance-reference.md` — balance knowledge (TTK bands, economy), dimension-agnostic.
 - `lessons/`, `learning-records/` — the `/teach` co-development learning path and progress.
 

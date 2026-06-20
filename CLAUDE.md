@@ -3,8 +3,9 @@
 ## Project truths and source anchors
 - `CONTEXT.md` is the orientation keystone (what the game is, the 3D direction, v1
   scope, where each truth lives). Read it first; if docs disagree, it wins.
-- Premise canon is `design-handoff/NARRATIVE.md` (Gizmo the clanker preserving the
-  spark of humanity vs dehumanized tech, in a gouache cosmos of lost tech).
+- Premise canon is `design-handoff/NARRATIVE.md`: a **rogue-lite** in which Gizmo the
+  clanker preserves the spark of humanity through escalating waves -> elites -> bosses,
+  in a gouache cosmos of lost tech.
 - Direction: **3D with a fixed Diablo-style camera** (decided 2026-06-20). Not 2.5D
   sprites — the old sprite scaffolding was removed; it's in git history if needed.
 - `reference/game-balance-reference.md` is the game-agnostic design foundation
@@ -14,8 +15,11 @@
 - `godot/assets/gizmo.glb` is the 3D character: a meshy.ai model with a 53-bone rig
   but no animation clips yet. v1 moves it with code; adding clips (meshy "Animate" or
   Mixamo, via `AnimationPlayer`) is a later lesson.
-- Visual art is generated fresh (AI / ludo). The old Lumen Codex design system was
-  dropped; recover from git history if a palette reference is wanted.
+- Art direction: `godot/assets/gizmo.glb` (character) + `design-handoff/gizmo-hud.png`
+  (UI/world look), governed by `design-handoff/ART_DIRECTION.md`.
+- Visual art is generated fresh (AI / ludo), targeting `design-handoff/gizmo-hud.png`.
+  The old Lumen Codex design system was dropped; recover from git history if a palette
+  reference is wanted.
 - The root playable web build is the feel reference: `npx serve .` and play `index.html`.
 - Target Godot: 4.6.x stable (repo verified locally with 4.6.2.stable.mono.official).
 

@@ -1,3 +1,5 @@
+*Historical — predates the 2026-06-20 reset to a 3D rogue-lite. File paths below reference docs that have since been removed (recoverable from git history); kept as a record of what was learned, not as live pointers.*
+
 # Lesson 0001 complete: learner created the Godot project in the editor
 
 The learner ran Lesson 0001 (open Godot → New Project → Compatibility → Create &
