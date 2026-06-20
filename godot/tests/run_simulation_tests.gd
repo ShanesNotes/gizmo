@@ -24,7 +24,10 @@ func _initialize() -> void:
 	_test_dt_is_clamped()
 	_test_run_completes()
 	_test_damage_and_iframes()
+	_test_damage_zero_and_negative()
+	_test_negative_dt_does_not_rewind()
 	_test_death_is_gameover()
+	_test_hp_progress()
 	print("")
 	if _failed == 0:
 		print("PASS — %d checks" % _passed)
@@ -41,7 +44,7 @@ func _check(desc: String, condition: bool) -> void:
 		_failed += 1
 		printerr("  FAIL - ", desc)
 
-func _check_eq(desc: String, actual, expected) -> void:
+func _check_eq(desc: String, actual: Variant, expected: Variant) -> void:
 	if actual == expected:
 		_passed += 1
 		print("  ok   - ", desc)
@@ -130,3 +133,22 @@ func _test_death_is_gameover() -> void:
 	_check_eq("reaching 0 hp is a gameover (lose)", sim.phase, Sim.PHASE_GAMEOVER)
 	var landed := sim.take_damage(1)
 	_check("no damage applies once the run is over", not landed)
+
+func _test_damage_zero_and_negative() -> void:
+	var sim := Sim.new()
+	var z := sim.take_damage(0)
+	_check("zero damage is a no-op (no free i-frames)", not z and sim.hp == 7 and sim.invulnerable == 0.0)
+	var n := sim.take_damage(-5)
+	_check("negative damage is a no-op", not n and sim.hp == 7 and sim.invulnerable == 0.0)
+
+func _test_negative_dt_does_not_rewind() -> void:
+	var sim := Sim.new()
+	sim.tick(0.05)
+	sim.tick(-1.0)  # a negative frame must not rewind the clock
+	_check("negative dt cannot rewind the clock", absf(sim.elapsed - 0.05) < 0.0001)
+
+func _test_hp_progress() -> void:
+	var sim := Sim.new()
+	_check("full hp bar reads 1.0", absf(sim.hp_progress() - 1.0) < 0.001)
+	sim.take_damage(2)  # 5 / 7
+	_check("hp bar reads 5/7 after a hit", absf(sim.hp_progress() - 5.0 / 7.0) < 0.001)

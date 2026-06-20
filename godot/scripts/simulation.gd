@@ -62,7 +62,7 @@ func xp_progress() -> float:
 func tick(dt: float) -> void:
 	if phase != PHASE_PLAYING:
 		return
-	var safe_dt := minf(dt, MAX_DT)
+	var safe_dt := clampf(dt, 0.0, MAX_DT)  # also guards a negative dt rewinding the run
 	elapsed += safe_dt
 	invulnerable = maxf(0.0, invulnerable - safe_dt)
 	if elapsed >= run_duration:
@@ -76,15 +76,25 @@ func run_progress() -> float:
 func time_remaining() -> float:
 	return maxf(0.0, run_duration - elapsed)
 
-## Apply damage to the player's HP. Mirrors the contact-damage block
-## (simulation.ts:722-738) minus the enemy geometry: i-frames block repeat hits,
-## HP floors at 0, and reaching 0 ends the run (gameover/lose). Returns true if
-## the hit landed. NOTE (ADR 0001): this is the health bar, NOT the Spark of
-## Humanity meter. (The enemy-contact "elapsed > 7" grace belongs with enemies.)
+## How full the HP bar is, 0..1 — for the HUD (mirrors xp_progress's shape).
+## Design: HP is the raw defensive pool (balance §3.1).
+func hp_progress() -> float:
+	return clampf(float(hp) / max_hp, 0.0, 1.0)
+
+## Apply damage to the player's HP. Returns true only if the hit landed.
+## Mirrors the contact-damage primitive in simulation.ts:722-738: a real hit
+## lowers HP, grants i-frames, floors at 0, and reaching 0 ends the run
+## (gameover/lose). Zero/negative damage is a no-op — it must NOT grant free
+## i-frames (matters once armor/shields/blocked hits exist; balance §3.4).
+## Deferred to later lessons: the enemy-contact "elapsed > 7" grace, knockback,
+## and the secondWind one-time save (simulation.ts:732-736). NOTE (ADR 0001):
+## this is the health bar, NOT the Spark of Humanity meter.
 func take_damage(amount: int) -> bool:
+	if amount <= 0:
+		return false
 	if phase != PHASE_PLAYING or invulnerable > 0.0:
 		return false
-	hp = maxi(0, hp - maxi(0, amount))
+	hp = maxi(0, hp - amount)
 	invulnerable = HIT_INVULN
 	if hp <= 0:
 		phase = PHASE_GAMEOVER
