@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Gizmo · Lesson 0005 — Face movement + camera follow</title>
+  <link rel="stylesheet" href="assets/lesson.css">
+</head>
+<body>
+<main>
+
+  <header class="masthead">
+    <p class="eyebrow">Gizmo · Lesson 0005 · The character</p>
+    <h1>Face movement &amp; camera follow</h1>
+    <p class="subtitle">Stop the moonwalk, and let the camera travel with Gizmo — without ever leaving the Diablo angle.</p>
+  </header>
+
+  <div class="card why">
+    <span class="label">Why this, now</span>
+    <p>Two small things turn "a model sliding around" into "a character you're piloting." First,
+    Gizmo should <strong>turn to face where he's going</strong>. Second, the <strong>camera should
+    follow him</strong> so he never slides off the edge of the floor and out of view. The second one
+    is where the promise from <a href="0002-fixed-diablo-camera.html">0002</a> — <em>fixed angle,
+    movable position</em> — finally cashes out.</p>
+  </div>
+
+  <h2>Part 1 — Face the direction of travel</h2>
+  <p>Right now Gizmo keeps facing the camera while gliding sideways (the moonwalk). We want his body
+  to rotate so his front points along his velocity. Two ideas do it:</p>
+  <ul>
+    <li><strong><code>atan2</code></strong> turns a direction into an angle. Given our movement
+    direction on the ground <code>(x, z)</code>, <code>atan2(direction.x, direction.z)</code> is the
+    Y-rotation that points the model's <em>front</em> (its +Z face) along that direction.</li>
+    <li><strong><code>lerp_angle</code></strong> eases from the current angle to the target angle,
+    taking the short way around the circle. That gives a smooth turn instead of an instant snap.</li>
+  </ul>
+  <p>We rotate the <strong>Model</strong> child, not the body — the physics body stays a clean,
+  axis-aligned frame; only the visual spins. (And note: turning the model does <em>not</em> change
+  how he moves — movement is world-relative, remember, so facing is purely cosmetic.)</p>
+
+  <div class="card turn">
+    <span class="label">Build Part 1 — edit gizmo.gd</span>
+    <p>Open <code>scripts/gizmo.gd</code> and update it to this (new lines: <code>turn_speed</code>,
+    the <code>model</code> reference, and the two facing lines in the moving branch):</p>
+<pre><code>extends CharacterBody3D
+
+## How fast Gizmo moves, in metres per second.
+@export var speed: float = 6.0
+## How quickly he reaches top speed and how hard he brakes.
+@export var acceleration: float = 40.0
+@export var friction: float = 50.0
+## How quickly he turns to face his travel direction.
+@export var turn_speed: float = 12.0
+
+@onready var model: Node3D = $Model
+
+func _physics_process(delta: float) -> void:
+	var input := Input.get_vector(&"move_left", &"move_right", &"move_up", &"move_down")
+	var direction := Vector3(input.x, 0.0, input.y)
+	if direction != Vector3.ZERO:
+		velocity.x = move_toward(velocity.x, direction.x * speed, acceleration * delta)
+		velocity.z = move_toward(velocity.z, direction.z * speed, acceleration * delta)
+		# Face travel direction (model's front is +Z), turning smoothly.
+		var target_yaw := atan2(direction.x, direction.z)
+		model.rotation.y = lerp_angle(model.rotation.y, target_yaw, turn_speed * delta)
+	else:
+		velocity.x = move_toward(velocity.x, 0.0, friction * delta)
+		velocity.z = move_toward(velocity.z, 0.0, friction * delta)
+	move_and_slide()</code></pre>
+    <p><code>$Model</code> is the <code>gizmo.glb</code> child you renamed <strong>Model</strong> in
+    0004 — that's why this reference works. We only update facing while moving, so he keeps his last
+    heading when he stops (instead of snapping back to forward).</p>
+  </div>
+
+  <div class="card heads-up">
+    <span class="label">If he faces backward</span>
+    <p>This assumes the model's front is its +Z side (ours is). If yours runs away from where it's
+    heading, the model's front is −Z instead — fix it by adding half a turn:
+    <code>atan2(direction.x, direction.z) + PI</code>. Good thing to know: model "forward" isn't
+    standardized, so this is a normal one-line adjustment, not a bug in your logic.</p>
+  </div>
+
+  <h2>Part 2 — The camera follows (still fixed angle)</h2>
+  <p>The camera should keep its exact <code>−50°</code> tilt and never rotate — it should only
+  <strong>slide</strong> so Gizmo stays roughly centered. That's the whole "fixed angle, movable
+  position" idea: we touch the camera's <em>position</em> every frame and never its
+  <em>rotation</em>.</p>
+  <p>The trick: keep a constant <strong>offset</strong> — the camera's spot <em>relative</em> to
+  Gizmo. Right now the camera sits at <code>(0, 12, 10)</code> and Gizmo's at the origin, so the
+  offset is exactly <code>(0, 12, 10)</code>. Each frame we aim the camera at
+  <code>gizmo.position + offset</code>, easing in with a <code>lerp</code> for a gentle trailing
+  feel.</p>
+
+  <div class="card turn">
+    <span class="label">Build Part 2 — a camera follow script</span>
+    <ol class="steps">
+      <li>Open <code>scenes/main.tscn</code>, select the <strong>Camera3D</strong>.</li>
+      <li><em>Attach Script</em> → <code>res://scripts/camera_rig.gd</code> → Create. Replace with:</li>
+    </ol>
+<pre><code>extends Camera3D
+
+## The node to follow — assign Gizmo in the Inspector.
+@export var target: Node3D
+## Camera position relative to the target — preserves the Diablo height/distance.
+@export var offset: Vector3 = Vector3(0.0, 12.0, 10.0)
+## How quickly the camera catches up (higher = snappier).
+@export var follow_speed: float = 8.0
+
+func _process(delta: float) -> void:
+	if target == null:
+		return
+	var desired := target.global_position + offset
+	global_position = global_position.lerp(desired, follow_speed * delta)</code></pre>
+    <ol class="steps">
+      <li>With the Camera3D still selected, find the new <strong>Target</strong> field in the
+      Inspector (under the script). Click it → <em>Assign</em> → pick the <strong>Gizmo</strong>
+      node. (Or drag <strong>Gizmo</strong> from the Scene dock onto the field.)</li>
+      <li>Press <strong>F5</strong> and move around. The camera trails Gizmo, keeping the angle.</li>
+    </ol>
+    <p>Notice the script never touches <code>rotation</code> — only <code>global_position</code>.
+    That's what keeps the tilt locked while the view travels. We follow in <code>_process</code>
+    (every drawn frame) for smoothness; the <code>lerp</code> with <code>follow_speed</code> gives
+    that slight, pleasant lag as the camera catches up.</p>
+  </div>
+
+  <h2>How you'll know it worked</h2>
+  <p>Walk Gizmo in a circle: he pivots to face each new direction smoothly (no moonwalk), and the
+  camera glides to keep him near the middle of the screen — always looking down at the same fixed
+  angle, never spinning. Crank <code>follow_speed</code> up for a locked-on feel or down for a lazier
+  drift; bump <code>turn_speed</code> for snappier pivots. They're exported, so tweak them live in
+  the Inspector.</p>
+
+  <div class="card turn">
+    <span class="label">Done means…</span>
+    <p><strong>Done</strong> = Gizmo faces his travel direction and the camera follows without
+    changing angle, and you can explain why we set the camera's <em>position</em> but never its
+    <em>rotation</em>. Then I log <code>0005</code> — and with the player feeling complete, the next
+    arc is the game's logic: porting the first slice of <code>simulation.ts</code> (test-first),
+    then enemies.</p>
+  </div>
+
+  <p class="source">Primary source · Godot Docs — <a
+  href="https://docs.godotengine.org/en/stable/tutorials/math/index.html">Math</a> (see
+  <code>atan2</code> and angle interpolation) and the <a
+  href="https://docs.godotengine.org/en/stable/classes/class_camera3d.html">Camera3D</a> reference.</p>
+
+  <p class="ask">Want the math behind <code>atan2</code> or <code>lerp</code> unpacked, or a steeper
+  follow? Ask your teacher.</p>
+
+  <nav class="lesson-nav">
+    <span>Prev · 0004 Move Gizmo with code</span>
+    <span>Next · 0006 Headless logic, test-first</span>
+  </nav>
+
+</main>
+</body>
+</html>
