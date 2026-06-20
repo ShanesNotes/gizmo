@@ -1,0 +1,170 @@
+/* Gizmo lessons — shared stylesheet.
+   One look across the whole course. Gouache parchment + brass, made to read on
+   screen and print cleanly. Linked by every lesson in ../lessons/. */
+
+:root {
+  --ink:        #2b2233;   /* deep plum-black, body text */
+  --ink-soft:   #5b5364;   /* muted captions */
+  --brass:      #b8860b;   /* primary accent */
+  --brass-deep: #8a5a00;   /* links, headings rule */
+  --parchment:  #f5efe3;   /* page */
+  --card:       #fbf7ee;   /* raised surfaces */
+  --rule:       #e0d6c2;   /* hairlines */
+  --good:       #3f7d4f;   /* "your turn" / verify */
+  --warn:       #9c5a2c;   /* heads-up callouts */
+  --measure:    38rem;     /* reading width */
+}
+
+* { box-sizing: border-box; }
+
+html { font-size: 18px; }
+
+body {
+  margin: 0;
+  padding: 3rem 1.5rem 6rem;
+  background: var(--parchment);
+  color: var(--ink);
+  font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+main { max-width: var(--measure); margin: 0 auto; }
+
+/* ---- Masthead ---------------------------------------------------------- */
+.eyebrow {
+  font-family: "Iosevka", "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--brass-deep);
+  margin: 0 0 0.6rem;
+}
+h1 {
+  font-size: 2.3rem;
+  line-height: 1.12;
+  margin: 0 0 0.4rem;
+  font-weight: 600;
+}
+.subtitle {
+  font-style: italic;
+  color: var(--ink-soft);
+  font-size: 1.12rem;
+  margin: 0 0 1.4rem;
+}
+.masthead { border-bottom: 2px solid var(--brass); padding-bottom: 1.3rem; margin-bottom: 2rem; }
+
+/* ---- Headings --------------------------------------------------------- */
+h2 {
+  font-size: 1.45rem;
+  margin: 2.6rem 0 0.8rem;
+  padding-bottom: 0.3rem;
+  border-bottom: 1px solid var(--rule);
+  font-weight: 600;
+}
+h3 { font-size: 1.12rem; margin: 1.8rem 0 0.5rem; font-weight: 600; }
+
+p { margin: 0 0 1rem; }
+strong { color: var(--brass-deep); }
+
+a { color: var(--brass-deep); text-decoration: none; border-bottom: 1px solid var(--rule); }
+a:hover { border-bottom-color: var(--brass); }
+
+/* ---- Callout cards ---------------------------------------------------- */
+.card {
+  background: var(--card);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  padding: 1.1rem 1.3rem;
+  margin: 1.5rem 0;
+}
+.card > :first-child { margin-top: 0; }
+.card > :last-child  { margin-bottom: 0; }
+
+.card.turn { border-left: 4px solid var(--good); }
+.card.why  { border-left: 4px solid var(--brass); }
+.card.heads-up { border-left: 4px solid var(--warn); background: #faf2e8; }
+
+.label {
+  font-family: "Iosevka", "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+  font-size: 0.68rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+.turn .label { color: var(--good); }
+.why  .label { color: var(--brass-deep); }
+.heads-up .label { color: var(--warn); }
+
+/* ---- Code ------------------------------------------------------------- */
+code {
+  font-family: "Iosevka", "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+  font-size: 0.86em;
+  background: #efe7d6;
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+}
+pre {
+  background: #2b2233;
+  color: #f5efe3;
+  padding: 1rem 1.2rem;
+  border-radius: 8px;
+  overflow-x: auto;
+  font-size: 0.82rem;
+  line-height: 1.55;
+}
+pre code { background: none; padding: 0; color: inherit; font-size: inherit; }
+
+/* ---- Lists & steps ---------------------------------------------------- */
+ol.steps { counter-reset: step; list-style: none; padding-left: 0; }
+ol.steps > li {
+  counter-increment: step;
+  position: relative;
+  padding-left: 2.6rem;
+  margin-bottom: 0.9rem;
+}
+ol.steps > li::before {
+  content: counter(step);
+  position: absolute; left: 0; top: -0.05rem;
+  width: 1.7rem; height: 1.7rem;
+  background: var(--brass); color: #fff;
+  border-radius: 50%;
+  display: grid; place-items: center;
+  font-family: ui-monospace, monospace;
+  font-size: 0.9rem; font-weight: 700;
+}
+
+/* node-tree snippet */
+.tree {
+  font-family: "Iosevka", "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+  font-size: 0.84rem;
+  background: var(--card);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  padding: 1rem 1.2rem;
+  white-space: pre;
+  line-height: 1.5;
+}
+
+/* ---- Footer / nav ----------------------------------------------------- */
+.lesson-nav {
+  margin-top: 3rem;
+  padding-top: 1.2rem;
+  border-top: 2px solid var(--brass);
+  display: flex; justify-content: space-between;
+  font-family: ui-monospace, monospace; font-size: 0.8rem;
+}
+.source { font-style: italic; color: var(--ink-soft); }
+.ask {
+  margin-top: 2.5rem;
+  text-align: center;
+  font-style: italic;
+  color: var(--ink-soft);
+}
+
+@media print {
+  body { background: #fff; padding: 0; font-size: 11pt; }
+  pre  { background: #f0f0f0; color: #000; border: 1px solid #ccc; }
+  .lesson-nav, .ask { display: none; }
+}

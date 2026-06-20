@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Gizmo · Lesson 0001 — Your first 3D project</title>
-  <link rel="stylesheet" href="../assets/lesson.css">
+  <link rel="stylesheet" href="assets/lesson.css">
 </head>
 <body>
 <main>
@@ -39,12 +39,16 @@ renderer/rendering_method="forward_plus"</code></pre>
 
   <div class="card heads-up">
     <span class="label">The decision that makes it 3D</span>
-    <p>The old shell we cleared out used the <strong>GL Compatibility</strong> renderer — a
-    lightweight path built for 2D and old hardware. It <em>can</em> show 3D, but it can't give
-    us the lighting and materials a painted, gouache look needs. We switched to
-    <strong>Forward+</strong>: Godot's full desktop renderer (it runs on Vulkan, which your
-    machine has). This single line is the difference between a flat 3D and one that can hold
-    real light. <em>Rule of thumb: 3D desktop game → Forward+.</em></p>
+    <p>The old shell we cleared out used the <strong>GL Compatibility</strong> renderer — a lean
+    path that targets mobile, web, and older GPUs. It can absolutely draw lit 3D; it just leaves
+    features on the table (the fuller lighting and post-processing stack we'll want for a painted
+    look). We chose <strong>Forward+</strong>: Godot's full desktop renderer, running on Vulkan
+    (which your machine has). <em>Rule of thumb: 3D desktop game → Forward+.</em></p>
+    <p>One wrinkle worth knowing: Forward+ is Godot's <em>default</em>, so the editor only saves
+    settings that <em>differ</em> from the default — the <code>renderer/rendering_method="forward_plus"</code>
+    line may come and go when Godot rewrites the file. The choice is durably recorded in
+    <code>config/features</code>, which lists <code>"Forward Plus"</code>. That's the line to
+    trust.</p>
   </div>
 
   <h2>A scene is a tree of nodes</h2>
@@ -85,9 +89,9 @@ renderer/rendering_method="forward_plus"</code></pre>
       <em>Position</em> to about <code>(0, 6, 8)</code> and <em>Rotation</em> X to
       <code>-35°</code>. (We'll make this the proper Diablo angle in lesson 0002 — eyeballing is
       fine now.)</li>
-      <li><kbd>Ctrl+S</kbd> → save as <code>scenes/main.tscn</code>. When Godot asks to set a
-      main scene (or via <em>Project → Project Settings → Run</em>), choose
-      <code>main.tscn</code>.</li>
+      <li><kbd>Ctrl+S</kbd> → save into the <code>scenes/</code> folder (it's already in the
+      project) as <code>scenes/main.tscn</code>. When Godot asks to set a main scene (or via
+      <em>Project → Project Settings → Run</em>), choose <code>main.tscn</code>.</li>
       <li>Press <strong>F5</strong> (Play). A window opens onto a lit floor with a box on it. 🎉</li>
     </ol>
     <p><strong>B) Hand it to me.</strong> Say the word and I'll build this exact tree through the
@@ -100,6 +104,14 @@ renderer/rendering_method="forward_plus"</code></pre>
   visible shading from the light (one side of the box brighter than the other — that's Forward+
   doing its job). If the window is black, the camera isn't pointed at anything: check its
   position and that its rotation tilts it downward. Stuck? Ask me — that's what I'm here for.</p>
+
+  <div class="card turn">
+    <span class="label">Done means…</span>
+    <p>A slice isn't finished just because it runs. <strong>Done</strong> here = you pressed Play,
+    saw the lit scene, <em>and</em> you can explain what each of the five nodes does. Once you
+    can, your teacher writes a short <strong>learning record</strong> for 0001 — that entry, not
+    the screenshot, is what marks the lesson complete and unlocks 0002.</p>
+  </div>
 
   <p class="source">Primary source · Godot Docs — <a
   href="https://docs.godotengine.org/en/stable/getting_started/first_3d_game/index.html">Your
