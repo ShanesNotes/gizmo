@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Gizmo · Lesson 0006 — Headless logic, test-first</title>
+  <title>Gizmo · Lesson 0006 — Sparks &amp; leveling, test-first</title>
   <link rel="stylesheet" href="assets/lesson.css">
 </head>
 <body>
@@ -11,44 +11,79 @@
 
   <header class="masthead">
     <p class="eyebrow">Gizmo · Lesson 0006 · The logic</p>
-    <h1>Headless logic, test-first</h1>
-    <p class="subtitle">Leave the scene behind for a moment: port the first slice of real game rules — and prove it with a test before it exists.</p>
+    <h1>Sparks &amp; leveling, test-first</h1>
+    <p class="subtitle">Leave the scene behind: port Gizmo's first real rule — collecting Sparks and re-humanizing — and prove it with a test before it exists.</p>
   </header>
 
   <div class="card why">
     <span class="label">Why this, now</span>
-    <p>The player <em>feels</em> good, but there's no game yet — no progression, enemies, or stakes.
-    Those rules already exist, battle-tested, in <code>game-src-phaser/src/game/simulation.ts</code>
-    (our <strong>source of truth</strong>). We'll port them into Godot one slice at a time. And
-    because this logic is pure math — no models, no camera — we can develop it
-    <strong>headless</strong> and <strong>test-first</strong>: write a failing test, then the code
-    to pass it. That's how we port 1,700 lines of rules without it turning into guesswork.</p>
+    <p>The player <em>feels</em> good, but there's no game yet — no progression, stakes, or enemies.
+    Those rules already exist, and in this project truth has a clear order:</p>
+    <ul>
+      <li><strong>Design / tuning intent</strong> → <code>reference/game-balance-reference.md</code>
+      (§5 Progression &amp; XP). The north star for <em>how it should feel</em>.</li>
+      <li><strong>Fiction / meaning</strong> → <code>design-handoff/NARRATIVE.md</code> (§4 system→fiction).
+      What each number <em>means</em> in Gizmo's world.</li>
+      <li><strong>Mechanics implementation</strong> →
+      <code>game-src-phaser/src/game/simulation.ts</code>. One concrete, battle-tested
+      implementation of the above — the code we port from.</li>
+    </ul>
+    <p>(Orientation lives in <code>CONTEXT.md</code>.) Because this logic is pure math — no models,
+    no camera — we develop it <strong>headless</strong> and <strong>test-first</strong>: write a
+    failing test, then the code to pass it. That's how we port ~1,700 lines of rules without
+    guesswork.</p>
+  </div>
+
+  <div class="card heads-up">
+    <span class="label">What this is, in Gizmo's fiction</span>
+    <p>In the code it's called <code>xp</code> — because that's what the Phaser implementation uses.
+    In Gizmo's world it's <strong>Sparks</strong>: fragments of the human spark that Gizmo rescues
+    (<code>NARRATIVE.md</code> §4, "Sparks = <code>xp</code> pickups… the thing being preserved").
+    And leveling isn't generic RPG growth — it's <strong>Gizmo re-humanizing himself with what he
+    saved</strong> ("Level up → upgrade draft… re-humanizing himself"). We'll keep the code name
+    <code>xp</code> (faithful to the source) but think of it as Sparks.</p>
+    <p><strong>Don't confuse two things:</strong> <em>Sparks</em> (the <code>xp</code> currency you
+    collect, this lesson) is <strong>not</strong> the <em>Spark of Humanity</em> meter you keep
+    alive to survive (that's the player's health — a later lesson).</p>
   </div>
 
   <h2>The idea: red → green</h2>
   <p>Test-Driven Development is a tight loop:</p>
   <ol class="steps">
-    <li><strong>Red</strong> — write a test that states what the code <em>should</em> do. Run it; it
-    fails (the code doesn't exist yet).</li>
-    <li><strong>Green</strong> — write the smallest code that makes the test pass. Run it; it passes.</li>
+    <li><strong>Red</strong> — write a test that states what the code <em>should</em> do; run it; it
+    fails.</li>
+    <li><strong>Green</strong> — write the smallest code that makes it pass; run it; it passes.</li>
     <li><strong>Refactor</strong> — clean up, with the test as your safety net.</li>
   </ol>
   <p>Writing the test first forces you to decide what "correct" means before you're tangled in
-  implementation — and it gives you a permanent check that survives every future change.</p>
+  implementation — and leaves a permanent check that survives every future change.</p>
 
-  <h2>Our first slice: XP &amp; leveling</h2>
-  <p>From <code>simulation.ts</code> we're porting two things: the curve
-  <code>nextXpForLevel(level)</code> (how much XP each level needs) and the level-up rule (gaining
-  XP past the threshold bumps your level and <em>carries the remainder</em>). Small, pure,
-  foundational — a perfect first port.</p>
+  <h2>Our slice: Sparks &amp; leveling</h2>
+  <p>From <code>simulation.ts</code> we port: the curve <code>nextXpForLevel(level)</code> (Sparks
+  per level, <code>simulation.ts:1721-1725</code>); the level-up rule where the remainder
+  <em>carries</em> (<code>simulation.ts:1029-1038</code>); and <code>xpProgress</code> (how full the
+  Sparks bar is, <code>simulation.ts:534</code>) which the HUD will need. The starting state is the
+  player's <code>level/xp/nextXp</code> (<code>simulation.ts:342-362</code>). Balance §5.1 classifies
+  this kind of curve as the <strong>polynomial</strong> family (note the <code>level^1.8</code> term).</p>
+
+  <div class="card heads-up">
+    <span class="label">Paths: speak from the repo root</span>
+    <p>The Godot project lives under <code>godot/</code>. So files are
+    <code>godot/scripts/simulation.gd</code> and <code>godot/tests/run_simulation_tests.gd</code>.
+    Inside the engine those same files are <code>res://scripts/…</code> and <code>res://tests/…</code>
+    (<code>res://</code> = the <code>godot/</code> project root, which the run command sets with
+    <code>--path godot</code>). Create them under <code>godot/…</code>; don't make a root-level
+    <code>scripts/</code> or <code>tests/</code>.</p>
+  </div>
 
   <div class="card turn">
-    <span class="label">Step 1 (RED) — write the test runner first</span>
-    <p>We don't need a heavy test framework. Create <code>tests/run_simulation_tests.gd</code> — a
-    tiny runner that's just a script Godot executes headlessly:</p>
+    <span class="label">Step 1 (RED, part 1) — write the test runner first</span>
+    <p>No heavy framework needed. Create <code>godot/tests/run_simulation_tests.gd</code> — a tiny
+    runner Godot executes headlessly. <code>_check_eq</code> prints got-vs-expected so a failure
+    tells you exactly what's wrong:</p>
 <pre><code>extends SceneTree
 
-# Tiny dependency-free test runner. Run with:
+# Run with:
 #   godot --headless --path godot --script res://tests/run_simulation_tests.gd
 # Exits 0 if all pass, 1 if any fail.
 
@@ -56,14 +91,16 @@ var _passed := 0
 var _failed := 0
 
 # Load by path so this runner works headless without an editor import step
-# (the global class_name cache isn't refreshed by a raw --script run).
+# (a raw --script run doesn't refresh the global class_name cache).
 const Sim := preload("res://scripts/simulation.gd")
 
 func _initialize() -> void:
 	print("Running simulation tests…")
-	_test_next_xp_curve()
+	_test_next_xp_vectors()
 	_test_xp_below_threshold()
 	_test_level_up_carries_remainder()
+	_test_xp_progress()
+	_test_negative_ignored()
 	print("")
 	if _failed == 0:
 		print("PASS — %d checks" % _passed)
@@ -75,124 +112,177 @@ func _initialize() -> void:
 func _check(desc: String, condition: bool) -> void:
 	if condition:
 		_passed += 1
-		print("  ok  - ", desc)
+		print("  ok   - ", desc)
 	else:
 		_failed += 1
 		printerr("  FAIL - ", desc)
 
-func _test_next_xp_curve() -> void:
-	_check("level 1 needs 92 xp", Sim.next_xp_for_level(1) == 92)
-	_check("threshold grows with level", Sim.next_xp_for_level(2) > Sim.next_xp_for_level(1))
+func _check_eq(desc: String, actual, expected) -> void:
+	if actual == expected:
+		_passed += 1
+		print("  ok   - ", desc)
+	else:
+		_failed += 1
+		printerr("  FAIL - %s (got %s, expected %s)" % [desc, actual, expected])
+
+# Exact vectors pin the formula faithfully (simulation.ts:1721-1725).
+func _test_next_xp_vectors() -> void:
+	_check_eq("next_xp lvl 1", Sim.next_xp_for_level(1), 92)
+	_check_eq("next_xp lvl 2", Sim.next_xp_for_level(2), 188)
+	_check_eq("next_xp lvl 3", Sim.next_xp_for_level(3), 291)
+	_check_eq("next_xp lvl 5", Sim.next_xp_for_level(5), 595)
+	_check_eq("next_xp lvl 10", Sim.next_xp_for_level(10), 1811)
 
 func _test_xp_below_threshold() -> void:
 	var sim := Sim.new()
 	var leveled := sim.add_xp(10)
-	_check("a little xp does not level you", not leveled and sim.level == 1 and sim.xp == 10)
+	_check("a few Sparks do not level you", not leveled)
+	_check_eq("still level 1", sim.level, 1)
+	_check_eq("Sparks banked", sim.xp, 10)
 
 func _test_level_up_carries_remainder() -> void:
 	var sim := Sim.new()
 	var leveled := sim.add_xp(100)  # level-1 threshold is 92
-	_check("crossing the threshold levels up", leveled and sim.level == 2)
-	_check("remainder carries over (100 - 92 = 8)", sim.xp == 8)
-	_check("next threshold becomes level 2's", sim.next_xp == Sim.next_xp_for_level(2))</code></pre>
-    <p>Run it now — from the repo root, in a terminal:</p>
-<pre><code>godot --headless --path godot --script res://tests/run_simulation_tests.gd</code></pre>
-    <p>It <strong>fails</strong>, loudly: <code>Parse Error: Identifier "Simulation"… </code> — the
-    runner can't even load because <code>simulation.gd</code> doesn't exist. That's a perfectly good
-    Red: the test demands something that isn't there yet.</p>
+	_check("crossing the threshold levels up", leveled)
+	_check_eq("now level 2", sim.level, 2)
+	_check_eq("remainder carries (100 - 92)", sim.xp, 8)
+	_check_eq("next threshold is level 2's", sim.next_xp, Sim.next_xp_for_level(2))
+
+func _test_xp_progress() -> void:
+	var sim := Sim.new()
+	sim.add_xp(46)  # ~half of 92
+	_check("Sparks bar reads ~half full", absf(sim.xp_progress() - 0.5) &lt; 0.05)
+
+func _test_negative_ignored() -> void:
+	var sim := Sim.new()
+	sim.add_xp(-5)  # pickups are never negative; guard against it
+	_check_eq("negative Sparks are ignored", sim.xp, 0)</code></pre>
   </div>
 
   <div class="card turn">
-    <span class="label">Step 2 (GREEN) — write the code to pass</span>
-    <p>Create <code>scripts/simulation.gd</code> — the headless logic module, ported faithfully from
-    the TypeScript:</p>
+    <span class="label">Step 1 (RED, part 2) — a skeleton, so red is about the numbers</span>
+    <p>Create <code>godot/scripts/simulation.gd</code> as a <strong>skeleton</strong> — the methods
+    exist but don't do anything yet. That way the tests actually <em>run</em> and fail on values
+    (a real red), instead of erroring on a missing file:</p>
 <pre><code>class_name Simulation
 extends RefCounted
-
-## Headless game logic, ported from game-src-phaser/src/game/simulation.ts.
-## First slice: player XP and leveling. No scene, no rendering — pure and testable.
 
 var level: int = 1
 var xp: int = 0
 var next_xp: int = 0
 
 func _init() -> void:
+	pass
+
+static func next_xp_for_level(_lvl: int) -> int:
+	return 0  # TODO
+
+func add_xp(_amount: int) -> bool:
+	return false  # TODO
+
+func xp_progress() -> float:
+	return 0.0  # TODO</code></pre>
+    <p>Run it — from the repo root, in a terminal:</p>
+<pre><code>godot --headless --path godot --script res://tests/run_simulation_tests.gd</code></pre>
+    <p>It runs and <strong>fails on the numbers</strong> — exactly what we want to see go green:</p>
+<pre><code>Running simulation tests…
+  FAIL - next_xp lvl 1 (got 0, expected 92)
+  FAIL - next_xp lvl 2 (got 0, expected 188)
+  ...
+  FAIL - remainder carries (100 - 92) (got 0, expected 8)
+  ...
+FAIL — 4 passed, 10 failed</code></pre>
+    <p>(A few checks pass by accident — a do-nothing <code>add_xp</code> leaves you at level 1, which
+    happens to be true for the "doesn't level" test. That's fine; red means "not all green yet.")</p>
+  </div>
+
+  <div class="card turn">
+    <span class="label">Step 2 (GREEN) — fill in the real logic</span>
+    <p>Replace <code>simulation.gd</code> with the faithful port:</p>
+<pre><code>class_name Simulation
+extends RefCounted
+
+## Headless game logic, ported from game-src-phaser/src/game/simulation.ts.
+## First slice: Sparks (the `xp` currency in code) and re-humanizing (leveling).
+
+## Re-humanizing progress. "Sparks" in fiction; `xp` in the Phaser code.
+var level: int = 1     # simulation.ts:359
+var xp: int = 0        # Sparks banked toward the next level (simulation.ts:360)
+var next_xp: int = 0   # Sparks needed for the next level (simulation.ts:361)
+
+func _init() -> void:
 	next_xp = next_xp_for_level(level)
 
-## XP needed to advance FROM `lvl` to the next level.
-## Faithful to nextXpForLevel() in simulation.ts.
+## Sparks needed to advance FROM `lvl` to the next level.
+## Faithful to nextXpForLevel() — simulation.ts:1721-1725.
 static func next_xp_for_level(lvl: int) -> int:
 	var base := 56.0 + lvl * 14.0 + pow(lvl, 1.8) * 12.5
 	var pacing := 1.12 if lvl == 1 else 1.48 + minf(0.36, (lvl - 2) * 0.07)
 	return int(floor(base * pacing))
 
-## Grant XP. Returns true if it triggered a level-up.
-## Mirrors the level-up block in simulation.ts: the remainder carries over.
+## Bank Sparks. Returns true if it triggered a level-up (re-humanizing).
+## Mirrors the level-up block — simulation.ts:1029-1038 — remainder carries over.
+## Pickup values are non-negative, so we guard.
 func add_xp(amount: int) -> bool:
-	xp += amount
+	xp += maxi(0, amount)
 	if xp >= next_xp:
 		xp -= next_xp
 		level += 1
 		next_xp = next_xp_for_level(level)
 		return true
-	return false</code></pre>
+	return false
+
+## How full the Sparks bar is, 0..1 — for the HUD. Faithful to xpProgress() — simulation.ts:534.
+func xp_progress() -> float:
+	return clampf(float(xp) / next_xp, 0.0, 1.0)</code></pre>
     <p>Run the same command again. <strong>Green:</strong></p>
 <pre><code>Running simulation tests…
-  ok  - level 1 needs 92 xp
-  ok  - threshold grows with level
-  ok  - a little xp does not level you
-  ok  - crossing the threshold levels up
-  ok  - remainder carries over (100 - 92 = 8)
-  ok  - next threshold becomes level 2's
+  ok   - next_xp lvl 1
+  ok   - next_xp lvl 2
+  ...
+  ok   - Sparks bar reads ~half full
+  ok   - negative Sparks are ignored
 
-PASS — 6 checks</code></pre>
+PASS — 14 checks</code></pre>
   </div>
 
   <h2>Why it's shaped this way</h2>
   <ul>
-    <li><strong><code>extends RefCounted</code></strong> — no <code>Node</code>, no scene. This is
-    pure logic; it can run, and be tested, with no game window. That's the "headless" win.</li>
-    <li><strong>Faithful to the source.</strong> The formula and the carry-the-remainder rule are
-    copied from <code>simulation.ts</code>, not reinvented. When in doubt, the TypeScript wins.</li>
-    <li><strong>One behavior per check.</strong> Each <code>_check</code> tests one fact, so a
-    failure points at exactly what broke.</li>
+    <li><strong><code>extends RefCounted</code></strong> — no <code>Node</code>, no scene. Pure logic
+    that runs and is tested with no game window. That's the headless win, and RefCounted frees itself
+    (no manual cleanup).</li>
+    <li><strong>Faithful to the source.</strong> The formula, the carry rule, and
+    <code>xp_progress</code> are copied from <code>simulation.ts</code> (lines cited above), not
+    reinvented. When in doubt, the TypeScript wins; the design's <em>intent</em> is Balance §5.</li>
+    <li><strong>Exact vectors, not vibes.</strong> Pinning five levels (92/188/291/595/1811) means a
+    subtly-wrong formula can't sneak through — a "greater than" check alone would let it.</li>
+    <li><strong>One behavior per check</strong>, with got-vs-expected output, so a failure points at
+    exactly what broke.</li>
   </ul>
 
   <div class="card turn">
-    <span class="label">Your turn — one real TDD rep</span>
-    <p>Do the loop yourself. <code>simulation.ts</code> also exposes <code>xpProgress</code> (how
-    full the XP bar is, 0–1). Port it test-first:</p>
-    <ol class="steps">
-      <li><strong>Red:</strong> add a test that a fresh sim, after <code>add_xp(46)</code> (about
-      half of 92), has <code>xp_progress()</code> near <code>0.5</code>. Use a margin for floats:
-      <code>abs(sim.xp_progress() - 0.5) &lt; 0.05</code>. Run → it fails (no such method).</li>
-      <li><strong>Green:</strong> add <code>func xp_progress() -&gt; float: return clampf(float(xp) / next_xp, 0.0, 1.0)</code>
-      to <code>simulation.gd</code>. Run → passes.</li>
-    </ol>
-    <p>That's the muscle you'll use for every rule we port next. Prefer I do this rep with you live?
-    Say so.</p>
-  </div>
-
-  <div class="card turn">
     <span class="label">Done means…</span>
-    <p><strong>Done</strong> = the suite runs green from the command line, and you can explain what
-    "red" and "green" were here and why the logic lives in a <code>RefCounted</code> with no scene.
-    Then I log <code>0006</code> — and we start growing <code>simulation.gd</code> toward the real
-    loop: the run timer and the Spark of Humanity, then enemies.</p>
+    <p><strong>Done</strong> = you built it yourself (skeleton → real), the suite runs
+    <strong>green (14 checks)</strong> from the command line, and you can explain: what "red" and
+    "green" were here; why the logic lives in a <code>RefCounted</code> with no scene; and why
+    <code>xp</code> in code is <em>Sparks</em> in fiction (and not the Spark of Humanity meter). Then
+    I log <code>0006</code> and we grow <code>simulation.gd</code> toward the run loop.</p>
   </div>
 
-  <p class="source">Primary source · the repo's own <code>game-src-phaser/src/game/simulation.ts</code>
-  (the rules), plus Godot Docs — <a
+  <p class="source">Primary sources · <code>reference/game-balance-reference.md</code> §5
+  (progression intent), <code>design-handoff/NARRATIVE.md</code> §4 (Sparks fiction),
+  <code>game-src-phaser/src/game/simulation.ts</code> (the rules: 342-362, 534, 1029-1038,
+  1721-1725), plus Godot Docs — <a
+  href="https://docs.godotengine.org/en/stable/classes/class_refcounted.html">RefCounted</a> and <a
   href="https://docs.godotengine.org/en/stable/tutorials/scripting/gdscript/gdscript_basics.html">GDScript
-  basics</a> and <a
-  href="https://docs.godotengine.org/en/stable/classes/class_refcounted.html">RefCounted</a>.</p>
+  basics</a>.</p>
 
   <p class="ask">Want the leveling formula unpacked term by term, or curious why we preload instead
   of using the class name? Ask your teacher.</p>
 
   <nav class="lesson-nav">
     <span>Prev · 0005 Face movement + camera follow</span>
-    <span>Next · 0007 The run timer &amp; the Spark</span>
+    <span>Next · 0007 The run timer &amp; survival</span>
   </nav>
 
 </main>

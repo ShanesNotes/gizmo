@@ -30,14 +30,17 @@ spawn, fight, die, win/lose. Port logic before polish.
 - **0004 — Move Gizmo with code.**  `CharacterBody3D` + an Input Map + WASD → velocity.
   Win: drive Gizmo around the floor.
 - **0005 — Face movement + camera follow.**  Gizmo turns toward travel; camera tracks.
-- **0006 — Headless logic, test-first.**  Port the first slice of `simulation.ts`
-  (e.g. the Spark meter or wave timer) into `simulation.gd` with a test runner (TDD).
-  Win: a passing GDScript test, no scene needed.
-- **0007 — Enemies spawn** and move toward Gizmo.
-- **0008 — Combat.**  Gizmo hits; enemies take damage and die.
-- **0009 — Waves.**  The wave/spawn budget loop (grounded in the balance reference).
-- **0010 — The Spark of Humanity meter + lose condition.**
-- **0011 — HUD.**  Match `design-handoff/gizmo-hud.png` (health/Spark, currencies).
+- **0006 — Sparks & leveling, test-first.** ✅ Done. Ported `next_xp_for_level`,
+  `add_xp` (remainder carry), and `xp_progress` from `simulation.ts` into
+  `scripts/simulation.gd` with a headless test runner. Sparks = the `xp` currency
+  (NARRATIVE §4) — *not* the Spark of Humanity survival meter.
+- **0007 — Run timer & survival, test-first.** Port `runProgress` / `timeRemaining`
+  and player health (the **Spark of Humanity** meter) + lose condition into
+  `simulation.gd`, still headless. Win: red→green tests for the run state.
+- **0008 — Enemies spawn** and move toward Gizmo.
+- **0009 — Combat.**  Gizmo hits; enemies take damage and die.
+- **0010 — Waves.**  The wave/spawn budget loop (grounded in the balance reference).
+- **0011 — HUD.**  Match `design-handoff/gizmo-hud.png` (Spark of Humanity, Sparks/Scrap).
 - **0012 — Win/lose screens → playable v1 loop.**
 
 ### Later (post-v1, do not pull forward)
