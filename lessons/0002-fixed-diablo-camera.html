@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Gizmo · Lesson 0002 — The fixed Diablo camera</title>
+  <link rel="stylesheet" href="assets/lesson.css">
+</head>
+<body>
+<main>
+
+  <header class="masthead">
+    <p class="eyebrow">Gizmo · Lesson 0002 · Foundations</p>
+    <h1>The fixed Diablo camera</h1>
+    <p class="subtitle">Trade your eyeballed angle for the locked, looking-down view the whole game is seen through.</p>
+  </header>
+
+  <div class="card why">
+    <span class="label">Why this, now</span>
+    <p>In <a href="0001-first-3d-project.html">0001</a> you tilted the camera by feel just to
+    see something. But the camera angle <em>is</em> the genre. Diablo, and every rogue-lite in
+    its lineage, is read through one specific shot: <strong>high up, angled down, and never
+    rotating.</strong> Lock that in and the game instantly looks like the thing we're making.
+    This is the lens for everything that follows.</p>
+  </div>
+
+  <h2>What makes a camera "Diablo-style"</h2>
+  <p>Three properties, and only the first is new:</p>
+  <ol class="steps">
+    <li><strong>A steep down-angle</strong> — roughly 45–55° below the horizon. High enough to
+    see the battlefield around you, shallow enough to still see the <em>fronts</em> of things
+    (so Gizmo and enemies read as characters, not floor tiles).</li>
+    <li><strong>Aimed at the action</strong> — pointed at the play area (for now, the origin
+    where the box sits).</li>
+    <li><strong>Fixed</strong> — it does not spin when the character turns. The world rotates
+    under a still camera; the camera never orbits the hero. This is the defining trait, and it's
+    why a 3D model earns its keep here: the engine redraws Gizmo correctly from this one angle no
+    matter which way he faces.</li>
+  </ol>
+
+  <h2>Angle and position are the same decision</h2>
+  <p>Here's the one piece of math worth internalizing. If you want the camera to sit at distance
+  <em>d</em> and look at the origin from an angle <em>θ</em> below horizontal, its position and
+  its tilt are locked together:</p>
+  <pre><code>position = (0,  d·sin θ,  d·cos θ)
+rotation about X = −θ</code></pre>
+  <p>Move it higher, it must tilt down more to keep aiming at the same spot. We'll use
+  <strong>θ = 50°</strong> at <strong>d ≈ 15.6</strong>, which rounds to a clean
+  <code>position (0, 12, 10)</code> with <code>rotation X = −50°</code>. (Sanity check: a ray from
+  (0,12,10) tilted 50° down lands right back at the origin.)</p>
+
+  <div class="card heads-up">
+    <span class="label">The decision: perspective or orthographic?</span>
+    <p>A <code>Camera3D</code> has a <strong>Projection</strong> setting, and it changes the feel:</p>
+    <p><strong>Perspective</strong> (the default): distant things shrink, like a real lens. Tuned
+    by <em>FOV</em> (field of view, in degrees). It gives depth and a little drama — the modern
+    Diablo look. A <em>narrower</em> FOV (~50, vs the default 75) flattens the distortion toward
+    that clean ARPG feel without going fully flat.</p>
+    <p><strong>Orthographic</strong>: no shrinking with distance — a box near you and far from you
+    are drawn the same size. Tuned by <em>Size</em> (world units visible top-to-bottom). It reads
+    as crisp and tactical (classic isometric strategy), but loses depth cues.</p>
+    <p><strong>Recommendation:</strong> start with <strong>perspective, FOV ≈ 50</strong> — it
+    suits a character-driven gouache world. Then flip to Orthographic for ten seconds just to feel
+    the difference. The choice is yours and easy to change later.</p>
+  </div>
+
+  <div class="card turn">
+    <span class="label">Build the slice — hands-on</span>
+    <ol class="steps">
+      <li>Open <code>scenes/main.tscn</code> and select your <strong>Camera3D</strong>.</li>
+      <li>In the Inspector, set <em>Transform → Position</em> to <code>(0, 12, 10)</code>.</li>
+      <li>Set <em>Transform → Rotation</em> X to <code>-50</code> (degrees). The camera now looks
+      down at the box.</li>
+      <li>Find <em>Projection</em>. Leave it on <strong>Perspective</strong> and set <em>Fov</em>
+      to about <code>50</code>.</li>
+      <li>Press <strong>F5</strong>. You should be looking down on the box and floor at the
+      signature angle — the floor reads as ground you stand on, not a wall.</li>
+      <li><em>Experiment:</em> switch <em>Projection</em> to <strong>Orthographic</strong>, set
+      <em>Size</em> to about <code>16</code>, Play again. Notice the floor's edges go parallel and
+      the scene flattens. Then set it back to whichever you prefer.</li>
+      <li><kbd>Ctrl+S</kbd>.</li>
+    </ol>
+    <p>Prefer I set it through the runtime so you can compare against your numbers? Say the word.</p>
+  </div>
+
+  <div class="card heads-up">
+    <span class="label">The thing to actually remember</span>
+    <p>Your <code>Camera3D</code> is a child of <strong>Main</strong> — the world — not a child of
+    the box. That's deliberate. When Gizmo arrives (0003) and starts moving (0004), the camera
+    keeps its angle no matter what he does. In 0005 we'll make it <em>slide</em> to follow his
+    position — but it will keep this exact tilt forever. <strong>Fixed angle, movable position.</strong>
+    That sentence is the whole camera design.</p>
+  </div>
+
+  <h2>How you'll know it worked</h2>
+  <p>Playing should feel like looking down into a diorama: you see the top and the front face of
+  the box, the floor recedes gently (perspective) or stays perfectly even (orthographic), and the
+  box sits clearly <em>on</em> the ground. If you're looking at the box edge-on or from the side,
+  your rotation is off — it should be a negative X rotation near −50.</p>
+
+  <div class="card turn">
+    <span class="label">Done means…</span>
+    <p><strong>Done</strong> = the locked down-angle view plays, and you can say in a sentence why
+    the camera is parented to the world and not the character. Then I write the <code>0002</code>
+    learning record and we bring Gizmo into the scene (0003).</p>
+  </div>
+
+  <p class="source">Primary source · Godot Docs — <a
+  href="https://docs.godotengine.org/en/stable/tutorials/3d/index.html">3D tutorials</a>, and the
+  <a href="https://docs.godotengine.org/en/stable/classes/class_camera3d.html">Camera3D class
+  reference</a> (see <code>projection</code>, <code>fov</code>, and <code>size</code>).</p>
+
+  <p class="ask">Unsure why narrower FOV flattens the look, or what "orthographic" really means?
+  Ask — that's what your teacher is for.</p>
+
+  <nav class="lesson-nav">
+    <span>Prev · 0001 Your first 3D project</span>
+    <span>Next · 0003 Gizmo enters the world</span>
+  </nav>
+
+</main>
+</body>
+</html>
