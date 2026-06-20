@@ -28,6 +28,11 @@ func _initialize() -> void:
 	_test_negative_dt_does_not_rewind()
 	_test_death_is_gameover()
 	_test_hp_progress()
+	# Enemies (0008)
+	_test_enemy_spawns_on_cadence()
+	_test_enemy_chases_gizmo()
+	_test_enemy_contact_damages_player()
+	_test_no_spawning_after_run_over()
 	print("")
 	if _failed == 0:
 		print("PASS — %d checks" % _passed)
@@ -115,6 +120,7 @@ func _test_run_completes() -> void:
 
 func _test_damage_and_iframes() -> void:
 	var sim := Sim.new()  # hp 7, invulnerable 0
+	sim.spawn_interval = 9999.0  # isolate from enemy contact while we tick
 	var landed := sim.take_damage(2)
 	_check("first hit lands", landed)
 	_check_eq("hp drops by the damage", sim.hp, 5)
@@ -152,3 +158,46 @@ func _test_hp_progress() -> void:
 	_check("full hp bar reads 1.0", absf(sim.hp_progress() - 1.0) < 0.001)
 	sim.take_damage(2)  # 5 / 7
 	_check("hp bar reads 5/7 after a hit", absf(sim.hp_progress() - 5.0 / 7.0) < 0.001)
+
+# --- Enemies (0008) ---
+
+func _test_enemy_spawns_on_cadence() -> void:
+	var sim := Sim.new()
+	sim.spawn_interval = 0.2
+	_check_eq("no enemies at the start", sim.enemies.size(), 0)
+	for i in 4:
+		sim.tick(0.05, Vector3.ZERO)  # 4 * 0.05 = 0.20s -> one spawn
+	_check_eq("one enemy after one interval", sim.enemies.size(), 1)
+	for i in 4:
+		sim.tick(0.05, Vector3.ZERO)
+	_check_eq("two enemies after two intervals", sim.enemies.size(), 2)
+
+func _test_enemy_chases_gizmo() -> void:
+	var sim := Sim.new()
+	sim.spawn_interval = 0.05
+	var target := Vector3(5.0, 0.0, 0.0)
+	sim.tick(0.05, target)  # spawns one nibbler on the ring around the target
+	var e := sim.enemies[0]
+	var before := e.position.distance_to(target)
+	sim.tick(0.05, target)
+	var after := e.position.distance_to(target)
+	_check("enemy moves toward Gizmo", after < before)
+
+func _test_enemy_contact_damages_player() -> void:
+	var sim := Sim.new()
+	sim.spawn_interval = 0.05
+	sim.tick(0.05, Vector3.ZERO)  # spawn one enemy on the ring
+	var e := sim.enemies[0]
+	var hp_before := sim.hp
+	sim.tick(0.05, e.position)  # put Gizmo on the enemy -> contact
+	_check_eq("contact costs the player 1 hp", sim.hp, hp_before - 1)
+	sim.tick(0.05, e.position)  # immediately again -> blocked by i-frames
+	_check_eq("contact respects i-frames", sim.hp, hp_before - 1)
+
+func _test_no_spawning_after_run_over() -> void:
+	var sim := Sim.new()
+	sim.spawn_interval = 0.05
+	sim.take_damage(100)  # -> gameover
+	for i in 10:
+		sim.tick(0.05, Vector3.ZERO)
+	_check_eq("a dead player spawns no enemies", sim.enemies.size(), 0)

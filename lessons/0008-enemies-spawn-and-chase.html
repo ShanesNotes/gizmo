@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Gizmo · Lesson 0008 — Enemies: the first pressure machine</title>
+  <link rel="stylesheet" href="assets/lesson.css">
+</head>
+<body>
+<main>
+
+  <header class="masthead">
+    <p class="eyebrow">Gizmo · Lesson 0008 · The loop</p>
+    <h1>Enemies: the first pressure machine</h1>
+    <p class="subtitle">Spawn one archetype, make it chase Gizmo, and let contact hurt — the first thing in the game that pushes back.</p>
+  </header>
+
+  <div class="card why">
+    <span class="label">Why this, now</span>
+    <p>You can move, the run can be won or lost — but nothing <em>threatens</em> Gizmo yet. Enemies
+    are the run's first <strong>pressure machine</strong>: they force kiting decisions, they're what
+    will drop Sparks and trigger the level-up dopamine later, and they're the foundation for
+    waves → elites → bosses. For the horde loop we're after (Vampire Survivors / Diablo / Megabonk),
+    enemies must be <strong>balance data first</strong> — spawn cadence, chase speed, contact damage
+    — not one-off scene scripts. Tuning intent: <code>reference/game-balance-reference.md</code> §5
+    (scaling/horde) and §3 (defense); mechanics: <code>simulation.ts</code> (<code>ENEMY_SPECS</code>,
+    <code>updateEnemies</code>).</p>
+  </div>
+
+  <div class="card heads-up">
+    <span class="label">The architecture decision (ADR 0002)</span>
+    <p>This is where the tested <code>Simulation</code> finally meets the running game. We chose a
+    <strong>hybrid</strong>: <strong>Simulation owns the rules</strong> (enemies live there as data
+    — spawn, chase, contact, HP), and <strong>the scene renders them</strong>. A new
+    <strong><code>GameController</code></strong> node bridges the two: each physics frame it feeds
+    Gizmo's position into <code>Simulation.tick(dt, gizmo_position)</code>, then mirrors each enemy's
+    data onto a visual node. Gizmo's own movement stays in Godot (the feel you built in 0004–0005).
+    And we use <strong>simple seek steering, not <code>NavigationAgent3D</code></strong> — open-floor
+    horde pressure with many cheap agents is clearer and testable; navigation can come later when
+    maps have obstacles. Full rationale: <code>docs/adr/0002-simulation-owns-rules-scene-renders.md</code>.</p>
+  </div>
+
+  <div class="card why">
+    <span class="label">How this maps to the balance reference</span>
+    <ul>
+      <li><strong>Spawn cadence</strong> (<code>spawn_interval</code>) → §5.2 (time is the scaling
+      axis — "the clock is the boss") + §5.3 (horde tuning). For now a flat interval; real ramping
+      pressure is 0010 (waves).</li>
+      <li><strong>Contact damage</strong> → reuses 0007's <code>take_damage</code> (§3.4), so
+      i-frames and the lose condition already apply for free.</li>
+      <li><strong>Enemy stats</strong> (the nibbler) → <code>ENEMY_SPECS</code>
+      (<code>simulation.ts:259</code>). We keep the <em>relative</em> balance (damage 1) but express
+      positions/speeds in <strong>Godot metres</strong>, not Phaser pixels (ADR 0002).</li>
+    </ul>
+  </div>
+
+  <h2>Part 1 — enemies as data agents (logic, test-first)</h2>
+  <p>An enemy is just a little bag of numbers. In <code>godot/scripts/simulation.gd</code>, an inner class:</p>
+<pre><code>class Enemy extends RefCounted:
+	var position := Vector3.ZERO
+	var hp: float = 1.0
+	var speed: float = 0.0
+	var radius: float = 1.0
+	var damage: int = 1
+	var kind: String = ""</code></pre>
+  <p>Then <code>tick</code> grows a second argument — <strong>where Gizmo is</strong> — and runs the
+  enemies. (The default keeps the 0006/0007 tests, which call <code>tick(dt)</code>, working.)</p>
+<pre><code>func tick(dt: float, gizmo_position := Vector3.ZERO) -> void:
+	if phase != PHASE_PLAYING:
+		return
+	var safe_dt := clampf(dt, 0.0, MAX_DT)
+	elapsed += safe_dt
+	invulnerable = maxf(0.0, invulnerable - safe_dt)
+	_update_enemies(safe_dt, gizmo_position)
+	if elapsed &gt;= run_duration:
+		phase = PHASE_COMPLETE
+
+func _update_enemies(dt: float, gizmo_position: Vector3) -> void:
+	_spawn_timer += dt
+	if _spawn_timer &gt;= spawn_interval:
+		_spawn_timer -= spawn_interval
+		_spawn_nibbler(gizmo_position)
+	for e in enemies:
+		var to_player := gizmo_position - e.position
+		to_player.y = 0.0  # stay on the floor plane
+		var dist := to_player.length()
+		if dist &gt; 0.0001:
+			e.position += to_player / dist * e.speed * dt  # seek toward Gizmo
+		if dist &lt;= e.radius:
+			take_damage(e.damage)  # contact reuses the 0007 primitive (i-frames!)</code></pre>
+  <p><code>_spawn_nibbler</code> drops one enemy on a ring around Gizmo, at a deterministic angle
+  (golden-angle spread, so tests don't depend on RNG). The seek is the whole "AI": a unit vector
+  toward Gizmo times speed times dt. Contact just calls <code>take_damage</code> — which means
+  i-frames and the lose condition from 0007 apply automatically.</p>
+
+  <div class="card turn">
+    <span class="label">Test-first — spawn, then chase, then contact</span>
+    <p>The tests grow in the same order the behavior does (add them to the runner, call from
+    <code>_initialize()</code>):</p>
+<pre><code>func _test_enemy_spawns_on_cadence() -> void:
+	var sim := Sim.new()
+	sim.spawn_interval = 0.2
+	_check_eq("no enemies at the start", sim.enemies.size(), 0)
+	for i in 4:
+		sim.tick(0.05, Vector3.ZERO)  # 0.20s -> one spawn
+	_check_eq("one enemy after one interval", sim.enemies.size(), 1)
+	for i in 4:
+		sim.tick(0.05, Vector3.ZERO)
+	_check_eq("two enemies after two intervals", sim.enemies.size(), 2)
+
+func _test_enemy_chases_gizmo() -> void:
+	var sim := Sim.new()
+	sim.spawn_interval = 0.05
+	var target := Vector3(5.0, 0.0, 0.0)
+	sim.tick(0.05, target)
+	var e := sim.enemies[0]
+	var before := e.position.distance_to(target)
+	sim.tick(0.05, target)
+	_check("enemy moves toward Gizmo", e.position.distance_to(target) &lt; before)
+
+func _test_enemy_contact_damages_player() -> void:
+	var sim := Sim.new()
+	sim.spawn_interval = 0.05
+	sim.tick(0.05, Vector3.ZERO)
+	var e := sim.enemies[0]
+	var hp_before := sim.hp
+	sim.tick(0.05, e.position)  # put Gizmo on the enemy -> contact
+	_check_eq("contact costs the player 1 hp", sim.hp, hp_before - 1)
+	sim.tick(0.05, e.position)  # again immediately -> blocked by i-frames
+	_check_eq("contact respects i-frames", sim.hp, hp_before - 1)
+
+func _test_no_spawning_after_run_over() -> void:
+	var sim := Sim.new()
+	sim.spawn_interval = 0.05
+	sim.take_damage(100)  # -> gameover
+	for i in 10:
+		sim.tick(0.05, Vector3.ZERO)
+	_check_eq("a dead player spawns no enemies", sim.enemies.size(), 0)</code></pre>
+    <p>Run the suite (<code>godot --headless --path godot --script
+    res://tests/run_simulation_tests.gd</code>). Implement spawn → the cadence checks go green;
+    add the seek → "moves toward Gizmo" goes green; route contact through
+    <code>take_damage</code> → the damage/i-frame checks go green. End state:
+    <strong>PASS — 39 checks</strong>. (Unlike 0007, these checks build on each other — the chase
+    test needs a spawned enemy to chase — so they go green spawn-first, not all-at-once.)</p>
+  </div>
+
+  <h2>Part 2 — render the enemies (the scene)</h2>
+  <p>The logic is the truth; the scene just draws it. Two pieces:</p>
+  <ol class="steps">
+    <li><strong>A visual</strong> — <code>godot/scenes/enemy.tscn</code>: a <code>Node3D</code> root (the
+    agent's ground position) with a small reddish <code>SphereMesh</code> child lifted to sit on the
+    floor. No physics, no script — it's pure visual; the controller moves it.</li>
+    <li><strong>The bridge</strong> — <code>godot/scripts/game_controller.gd</code> on a
+    <code>GameController</code> node in <code>godot/scenes/main.tscn</code>:</li>
+  </ol>
+<pre><code>extends Node3D
+
+const EnemyScene := preload("res://scenes/enemy.tscn")
+
+@export var gizmo: Node3D   # assign Gizmo in the Inspector
+
+var sim := Simulation.new()
+var _views: Array[Node3D] = []  # one visual per sim enemy, parallel by index
+
+func _physics_process(delta: float) -> void:
+	var gizmo_position := gizmo.global_position if gizmo != null else Vector3.ZERO
+	sim.tick(delta, gizmo_position)
+
+	while _views.size() &lt; sim.enemies.size():   # a visual for each new enemy
+		var view: Node3D = EnemyScene.instantiate()
+		add_child(view)
+		_views.append(view)
+
+	for i in sim.enemies.size():                 # mirror positions
+		_views[i].global_position = sim.enemies[i].position</code></pre>
+  <p>In <code>godot/scenes/main.tscn</code>, add a <code>GameController</code> node and set its <em>Gizmo</em>
+  export to the Gizmo node. Press Play: red nibblers spawn on the ring and converge on Gizmo. Stand
+  still and they'll swarm and kill you (run → <code>gameover</code>); move and you can kite them —
+  the first real decision the game asks of you.</p>
+
+  <div class="card heads-up">
+    <span class="label">Deliberately simple, for now</span>
+    <p>Enemies don't die yet (no weapons — that's <strong>0009 combat</strong>), don't avoid each
+    other (they stack on a stationary target — separation is later polish), and spawn on a flat
+    cadence (ramping pressure is <strong>0010 waves</strong>). Spark drops on kill come with combat.
+    The index-parallel <code>_views</code> works because enemies only <em>grow</em> in 0008; once
+    they can die, the controller switches to a per-enemy map with removal.</p>
+  </div>
+
+  <div class="card turn">
+    <span class="label">Done means…</span>
+    <p><strong>Done</strong> = the suite is <strong>green (39 checks)</strong>, and in-game red
+    enemies spawn and chase Gizmo, hurting him on contact (HP falls; standing still ends in
+    <code>gameover</code>). You can explain the <strong>ADR 0002 split</strong> — Simulation owns the
+    enemy rules, the GameController renders them — and why we used seek steering, not navigation.
+    Then I log <code>0008</code>, and <strong>0009</strong> gives Gizmo a way to fight back (enemies
+    take damage, die, and drop Sparks — closing the loop back to 0006's leveling).</p>
+  </div>
+
+  <p class="source">Primary sources · <code>reference/game-balance-reference.md</code> (§5.2/§5.3
+  scaling &amp; horde, §3.4 contact), <code>game-src-phaser/src/game/simulation.ts</code>
+  (<code>ENEMY_SPECS</code> 259, <code>updateEnemies</code>, contact 722-738), and
+  <code>docs/adr/0001</code> + <code>docs/adr/0002</code>. Godot Docs — <a
+  href="https://docs.godotengine.org/en/4.6/tutorials/3d/using_transforms.html">using transforms</a>
+  and <a href="https://docs.godotengine.org/en/4.6/tutorials/scripting/gdscript/gdscript_basics.html#inner-classes">inner
+  classes</a>.</p>
+
+  <p class="ask">Want the seek-steering vector unpacked, or why we chose data agents over
+  NavigationAgent3D? Ask your teacher.</p>
+
+  <nav class="lesson-nav">
+    <span>Prev · 0007 The run timer &amp; health</span>
+    <span>Next · 0009 Combat — fight back</span>
+  </nav>
+
+</main>
+</body>
+</html>
