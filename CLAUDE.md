@@ -7,12 +7,14 @@
   spark of humanity vs dehumanized tech, in a gouache cosmos of lost tech).
 - Direction: **3D with a fixed Diablo-style camera** (decided 2026-06-20). Not 2.5D
   sprites — the old sprite scaffolding was removed; it's in git history if needed.
-- `game-src-phaser/src/game/simulation.ts` is the mechanics source of truth. Port it
-  before scene polish.
+- `reference/game-balance-reference.md` is the game-agnostic design foundation
+  (formulas, TTK bands, spawn/upgrade math) — the north star for tuning.
+- `game-src-phaser/src/game/simulation.ts` is the mechanics source of truth (one
+  implementation of the balance reference). Port it before scene polish.
 - `godot/assets/gizmo.glb` is the 3D character: a static mesh (1 mesh, no rig, no
   animation). v1 slides it around with code; rigging/animation is a later lesson.
-- `design-system/` is the visual/aesthetic source of truth (the Lumen Codex). Copy
-  existing tokens/motifs; do not invent replacements.
+- Visual art is generated fresh (AI / ludo). The old Lumen Codex design system was
+  dropped; recover from git history if a palette reference is wanted.
 - The root playable web build is the feel reference: `npx serve .` and play `index.html`.
 - Target Godot: 4.6.x stable (repo verified locally with 4.6.2.stable.mono.official).
 
@@ -54,7 +56,6 @@ effort, not "watch the AI build" and not "type everything yourself."
 ## Boundaries
 - Do not rewrite the Phaser source, root web build, or `design-handoff/NARRATIVE.md`.
 - Do not stage `node_modules/`, `dist/`, `godot/.godot/`, exports, or generated cache.
-- Do not hand-roll Lumen Codex assets; use `design-system/`.
 - Do not attempt a full port in one lesson. Do not expand past v1 scope until v1 ships.
 
 ## Next lesson workflow

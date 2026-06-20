@@ -22,11 +22,15 @@ lesson, not a v1 blocker. Don't expand scope until v1 is finished.
 
 ## Where each truth lives
 - **Premise / story** → `design-handoff/NARRATIVE.md`
-- **Mechanics (the actual game logic)** → `game-src-phaser/src/game/simulation.ts`
-  — the source of truth to port. Port logic before scene polish.
+- **Balance / design foundation (game-agnostic theory)** →
+  `reference/game-balance-reference.md` — formulas, TTK bands, spawn budgets,
+  upgrade math. The north star; `simulation.ts` is one implementation of it.
+- **Mechanics (one implementation of the above)** →
+  `game-src-phaser/src/game/simulation.ts` — the source of truth to port. Port
+  logic before scene polish.
 - **Feel reference (playable)** → root web build; `npx serve .` and play `index.html`
-- **Aesthetic (palette, mood, UI motifs)** → `design-system/` (the Lumen Codex)
-- **Balance knowledge (TTK bands, economy)** → `reference/game-balance-reference.md`
+- **Visual art** → generated fresh (AI / ludo) per the 3D direction. The old Lumen
+  Codex design system was dropped; recover palette/tokens from git history if wanted.
 - **3D character model** → `godot/assets/gizmo.glb` (static mesh: 1 mesh, no rig, no anim)
 - **The Godot build** → `godot/` (snake_case files, PascalCase nodes)
 - **Learning path** → `lessons/` (foundations 0001–0006 are dimension-agnostic and
