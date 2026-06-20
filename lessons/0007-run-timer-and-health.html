@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Gizmo · Lesson 0007 — The run timer &amp; health</title>
+  <link rel="stylesheet" href="assets/lesson.css">
+</head>
+<body>
+<main>
+
+  <header class="masthead">
+    <p class="eyebrow">Gizmo · Lesson 0007 · The logic</p>
+    <h1>The run timer &amp; health</h1>
+    <p class="subtitle">Give the run a clock you can win and an HP bar you can lose — still headless, still test-first.</p>
+  </header>
+
+  <div class="card why">
+    <span class="label">Why this, now</span>
+    <p>0006 gave Gizmo progression; now the run needs <strong>stakes</strong>: a way to
+    <em>win</em> (survive the bounded run) and a way to <em>lose</em> (run out of health). Both
+    already live in <code>simulation.ts</code> — the run clock and the player's HP — so we keep
+    porting, headless and test-first, growing the same <code>Simulation</code>. Same truth
+    hierarchy as before: tuning intent in <code>reference/game-balance-reference.md</code> §5,
+    meaning in <code>design-handoff/NARRATIVE.md</code>, mechanics in <code>simulation.ts</code>.</p>
+  </div>
+
+  <div class="card heads-up">
+    <span class="label">HP is not the Spark of Humanity (ADR 0001)</span>
+    <p>This lesson ports the player's <strong>HP</strong> — the health bar (`hp`/`maxHp`); taking
+    damage lowers it, zero ends the run. That is <strong>not</strong> the <em>Spark of Humanity</em>
+    meter (a separate objective/survival meter Gizmo keeps alive — "Keep it safe. Keep it alive.")
+    whose mechanics we haven't designed yet. Three distinct things — HP, Sparks, Spark of Humanity —
+    per <code>docs/adr/0001-sparks-hp-spark-of-humanity-are-distinct.md</code>. We build HP here; the
+    Spark of Humanity is deliberately deferred.</p>
+  </div>
+
+  <h2>The slice: a clock and a health bar</h2>
+  <p>Two pure mechanics from <code>simulation.ts</code>:</p>
+  <ul>
+    <li><strong>The run clock.</strong> Time advances each frame; the run is bounded at
+    <code>RUN_DURATION = 240</code>s (<code>simulation.ts:202</code>). When it elapses, you
+    <strong>win</strong> (<code>phase = "complete"</code>, <code>simulation.ts:489-493</code>).
+    <code>run_progress</code> and <code>time_remaining</code> mirror lines 533 and 535. Note the
+    <strong>dt clamp</strong> (<code>min(dt, 0.05)</code>, line 463): a lag spike must not fast-forward
+    the whole run.</li>
+    <li><strong>Health.</strong> A hit lowers HP, grants brief <strong>i-frames</strong> (1.58s,
+    so one touch isn't instant death), and floors at 0; reaching 0 is a <strong>lose</strong>
+    (<code>phase = "gameover"</code>, <code>simulation.ts:722-738</code>).</li>
+  </ul>
+  <p>A small <strong>phase</strong> field ties it together: <code>playing</code> → either
+  <code>complete</code> (won) or <code>gameover</code> (lost). The clock only ticks while
+  <code>playing</code> (<code>simulation.ts:460</code>).</p>
+
+  <p>(The enemy-contact geometry and the "no damage for the first 7s" grace belong with
+  <a href="#">enemies (0008)</a>; here <code>take_damage</code> is the pure damage primitive.)</p>
+
+  <div class="card turn">
+    <span class="label">Step 1 (RED) — grow the tests, then stub the methods</span>
+    <p>Add these to <code>godot/tests/run_simulation_tests.gd</code> (call them from
+    <code>_initialize()</code> alongside the 0006 tests):</p>
+<pre><code>func _test_run_clock() -> void:
+	var sim := Sim.new()
+	sim.run_duration = 1.0
+	for i in 5:
+		sim.tick(0.05)  # 5 * 0.05 = 0.25s elapsed
+	_check("run_progress ~ 0.25", absf(sim.run_progress() - 0.25) &lt; 0.001)
+	_check("time_remaining ~ 0.75", absf(sim.time_remaining() - 0.75) &lt; 0.001)
+
+func _test_dt_is_clamped() -> void:
+	var sim := Sim.new()
+	sim.tick(10.0)  # a huge frame must not skip the whole run
+	_check("dt clamped to 0.05", absf(sim.elapsed - 0.05) &lt; 0.0001)
+
+func _test_run_completes() -> void:
+	var sim := Sim.new()
+	sim.run_duration = 0.08
+	sim.tick(0.05)
+	_check_eq("still playing mid-run", sim.phase, Sim.PHASE_PLAYING)
+	sim.tick(0.05)  # elapsed 0.10 >= 0.08
+	_check_eq("run completes (a win) when the timer elapses", sim.phase, Sim.PHASE_COMPLETE)
+	var before := sim.elapsed
+	sim.tick(0.05)
+	_check("tick is a no-op once the run is over", sim.elapsed == before)
+
+func _test_damage_and_iframes() -> void:
+	var sim := Sim.new()  # hp 7, invulnerable 0
+	_check("first hit lands", sim.take_damage(2))
+	_check_eq("hp drops by the damage", sim.hp, 5)
+	_check("i-frames block the next hit", not sim.take_damage(2) and sim.hp == 5)
+	sim.run_duration = 999.0
+	for i in 40:
+		sim.tick(0.05)  # 2.0s &gt; 1.58 i-frame window
+	sim.take_damage(2)
+	_check_eq("damage lands again after i-frames", sim.hp, 3)
+
+func _test_death_is_gameover() -> void:
+	var sim := Sim.new()
+	sim.take_damage(100)
+	_check_eq("hp floors at 0", sim.hp, 0)
+	_check_eq("reaching 0 hp is a gameover (lose)", sim.phase, Sim.PHASE_GAMEOVER)
+	_check("no damage applies once the run is over", not sim.take_damage(1))</code></pre>
+    <p>Then add the new state + <strong>stub</strong> methods to
+    <code>godot/scripts/simulation.gd</code> so the tests run and fail on values (not on missing
+    methods). The new fields and constants:</p>
+<pre><code>const PHASE_PLAYING := "playing"
+const PHASE_COMPLETE := "complete"
+const PHASE_GAMEOVER := "gameover"
+
+const RUN_DURATION := 240.0   # simulation.ts:202
+const MAX_DT := 0.05          # safeDt clamp (simulation.ts:463)
+const HIT_INVULN := 1.58      # i-frames after a hit (simulation.ts:724)
+
+var phase := PHASE_PLAYING
+var elapsed: float = 0.0
+var run_duration: float = RUN_DURATION
+var hp: int = 7               # simulation.ts:349
+var max_hp: int = 7
+var invulnerable: float = 0.0
+
+# STUBS — fill in to go green
+func tick(_dt: float) -> void: pass
+func run_progress() -> float: return 0.0
+func time_remaining() -> float: return 0.0
+func take_damage(_amount: int) -> bool: return false</code></pre>
+    <p>Run it. The 0006 checks stay green; the new ones fail on the numbers
+    (<code>got 7, expected 5</code>, <code>got playing, expected complete</code>, …) —
+    <code>FAIL — 17 passed, 10 failed</code>. Real red.</p>
+  </div>
+
+  <div class="card turn">
+    <span class="label">Step 2 (GREEN) — the real run clock &amp; health</span>
+    <p>Replace the stubs:</p>
+<pre><code>## Advance the run by dt seconds. Mirrors the top of updateGameState
+## (simulation.ts:459-494): no-op unless playing; dt clamped; the run COMPLETES
+## (a win) when the timer runs out.
+func tick(dt: float) -> void:
+	if phase != PHASE_PLAYING:
+		return
+	var safe_dt := minf(dt, MAX_DT)
+	elapsed += safe_dt
+	invulnerable = maxf(0.0, invulnerable - safe_dt)
+	if elapsed >= run_duration:
+		phase = PHASE_COMPLETE
+
+func run_progress() -> float:           # simulation.ts:533
+	return clampf(elapsed / run_duration, 0.0, 1.0)
+
+func time_remaining() -> float:         # simulation.ts:535
+	return maxf(0.0, run_duration - elapsed)
+
+## A hit lowers HP, grants i-frames, floors at 0; 0 HP ends the run (lose).
+## Mirrors simulation.ts:722-738 (minus enemy geometry). HP, not Spark of
+## Humanity (ADR 0001). Returns true if the hit landed.
+func take_damage(amount: int) -> bool:
+	if phase != PHASE_PLAYING or invulnerable > 0.0:
+		return false
+	hp = maxi(0, hp - maxi(0, amount))
+	invulnerable = HIT_INVULN
+	if hp <= 0:
+		phase = PHASE_GAMEOVER
+	return true</code></pre>
+    <p>Run again — <strong>green</strong>:</p>
+<pre><code>...
+  ok   - run completes (a win) when the timer elapses
+  ok   - i-frames block the next hit
+  ok   - reaching 0 hp is a gameover (lose)
+
+PASS — 27 checks</code></pre>
+  </div>
+
+  <h2>Why it's shaped this way</h2>
+  <ul>
+    <li><strong>A tiny phase machine.</strong> <code>playing → complete | gameover</code> is the
+    whole run lifecycle. Win and lose are just two phase transitions; the HUD and screens (0011/0012)
+    will read <code>phase</code>.</li>
+    <li><strong>The dt clamp is a real rule, so we test it.</strong> Without
+    <code>min(dt, 0.05)</code>, a one-second hitch would jump the clock a full second (or end the
+    run). Faithful to the source, and pinned by a test.</li>
+    <li><strong>i-frames make HP fair.</strong> 1.58s of invulnerability after a hit means brushing
+    an enemy costs one tick of HP, not all of it — which is why we tick time forward in the test to
+    prove the window clears.</li>
+    <li><strong>Still <code>RefCounted</code>, still headless.</strong> A whole run can be simulated
+    and checked with no window — the same testability that made 0006 fast.</li>
+  </ul>
+
+  <div class="card turn">
+    <span class="label">Done means…</span>
+    <p><strong>Done</strong> = the suite runs <strong>green (27 checks)</strong>, and you can explain
+    the <code>playing → complete | gameover</code> phase machine, why <code>tick</code> clamps
+    <code>dt</code>, and why HP here is the health bar and <em>not</em> the Spark of Humanity meter.
+    Then I log <code>0007</code> — and we leave headless logic to spawn the first
+    <strong>enemies</strong> (0008), which is what will finally <em>call</em> <code>take_damage</code>.</p>
+  </div>
+
+  <p class="source">Primary sources · <code>reference/game-balance-reference.md</code> §5,
+  <code>design-handoff/NARRATIVE.md</code>, <code>game-src-phaser/src/game/simulation.ts</code>
+  (202, 349, 459-494, 533, 535, 722-738), and <code>docs/adr/0001</code>. Godot Docs — <a
+  href="https://docs.godotengine.org/en/4.6/tutorials/scripting/gdscript/gdscript_basics.html">GDScript
+  basics</a> and <a
+  href="https://docs.godotengine.org/en/4.6/classes/class_@globalscope.html">@GlobalScope</a>
+  (<code>minf</code>/<code>maxf</code>/<code>clampf</code>).</p>
+
+  <p class="ask">Want the phase machine drawn out, or wondering why i-frames are 1.58s? Ask your teacher.</p>
+
+  <nav class="lesson-nav">
+    <span>Prev · 0006 Sparks &amp; leveling</span>
+    <span>Next · 0008 Enemies spawn</span>
+  </nav>
+
+</main>
+</body>
+</html>

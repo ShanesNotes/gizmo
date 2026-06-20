@@ -13,11 +13,18 @@ const Sim := preload("res://scripts/simulation.gd")
 
 func _initialize() -> void:
 	print("Running simulation tests…")
+	# Sparks & leveling (0006)
 	_test_next_xp_vectors()
 	_test_xp_below_threshold()
 	_test_level_up_carries_remainder()
 	_test_xp_progress()
 	_test_negative_ignored()
+	# Run clock & health (0007)
+	_test_run_clock()
+	_test_dt_is_clamped()
+	_test_run_completes()
+	_test_damage_and_iframes()
+	_test_death_is_gameover()
 	print("")
 	if _failed == 0:
 		print("PASS — %d checks" % _passed)
@@ -41,6 +48,8 @@ func _check_eq(desc: String, actual, expected) -> void:
 	else:
 		_failed += 1
 		printerr("  FAIL - %s (got %s, expected %s)" % [desc, actual, expected])
+
+# --- Sparks & leveling (0006) ---
 
 # Exact vectors pin the formula faithfully (simulation.ts:1721-1725).
 func _test_next_xp_vectors() -> void:
@@ -74,3 +83,50 @@ func _test_negative_ignored() -> void:
 	var sim := Sim.new()
 	sim.add_xp(-5)  # pickups are never negative; guard against it
 	_check_eq("negative Sparks are ignored", sim.xp, 0)
+
+# --- Run clock & health (0007) ---
+
+func _test_run_clock() -> void:
+	var sim := Sim.new()
+	sim.run_duration = 1.0
+	for i in 5:
+		sim.tick(0.05)  # 5 * 0.05 = 0.25s elapsed
+	_check("run_progress ~ 0.25", absf(sim.run_progress() - 0.25) < 0.001)
+	_check("time_remaining ~ 0.75", absf(sim.time_remaining() - 0.75) < 0.001)
+
+func _test_dt_is_clamped() -> void:
+	var sim := Sim.new()
+	sim.tick(10.0)  # a huge frame must not skip the whole run
+	_check("dt clamped to 0.05", absf(sim.elapsed - 0.05) < 0.0001)
+
+func _test_run_completes() -> void:
+	var sim := Sim.new()
+	sim.run_duration = 0.08
+	sim.tick(0.05)
+	_check_eq("still playing mid-run", sim.phase, Sim.PHASE_PLAYING)
+	sim.tick(0.05)  # elapsed 0.10 >= 0.08
+	_check_eq("run completes (a win) when the timer elapses", sim.phase, Sim.PHASE_COMPLETE)
+	var before := sim.elapsed
+	sim.tick(0.05)
+	_check("tick is a no-op once the run is over", sim.elapsed == before)
+
+func _test_damage_and_iframes() -> void:
+	var sim := Sim.new()  # hp 7, invulnerable 0
+	var landed := sim.take_damage(2)
+	_check("first hit lands", landed)
+	_check_eq("hp drops by the damage", sim.hp, 5)
+	var blocked := sim.take_damage(2)
+	_check("i-frames block the next hit", not blocked and sim.hp == 5)
+	sim.run_duration = 999.0  # don't let the run complete while we wait out i-frames
+	for i in 40:
+		sim.tick(0.05)  # 2.0s > 1.58 i-frame window
+	sim.take_damage(2)
+	_check_eq("damage lands again after i-frames", sim.hp, 3)
+
+func _test_death_is_gameover() -> void:
+	var sim := Sim.new()
+	sim.take_damage(100)
+	_check_eq("hp floors at 0", sim.hp, 0)
+	_check_eq("reaching 0 hp is a gameover (lose)", sim.phase, Sim.PHASE_GAMEOVER)
+	var landed := sim.take_damage(1)
+	_check("no damage applies once the run is over", not landed)
