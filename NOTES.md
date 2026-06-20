@@ -34,13 +34,15 @@ spawn, fight, die, win/lose. Port logic before polish.
   `add_xp` (remainder carry), and `xp_progress` from `simulation.ts` into
   `scripts/simulation.gd` with a headless test runner. Sparks = the `xp` currency
   (NARRATIVE §4) — *not* the Spark of Humanity survival meter.
-- **0007 — Run timer & survival, test-first.** Port `runProgress` / `timeRemaining`
-  and player health (the **Spark of Humanity** meter) + lose condition into
-  `simulation.gd`, still headless. Win: red→green tests for the run state.
+- **0007 — Run timer & health, test-first.** Port `runProgress` / `timeRemaining`
+  and player **HP** (damage / death / lose-on-death) into `simulation.gd`, still
+  headless. The **Spark of Humanity** is a *separate* objective meter (ADR 0001,
+  mechanics TBD) — not this lesson. Win: red→green tests for the run state.
 - **0008 — Enemies spawn** and move toward Gizmo.
 - **0009 — Combat.**  Gizmo hits; enemies take damage and die.
 - **0010 — Waves.**  The wave/spawn budget loop (grounded in the balance reference).
-- **0011 — HUD.**  Match `design-handoff/gizmo-hud.png` (Spark of Humanity, Sparks/Scrap).
+- **0011 — HUD.**  Match `design-handoff/gizmo-hud.png` (HP bar, Sparks/Scrap, level,
+  wave counter, Spark of Humanity meter — all distinct, per ADR 0001).
 - **0012 — Win/lose screens → playable v1 loop.**
 
 ### Later (post-v1, do not pull forward)

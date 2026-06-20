@@ -42,9 +42,16 @@
     And leveling isn't generic RPG growth — it's <strong>Gizmo re-humanizing himself with what he
     saved</strong> ("Level up → upgrade draft… re-humanizing himself"). We'll keep the code name
     <code>xp</code> (faithful to the source) but think of it as Sparks.</p>
-    <p><strong>Don't confuse two things:</strong> <em>Sparks</em> (the <code>xp</code> currency you
-    collect, this lesson) is <strong>not</strong> the <em>Spark of Humanity</em> meter you keep
-    alive to survive (that's the player's health — a later lesson).</p>
+    <p><strong>Don't confuse three separate things</strong> (the HUD shows them as distinct
+    elements — see <code>design-handoff/ART_DIRECTION.md</code>, and
+    <code>docs/adr/0001-sparks-hp-spark-of-humanity-are-distinct.md</code>):</p>
+    <ul>
+      <li><strong>Sparks</strong> — the <code>xp</code> currency you collect (this lesson).</li>
+      <li><strong>HP</strong> — the player's health bar (damage, death). A later lesson.</li>
+      <li><strong>The Spark of Humanity meter</strong> — a <em>separate</em> objective/survival
+      meter Gizmo keeps alive ("Keep it safe. Keep it alive."). Its mechanics aren't designed yet —
+      it is <strong>not</strong> the same as HP, and not the same as Sparks.</li>
+    </ul>
   </div>
 
   <h2>The idea: red → green</h2>
@@ -273,8 +280,8 @@ PASS — 14 checks</code></pre>
   (progression intent), <code>design-handoff/NARRATIVE.md</code> §4 (Sparks fiction),
   <code>game-src-phaser/src/game/simulation.ts</code> (the rules: 342-362, 534, 1029-1038,
   1721-1725), plus Godot Docs — <a
-  href="https://docs.godotengine.org/en/stable/classes/class_refcounted.html">RefCounted</a> and <a
-  href="https://docs.godotengine.org/en/stable/tutorials/scripting/gdscript/gdscript_basics.html">GDScript
+  href="https://docs.godotengine.org/en/4.6/classes/class_refcounted.html">RefCounted</a> and <a
+  href="https://docs.godotengine.org/en/4.6/tutorials/scripting/gdscript/gdscript_basics.html">GDScript
   basics</a>.</p>
 
   <p class="ask">Want the leveling formula unpacked term by term, or curious why we preload instead
@@ -282,7 +289,7 @@ PASS — 14 checks</code></pre>
 
   <nav class="lesson-nav">
     <span>Prev · 0005 Face movement + camera follow</span>
-    <span>Next · 0007 The run timer &amp; survival</span>
+    <span>Next · 0007 The run timer &amp; health</span>
   </nav>
 
 </main>
