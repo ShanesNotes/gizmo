@@ -11,8 +11,9 @@
   (formulas, TTK bands, spawn/upgrade math) — the north star for tuning.
 - `game-src-phaser/src/game/simulation.ts` is the mechanics source of truth (one
   implementation of the balance reference). Port it before scene polish.
-- `godot/assets/gizmo.glb` is the 3D character: a static mesh (1 mesh, no rig, no
-  animation). v1 slides it around with code; rigging/animation is a later lesson.
+- `godot/assets/gizmo.glb` is the 3D character: a meshy.ai model with a 53-bone rig
+  but no animation clips yet. v1 moves it with code; adding clips (meshy "Animate" or
+  Mixamo, via `AnimationPlayer`) is a later lesson.
 - Visual art is generated fresh (AI / ludo). The old Lumen Codex design system was
   dropped; recover from git history if a palette reference is wanted.
 - The root playable web build is the feel reference: `npx serve .` and play `index.html`.

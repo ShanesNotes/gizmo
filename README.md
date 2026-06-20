@@ -6,7 +6,7 @@ A **bullet-heaven / survivors-like**: **Gizmo**, a clanker, preserves the **spar
 
 ## Repo layout
 - **`CONTEXT.md`** — orientation keystone. **`design-handoff/NARRATIVE.md`** — premise/story canon.
-- `godot/` — the **Godot build** (the active path). `godot/assets/gizmo.glb` is the 3D character (static mesh).
+- `godot/` — the **Godot build** (the active path). `godot/assets/gizmo.glb` is the 3D character (meshy.ai: 53-bone rig, no animation clips yet).
 - `game-src-phaser/` — the original **Phaser + TypeScript source**; `src/game/simulation.ts` is the mechanics source of truth to port. `node_modules` excluded.
 - `index.html`, `assets/` — the **playable web build** (feel reference). Serve the root and play it: `npx serve .`
 - `design-system/` — the **Lumen Codex** design system: tokens, components, UI motifs. The look/aesthetic.

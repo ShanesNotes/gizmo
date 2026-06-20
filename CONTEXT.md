@@ -16,9 +16,11 @@ from git history if needed.
 
 ## v1 scope (the only thing we're building first)
 Gizmo moves under a fixed Diablo camera; enemies spawn; you fight; you can die;
-win/lose screen. **The character is the static `godot/assets/gizmo.glb` mesh slid
-around with code** (bob/hop, no skeletal animation). Rigging/animation is a *later*
-lesson, not a v1 blocker. Don't expand scope until v1 is finished.
+win/lose screen. **The character is `godot/assets/gizmo.glb` — a meshy.ai model
+with a 53-bone rig but no animation clips yet.** v1 moves it with code (no clips
+needed); adding a walk/attack clip (meshy "Animate" or Mixamo, played via
+`AnimationPlayer`) is a *later* lesson, not a v1 blocker. Don't expand scope until
+v1 is finished.
 
 ## Where each truth lives
 - **Premise / story** → `design-handoff/NARRATIVE.md`
@@ -31,7 +33,7 @@ lesson, not a v1 blocker. Don't expand scope until v1 is finished.
 - **Feel reference (playable)** → root web build; `npx serve .` and play `index.html`
 - **Visual art** → generated fresh (AI / ludo) per the 3D direction. The old Lumen
   Codex design system was dropped; recover palette/tokens from git history if wanted.
-- **3D character model** → `godot/assets/gizmo.glb` (static mesh: 1 mesh, no rig, no anim)
+- **3D character model** → `godot/assets/gizmo.glb` (meshy.ai: 53-bone rig, no clips yet)
 - **The Godot build** → `godot/` (snake_case files, PascalCase nodes)
 - **Learning path** → `lessons/` (foundations 0001–0006 are dimension-agnostic and
   done; 0007–0008 were 2D-flavored, concepts transfer), `learning-records/`
