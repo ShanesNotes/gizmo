@@ -1,62 +1,72 @@
-# CLAUDE.md — Gizmo Godot teaching memory
+# CLAUDE.md — Gizmo (3D rogue-lite) · Godot co-development teaching memory
 
-## Project truths and source anchors
-- `CONTEXT.md` is the orientation keystone (what the game is, the 3D direction, v1
-  scope, where each truth lives). Read it first; if docs disagree, it wins.
-- Premise canon is `design-handoff/NARRATIVE.md`: a **rogue-lite** in which Gizmo the
-  clanker preserves the spark of humanity through escalating waves -> elites -> bosses,
+## Read first (source anchors)
+- `CONTEXT.md` — orientation keystone: the game, the 3D direction, **the loop**, v1 scope,
+  and where each truth lives. If docs disagree, it wins.
+- `design-handoff/NARRATIVE.md` — premise/story canon: a **rogue-lite** where Gizmo the
+  clanker preserves the **spark of humanity** through escalating **waves → elites → bosses**,
   in a gouache cosmos of lost tech.
-- Direction: **3D with a fixed Diablo-style camera** (decided 2026-06-20). Not 2.5D
-  sprites — the old sprite scaffolding was removed; it's in git history if needed.
-- `reference/game-balance-reference.md` is the game-agnostic design foundation
-  (formulas, TTK bands, spawn/upgrade math) — the north star for tuning.
-- `game-src-phaser/src/game/simulation.ts` is the mechanics source of truth (one
-  implementation of the balance reference). Port it before scene polish.
-- `godot/assets/gizmo.glb` is the 3D character: a meshy.ai model with a 53-bone rig
-  but no animation clips yet. v1 moves it with code; adding clips (meshy "Animate" or
-  Mixamo, via `AnimationPlayer`) is a later lesson.
-- Art direction: `godot/assets/gizmo.glb` (character) + `design-handoff/gizmo-hud.png`
-  (UI/world look), governed by `design-handoff/ART_DIRECTION.md`.
-- Visual art is generated fresh (AI / ludo), targeting `design-handoff/gizmo-hud.png`.
-  The old Lumen Codex design system was dropped; recover from git history if a palette
-  reference is wanted.
-- The root playable web build is the feel reference: `npx serve .` and play `index.html`.
-- Target Godot: 4.6.x stable (repo verified locally with 4.6.2.stable.mono.official).
+- `design-handoff/ART_DIRECTION.md` + `gizmo-hud.png` — the look (gouache cosmos, brass UI,
+  the HUD to match). `godot/assets/gizmo.glb` — the character (meshy.ai, 53-bone rig, no
+  animation clips yet; v1 moves it with code, clips are a later lesson).
+- `reference/game-balance-reference.md` — game-agnostic balance foundation (TTK bands,
+  wave/spawn/upgrade math); the north star for tuning.
+- `game-src-phaser/src/game/simulation.ts` — mechanics source of truth; port it before scene polish.
+- Root web build (`npx serve .`, play `index.html`) — feel reference.
+- Direction: **3D, fixed Diablo-style camera** (decided 2026-06-20). Target **Godot 4.6.x stable**.
 
-## Teaching contract (co-development, paced for understanding)
-The engine is the `/teach` skill. This is a slow-down-and-learn *co-development*
-effort, not "watch the AI build" and not "type everything yourself."
-- Claude is a co-developer and teacher: explain a concept, then build the slice
-  *together* in the Godot editor. Claude writing code is fine — pacing for
-  understanding is the point.
-- **Editor-first.** Lessons are real actions in the Godot editor, not CLI
-  file-authoring. The optimization target: teaching how to co-develop a game in
-  Godot with Claude Code + the teach skill.
-- Keep the learner in the loop on each decision. Avoid a finished black box they
-  can't explain — prefer small slices with a pause to absorb.
-- Lessons are self-contained HTML in `lessons/` (numbered `0001-…`), one win each.
-  The 3D rogue-lite build starts fresh at `0001` — no lessons completed yet (earlier
-  2.5D-era drafts were removed; in git history).
-- Compute the next lesson from `learning-records/` (empty = from-zero guide).
-- Run or name the verification command after each slice; ask at most one scope
-  question when it changes the next step.
+## Engineering directive — lead with the skills
+This is a co-development *teaching* project; the available skills are the engineering method.
+Reach for the right one by situation rather than free-handing it:
+
+| When you're… | Use |
+|---|---|
+| teaching the next slice / computing the next lesson | **`/teach`** — the engine (editor-first, paced) |
+| deciding how a ported piece should be shaped (seams, deep modules, AI-navigable GDScript) | **`codebase-design`** |
+| porting/writing logic that can run headless (e.g. `simulation.gd`) | **`tdd`** — red→green→refactor |
+| chasing a bug, crash, or perf regression | **`diagnosing-bugs`** |
+| pinning down domain terms / system↔fiction language | **`domain-modeling`** (language grows into `CONTEXT.md`) |
+| stress-testing a plan or scope *before* building (scope-creep guard) | **`grilling`** |
+| reviewing a finished slice's diff (standards + spec) | **`review`** |
+| drafting/sharpening a lesson explainer or writing about the build | **`writing-shape`**, **`writing-beats`**, **`writing-fragments`** |
+| resolving a merge/rebase | **`resolving-merge-conflicts`** |
+
+Default to a skill before improvising, and compose them — e.g. `grilling` a slice →
+`codebase-design` the seam → `tdd` the logic → `review` the diff → `/teach` capture the lesson.
+**Not used here:** `scaffold-exercises` and `migrate-to-shoehorn` are TypeScript/ai-hero-cli
+specific (our lessons are HTML + live Godot actions); skip unless we deliberately adapt the concept.
+
+## Teaching contract (the `/teach` engine)
+A slow-down-and-learn *co-development* effort — not "watch the AI build," not "type everything yourself."
+- Co-development, paced: explain a concept, then build the slice *together* in the Godot
+  editor. Claude writing code is fine; pacing for understanding is the point.
+- **Editor-first:** lessons are real actions in the Godot editor, not CLI file-authoring.
+- Keep the learner in the loop on every decision; avoid a finished black box they can't explain.
+- Lessons = self-contained HTML in `lessons/` (numbered from `0001`), one win each. The build
+  starts fresh at `0001`; `learning-records/` is empty = from-zero.
+- Verify (or name the command) after each slice; ask at most one scope question when it changes the next step.
 
 ## Godot rules
 - Keep the Godot project contained under `godot/`.
-- Use snake_case filenames/folders: `simulation.gd`, `main.tscn`, `theme.tres`.
-- Use PascalCase Godot node names and `class_name` identifiers, e.g. `Simulation`.
-- Prefer scenes for composition, scripts for behavior, resources/themes for data.
-- 3D: `CharacterBody3D` for Gizmo, `Camera3D` fixed at a Diablo angle, `MeshInstance3D`
-  loading `gizmo.glb`.
-- Start headless: `simulation.ts` → `godot/scripts/simulation.gd` +
-  `godot/tests/run_simulation_tests.gd`.
+- snake_case filenames/folders (`simulation.gd`, `main.tscn`, `theme.tres`); PascalCase node
+  names and `class_name` identifiers (`Simulation`).
+- Scenes for composition, scripts for behavior, resources/themes for data.
+- 3D: `CharacterBody3D` for Gizmo, `Camera3D` fixed at a Diablo angle, `MeshInstance3D` loading `gizmo.glb`.
+- Headless-first: `simulation.ts` → `godot/scripts/simulation.gd` + `godot/tests/run_simulation_tests.gd`.
 
-## Commands and gates
+## Commands & gates
 - Feel check: `npx serve .` from repo root.
 - Godot version: `${GODOT_BIN:-godot} --version`.
-- Godot import: `${GODOT_BIN:-godot} --headless --path godot --import`.
-- Godot syntax: `${GODOT_BIN:-godot} --headless --path godot --check-only --script res://scripts/simulation.gd`.
-- Godot tests: `${GODOT_BIN:-godot} --headless --path godot --script res://tests/run_simulation_tests.gd`.
+- Import: `${GODOT_BIN:-godot} --headless --path godot --import`.
+- Syntax check: `${GODOT_BIN:-godot} --headless --path godot --check-only --script res://scripts/simulation.gd`.
+- Tests: `${GODOT_BIN:-godot} --headless --path godot --script res://tests/run_simulation_tests.gd`.
+
+## Project conventions ("set up like that")
+- **Decisions** → `docs/adr/` (one ADR per locked choice; recorded via `domain-modeling`).
+  **Domain language** grows into `CONTEXT.md` — add a term only once the learner can use it.
+- **Issues / PRDs** (only if/when work needs tracking) → `.scratch/` markdown.
+- **Git:** branch off `main`; commit/push only when asked. End commit messages with the
+  `Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>` line.
 
 ## Boundaries
 - Do not rewrite the Phaser source, root web build, or `design-handoff/NARRATIVE.md`.
@@ -64,10 +74,8 @@ effort, not "watch the AI build" and not "type everything yourself."
 - Do not attempt a full port in one lesson. Do not expand past v1 scope until v1 ships.
 
 ## Next lesson workflow
-1. Run the `/teach` skill from this directory; read `learning-records/` for the zone
-   of proximal development and `CONTEXT.md` for the v1 scope spine.
-2. Cite the `simulation.ts` file/line anchor for the slice being ported.
-3. Co-develop that slice in `godot/` — explain, build together, keep it small enough
-   to absorb; capture the lesson as HTML in `lessons/`.
-4. Verify, and write a `learning-records/` entry when the learner demonstrates
-   understanding.
+1. Run `/teach`; read `learning-records/` (zone of proximal development) and `CONTEXT.md` (v1 scope spine).
+2. Cite the `simulation.ts` file/line for the slice; if shaping a module, pull in
+   `codebase-design`; if it's testable logic, `tdd` it.
+3. Co-develop the slice in `godot/` — small enough to absorb; capture it as HTML in `lessons/`.
+4. `review` the diff, verify, and write a `learning-records/` entry when understanding is shown.
