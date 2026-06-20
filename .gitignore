@@ -41,3 +41,6 @@ docs/godot/answer-key/.godot/
 
 # --- generated key-art test iterations (storage path is a user decision; not source) ---
 art/generated/
+
+# --- generated soundtrack media (kept local; convert to .ogg for the engine when integrating) ---
+godot/audio/gizmo-soundtrack/*.mp4
