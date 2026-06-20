@@ -42,6 +42,12 @@ func _initialize() -> void:
 	_test_enemy_dies_and_drops_spark()
 	_test_collecting_spark_grants_xp()
 	_test_sparks_drive_leveling()
+	# Combat hardening & events (0009 review)
+	_test_dead_enemy_is_not_targeted()
+	_test_nearest_of_two_is_targeted()
+	_test_pickup_cap_holds()
+	_test_combat_events_emitted()
+	_test_pickup_and_levelup_events_emitted()
 	print("")
 	if _failed == 0:
 		print("PASS — %d checks" % _passed)
@@ -65,6 +71,13 @@ func _check_eq(desc: String, actual: Variant, expected: Variant) -> void:
 	else:
 		_failed += 1
 		printerr("  FAIL - %s (got %s, expected %s)" % [desc, actual, expected])
+
+# True if last_events carries an event of the given "type".
+func _has_event(events: Array, type: String) -> bool:
+	for e in events:
+		if e.get("type") == type:
+			return true
+	return false
 
 # --- Sparks & leveling (0006) ---
 
@@ -283,6 +296,7 @@ func _test_enemy_dies_and_drops_spark() -> void:
 	var sim := Sim.new()
 	sim.spawn_interval = 9999.0
 	sim.attack_cooldown = 0.05
+	sim.pickup_radius = 0.0       # isolate: the dropped Spark must not be auto-collected
 	var e := Sim.Enemy.new()
 	e.position = Vector3(2.0, 0.0, 0.0)
 	e.hp = 1.0            # one shot kills (attack_damage 1)
@@ -316,3 +330,79 @@ func _test_sparks_drive_leveling() -> void:
 		sim.pickups.append(p)
 	sim.tick(0.05, Vector3.ZERO)
 	_check_eq("collecting enough Sparks levels Gizmo up", sim.level, 2)
+
+# --- Combat hardening & events (0009 review) ---
+
+func _test_dead_enemy_is_not_targeted() -> void:
+	var sim := Sim.new()
+	sim.spawn_interval = 9999.0
+	sim.attack_cooldown = 0.05
+	sim.pickup_radius = 0.0       # isolate from collection
+	var corpse := Sim.Enemy.new()
+	corpse.position = Vector3(2.0, 0.0, 0.0)  # in range, but already dead
+	corpse.hp = 0.0
+	corpse.radius = 1.0
+	corpse.xp_value = Sim.NIBBLER_XP
+	sim.enemies.append(corpse)
+	sim.tick(0.05, Vector3.ZERO)
+	_check_eq("the weapon ignores a corpse (no Spark)", sim.pickups.size(), 0)
+	_check_eq("a corpse grants no XP", sim.xp, 0)
+
+func _test_nearest_of_two_is_targeted() -> void:
+	var sim := Sim.new()
+	sim.spawn_interval = 9999.0
+	sim.attack_cooldown = 0.05
+	var near := Sim.Enemy.new()
+	near.position = Vector3(2.0, 0.0, 0.0)  # both in range; this one is nearer
+	near.hp = 5.0                            # survives one shot
+	near.radius = 1.0
+	sim.enemies.append(near)
+	var far := Sim.Enemy.new()
+	far.position = Vector3(5.0, 0.0, 0.0)
+	far.hp = 5.0
+	far.radius = 1.0
+	sim.enemies.append(far)
+	sim.tick(0.05, Vector3.ZERO)
+	_check("the nearer enemy is hit", near.hp < 5.0)
+	_check("the farther enemy is spared (one target per shot)", far.hp == 5.0)
+
+func _test_pickup_cap_holds() -> void:
+	var sim := Sim.new()
+	sim.spawn_interval = 9999.0
+	sim.max_pickups = 3
+	for i in 5:                                # 5 uncollected Sparks, far from Gizmo
+		var p := Sim.Pickup.new()
+		p.position = Vector3(100.0, 0.0, 0.0)  # outside pickup_radius -> never collected
+		p.value = i                            # 0,1,2,3,4 -> oldest are 0 and 1
+		sim.pickups.append(p)
+	sim.tick(0.05, Vector3.ZERO)
+	_check_eq("uncollected Sparks are capped", sim.pickups.size(), 3)
+	_check_eq("the oldest Sparks are dropped first", sim.pickups[0].value, 2)
+
+func _test_combat_events_emitted() -> void:
+	var sim := Sim.new()
+	sim.spawn_interval = 9999.0
+	sim.attack_cooldown = 0.05
+	sim.pickup_radius = 0.0       # isolate combat events from collection
+	var e := Sim.Enemy.new()
+	e.position = Vector3(2.0, 0.0, 0.0)
+	e.hp = 1.0                    # one shot kills
+	e.radius = 1.0
+	e.xp_value = Sim.NIBBLER_XP
+	sim.enemies.append(e)
+	sim.tick(0.05, Vector3.ZERO)
+	_check("a shot emits an 'attack' event", _has_event(sim.last_events, "attack"))
+	_check("a landed shot emits a 'hit' event", _has_event(sim.last_events, "hit"))
+	_check("a kill emits a 'defeat' event", _has_event(sim.last_events, "defeat"))
+
+func _test_pickup_and_levelup_events_emitted() -> void:
+	var sim := Sim.new()
+	sim.spawn_interval = 9999.0
+	for i in 10:                     # 10 * 10 = 100 xp > level-1 threshold (92)
+		var p := Sim.Pickup.new()
+		p.position = Vector3.ZERO     # on Gizmo -> collected this tick
+		p.value = 10
+		sim.pickups.append(p)
+	sim.tick(0.05, Vector3.ZERO)
+	_check("collecting a Spark emits a 'pickup' event", _has_event(sim.last_events, "pickup"))
+	_check("crossing the threshold emits a 'levelup' event", _has_event(sim.last_events, "levelup"))

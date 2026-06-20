@@ -4,8 +4,9 @@ extends RefCounted
 ## Headless game logic, ported from game-src-phaser/src/game/simulation.ts.
 ## Slices: Sparks & leveling (0006); run clock & player health (0007);
 ##         enemies — spawn/chase/separate/contact (0008); auto-fire combat,
-##         enemy death, Spark drops & collection (0009 — closes the loop to 0006).
-## Anchors: design intent -> reference/game-balance-reference.md (§3, §5, §6);
+##         enemy death, Spark drops & collection + per-tick events (0009 — closes
+##         the loop to 0006).
+## Anchors: design intent -> reference/game-balance-reference.md (§2, §3, §5, §6);
 ##          fiction       -> design-handoff/NARRATIVE.md §4;
 ##          mechanics     -> game-src-phaser/src/game/simulation.ts
 ## ADR 0001: player HP is the health bar — NOT the Spark of Humanity meter.
@@ -76,11 +77,22 @@ var _spawn_count := 0
 
 # --- Combat & pickups (0009) ---
 var pickups: Array[Pickup] = []
+var max_pickups := 90         # uncollected-Spark cap (simulation.ts:207 MAX_PICKUPS); drop oldest over cap
 var attack_cooldown := ATTACK_COOLDOWN
 var attack_range := ATTACK_RANGE
 var attack_damage := ATTACK_DAMAGE
 var pickup_radius := PICKUP_RADIUS
 var _attack_timer := 0.0
+
+# --- Per-tick events (0009) — transient HUD/VFX feedback hooks. A minimal analogue
+# of the GameEvent[] that simulation.ts builds fresh and returns each frame
+# (simulation.ts:168-198 type, :462 new, :496 return): same lifecycle and the same
+# five event names, but each carries only the fields our current systems produce.
+# Richer GameEvent fields (attack kind, crit, color, upgrade choices, full object
+# refs) land with those systems — adding them now would invent undesigned detail.
+# Rebuilt every tick(); a consumer reads it right after ticking. 0009 produces
+# these; 0011 HUD and a later VFX lesson consume them — 0010 waves does NOT yet.
+var last_events: Array[Dictionary] = []
 
 func _init() -> void:
 	next_xp = next_xp_for_level(level)
@@ -107,10 +119,11 @@ func xp_progress() -> float:
 # ---- Run clock, health, enemies & combat ----
 
 ## Advance the run by dt seconds, given where Gizmo is.
-## Mirrors updateGameState (simulation.ts:459-494): no-op unless playing; dt
-## clamped; enemies update, the weapon fires, Sparks are collected; the run
-## COMPLETES (a win) when the timer runs out.
+## Mirrors updateGameState (simulation.ts:459-494): clears this frame's events,
+## then (unless not playing) clamps dt; enemies update, the weapon fires, Sparks
+## are collected; the run COMPLETES (a win) when the timer runs out.
 func tick(dt: float, gizmo_position := Vector3.ZERO) -> void:
+	last_events.clear()   # fresh each frame (simulation.ts:462), before the phase guard so a non-playing tick reports none, not stale
 	if phase != PHASE_PLAYING:
 		return
 	var safe_dt := clampf(dt, 0.0, MAX_DT)
@@ -178,10 +191,11 @@ func _update_enemies(dt: float, gizmo_position: Vector3) -> void:
 			if to_player.length() <= e.radius + PLAYER_CONTACT_RADIUS:
 				take_damage(e.damage)
 
-## Auto-fire: on a cooldown, the spark weapon hits the NEAREST enemy in range.
-## Mirrors updateWeapons + dealDamage (simulation.ts:817-836, 1169-1185): a kill
-## removes the enemy and drops a Spark (xp pickup) worth its xp_value. Deferred:
-## crits, multi-target, cache/heart drops, projectile/aura VFX.
+## Auto-fire: on a cooldown, the spark weapon hits the NEAREST LIVE enemy in range.
+## Mirrors updateWeapons + dealDamage (simulation.ts:817-836, 1169-1185): emits an
+## attack + hit event, and a kill removes the enemy, drops a Spark (xp pickup)
+## worth its xp_value, and emits a defeat event. Deferred: crits, multi-target,
+## cache/heart drops, projectile/aura VFX.
 func _update_weapon(dt: float, gizmo_position: Vector3) -> void:
 	_attack_timer += dt
 	if _attack_timer < attack_cooldown:
@@ -190,6 +204,8 @@ func _update_weapon(dt: float, gizmo_position: Vector3) -> void:
 	var target: Enemy = null
 	var best := INF
 	for e in enemies:
+		if e.hp <= 0.0:
+			continue  # a corpse is not a target (simulation.ts:1714 filters hp > 0)
 		var d := gizmo_position.distance_to(e.position)
 		# in range when the enemy's BODY is reachable (simulation.ts:1716: dist <= range + radius)
 		if d <= attack_range + e.radius and d < best:
@@ -197,23 +213,32 @@ func _update_weapon(dt: float, gizmo_position: Vector3) -> void:
 			target = e
 	if target == null:
 		return
+	last_events.append({"type": "attack", "from": gizmo_position, "to": target.position})
 	target.hp -= attack_damage
+	last_events.append({"type": "hit", "position": target.position, "damage": attack_damage})
 	if target.hp <= 0.0:
 		enemies.erase(target)
 		var spark := Pickup.new()
 		spark.position = target.position
 		spark.value = target.xp_value
 		pickups.append(spark)
+		last_events.append({"type": "defeat", "position": spark.position, "xp": spark.value})
 
-## Collect Sparks within reach -> bank xp (which can level Gizmo up; 0006).
-## Mirrors the xp pickup gain (simulation.ts:1014).
+## Collect Sparks within reach -> bank xp (which can level Gizmo up; 0006), emitting
+## a pickup event (and a levelup event when the threshold is crossed). Mirrors the
+## xp pickup gain (simulation.ts:949, 1038). Uncollected Sparks are capped: over the
+## cap, the OLDEST are dropped (simulation.ts:945: .slice(-MAX_PICKUPS)).
 func _update_pickups(gizmo_position: Vector3) -> void:
 	var kept: Array[Pickup] = []
 	for p in pickups:
 		if gizmo_position.distance_to(p.position) <= pickup_radius:
-			add_xp(p.value)
+			last_events.append({"type": "pickup", "value": p.value})
+			if add_xp(p.value):
+				last_events.append({"type": "levelup", "level": level})
 		else:
 			kept.append(p)
+	if kept.size() > max_pickups:
+		kept = kept.slice(kept.size() - max_pickups)
 	pickups = kept
 
 ## Push overlapping enemies apart on the XZ plane by half their overlap each.

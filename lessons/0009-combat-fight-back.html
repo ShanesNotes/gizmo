@@ -22,7 +22,7 @@
     they <strong>drop Sparks</strong> → you <strong>collect</strong> them → Sparks are XP, so you
     <strong>level up</strong> (the 0006 curve). Kill, gather, grow — that's the engine of every
     Vampire Survivors / Diablo / Megabonk run. Tuning intent: <code>reference/game-balance-reference.md</code>
-    §3 (damage) &amp; §5 (XP/progression); mechanics: <code>simulation.ts</code>
+    §2 (damage) &amp; §5 (XP/progression); mechanics: <code>simulation.ts</code>
     (<code>updateWeapons</code>, <code>dealDamage</code>).</p>
   </div>
 
@@ -53,6 +53,8 @@
 	var target: Enemy = null
 	var best := INF
 	for e in enemies:
+		if e.hp &lt;= 0.0:
+			continue  # a corpse is not a target (simulation.ts:1714 filters hp &gt; 0)
 		var d := gizmo_position.distance_to(e.position)
 		# reachable when the enemy's BODY is in range (simulation.ts:1716: dist &lt;= range + radius)
 		if d &lt;= attack_range + e.radius and d &lt; best:
@@ -60,28 +62,48 @@
 			target = e
 	if target == null:
 		return
+	last_events.append({"type": "attack", "from": gizmo_position, "to": target.position})
 	target.hp -= attack_damage
+	last_events.append({"type": "hit", "position": target.position, "damage": attack_damage})
 	if target.hp &lt;= 0.0:
 		enemies.erase(target)
 		var spark := Pickup.new()
 		spark.position = target.position
 		spark.value = target.xp_value
 		pickups.append(spark)
+		last_events.append({"type": "defeat", "position": spark.position, "xp": spark.value})
 
 func _update_pickups(gizmo_position: Vector3) -> void:
 	var kept: Array[Pickup] = []
 	for p in pickups:
 		if gizmo_position.distance_to(p.position) &lt;= pickup_radius:
-			add_xp(p.value)
+			last_events.append({"type": "pickup", "value": p.value})
+			if add_xp(p.value):
+				last_events.append({"type": "levelup", "level": level})
 		else:
 			kept.append(p)
+	if kept.size() &gt; max_pickups:                    # cap uncollected Sparks
+		kept = kept.slice(kept.size() - max_pickups)  # drop the oldest (simulation.ts:945)
 	pickups = kept</code></pre>
   <p>The weapon (<code>updateWeapons</code> + <code>dealDamage</code>,
-  <code>simulation.ts:817-836, 1169-1185</code>) finds the nearest enemy in range and deals damage; a
-  kill removes the enemy and drops a Spark worth its <code>xp_value</code> (nibbler = 3, ENEMY_SPECS).
-  <code>_update_pickups</code> (the xp gain, <code>simulation.ts:1014</code>) vacuums Sparks within
-  <code>pickup_radius</code> straight into <code>add_xp</code> — which is the 0006 leveling curve.
+  <code>simulation.ts:817-836, 1169-1185</code>) finds the nearest <em>live</em> enemy in range and deals
+  damage; a kill removes the enemy and drops a Spark worth its <code>xp_value</code> (nibbler = 3,
+  ENEMY_SPECS). <code>_update_pickups</code> (the xp gain, <code>simulation.ts:949, 1038</code>) vacuums
+  Sparks within <code>pickup_radius</code> straight into <code>add_xp</code> — the 0006 leveling curve.
   That single call is the loop snapping shut.</p>
+
+  <div class="card heads-up">
+    <span class="label">Two seams for what's next — events &amp; a cap</span>
+    <p>The combat code also fills <code>last_events</code>, a list rebuilt each <code>tick()</code>
+    (a minimal echo of the <code>GameEvent[]</code> that <code>simulation.ts</code> returns every frame): an
+    <code>attack</code>, a <code>hit</code>, a <code>defeat</code> on a kill, a <code>pickup</code> on
+    collection, a <code>levelup</code> when the curve fires. Nothing reads it yet — it's the hook the
+    <strong>0011 HUD</strong> (a level-up flash) and a later <strong>VFX</strong> lesson will consume,
+    so they never have to diff state to guess what happened. And uncollected Sparks are
+    <strong>capped</strong> at <code>max_pickups</code> (90, per <code>simulation.ts</code>'s
+    <code>MAX_PICKUPS</code>; balance §6 tracks pickup count): over the cap the oldest are dropped, so a
+    wave (0010) of kills can't grow an unbounded pile of pickups. Both are tested.</p>
+  </div>
 
   <div class="card turn">
     <span class="label">Test-first — damage, death, drop, collect, level</span>
@@ -103,6 +125,7 @@ func _test_enemy_dies_and_drops_spark() -> void:
 	var sim := Sim.new()
 	sim.spawn_interval = 9999.0
 	sim.attack_cooldown = 0.05
+	sim.pickup_radius = 0.0       # isolate: the dropped Spark must not be auto-collected
 	var e := Sim.Enemy.new()
 	e.position = Vector3(2.0, 0.0, 0.0)
 	e.hp = 1.0            # one shot kills (attack_damage 1)
@@ -138,8 +161,10 @@ func _test_sparks_drive_leveling() -> void:
 	_check_eq("collecting enough Sparks levels Gizmo up", sim.level, 2)</code></pre>
     <p>The last test is the whole point: drop enough Sparks, collect them, and the
     <strong>0006 leveling curve fires</strong> — the systems from three lessons ago and now are one
-    loop. End state: <strong>PASS — 52 checks</strong>. (<code>Sim.Enemy.new()</code> /
-    <code>Sim.Pickup.new()</code> reach the inner classes through the preloaded script.)</p>
+    loop. Review-hardening checks join them (the weapon skips a corpse, picks the nearest of two, the
+    pickup cap holds, and each event fires), so the end state is <strong>PASS — 63 checks</strong>.
+    (<code>Sim.Enemy.new()</code> / <code>Sim.Pickup.new()</code> reach the inner classes through the
+    preloaded script.)</p>
   </div>
 
   <h2>Part 2 — render kills &amp; Sparks (the scene)</h2>
@@ -181,7 +206,7 @@ func _sync(agents: Array, views: Dictionary, scene: PackedScene) -> void:
   data agent itself, so when Simulation removes an enemy (death) or a Spark (collected), the matching
   visual is freed automatically — no index bookkeeping. Press Play: stand still and a halo of violet
   Sparks rings you (kills at the weapon's edge); <strong>move</strong> and you vacuum them, and the
-  XP climbs.</p>
+  Simulation's XP rises (there's no HUD yet — that lands in 0011).</p>
 
   <div class="card heads-up">
     <span class="label">Deliberately simple, for now</span>
@@ -194,18 +219,19 @@ func _sync(agents: Array, views: Dictionary, scene: PackedScene) -> void:
 
   <div class="card turn">
     <span class="label">Done means…</span>
-    <p><strong>Done</strong> = the suite is <strong>green (52 checks)</strong>, and in-game the
-    auto-fire clears enemies, drops violet Sparks, and moving over them climbs your XP (the headless
-    test proves it crosses into a level-up). You can explain the closed loop (kill → Spark → XP →
-    level), why combat logic lives in Simulation (ADR 0002), and how the dictionary
-    <code>_sync</code> frees a visual when its agent dies. Then I log <code>0009</code>, and
+    <p><strong>Done</strong> = the suite is <strong>green (63 checks)</strong>, and in-game the
+    auto-fire clears enemies, drops violet Sparks, and moving over them raises the Simulation's XP
+    (the headless test proves it crosses into a level-up; the HUD shows it in 0011). You can explain
+    the closed loop (kill → Spark → XP → level), why combat logic lives in Simulation (ADR 0002), and
+    how the dictionary <code>_sync</code> frees a visual when its agent dies. Then I log <code>0009</code>, and
     <strong>0010</strong> turns the flat spawn into real <strong>waves</strong> (escalating pressure
     → elites → bosses), where this loop starts to <em>snowball</em>.</p>
   </div>
 
-  <p class="source">Primary sources · <code>reference/game-balance-reference.md</code> (§3 damage,
-  §5 XP/progression), <code>game-src-phaser/src/game/simulation.ts</code> (<code>updateWeapons</code>
-  817-836, <code>dealDamage</code> 1169-1185, xp pickup 1014, <code>ENEMY_SPECS</code> 259), and
+  <p class="source">Primary sources · <code>reference/game-balance-reference.md</code> (§2 damage,
+  §5 XP/progression, §6 spawn/pickup performance), <code>game-src-phaser/src/game/simulation.ts</code>
+  (<code>updateWeapons</code> 817-836, <code>dealDamage</code> 1169-1185, xp pickup 949/1038,
+  <code>GameEvent</code> 168-198, <code>MAX_PICKUPS</code> 207/945, <code>ENEMY_SPECS</code> 259), and
   <code>docs/adr/0001</code> + <code>docs/adr/0002</code>. Godot Docs — <a
   href="https://docs.godotengine.org/en/4.6/classes/class_dictionary.html">Dictionary</a> and <a
   href="https://docs.godotengine.org/en/4.6/classes/class_node.html#class-node-method-queue-free">Node.queue_free()</a>.</p>

@@ -2,6 +2,12 @@
 
 Orientation keystone. Read first; if other docs disagree, this wins.
 
+## Clean-slate reset (2026-06-20)
+This project is now a **clean-slate 3D Godot rebuild**. Prior 2.5D, sprite-first,
+or orthographic-presentation plans/docs are inactive history unless the user
+explicitly reactivates them. Use them only as archaeology; do not let them steer
+new work.
+
 ## What the game is
 A **rogue-lite** in which **Gizmo**, a clanker, preserves the **spark of humanity**
 through increasingly difficult **waves of enemies, elites, and bosses**, across a
@@ -20,7 +26,7 @@ Built in **3D with a fixed Diablo-style camera** (looking down ~45°), not 2.5D
 sprites. Reason: with a 3D model the engine solves camera angle, facing direction,
 and frame-to-frame consistency for free — exactly where AI-generated 2D sprite
 sheets fall apart. The old 2.5D sprite scaffolding was removed; recover anything
-from git history if needed.
+from git history only if the user explicitly asks for archaeology.
 
 ## v1 scope (the only thing we're building first)
 Gizmo moves under a fixed Diablo camera; enemies spawn; you fight; you can die;
@@ -46,8 +52,11 @@ v1 is finished.
 - **3D character model** → `godot/assets/gizmo.glb` (meshy.ai: 53-bone rig, no clips yet)
 - **The Godot build** → `godot/` (snake_case files, PascalCase nodes)
 - **Learning path** → `lessons/` (one HTML win each, numbered from `0001`) +
-  `learning-records/` (empty = start from zero). The 3D rogue-lite build starts
-  fresh at lesson `0001`; no lessons completed yet.
+  `learning-records/` (records are drafts until the learner can explain the slice).
+  Built so far: `0001`–`0009` — player + fixed Diablo camera, Sparks & leveling,
+  run clock & player health, enemies (spawn/chase/separate/contact), and combat
+  (auto-fire → death → Spark → XP → level: **the loop is closed**). Next: `0010`
+  waves (escalating pressure → elites → bosses).
 
 ## How it's built
 Co-development via the `/teach` skill — explain a concept, then build the slice
