@@ -48,6 +48,7 @@ func _initialize() -> void:
 	_test_pickup_cap_holds()
 	_test_combat_events_emitted()
 	_test_pickup_and_levelup_events_emitted()
+	_test_events_are_snapshot_safe()
 	print("")
 	if _failed == 0:
 		print("PASS — %d checks" % _passed)
@@ -406,3 +407,24 @@ func _test_pickup_and_levelup_events_emitted() -> void:
 	sim.tick(0.05, Vector3.ZERO)
 	_check("collecting a Spark emits a 'pickup' event", _has_event(sim.last_events, "pickup"))
 	_check("crossing the threshold emits a 'levelup' event", _has_event(sim.last_events, "levelup"))
+
+# A consumer that stores last_events must keep that frame's snapshot — tick() builds a
+# fresh array (not clear-in-place), matching simulation.ts's fresh GameEvent[] per frame.
+func _test_events_are_snapshot_safe() -> void:
+	var sim := Sim.new()
+	sim.spawn_interval = 9999.0
+	sim.attack_cooldown = 0.05
+	sim.pickup_radius = 0.0       # isolate from collection
+	var e := Sim.Enemy.new()
+	e.position = Vector3(2.0, 0.0, 0.0)
+	e.hp = 1.0
+	e.radius = 1.0
+	e.xp_value = Sim.NIBBLER_XP
+	sim.enemies.append(e)
+	sim.tick(0.05, Vector3.ZERO)         # produces attack/hit/defeat
+	var snapshot := sim.last_events       # a consumer stores the reference
+	var snapshot_size := snapshot.size()
+	_check("the first tick produced events", snapshot_size > 0)
+	sim.tick(0.05, Vector3.ZERO)         # next frame: no enemies left -> no new events
+	_check("a stored snapshot is not emptied by the next tick", snapshot.size() == snapshot_size)
+	_check("the live events did reset for the new frame", sim.last_events.size() == 0)

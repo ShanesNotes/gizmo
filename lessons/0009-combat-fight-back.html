@@ -34,7 +34,7 @@
     0008's enemies. <strong>Deferred</strong> (named later lessons): weapon <em>VFX</em> — tracers,
     projectiles, GPU particles (a particles/shader lesson), so for now the shot itself is invisible;
     the feedback is enemies <em>vanishing</em> and Sparks flying out. Also later: crits, multi-target,
-    Cache/Heart drops, magnet upgrades, and waves/elites/bosses (0010+).</p>
+    Cache/Heart drops, magnet upgrades, and pressure escalation (0010+).</p>
   </div>
 
   <h2>Part 1 — the combat loop (logic, test-first)</h2>
@@ -77,7 +77,7 @@ func _update_pickups(gizmo_position: Vector3) -> void:
 	var kept: Array[Pickup] = []
 	for p in pickups:
 		if gizmo_position.distance_to(p.position) &lt;= pickup_radius:
-			last_events.append({"type": "pickup", "value": p.value})
+			last_events.append({"type": "pickup", "position": p.position, "value": p.value})
 			if add_xp(p.value):
 				last_events.append({"type": "levelup", "level": level})
 		else:
@@ -88,21 +88,22 @@ func _update_pickups(gizmo_position: Vector3) -> void:
   <p>The weapon (<code>updateWeapons</code> + <code>dealDamage</code>,
   <code>simulation.ts:817-836, 1169-1185</code>) finds the nearest <em>live</em> enemy in range and deals
   damage; a kill removes the enemy and drops a Spark worth its <code>xp_value</code> (nibbler = 3,
-  ENEMY_SPECS). <code>_update_pickups</code> (the xp gain, <code>simulation.ts:949, 1038</code>) vacuums
+  ENEMY_SPECS). <code>_update_pickups</code> (the xp gain, <code>simulation.ts:949, 1014, 1038</code>) vacuums
   Sparks within <code>pickup_radius</code> straight into <code>add_xp</code> — the 0006 leveling curve.
   That single call is the loop snapping shut.</p>
 
   <div class="card heads-up">
     <span class="label">Two seams for what's next — events &amp; a cap</span>
-    <p>The combat code also fills <code>last_events</code>, a list rebuilt each <code>tick()</code>
-    (a minimal echo of the <code>GameEvent[]</code> that <code>simulation.ts</code> returns every frame): an
+    <p>The combat code also fills <code>last_events</code> — a fresh array each <code>tick()</code>
+    (a minimal echo of the <code>GameEvent[]</code> that <code>simulation.ts</code> returns every frame,
+    so a consumer that stores the reference keeps that frame's snapshot): an
     <code>attack</code>, a <code>hit</code>, a <code>defeat</code> on a kill, a <code>pickup</code> on
     collection, a <code>levelup</code> when the curve fires. Nothing reads it yet — it's the hook the
     <strong>0011 HUD</strong> (a level-up flash) and a later <strong>VFX</strong> lesson will consume,
     so they never have to diff state to guess what happened. And uncollected Sparks are
     <strong>capped</strong> at <code>max_pickups</code> (90, per <code>simulation.ts</code>'s
-    <code>MAX_PICKUPS</code>; balance §6 tracks pickup count): over the cap the oldest are dropped, so a
-    wave (0010) of kills can't grow an unbounded pile of pickups. Both are tested.</p>
+    <code>MAX_PICKUPS</code>; balance §6 tracks pickup count): over the cap the oldest are dropped, so
+    a pressure spike of kills can't grow an unbounded pile of pickups. Both are tested.</p>
   </div>
 
   <div class="card turn">
@@ -162,7 +163,8 @@ func _test_sparks_drive_leveling() -> void:
     <p>The last test is the whole point: drop enough Sparks, collect them, and the
     <strong>0006 leveling curve fires</strong> — the systems from three lessons ago and now are one
     loop. Review-hardening checks join them (the weapon skips a corpse, picks the nearest of two, the
-    pickup cap holds, and each event fires), so the end state is <strong>PASS — 63 checks</strong>.
+    pickup cap holds, each event fires, and a stored events snapshot survives the next tick), so the
+    end state is <strong>PASS — 66 checks</strong>.
     (<code>Sim.Enemy.new()</code> / <code>Sim.Pickup.new()</code> reach the inner classes through the
     preloaded script.)</p>
   </div>
@@ -214,23 +216,23 @@ func _sync(agents: Array, views: Dictionary, scene: PackedScene) -> void:
     particles/shader lesson; here the feedback is enemies vanishing + Sparks. One weapon, one target
     per shot, no crits — multi-target, crits, Cache/Heart drops, and magnet upgrades come with the
     upgrade draft. Spark value is the faithful 3, so leveling takes many kills — that's real horde
-    pacing (waves ramp it in 0010).</p>
+    pacing (the pressure director ramps it in 0010).</p>
   </div>
 
   <div class="card turn">
     <span class="label">Done means…</span>
-    <p><strong>Done</strong> = the suite is <strong>green (63 checks)</strong>, and in-game the
+    <p><strong>Done</strong> = the suite is <strong>green (66 checks)</strong>, and in-game the
     auto-fire clears enemies, drops violet Sparks, and moving over them raises the Simulation's XP
     (the headless test proves it crosses into a level-up; the HUD shows it in 0011). You can explain
     the closed loop (kill → Spark → XP → level), why combat logic lives in Simulation (ADR 0002), and
     how the dictionary <code>_sync</code> frees a visual when its agent dies. Then I log <code>0009</code>, and
-    <strong>0010</strong> turns the flat spawn into real <strong>waves</strong> (escalating pressure
-    → elites → bosses), where this loop starts to <em>snowball</em>.</p>
+    <strong>0010</strong> turns the flat spawn into a <strong>pressure director</strong>, where this
+    loop starts to <em>snowball</em> without player-facing wave rounds.</p>
   </div>
 
   <p class="source">Primary sources · <code>reference/game-balance-reference.md</code> (§2 damage,
   §5 XP/progression, §6 spawn/pickup performance), <code>game-src-phaser/src/game/simulation.ts</code>
-  (<code>updateWeapons</code> 817-836, <code>dealDamage</code> 1169-1185, xp pickup 949/1038,
+  (<code>updateWeapons</code> 817-836, <code>dealDamage</code> 1169-1185, xp gain 949/1014/1038,
   <code>GameEvent</code> 168-198, <code>MAX_PICKUPS</code> 207/945, <code>ENEMY_SPECS</code> 259), and
   <code>docs/adr/0001</code> + <code>docs/adr/0002</code>. Godot Docs — <a
   href="https://docs.godotengine.org/en/4.6/classes/class_dictionary.html">Dictionary</a> and <a
@@ -240,7 +242,7 @@ func _sync(agents: Array, views: Dictionary, scene: PackedScene) -> void:
 
   <nav class="lesson-nav">
     <span>Prev · 0008 Enemies spawn &amp; chase</span>
-    <span>Next · 0010 Waves — escalating pressure</span>
+    <span>Next · 0010 Pressure director</span>
   </nav>
 
 </main>

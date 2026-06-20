@@ -90,8 +90,9 @@ var _attack_timer := 0.0
 # five event names, but each carries only the fields our current systems produce.
 # Richer GameEvent fields (attack kind, crit, color, upgrade choices, full object
 # refs) land with those systems — adding them now would invent undesigned detail.
-# Rebuilt every tick(); a consumer reads it right after ticking. 0009 produces
-# these; 0011 HUD and a later VFX lesson consume them — 0010 waves does NOT yet.
+# Replaced with a fresh array each tick() (not cleared in place), so a consumer that
+# stores the reference keeps that frame's snapshot. 0009 produces these; 0011 HUD and
+# a later VFX lesson consume them — 0010 pressure director does NOT yet.
 var last_events: Array[Dictionary] = []
 
 func _init() -> void:
@@ -119,11 +120,11 @@ func xp_progress() -> float:
 # ---- Run clock, health, enemies & combat ----
 
 ## Advance the run by dt seconds, given where Gizmo is.
-## Mirrors updateGameState (simulation.ts:459-494): clears this frame's events,
+## Mirrors updateGameState (simulation.ts:459-494): starts a fresh events array,
 ## then (unless not playing) clamps dt; enemies update, the weapon fires, Sparks
 ## are collected; the run COMPLETES (a win) when the timer runs out.
 func tick(dt: float, gizmo_position := Vector3.ZERO) -> void:
-	last_events.clear()   # fresh each frame (simulation.ts:462), before the phase guard so a non-playing tick reports none, not stale
+	last_events = []   # fresh array each frame (simulation.ts:462) — snapshot-safe; before the phase guard so a non-playing tick reports none, not stale
 	if phase != PHASE_PLAYING:
 		return
 	var safe_dt := clampf(dt, 0.0, MAX_DT)
@@ -224,15 +225,15 @@ func _update_weapon(dt: float, gizmo_position: Vector3) -> void:
 		pickups.append(spark)
 		last_events.append({"type": "defeat", "position": spark.position, "xp": spark.value})
 
-## Collect Sparks within reach -> bank xp (which can level Gizmo up; 0006), emitting
-## a pickup event (and a levelup event when the threshold is crossed). Mirrors the
-## xp pickup gain (simulation.ts:949, 1038). Uncollected Sparks are capped: over the
+## Collect Sparks within reach -> bank xp (the gain at simulation.ts:1014, which can
+## level Gizmo up; 0006), emitting a pickup event (949) and a levelup event (1038)
+## when the threshold is crossed. Uncollected Sparks are capped: over the
 ## cap, the OLDEST are dropped (simulation.ts:945: .slice(-MAX_PICKUPS)).
 func _update_pickups(gizmo_position: Vector3) -> void:
 	var kept: Array[Pickup] = []
 	for p in pickups:
 		if gizmo_position.distance_to(p.position) <= pickup_radius:
-			last_events.append({"type": "pickup", "value": p.value})
+			last_events.append({"type": "pickup", "position": p.position, "value": p.value})
 			if add_xp(p.value):
 				last_events.append({"type": "levelup", "level": level})
 		else:
@@ -242,7 +243,7 @@ func _update_pickups(gizmo_position: Vector3) -> void:
 	pickups = kept
 
 ## Push overlapping enemies apart on the XZ plane by half their overlap each.
-## Deterministic (no RNG). O(n^2) — fine for a teaching slice; waves need a cap
+## Deterministic (no RNG). O(n^2) — fine for a teaching slice; pressure needs a cap
 ## (have it) and a spatial hash.
 func _separate_enemies() -> void:
 	var count := enemies.size()
