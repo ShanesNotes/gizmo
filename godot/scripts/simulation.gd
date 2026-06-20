@@ -3,12 +3,13 @@ extends RefCounted
 
 ## Headless game logic, ported from game-src-phaser/src/game/simulation.ts.
 ## Slices: Sparks & leveling (0006); run clock & player health (0007);
-##         enemies — spawn, chase, separate, contact (0008).
+##         enemies — spawn/chase/separate/contact (0008); auto-fire combat,
+##         enemy death, Spark drops & collection (0009 — closes the loop to 0006).
 ## Anchors: design intent -> reference/game-balance-reference.md (§3, §5, §6);
 ##          fiction       -> design-handoff/NARRATIVE.md §4;
 ##          mechanics     -> game-src-phaser/src/game/simulation.ts
 ## ADR 0001: player HP is the health bar — NOT the Spark of Humanity meter.
-## ADR 0002: Simulation owns the rules (incl. enemies); the scene renders them.
+## ADR 0002: Simulation owns the rules (incl. enemies/combat); the scene renders.
 ##           Values are in Godot metres, not Phaser pixels.
 
 # Run phases (simulation.ts:1 RunPhase; "levelup" arrives with upgrades later).
@@ -19,7 +20,7 @@ const PHASE_GAMEOVER := "gameover"
 const RUN_DURATION := 240.0   # simulation.ts:202
 const MAX_DT := 0.05          # safeDt clamp (simulation.ts:463)
 const HIT_INVULN := 1.58      # i-frames after a hit (simulation.ts:724)
-const CONTACT_GRACE := 7.0    # no contact damage before this (simulation.ts:722, "elapsed > 7")
+const CONTACT_GRACE := 7.0    # no contact damage before this (simulation.ts:722)
 const PLAYER_CONTACT_RADIUS := 0.4  # the player's own contact reach (metres)
 
 # Enemies — in Godot metres (ADR 0002); relative balance from ENEMY_SPECS
@@ -29,6 +30,13 @@ const NIBBLER_SPEED := 3.5    # m/s — slower than Gizmo (6.0) so he can kite
 const NIBBLER_RADIUS := 1.0   # contact reach / separation radius
 const NIBBLER_HP := 1.0
 const NIBBLER_DAMAGE := 1     # faithful to ENEMY_SPECS.nibbler.damage
+const NIBBLER_XP := 3         # Spark value on death (ENEMY_SPECS.nibbler.xp)
+
+# Combat & pickups (0009) — the auto-fire "spark" weapon and Spark collection.
+const ATTACK_COOLDOWN := 0.5  # seconds between shots (v1 seed; updateWeapons cadence)
+const ATTACK_RANGE := 6.0     # metres the weapon reaches (simulation.ts spark range)
+const ATTACK_DAMAGE := 1      # one-shots a nibbler (NIBBLER_HP 1.0)
+const PICKUP_RADIUS := 1.8    # Spark collection radius (metres)
 
 ## One enemy as a lightweight data agent (ADR 0002). The scene mirrors these.
 class Enemy extends RefCounted:
@@ -37,7 +45,13 @@ class Enemy extends RefCounted:
 	var speed: float = 0.0
 	var radius: float = 1.0
 	var damage: int = 1
+	var xp_value: int = 0
 	var kind: String = ""
+
+## A dropped Spark (the xp currency) as a data agent.
+class Pickup extends RefCounted:
+	var position := Vector3.ZERO
+	var value: int = 0
 
 var phase := PHASE_PLAYING
 
@@ -59,6 +73,14 @@ var spawn_interval := 1.2     # seconds between spawns (v1 seed; cadence = balan
 var max_enemies := 60         # alive-enemy cap (balance §6.1; simulation.ts MAX_ENEMIES 122)
 var _spawn_timer := 0.0
 var _spawn_count := 0
+
+# --- Combat & pickups (0009) ---
+var pickups: Array[Pickup] = []
+var attack_cooldown := ATTACK_COOLDOWN
+var attack_range := ATTACK_RANGE
+var attack_damage := ATTACK_DAMAGE
+var pickup_radius := PICKUP_RADIUS
+var _attack_timer := 0.0
 
 func _init() -> void:
 	next_xp = next_xp_for_level(level)
@@ -82,12 +104,12 @@ func add_xp(amount: int) -> bool:
 func xp_progress() -> float:
 	return clampf(float(xp) / next_xp, 0.0, 1.0)
 
-# ---- Run clock, health & enemies ----
+# ---- Run clock, health, enemies & combat ----
 
-## Advance the run by dt seconds, given where Gizmo is (for enemy targeting).
-## Mirrors the top of updateGameState (simulation.ts:459-494): a no-op unless
-## playing; dt is clamped so a stutter can't skip ahead (or a negative frame
-## rewind); enemies update; the run COMPLETES (a win) when the timer runs out.
+## Advance the run by dt seconds, given where Gizmo is.
+## Mirrors updateGameState (simulation.ts:459-494): no-op unless playing; dt
+## clamped; enemies update, the weapon fires, Sparks are collected; the run
+## COMPLETES (a win) when the timer runs out.
 func tick(dt: float, gizmo_position := Vector3.ZERO) -> void:
 	if phase != PHASE_PLAYING:
 		return
@@ -95,6 +117,8 @@ func tick(dt: float, gizmo_position := Vector3.ZERO) -> void:
 	elapsed += safe_dt
 	invulnerable = maxf(0.0, invulnerable - safe_dt)
 	_update_enemies(safe_dt, gizmo_position)
+	_update_weapon(safe_dt, gizmo_position)
+	_update_pickups(gizmo_position)
 	if elapsed >= run_duration:
 		phase = PHASE_COMPLETE
 
@@ -116,11 +140,9 @@ func hp_progress() -> float:
 	return clampf(float(hp) / max_hp, 0.0, 1.0)
 
 ## Apply damage to the player's HP. Returns true only if the hit landed.
-## Mirrors the contact-damage primitive in simulation.ts:722-738: a real hit
-## lowers HP, grants i-frames, floors at 0, and reaching 0 ends the run
-## (gameover/lose). Zero/negative damage is a no-op — it must NOT grant free
-## i-frames (matters once armor/shields/blocked hits exist; balance §3.4).
-## Deferred to later lessons: knockback and the secondWind one-time save
+## Mirrors simulation.ts:722-738: a real hit lowers HP, grants i-frames, floors
+## at 0, and reaching 0 ends the run (gameover/lose). Zero/negative is a no-op —
+## it must NOT grant free i-frames (balance §3.4). Deferred: knockback, secondWind
 ## (simulation.ts:732-736). NOTE (ADR 0001): the health bar, not the Spark of
 ## Humanity meter.
 func take_damage(amount: int) -> bool:
@@ -134,27 +156,21 @@ func take_damage(amount: int) -> bool:
 		phase = PHASE_GAMEOVER
 	return true
 
-## Spawn (capped), seek the player, separate so the pack reads as a crowd, then
-## deal contact damage. Open-floor seek + soft separation, not navigation
-## (ADR 0002). Called from tick().
+## Spawn (capped), seek the player, separate, then deal contact damage. Open-floor
+## seek + soft separation, not navigation (ADR 0002). Called from tick().
 func _update_enemies(dt: float, gizmo_position: Vector3) -> void:
-	# 1. Spawn on a cadence, up to the alive cap (balance §6.1).
 	_spawn_timer += dt
 	if _spawn_timer >= spawn_interval:
 		_spawn_timer -= spawn_interval
 		if enemies.size() < max_enemies:
 			_spawn_nibbler(gizmo_position)
-	# 2. Seek toward Gizmo on the floor plane.
 	for e in enemies:
 		var to_player := gizmo_position - e.position
 		to_player.y = 0.0
 		var dist := to_player.length()
 		if dist > 0.0001:
 			e.position += to_player / dist * e.speed * dt
-	# 3. Soft separation so overlapping enemies read as a crowd, not one blob.
 	_separate_enemies()
-	# 4. Contact damage — AFTER moving, using the player's contact radius, and
-	#    only after the opening grace (simulation.ts:722). i-frames handle overlap.
 	if elapsed > CONTACT_GRACE:
 		for e in enemies:
 			var to_player := gizmo_position - e.position
@@ -162,9 +178,47 @@ func _update_enemies(dt: float, gizmo_position: Vector3) -> void:
 			if to_player.length() <= e.radius + PLAYER_CONTACT_RADIUS:
 				take_damage(e.damage)
 
+## Auto-fire: on a cooldown, the spark weapon hits the NEAREST enemy in range.
+## Mirrors updateWeapons + dealDamage (simulation.ts:817-836, 1169-1185): a kill
+## removes the enemy and drops a Spark (xp pickup) worth its xp_value. Deferred:
+## crits, multi-target, cache/heart drops, projectile/aura VFX.
+func _update_weapon(dt: float, gizmo_position: Vector3) -> void:
+	_attack_timer += dt
+	if _attack_timer < attack_cooldown:
+		return
+	_attack_timer -= attack_cooldown
+	var target: Enemy = null
+	var best := INF
+	for e in enemies:
+		var d := gizmo_position.distance_to(e.position)
+		# in range when the enemy's BODY is reachable (simulation.ts:1716: dist <= range + radius)
+		if d <= attack_range + e.radius and d < best:
+			best = d
+			target = e
+	if target == null:
+		return
+	target.hp -= attack_damage
+	if target.hp <= 0.0:
+		enemies.erase(target)
+		var spark := Pickup.new()
+		spark.position = target.position
+		spark.value = target.xp_value
+		pickups.append(spark)
+
+## Collect Sparks within reach -> bank xp (which can level Gizmo up; 0006).
+## Mirrors the xp pickup gain (simulation.ts:1014).
+func _update_pickups(gizmo_position: Vector3) -> void:
+	var kept: Array[Pickup] = []
+	for p in pickups:
+		if gizmo_position.distance_to(p.position) <= pickup_radius:
+			add_xp(p.value)
+		else:
+			kept.append(p)
+	pickups = kept
+
 ## Push overlapping enemies apart on the XZ plane by half their overlap each.
-## Deterministic (no RNG) so tests are stable. O(n^2) — fine for a teaching
-## slice; waves later need an alive cap (have it) and a spatial hash.
+## Deterministic (no RNG). O(n^2) — fine for a teaching slice; waves need a cap
+## (have it) and a spatial hash.
 func _separate_enemies() -> void:
 	var count := enemies.size()
 	for i in count:
@@ -180,13 +234,11 @@ func _separate_enemies() -> void:
 				if d > 0.0001:
 					push = delta / d * (min_d - d) * 0.5
 				else:
-					# Exactly overlapping: deterministic nudge by index.
 					push = Vector3(cos(i + j), 0.0, sin(i + j)) * min_d * 0.5
 				a.position -= push
 				b.position += push
 
-## Spawn one nibbler on a ring around the player. The angle is deterministic
-## (golden-angle spread) so tests don't depend on RNG.
+## Spawn one nibbler on a ring around the player. Deterministic golden-angle.
 func _spawn_nibbler(gizmo_position: Vector3) -> void:
 	var angle := _spawn_count * 2.39996323  # golden angle (radians)
 	_spawn_count += 1
@@ -197,4 +249,5 @@ func _spawn_nibbler(gizmo_position: Vector3) -> void:
 	e.speed = NIBBLER_SPEED
 	e.radius = NIBBLER_RADIUS
 	e.damage = NIBBLER_DAMAGE
+	e.xp_value = NIBBLER_XP
 	enemies.append(e)

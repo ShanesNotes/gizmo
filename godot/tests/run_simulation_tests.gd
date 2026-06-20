@@ -36,6 +36,12 @@ func _initialize() -> void:
 	_test_contact_grace()
 	_test_enemies_separate()
 	_test_enemy_cap()
+	# Combat & pickups (0009)
+	_test_autofire_damages_enemy()
+	_test_autofire_range_includes_radius()
+	_test_enemy_dies_and_drops_spark()
+	_test_collecting_spark_grants_xp()
+	_test_sparks_drive_leveling()
 	print("")
 	if _failed == 0:
 		print("PASS — %d checks" % _passed)
@@ -189,6 +195,7 @@ func _test_enemy_chases_gizmo() -> void:
 func _test_enemy_contact_damages_player() -> void:
 	var sim := Sim.new()
 	sim.spawn_interval = 0.05
+	sim.attack_cooldown = 9999.0  # isolate: don't let the weapon kill the enemy first
 	sim.elapsed = 8.0  # past the 7s contact grace (simulation.ts:722)
 	sim.tick(0.05, Vector3.ZERO)  # spawn one enemy on the ring
 	var e := sim.enemies[0]
@@ -209,6 +216,7 @@ func _test_no_spawning_after_run_over() -> void:
 func _test_contact_grace() -> void:
 	var sim := Sim.new()
 	sim.spawn_interval = 0.05
+	sim.attack_cooldown = 9999.0  # isolate from the weapon
 	sim.tick(0.05, Vector3.ZERO)  # elapsed ~0.05, before the grace; spawn an enemy
 	var e := sim.enemies[0]
 	sim.tick(0.05, e.position)  # Gizmo on the enemy, but before 7s -> no damage
@@ -232,7 +240,79 @@ func _test_enemies_separate() -> void:
 func _test_enemy_cap() -> void:
 	var sim := Sim.new()
 	sim.spawn_interval = 0.05
+	sim.attack_cooldown = 9999.0  # isolate: the weapon would otherwise thin the cap
 	sim.max_enemies = 3
 	for i in 60:
 		sim.tick(0.05, Vector3.ZERO)  # 3.0s, before the grace -> no deaths
 	_check_eq("spawning stops at the cap", sim.enemies.size(), 3)
+
+# --- Combat & pickups (0009) ---
+
+func _test_autofire_damages_enemy() -> void:
+	var sim := Sim.new()
+	sim.spawn_interval = 9999.0   # no auto-spawn; we place the enemy
+	sim.attack_cooldown = 0.05    # fire on the first tick
+	var e := Sim.Enemy.new()
+	e.position = Vector3(2.0, 0.0, 0.0)  # within attack_range (6)
+	e.hp = 5.0
+	e.radius = 1.0
+	sim.enemies.append(e)
+	sim.tick(0.05, Vector3.ZERO)
+	_check("auto-fire damages the nearest enemy", e.hp < 5.0)
+
+func _test_autofire_range_includes_radius() -> void:
+	var sim := Sim.new()
+	sim.spawn_interval = 9999.0
+	sim.attack_cooldown = 0.05
+	# centre at 6.5m, radius 1.0 -> body within range+radius (7.0); should be hit
+	var near := Sim.Enemy.new()
+	near.position = Vector3(6.5, 0.0, 0.0)
+	near.hp = 5.0
+	near.radius = 1.0
+	sim.enemies.append(near)
+	var far := Sim.Enemy.new()
+	far.position = Vector3(20.0, 0.0, 0.0)  # well out of reach
+	far.hp = 5.0
+	far.radius = 1.0
+	sim.enemies.append(far)
+	sim.tick(0.05, Vector3.ZERO)
+	_check("an enemy within range+radius is hit", near.hp < 5.0)
+	_check("an out-of-range enemy is untouched", far.hp == 5.0)
+
+func _test_enemy_dies_and_drops_spark() -> void:
+	var sim := Sim.new()
+	sim.spawn_interval = 9999.0
+	sim.attack_cooldown = 0.05
+	var e := Sim.Enemy.new()
+	e.position = Vector3(2.0, 0.0, 0.0)
+	e.hp = 1.0            # one shot kills (attack_damage 1)
+	e.radius = 1.0
+	e.xp_value = Sim.NIBBLER_XP
+	sim.enemies.append(e)
+	sim.tick(0.05, Vector3.ZERO)
+	_check_eq("a killed enemy is removed", sim.enemies.size(), 0)
+	_check_eq("death drops one Spark", sim.pickups.size(), 1)
+	_check_eq("the Spark is worth the enemy's xp", sim.pickups[0].value, Sim.NIBBLER_XP)
+
+func _test_collecting_spark_grants_xp() -> void:
+	var sim := Sim.new()
+	sim.spawn_interval = 9999.0
+	var p := Sim.Pickup.new()
+	p.position = Vector3(0.5, 0.0, 0.0)  # within pickup_radius (1.8)
+	p.value = 10
+	sim.pickups.append(p)
+	var xp_before := sim.xp
+	sim.tick(0.05, Vector3.ZERO)
+	_check_eq("collecting a Spark banks its value", sim.xp, xp_before + 10)
+	_check_eq("the collected Spark is removed", sim.pickups.size(), 0)
+
+func _test_sparks_drive_leveling() -> void:
+	var sim := Sim.new()
+	sim.spawn_interval = 9999.0
+	for i in 10:                     # 10 Sparks * 10 = 100 xp > level-1 threshold (92)
+		var p := Sim.Pickup.new()
+		p.position = Vector3.ZERO
+		p.value = 10
+		sim.pickups.append(p)
+	sim.tick(0.05, Vector3.ZERO)
+	_check_eq("collecting enough Sparks levels Gizmo up", sim.level, 2)

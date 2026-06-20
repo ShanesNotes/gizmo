@@ -1,0 +1,18 @@
+[gd_scene load_steps=3 format=3]
+
+[sub_resource type="SphereMesh" id="SphereMesh_spark"]
+radius = 0.3
+height = 0.6
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_spark"]
+albedo_color = Color(0.66, 0.4, 0.95, 1)
+emission_enabled = true
+emission = Color(0.5, 0.25, 0.9, 1)
+emission_energy_multiplier = 2.0
+
+[node name="Spark" type="Node3D"]
+
+[node name="Mesh" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
+mesh = SubResource("SphereMesh_spark")
+material_override = SubResource("StandardMaterial3D_spark")
