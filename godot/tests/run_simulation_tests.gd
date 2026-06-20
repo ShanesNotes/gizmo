@@ -33,6 +33,9 @@ func _initialize() -> void:
 	_test_enemy_chases_gizmo()
 	_test_enemy_contact_damages_player()
 	_test_no_spawning_after_run_over()
+	_test_contact_grace()
+	_test_enemies_separate()
+	_test_enemy_cap()
 	print("")
 	if _failed == 0:
 		print("PASS — %d checks" % _passed)
@@ -186,6 +189,7 @@ func _test_enemy_chases_gizmo() -> void:
 func _test_enemy_contact_damages_player() -> void:
 	var sim := Sim.new()
 	sim.spawn_interval = 0.05
+	sim.elapsed = 8.0  # past the 7s contact grace (simulation.ts:722)
 	sim.tick(0.05, Vector3.ZERO)  # spawn one enemy on the ring
 	var e := sim.enemies[0]
 	var hp_before := sim.hp
@@ -201,3 +205,34 @@ func _test_no_spawning_after_run_over() -> void:
 	for i in 10:
 		sim.tick(0.05, Vector3.ZERO)
 	_check_eq("a dead player spawns no enemies", sim.enemies.size(), 0)
+
+func _test_contact_grace() -> void:
+	var sim := Sim.new()
+	sim.spawn_interval = 0.05
+	sim.tick(0.05, Vector3.ZERO)  # elapsed ~0.05, before the grace; spawn an enemy
+	var e := sim.enemies[0]
+	sim.tick(0.05, e.position)  # Gizmo on the enemy, but before 7s -> no damage
+	_check_eq("no contact damage before the 7s grace", sim.hp, 7)
+	sim.elapsed = 8.0
+	sim.tick(0.05, e.position)  # past the grace -> contact lands
+	_check("contact damages after the grace", sim.hp < 7)
+
+func _test_enemies_separate() -> void:
+	var sim := Sim.new()
+	sim.spawn_interval = 0.05
+	sim.tick(0.05, Vector3.ZERO)
+	sim.tick(0.05, Vector3.ZERO)  # two enemies
+	sim.enemies[0].position = Vector3.ZERO
+	sim.enemies[1].position = Vector3(0.3, 0.0, 0.0)  # overlapping (radii sum to 2.0)
+	var before := sim.enemies[0].position.distance_to(sim.enemies[1].position)
+	sim._separate_enemies()
+	var after := sim.enemies[0].position.distance_to(sim.enemies[1].position)
+	_check("overlapping enemies push apart", after > before)
+
+func _test_enemy_cap() -> void:
+	var sim := Sim.new()
+	sim.spawn_interval = 0.05
+	sim.max_enemies = 3
+	for i in 60:
+		sim.tick(0.05, Vector3.ZERO)  # 3.0s, before the grace -> no deaths
+	_check_eq("spawning stops at the cap", sim.enemies.size(), 3)
