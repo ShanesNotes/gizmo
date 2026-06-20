@@ -26,7 +26,7 @@ from git history if needed.
 Gizmo moves under a fixed Diablo camera; enemies spawn; you fight; you can die;
 win/lose screen. **The character is `godot/assets/gizmo.glb` — a meshy.ai model
 with a 53-bone rig but no animation clips yet.** v1 moves it with code (no clips
-needed); adding a walk/attack clip (meshy "Animate" or Mixamo, played via
+needed); adding a walk/attack clip (via meshy's "Animate", played through an
 `AnimationPlayer`) is a *later* lesson, not a v1 blocker. Don't expand scope until
 v1 is finished.
 

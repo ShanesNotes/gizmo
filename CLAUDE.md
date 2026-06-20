@@ -21,7 +21,7 @@ Reach for the right one by situation rather than free-handing it:
 
 | When you're… | Use |
 |---|---|
-| teaching the next slice / computing the next lesson | **`/teach`** — the engine (editor-first, paced) |
+| teaching the next slice / computing the next lesson | **`/teach`** — the engine (paced co-development) |
 | deciding how a ported piece should be shaped (seams, deep modules, AI-navigable GDScript) | **`codebase-design`** |
 | porting/writing logic that can run headless (e.g. `simulation.gd`) | **`tdd`** — red→green→refactor |
 | chasing a bug, crash, or perf regression | **`diagnosing-bugs`** |
@@ -59,18 +59,22 @@ the API. Bootstrap with `godot-prompter:using-godot-prompter`, then pull the ski
 (rig → walk/attack clips), `godot-ui-designer` (the HUD Control tree), `godot-code-reviewer`
 (quality pass), `godot-performance-profiler` (stutter/frame drops), `godot-shader-author` (VFX).
 
-**`godot-runtime` MCP (connected) — verify and inspect, don't build.** Use it to check the
-learner's work and show it running: `validate`, `run_project` + `take_screenshot`,
-`get_scene_tree`, `get_debug_output`, `simulate_input`. **Editor-first stands:** the learner
-creates scenes/nodes/scripts by hand in the Godot editor; the MCP gives feedback and proof-of-life,
-it does not author the slices they should build themselves.
+**`godot-runtime` MCP (connected) — use it freely, and explain what you do.** Two modes:
+*inspect/verify* (`validate`, `run_project` + `take_screenshot`, `get_scene_tree`,
+`get_debug_output`, `simulate_input`) to check work and show it running; and *build* when the
+learner asks (`create_scene`, `add_node`, `attach_script`, …) — after which you walk through
+what you created and why, so it's understood rather than a black box.
 
 ## Teaching contract (the `/teach` engine)
-A slow-down-and-learn *co-development* effort — not "watch the AI build," not "type everything yourself."
-- Co-development, paced: explain a concept, then build the slice *together* in the Godot
-  editor. Claude writing code is fine; pacing for understanding is the point.
-- **Editor-first:** lessons are real actions in the Godot editor, not CLI file-authoring.
-- Keep the learner in the loop on every decision; avoid a finished black box they can't explain.
+A slow-down-and-learn *co-development* effort. The bar is **understanding** — never a finished
+black box the learner can't explain. How hands-on they are is their call, slice by slice.
+- Explain a concept, then build the slice *together*. The learner can drive it by hand in the
+  editor, or hand it to the model — when the model builds it (authoring files or via the
+  `godot-runtime` MCP), it walks through **what it did and why** so nothing stays a black box.
+- Doing a new thing by hand the first time builds intuition, so it's a good *default* — a
+  preference, not a rule. Switch to model-builds-and-explains whenever the learner prefers.
+- Keep the learner in the loop on every decision; they should be able to explain any slice
+  before moving on.
 - Lessons = self-contained HTML in `lessons/` (numbered from `0001`), one win each. The build
   starts fresh at `0001`; `learning-records/` is empty = from-zero.
 - Verify (or name the command) after each slice; ask at most one scope question when it changes the next step.

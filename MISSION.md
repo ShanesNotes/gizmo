@@ -23,7 +23,8 @@ scope discipline over ambition. Orientation: `CONTEXT.md`.
 
 ## Constraints
 - Co-development pace: explain, then build the slice together; keep slices small.
-- Editor-first: lessons are real actions in the Godot editor.
+- Editor-first by default, but flexible: the learner can hand a slice to the model,
+  which then explains what it built.
 - Art is generated (meshy.ai / ludo); don't hand-author assets.
 
 ## Out of scope (until v1 ships)

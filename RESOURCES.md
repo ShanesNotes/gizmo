@@ -41,7 +41,6 @@
 
 - **meshy.ai** — generated `gizmo.glb` (53-bone rig). Use its "Animate" feature to
   add walk/idle/attack clips, then export with animations selected.
-- **Mixamo** (free) — humanoid animation library; retarget onto the rig in Godot.
 - **ludo.ai** — environment/asset ideation. Use sparingly; environment art is a
   scope trap until v1's loop is fun.
 - **godot-runtime MCP** (connected) — drive/inspect the Godot project: `validate`,
