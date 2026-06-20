@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://di7plimb8je4i"]
 
-[ext_resource type="PackedScene" uid="uid://qa2ralfsy66q" path="res://assets/gizmo.glb" id="1_o5qli"]
+[ext_resource type="PackedScene" uid="uid://dmb5im2cxyxu8" path="res://scenes/gizmo.tscn" id="1_o5qli"]
 
 [sub_resource type="PlaneMesh" id="PlaneMesh_sgp6g"]
 size = Vector2(20, 20)
@@ -19,4 +19,4 @@ transform = Transform3D(0.8660254, 0.35355338, -0.35355338, 0, 0.70710677, 0.707
 [node name="Ground" type="MeshInstance3D" parent="." unique_id=864915111]
 mesh = SubResource("PlaneMesh_sgp6g")
 
-[node name="Gizmo" parent="." unique_id=1534222268 instance=ExtResource("1_o5qli")]
+[node name="Gizmo" parent="." unique_id=2133146852 instance=ExtResource("1_o5qli")]

@@ -16,3 +16,4 @@ obj/
 Thumbs.db
 *.swp
 .mcp/
+mcp_bridge.gd

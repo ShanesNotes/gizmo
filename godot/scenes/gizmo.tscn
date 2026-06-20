@@ -1,0 +1,16 @@
+[gd_scene format=3 uid="uid://dmb5im2cxyxu8"]
+
+[ext_resource type="PackedScene" uid="uid://qa2ralfsy66q" path="res://assets/gizmo.glb" id="1_c2pv7"]
+[ext_resource type="Script" uid="uid://thn1ga08dqca" path="res://scripts/gizmo.gd" id="1_f1dwy"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_f1dwy"]
+radius = 0.4
+
+[node name="Gizmo" type="CharacterBody3D" unique_id=2133146852]
+script = ExtResource("1_f1dwy")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="." unique_id=2074154384]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
+shape = SubResource("CapsuleShape3D_f1dwy")
+
+[node name="Model" parent="." unique_id=1534222268 instance=ExtResource("1_c2pv7")]
