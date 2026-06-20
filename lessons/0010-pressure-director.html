@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Gizmo · Lesson 0010 — Pressure director: the clock is the boss</title>
+  <link rel="stylesheet" href="assets/lesson.css">
+</head>
+<body>
+<main>
+
+  <header class="masthead">
+    <p class="eyebrow">Gizmo · Lesson 0010 · Escalating pressure</p>
+    <h1>Pressure director: the clock is the boss</h1>
+    <p class="subtitle">Enemies stop trickling in on a fixed timer — a heat curve ramps the spawn rate as the run heats up. The snowball begins.</p>
+  </header>
+
+  <div class="card why">
+    <span class="label">Why this, now</span>
+    <p>0009 closed the loop — kill → Spark → XP → level. But the spawn was a flat
+    <strong>trickle</strong> (one nibbler every 1.2s, forever), so the run never built. A rogue-lite
+    needs the pressure to <strong>rise</strong>: in a horde game <em>the clock is the boss</em>
+    (balance <code>§5.2</code>). 0010 replaces that seed cadence with a <strong>director</strong> — a
+    <strong>heat curve</strong> off the run clock fills a <strong>spawn budget</strong> that's spent on
+    enemies, so spawns <em>accelerate</em> over the run. Tuning intent:
+    <code>reference/game-balance-reference.md</code> <code>§5.2</code>/<code>§5.3</code> (scaling, horde
+    tuning), <code>§6.1</code> (spawn budget); mechanics: <code>simulation.ts</code>
+    (<code>updateDirector</code>, <code>heatCurve</code>).</p>
+  </div>
+
+  <div class="card heads-up">
+    <span class="label">Not waves — director pressure (ADR 0003)</span>
+    <p>This is <strong>not</strong> a "WAVE 1/5" round structure (that lived only in old concept art).
+    Per <code>docs/adr/0003</code>, v1 is a <strong>continuous, director-driven pressure curve</strong>:
+    enemies spawn faster as the run goes on, with no player-facing wave counter. Tougher kinds, elites,
+    and bosses are real later milestones — but introduced deliberately in their own lessons, not because
+    a wave number implies them.</p>
+  </div>
+
+  <h2>Part 1 — the heat curve (logic, test-first)</h2>
+  <p>One number drives everything: <code>heat()</code>, a 0..1.42 difficulty scalar that rises over the
+  run. It's the time term of <code>simulation.ts</code>'s <code>heatCurve</code> (1727-1730) — an
+  <em>eased</em> ramp (exponent 2.15), so the opening is calm and the late game accelerates:</p>
+<pre><code>func heat() -> float:
+	var t := (clampf(elapsed / run_duration, 0.0, 1.0)) if run_duration &gt; 0.0 else 1.0
+	return clampf(1.0 - pow(1.0 - t, HEAT_EASE), 0.0, HEAT_MAX)</code></pre>
+  <p>At the start <code>heat ≈ 0</code>; halfway it's already ~0.78 (the easing front-loads difficulty);
+  by the run's end it's <code>1.0</code>. (The faithful <code>+ level*0.014 + kills*0.00135</code>
+  refinements from the source are deferred — we don't track kills yet.)</p>
+
+  <div class="card turn">
+    <span class="label">Test-first — heat ramps</span>
+<pre><code>func _test_heat_curve_ramps() -> void:
+	var sim := Sim.new()
+	sim.elapsed = 0.0
+	_check("heat starts at zero", absf(sim.heat()) &lt; 0.001)
+	sim.elapsed = sim.run_duration * 0.25
+	var quarter := sim.heat()
+	sim.elapsed = sim.run_duration * 0.75
+	var late := sim.heat()
+	_check("heat rises as the run progresses", late &gt; quarter and quarter &gt; 0.0)
+	sim.elapsed = sim.run_duration
+	_check("heat reaches 1.0 by the run's end", absf(sim.heat() - 1.0) &lt; 0.001)</code></pre>
+  </div>
+
+  <h2>Part 2 — the budget director (the ramp)</h2>
+  <p>The old fixed-timer spawn is gone. In its place, a <strong>budget</strong> fills each tick at a rate
+  that climbs with heat, and we <em>spend</em> it on enemies (one nibbler costs <code>NIBBLER_COST</code>,
+  1.1) up to the alive cap — a faithful core of <code>updateDirector</code>
+  (<code>simulation.ts:666-689</code>). A per-tick batch limit keeps a huge late-game budget from stalling
+  one frame:</p>
+<pre><code>if spawn_enabled:
+	var budget_rate := BUDGET_BASE + pow(heat(), BUDGET_HEAT_EXP) * BUDGET_HEAT_GAIN
+	_spawn_budget += budget_rate * dt
+	var spawned := 0
+	while _spawn_budget &gt;= NIBBLER_COST and enemies.size() &lt; max_enemies and spawned &lt; MAX_SPAWNS_PER_TICK:
+		_spawn_nibbler(gizmo_position)
+		_spawn_budget -= NIBBLER_COST
+		spawned += 1</code></pre>
+  <p>At <code>heat 0</code> the budget fills at <code>0.45</code>/s — the first nibbler takes ~2.4s, a calm
+  open. By 180s in, heat ≈ 0.96 and the rate is ~9/s — a steady swarm. The <code>spawn_enabled</code>
+  flag lets unit tests turn the director off and place enemies by hand (that's the refactor behind 0008's
+  tests now).</p>
+
+  <div class="card turn">
+    <span class="label">Test-first — the ramp, the cap, the off-switch</span>
+<pre><code>func _test_director_ramps_spawn_rate() -> void:
+	# Same one-second window, low heat vs high heat -&gt; more spawns under pressure.
+	var early := Sim.new()
+	early.attack_cooldown = 9999.0   # count spawns, don't let the weapon thin them
+	early.elapsed = 0.0
+	for i in 20:
+		early.tick(0.05, Vector3.ZERO)
+	var late := Sim.new()
+	late.attack_cooldown = 9999.0
+	late.elapsed = 180.0             # heat ~0.96
+	for i in 20:
+		late.tick(0.05, Vector3.ZERO)
+	_check("the director spawns faster under high heat", late.enemies.size() &gt; early.enemies.size())
+	_check("high heat produces a real burst", late.enemies.size() &gt;= 3)
+
+func _test_director_respects_cap() -> void:
+	var sim := Sim.new()
+	sim.attack_cooldown = 9999.0
+	sim.hp = 9999                    # contact must not end the run mid-test
+	sim.max_enemies = 5
+	sim.elapsed = 200.0              # very high heat -&gt; wants far more than 5
+	for i in 60:
+		sim.tick(0.05, Vector3.ZERO)
+	_check_eq("the director never exceeds the enemy cap", sim.enemies.size(), 5)</code></pre>
+    <p>End state: <strong>PASS — 69 checks</strong> (the 0008 spawn-cadence and cap tests were replaced by
+    these director tests; the old control tests now place enemies by hand with <code>spawn_enabled = false</code>).</p>
+  </div>
+
+  <div class="card heads-up">
+    <span class="label">Simulation-only — the bridge already scales</span>
+    <p>There's <strong>no scene change</strong> this lesson. The 0009 <code>game_controller._sync</code>
+    already mirrors however many enemies the Simulation holds, so a growing crowd renders for free. Press
+    Play: a calm opening, then violet Sparks and red nibblers thicken into a swarm as the clock climbs —
+    exactly the snowball, with no wave banners.</p>
+  </div>
+
+  <div class="card heads-up">
+    <span class="label">Deferred — named hooks (ADR 0003)</span>
+    <p>The real <code>updateDirector</code> does more, all deferred to their own lessons so this slice stays
+    one win: the <strong>player-power</strong> budget terms (<code>pScore</code>, late/power pressure);
+    <strong>enemy intensity</strong> scaling (HP/speed/XP rising with heat, <code>simulation.ts:1088-1116</code>);
+    <strong>multiple kinds</strong> unlocking over time (dasher @30s, brute @66s, warden @98s,
+    <code>ENEMY_SPECS</code> 258-263); and <strong>elites/bosses</strong>. Naming them now keeps the
+    architecture honest without building ahead of need.</p>
+  </div>
+
+  <div class="card turn">
+    <span class="label">Done means…</span>
+    <p><strong>Done</strong> = the suite is <strong>green (69 checks)</strong>, and in-game enemy pressure
+    visibly <strong>ramps</strong> over the run (the headless tests prove the rate rises with heat and the
+    cap holds). You can explain the chain — <code>heat()</code> → <code>budget_rate</code> →
+    spend on spawns — and why this is a <em>pressure curve</em>, not waves (ADR 0003). Then I log
+    <code>0010</code>, and <strong>0011</strong> builds the <strong>HUD</strong> (reading hp / xp / level
+    and the <code>last_events</code> seam) so all this state finally shows on screen.</p>
+  </div>
+
+  <p class="source">Primary sources · <code>reference/game-balance-reference.md</code> (§5.2 scaling,
+  §5.3 horde tuning, §6.1 spawn budget), <code>game-src-phaser/src/game/simulation.ts</code>
+  (<code>updateDirector</code> 666-689, <code>heatCurve</code> 1727-1730, <code>ENEMY_SPECS</code> 258-263,
+  <code>MAX_ENEMIES</code> 206), and <code>docs/adr/0002</code> + <code>docs/adr/0003</code>. Godot Docs —
+  <a href="https://docs.godotengine.org/en/4.6/classes/class_float.html#class-float-method-pow">pow()</a>
+  and <a href="https://docs.godotengine.org/en/4.6/classes/class_float.html">clampf()</a>.</p>
+
+  <p class="ask">Want the heat easing or the budget math unpacked? Ask your teacher.</p>
+
+  <nav class="lesson-nav">
+    <span>Prev · 0009 Combat — fight back &amp; close the loop</span>
+    <span>Next · 0011 HUD — show the state</span>
+  </nav>
+
+</main>
+</body>
+</html>

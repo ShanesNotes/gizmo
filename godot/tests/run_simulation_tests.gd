@@ -29,13 +29,16 @@ func _initialize() -> void:
 	_test_death_is_gameover()
 	_test_hp_progress()
 	# Enemies (0008)
-	_test_enemy_spawns_on_cadence()
 	_test_enemy_chases_gizmo()
 	_test_enemy_contact_damages_player()
 	_test_no_spawning_after_run_over()
 	_test_contact_grace()
 	_test_enemies_separate()
-	_test_enemy_cap()
+	# Pressure director (0010)
+	_test_heat_curve_ramps()
+	_test_director_ramps_spawn_rate()
+	_test_director_respects_cap()
+	_test_no_spawn_when_disabled()
 	# Combat & pickups (0009)
 	_test_autofire_damages_enemy()
 	_test_autofire_range_includes_radius()
@@ -143,7 +146,7 @@ func _test_run_completes() -> void:
 
 func _test_damage_and_iframes() -> void:
 	var sim := Sim.new()  # hp 7, invulnerable 0
-	sim.spawn_interval = 9999.0  # isolate from enemy contact while we tick
+	sim.spawn_enabled = false  # isolate from enemy contact while we tick
 	var landed := sim.take_damage(2)
 	_check("first hit lands", landed)
 	_check_eq("hp drops by the damage", sim.hp, 5)
@@ -182,24 +185,13 @@ func _test_hp_progress() -> void:
 	sim.take_damage(2)  # 5 / 7
 	_check("hp bar reads 5/7 after a hit", absf(sim.hp_progress() - 5.0 / 7.0) < 0.001)
 
-# --- Enemies (0008) ---
-
-func _test_enemy_spawns_on_cadence() -> void:
-	var sim := Sim.new()
-	sim.spawn_interval = 0.2
-	_check_eq("no enemies at the start", sim.enemies.size(), 0)
-	for i in 4:
-		sim.tick(0.05, Vector3.ZERO)  # 4 * 0.05 = 0.20s -> one spawn
-	_check_eq("one enemy after one interval", sim.enemies.size(), 1)
-	for i in 4:
-		sim.tick(0.05, Vector3.ZERO)
-	_check_eq("two enemies after two intervals", sim.enemies.size(), 2)
+# --- Enemies (0008) — placed by hand with the director off (spawn_enabled = false) ---
 
 func _test_enemy_chases_gizmo() -> void:
 	var sim := Sim.new()
-	sim.spawn_interval = 0.05
+	sim.spawn_enabled = false
 	var target := Vector3(5.0, 0.0, 0.0)
-	sim.tick(0.05, target)  # spawns one nibbler on the ring around the target
+	sim._spawn_nibbler(target)  # one nibbler on the ring around the target
 	var e := sim.enemies[0]
 	var before := e.position.distance_to(target)
 	sim.tick(0.05, target)
@@ -208,10 +200,10 @@ func _test_enemy_chases_gizmo() -> void:
 
 func _test_enemy_contact_damages_player() -> void:
 	var sim := Sim.new()
-	sim.spawn_interval = 0.05
+	sim.spawn_enabled = false
 	sim.attack_cooldown = 9999.0  # isolate: don't let the weapon kill the enemy first
 	sim.elapsed = 8.0  # past the 7s contact grace (simulation.ts:722)
-	sim.tick(0.05, Vector3.ZERO)  # spawn one enemy on the ring
+	sim._spawn_nibbler(Vector3.ZERO)
 	var e := sim.enemies[0]
 	var hp_before := sim.hp
 	sim.tick(0.05, e.position)  # put Gizmo on the enemy -> contact
@@ -221,17 +213,16 @@ func _test_enemy_contact_damages_player() -> void:
 
 func _test_no_spawning_after_run_over() -> void:
 	var sim := Sim.new()
-	sim.spawn_interval = 0.05
-	sim.take_damage(100)  # -> gameover
+	sim.take_damage(100)  # -> gameover; tick() returns early, so the director never runs
 	for i in 10:
 		sim.tick(0.05, Vector3.ZERO)
 	_check_eq("a dead player spawns no enemies", sim.enemies.size(), 0)
 
 func _test_contact_grace() -> void:
 	var sim := Sim.new()
-	sim.spawn_interval = 0.05
+	sim.spawn_enabled = false
 	sim.attack_cooldown = 9999.0  # isolate from the weapon
-	sim.tick(0.05, Vector3.ZERO)  # elapsed ~0.05, before the grace; spawn an enemy
+	sim._spawn_nibbler(Vector3.ZERO)
 	var e := sim.enemies[0]
 	sim.tick(0.05, e.position)  # Gizmo on the enemy, but before 7s -> no damage
 	_check_eq("no contact damage before the 7s grace", sim.hp, 7)
@@ -241,9 +232,9 @@ func _test_contact_grace() -> void:
 
 func _test_enemies_separate() -> void:
 	var sim := Sim.new()
-	sim.spawn_interval = 0.05
-	sim.tick(0.05, Vector3.ZERO)
-	sim.tick(0.05, Vector3.ZERO)  # two enemies
+	sim.spawn_enabled = false
+	sim._spawn_nibbler(Vector3.ZERO)
+	sim._spawn_nibbler(Vector3.ZERO)  # two enemies
 	sim.enemies[0].position = Vector3.ZERO
 	sim.enemies[1].position = Vector3(0.3, 0.0, 0.0)  # overlapping (radii sum to 2.0)
 	var before := sim.enemies[0].position.distance_to(sim.enemies[1].position)
@@ -251,20 +242,59 @@ func _test_enemies_separate() -> void:
 	var after := sim.enemies[0].position.distance_to(sim.enemies[1].position)
 	_check("overlapping enemies push apart", after > before)
 
-func _test_enemy_cap() -> void:
+# --- Pressure director (0010) — time-ramped enemy spawning ---
+
+func _test_heat_curve_ramps() -> void:
 	var sim := Sim.new()
-	sim.spawn_interval = 0.05
-	sim.attack_cooldown = 9999.0  # isolate: the weapon would otherwise thin the cap
-	sim.max_enemies = 3
+	sim.elapsed = 0.0
+	_check("heat starts at zero", absf(sim.heat()) < 0.001)
+	sim.elapsed = sim.run_duration * 0.25
+	var quarter := sim.heat()
+	sim.elapsed = sim.run_duration * 0.75
+	var late := sim.heat()
+	_check("heat rises as the run progresses", late > quarter and quarter > 0.0)
+	sim.elapsed = sim.run_duration
+	_check("heat reaches 1.0 by the run's end", absf(sim.heat() - 1.0) < 0.001)
+
+func _test_director_ramps_spawn_rate() -> void:
+	# Same one-second window, low heat vs high heat -> more spawns under pressure.
+	# attack_cooldown huge so we count spawns, not survivors.
+	var early := Sim.new()
+	early.attack_cooldown = 9999.0
+	early.elapsed = 0.0
+	for i in 20:
+		early.tick(0.05, Vector3.ZERO)
+	var late := Sim.new()
+	late.attack_cooldown = 9999.0
+	late.elapsed = 180.0   # heat ~0.96
+	for i in 20:
+		late.tick(0.05, Vector3.ZERO)
+	_check("the director spawns faster under high heat", late.enemies.size() > early.enemies.size())
+	_check("high heat produces a real burst", late.enemies.size() >= 3)
+
+func _test_director_respects_cap() -> void:
+	var sim := Sim.new()
+	sim.attack_cooldown = 9999.0   # isolate: the weapon would otherwise thin the cap
+	sim.hp = 9999                  # isolate: contact must not end the run mid-test
+	sim.max_enemies = 5
+	sim.elapsed = 200.0            # very high heat -> the director wants far more than 5
 	for i in 60:
-		sim.tick(0.05, Vector3.ZERO)  # 3.0s, before the grace -> no deaths
-	_check_eq("spawning stops at the cap", sim.enemies.size(), 3)
+		sim.tick(0.05, Vector3.ZERO)
+	_check_eq("the director never exceeds the enemy cap", sim.enemies.size(), 5)
+
+func _test_no_spawn_when_disabled() -> void:
+	var sim := Sim.new()
+	sim.spawn_enabled = false
+	sim.elapsed = 200.0            # high heat, but the director is off
+	for i in 20:
+		sim.tick(0.05, Vector3.ZERO)
+	_check_eq("no enemies spawn when the director is disabled", sim.enemies.size(), 0)
 
 # --- Combat & pickups (0009) ---
 
 func _test_autofire_damages_enemy() -> void:
 	var sim := Sim.new()
-	sim.spawn_interval = 9999.0   # no auto-spawn; we place the enemy
+	sim.spawn_enabled = false   # no auto-spawn; we place the enemy
 	sim.attack_cooldown = 0.05    # fire on the first tick
 	var e := Sim.Enemy.new()
 	e.position = Vector3(2.0, 0.0, 0.0)  # within attack_range (6)
@@ -276,7 +306,7 @@ func _test_autofire_damages_enemy() -> void:
 
 func _test_autofire_range_includes_radius() -> void:
 	var sim := Sim.new()
-	sim.spawn_interval = 9999.0
+	sim.spawn_enabled = false
 	sim.attack_cooldown = 0.05
 	# centre at 6.5m, radius 1.0 -> body within range+radius (7.0); should be hit
 	var near := Sim.Enemy.new()
@@ -295,7 +325,7 @@ func _test_autofire_range_includes_radius() -> void:
 
 func _test_enemy_dies_and_drops_spark() -> void:
 	var sim := Sim.new()
-	sim.spawn_interval = 9999.0
+	sim.spawn_enabled = false
 	sim.attack_cooldown = 0.05
 	sim.pickup_radius = 0.0       # isolate: the dropped Spark must not be auto-collected
 	var e := Sim.Enemy.new()
@@ -311,7 +341,7 @@ func _test_enemy_dies_and_drops_spark() -> void:
 
 func _test_collecting_spark_grants_xp() -> void:
 	var sim := Sim.new()
-	sim.spawn_interval = 9999.0
+	sim.spawn_enabled = false
 	var p := Sim.Pickup.new()
 	p.position = Vector3(0.5, 0.0, 0.0)  # within pickup_radius (1.8)
 	p.value = 10
@@ -323,7 +353,7 @@ func _test_collecting_spark_grants_xp() -> void:
 
 func _test_sparks_drive_leveling() -> void:
 	var sim := Sim.new()
-	sim.spawn_interval = 9999.0
+	sim.spawn_enabled = false
 	for i in 10:                     # 10 Sparks * 10 = 100 xp > level-1 threshold (92)
 		var p := Sim.Pickup.new()
 		p.position = Vector3.ZERO
@@ -336,7 +366,7 @@ func _test_sparks_drive_leveling() -> void:
 
 func _test_dead_enemy_is_not_targeted() -> void:
 	var sim := Sim.new()
-	sim.spawn_interval = 9999.0
+	sim.spawn_enabled = false
 	sim.attack_cooldown = 0.05
 	sim.pickup_radius = 0.0       # isolate from collection
 	var corpse := Sim.Enemy.new()
@@ -351,7 +381,7 @@ func _test_dead_enemy_is_not_targeted() -> void:
 
 func _test_nearest_of_two_is_targeted() -> void:
 	var sim := Sim.new()
-	sim.spawn_interval = 9999.0
+	sim.spawn_enabled = false
 	sim.attack_cooldown = 0.05
 	var near := Sim.Enemy.new()
 	near.position = Vector3(2.0, 0.0, 0.0)  # both in range; this one is nearer
@@ -369,7 +399,7 @@ func _test_nearest_of_two_is_targeted() -> void:
 
 func _test_pickup_cap_holds() -> void:
 	var sim := Sim.new()
-	sim.spawn_interval = 9999.0
+	sim.spawn_enabled = false
 	sim.max_pickups = 3
 	for i in 5:                                # 5 uncollected Sparks, far from Gizmo
 		var p := Sim.Pickup.new()
@@ -382,7 +412,7 @@ func _test_pickup_cap_holds() -> void:
 
 func _test_combat_events_emitted() -> void:
 	var sim := Sim.new()
-	sim.spawn_interval = 9999.0
+	sim.spawn_enabled = false
 	sim.attack_cooldown = 0.05
 	sim.pickup_radius = 0.0       # isolate combat events from collection
 	var e := Sim.Enemy.new()
@@ -398,7 +428,7 @@ func _test_combat_events_emitted() -> void:
 
 func _test_pickup_and_levelup_events_emitted() -> void:
 	var sim := Sim.new()
-	sim.spawn_interval = 9999.0
+	sim.spawn_enabled = false
 	for i in 10:                     # 10 * 10 = 100 xp > level-1 threshold (92)
 		var p := Sim.Pickup.new()
 		p.position = Vector3.ZERO     # on Gizmo -> collected this tick
@@ -412,7 +442,7 @@ func _test_pickup_and_levelup_events_emitted() -> void:
 # fresh array (not clear-in-place), matching simulation.ts's fresh GameEvent[] per frame.
 func _test_events_are_snapshot_safe() -> void:
 	var sim := Sim.new()
-	sim.spawn_interval = 9999.0
+	sim.spawn_enabled = false
 	sim.attack_cooldown = 0.05
 	sim.pickup_radius = 0.0       # isolate from collection
 	var e := Sim.Enemy.new()
