@@ -6,6 +6,10 @@
   Primary source for GDScript, scenes/nodes, `Node3D`/`Camera3D`/`CharacterBody3D`,
   importing `.glb`, `AnimationPlayer`, signals, headless runs. Use for: any Godot
   concept before teaching it. Never trust parametric memory over the docs.
+- **GodotPrompter skills** (`godot-prompter:*`; bootstrap `using-godot-prompter`)
+  Curated Godot 4.x knowledge modules — `player-controller`, `3d-essentials`,
+  `camera-system`, `hud-system`, `state-machine`, `godot-testing`, and more. Use for:
+  grounding any Godot slice before teaching it; see CLAUDE.md for the phase→skill map.
 - `CONTEXT.md` (repo)
   Orientation keystone — what the game is, the 3D direction, v1 scope, where each
   truth lives. Use for: getting oriented; resolving "where does this live?".
@@ -40,3 +44,6 @@
 - **Mixamo** (free) — humanoid animation library; retarget onto the rig in Godot.
 - **ludo.ai** — environment/asset ideation. Use sparingly; environment art is a
   scope trap until v1's loop is fun.
+- **godot-runtime MCP** (connected) — drive/inspect the Godot project: `validate`,
+  `run_project`, `take_screenshot`, `get_scene_tree`, `simulate_input`. Use for:
+  verifying the learner's editor work and showing it running — not for building it.

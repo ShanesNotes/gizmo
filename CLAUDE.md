@@ -36,6 +36,35 @@ Default to a skill before improvising, and compose them — e.g. `grilling` a sl
 **Not used here:** `scaffold-exercises` and `migrate-to-shoehorn` are TypeScript/ai-hero-cli
 specific (our lessons are HTML + live Godot actions); skip unless we deliberately adapt the concept.
 
+## Godot skills & tooling
+Ground every Godot concept in the **GodotPrompter** library before teaching it — never guess
+the API. Bootstrap with `godot-prompter:using-godot-prompter`, then pull the skill matching the slice:
+
+| Build phase | godot-prompter skill(s) |
+|---|---|
+| project + scene setup, hierarchy | `godot-project-setup`, `scene-organization` |
+| fixed Diablo camera, 3D world | `camera-system`, `3d-essentials` |
+| Gizmo movement + input | `player-controller`, `input-handling` |
+| porting `simulation.ts` logic | `gdscript-patterns`, `gdscript-advanced`, `state-machine`, `resource-pattern` |
+| enemies / waves → elites → bosses | `ai-navigation`, `state-machine` |
+| HUD (match `gizmo-hud.png`) | `hud-system`, `godot-ui`, `responsive-ui` |
+| cross-system messaging | `event-bus`, `component-system`, `dependency-injection` |
+| headless tests & debugging | `godot-testing`, `godot-debugging` |
+| animation (rig → clips, later) | `animation-system`, `tween-animation` |
+| VFX / shaders / perf (later) | `particles-vfx`, `shader-basics`, `godot-optimization` |
+| v1 ship | `export-pipeline` |
+
+**Specialist agents** for deep or independent work (not to replace the learner's editor clicks):
+`godot-game-architect` (design a system), `godot-game-dev` (implement), `godot-animator`
+(rig → walk/attack clips), `godot-ui-designer` (the HUD Control tree), `godot-code-reviewer`
+(quality pass), `godot-performance-profiler` (stutter/frame drops), `godot-shader-author` (VFX).
+
+**`godot-runtime` MCP (connected) — verify and inspect, don't build.** Use it to check the
+learner's work and show it running: `validate`, `run_project` + `take_screenshot`,
+`get_scene_tree`, `get_debug_output`, `simulate_input`. **Editor-first stands:** the learner
+creates scenes/nodes/scripts by hand in the Godot editor; the MCP gives feedback and proof-of-life,
+it does not author the slices they should build themselves.
+
 ## Teaching contract (the `/teach` engine)
 A slow-down-and-learn *co-development* effort — not "watch the AI build," not "type everything yourself."
 - Co-development, paced: explain a concept, then build the slice *together* in the Godot
