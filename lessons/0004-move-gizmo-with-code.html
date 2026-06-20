@@ -90,10 +90,17 @@
 
   <div class="card turn">
     <span class="label">Phase C — the movement script</span>
+    <p><strong>This script goes on <code>Gizmo.tscn</code>, not <code>main.tscn</code>.</strong> The
+    behavior belongs to the character blueprint, not the copy sitting in the world. So first, in the
+    <em>FileSystem</em> dock, <strong>double-click <code>Gizmo.tscn</code> to open it as its own
+    scene</strong> (the tab should read "Gizmo").</p>
     <ol class="steps">
-      <li>Select the <strong>Gizmo</strong> root (the CharacterBody3D) → click the
-      <em>Attach Script</em> icon → path <code>res://scripts/gizmo.gd</code> → Create. (Godot makes
-      the <code>scripts/</code> folder for you as it saves the file.)</li>
+      <li><strong>Make the folder first.</strong> In the <em>FileSystem</em> dock, right-click
+      <code>res://</code> → <em>New Folder</em> → name it <code>scripts</code>. (Godot's Attach
+      Script dialog won't create a missing folder — that's the "invalid path" gotcha.)</li>
+      <li>With <code>Gizmo.tscn</code> open, select the <strong>Gizmo</strong> root (the
+      CharacterBody3D) → click the <em>Attach Script</em> icon → path
+      <code>res://scripts/gizmo.gd</code> → Create.</li>
       <li>Replace the template with this, then save:</li>
     </ol>
 <pre><code>extends CharacterBody3D
