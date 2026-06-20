@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Gizmo · Lesson 0003 — Gizmo enters the world</title>
+  <link rel="stylesheet" href="assets/lesson.css">
+</head>
+<body>
+<main>
+
+  <header class="masthead">
+    <p class="eyebrow">Gizmo · Lesson 0003 · The character</p>
+    <h1>Gizmo enters the world</h1>
+    <p class="subtitle">Swap the stand-in box for the real clanker — your own model, standing under your camera.</p>
+  </header>
+
+  <div class="card why">
+    <span class="label">Why this, now</span>
+    <p>You have a stage (the floor) and a lens (the Diablo camera). Time for the star. The box was
+    only ever a placeholder for <em>where the character goes</em>. Now we drop in
+    <code>gizmo.glb</code> — the rigged model — and the game suddenly has a face. This is also your
+    first time pulling an <strong>external 3D asset</strong> into a scene, which is how every prop,
+    enemy, and pickup will arrive later.</p>
+  </div>
+
+  <h2>An imported model is a <em>scene</em>, not just a mesh</h2>
+  <p>When Godot imported <code>gizmo.glb</code>, it didn't make a single mesh — it built a whole
+  little <strong>scene</strong>: a root node with the mesh, the materials, and the
+  <strong>53-bone skeleton</strong> (the rig) inside it. Godot treats that bundle as a reusable
+  asset called a <strong>PackedScene</strong>. You don't edit it in place; you
+  <strong>instance</strong> it — drop a copy into your world. The same asset could be instanced
+  a hundred times (handy when we need a hundred enemies).</p>
+
+  <div class="card heads-up">
+    <span class="label">Two numbers that make this painless</span>
+    <p>I measured the model so you don't have to guess: Gizmo is about <strong>2 metres tall</strong>,
+    and his <strong>origin sits at his feet</strong>. That second part is the gift — placing him at
+    <code>(0, 0, 0)</code> stands him exactly <em>on</em> the floor (which is also at y=0). No
+    scaling, no sinking through the ground, no floating. (Contrast the box, which we had to lift to
+    <code>y=0.5</code> because its origin is at its center.)</p>
+  </div>
+
+  <div class="card turn">
+    <span class="label">Build the slice — hands-on</span>
+    <ol class="steps">
+      <li>Open <code>scenes/main.tscn</code>.</li>
+      <li>In the <em>FileSystem</em> dock (bottom-left), open <code>assets/</code> and find
+      <code>gizmo.glb</code>.</li>
+      <li>Drag <code>gizmo.glb</code> onto the <strong>Main</strong> node in the Scene dock. Godot
+      adds it as a child — an instance of the model. (Equivalent: select Main → the chain-link
+      <em>Instantiate Child Scene</em> button → pick <code>gizmo.glb</code>.)</li>
+      <li>Rename the new node <strong>Gizmo</strong>.</li>
+      <li>Set its <em>Transform → Position</em> to <code>(0, 0, 0)</code>. He should stand on the
+      floor, roughly where the box is.</li>
+      <li>Select the old <strong>Box</strong> node and delete it (<kbd>Del</kbd>) — Gizmo has the
+      stage now.</li>
+      <li>Press <strong>F5</strong>. The clanker is standing in your game, seen down the Diablo
+      camera. 🤖</li>
+      <li><kbd>Ctrl+S</kbd>.</li>
+    </ol>
+    <p>Want me to instance and place him through the runtime instead, then walk the node tree it
+    creates? Just ask.</p>
+  </div>
+
+  <div class="card heads-up">
+    <span class="label">If he looks dim or facing away</span>
+    <p>He's lit only by the <code>Sun</code>, which currently points straight down — so his top is
+    lit and his face is shadowed. That's fine for now; we'll light the scene properly later. If you
+    want a quick improvement, select <strong>Sun</strong> and give it a <em>Rotation</em> like
+    <code>X −45, Y −30</code> so light rakes across him. Facing direction we'll control with code
+    in 0005 — don't worry about which way he looks yet.</p>
+  </div>
+
+  <h2>How you'll know it worked</h2>
+  <p>You should see a recognizable Gizmo standing on the floor, his feet on the ground (not sunk,
+  not hovering), framed by the down-angled camera. If he's a tiny speck he got scaled down on
+  drop; if he's sunk to the waist his position Y isn't 0. Both are one inspector field away.</p>
+
+  <div class="card turn">
+    <span class="label">Done means…</span>
+    <p><strong>Done</strong> = Gizmo stands in the scene on his feet, and you can explain why
+    dropping him at y=0 worked when the box needed y=0.5. Then I log <code>0003</code> and we give
+    him a body and make him <em>move</em> (0004) — the first time the game feels like a game.</p>
+  </div>
+
+  <p class="source">Primary source · Godot Docs — <a
+  href="https://docs.godotengine.org/en/stable/tutorials/assets_pipeline/importing_3d_scenes/index.html">Importing
+  3D scenes</a> and <a
+  href="https://docs.godotengine.org/en/stable/getting_started/step_by_step/instancing.html">Instancing</a>.</p>
+
+  <p class="ask">Curious what a "PackedScene" really is, or why the rig came along for the ride?
+  Ask your teacher.</p>
+
+  <nav class="lesson-nav">
+    <span>Prev · 0002 The fixed Diablo camera</span>
+    <span>Next · 0004 Move Gizmo with code</span>
+  </nav>
+
+</main>
+</body>
+</html>
