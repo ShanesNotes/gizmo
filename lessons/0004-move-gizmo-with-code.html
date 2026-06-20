@@ -12,7 +12,7 @@
   <header class="masthead">
     <p class="eyebrow">Gizmo · Lesson 0004 · The character</p>
     <h1>Move Gizmo with code</h1>
-    <p class="subtitle">Give the clanker a body and a brain — and drive him around the floor. This is the one where it becomes a game.</p>
+    <p class="subtitle">Give the clanker a body and a brain — and drive him around the floor with keyboard or controller. This is the one where it becomes a game.</p>
   </header>
 
   <div class="card why">
@@ -30,7 +30,10 @@
   <strong>CharacterBody3D</strong> — a node built for exactly this: <em>you</em> set its
   <code>velocity</code>, then call <code>move_and_slide()</code> and the engine moves it and
   handles bumping into things. So we'll wrap the model in a CharacterBody3D and make Gizmo his own
-  reusable scene — the same shape every enemy will use later.</p>
+  reusable scene — the same shape every enemy will use later. (Heads-up: the floor is still only a
+  <em>visual</em> mesh, not a collider — for this slice Gizmo just glides along the ground plane at
+  y=0. The capsule we add isn't catching him on the floor yet; it's groundwork for colliding with
+  enemies and walls in later lessons.)</p>
 
   <h3>2. Input is named, not hard-coded</h3>
   <p>We never write "if the W key is down." We define an <strong>action</strong> called
@@ -60,25 +63,37 @@
   </div>
 
   <div class="card turn">
-    <span class="label">Phase B — define the input actions</span>
-    <p>Open <em>Project → Project Settings → Input Map</em>. In the "Add New Action" box, add four
-    actions: <code>move_up</code>, <code>move_down</code>, <code>move_left</code>,
-    <code>move_right</code>. For each, click the <strong>+</strong> and press the key to bind:</p>
+    <span class="label">Phase B — the input actions (already set up: keyboard + Xbox)</span>
+    <p>Binding an analog stick by hand is fiddly and easy to get subtly wrong, so the four actions
+    are <strong>already defined in the project</strong> — each bound to <strong>both</strong>
+    keyboard and an Xbox controller. Open <em>Project → Project Settings → Input Map</em> to see
+    them:</p>
     <ul>
-      <li><code>move_up</code> → <kbd>W</kbd> (and, if you like, ↑)</li>
-      <li><code>move_down</code> → <kbd>S</kbd> (↓)</li>
-      <li><code>move_left</code> → <kbd>A</kbd> (←)</li>
-      <li><code>move_right</code> → <kbd>D</kbd> (→)</li>
+      <li><code>move_up</code> → <kbd>W</kbd>, ↑, left-stick up, D-pad up</li>
+      <li><code>move_down</code> → <kbd>S</kbd>, ↓, left-stick down, D-pad down</li>
+      <li><code>move_left</code> → <kbd>A</kbd>, ←, left-stick left, D-pad left</li>
+      <li><code>move_right</code> → <kbd>D</kbd>, →, left-stick right, D-pad right</li>
     </ul>
-    <p>(Faster alternative: paste this into <code>project.godot</code> under a new
-    <code>[input]</code> section instead of clicking — ask me and I'll drop in the exact block.)</p>
+    <p>Two things worth understanding while you look at them:</p>
+    <ul>
+      <li><strong>One action, many inputs.</strong> Each action holds several events, and the script
+      never cares which one fired — key, stick, or D-pad all activate <code>move_up</code>
+      identically. That is the entire reason we use named actions instead of raw keys.</li>
+      <li><strong>Deadzone (0.2).</strong> A real stick never rests at perfect zero, so the deadzone
+      ignores tiny drift — Gizmo won't creep when you're not touching it. The stick is analog, so a
+      gentle push moves him slowly; <code>get_vector</code> passes that magnitude straight through.</li>
+    </ul>
+    <p>Poke around to learn the panel: add a binding with <strong>+</strong>, or change a deadzone.
+    The keys are bound by <em>physical</em> position, so WASD stays put on non-QWERTY layouts. (Want
+    to bind these yourself from scratch instead? Say so and I'll walk you through the empty version.)</p>
   </div>
 
   <div class="card turn">
     <span class="label">Phase C — the movement script</span>
     <ol class="steps">
       <li>Select the <strong>Gizmo</strong> root (the CharacterBody3D) → click the
-      <em>Attach Script</em> icon → path <code>res://scripts/gizmo.gd</code> → Create.</li>
+      <em>Attach Script</em> icon → path <code>res://scripts/gizmo.gd</code> → Create. (Godot makes
+      the <code>scripts/</code> folder for you as it saves the file.)</li>
       <li>Replace the template with this, then save:</li>
     </ol>
 <pre><code>extends CharacterBody3D
@@ -118,7 +133,7 @@ func _physics_process(delta: float) -> void:
       <code>.glb</code> instance from 0003).</li>
       <li>Drag <code>scenes/gizmo.tscn</code> onto <strong>Main</strong> to instance your new
       character scene. Set its <em>Position</em> to <code>(0, 0, 0)</code>.</li>
-      <li>Press <strong>F5</strong> and drive with <kbd>WASD</kbd>. 🎮</li>
+      <li>Press <strong>F5</strong> and drive with <kbd>WASD</kbd> or your controller's left stick. 🎮</li>
     </ol>
     <p>This is the meatiest lesson yet. Want me to build any phase through the runtime and walk you
     through it? Totally fine — say which phase.</p>
@@ -140,10 +155,10 @@ func _physics_process(delta: float) -> void:
   </div>
 
   <h2>How you'll know it worked</h2>
-  <p>WASD glides Gizmo around the floor — diagonals included — and he eases to a stop when you let
-  go, all seen down the fixed Diablo camera. He won't turn to face his direction yet (he'll moonwalk
-  sideways); that's <a href="#">0005</a>, along with the camera learning to follow him as he leaves
-  the middle of the floor.</p>
+  <p>WASD (or the left stick) glides Gizmo around the floor — diagonals included — and he eases to a
+  stop when you let go, all seen down the fixed Diablo camera. He won't turn to face his direction
+  yet (he'll moonwalk sideways); that's 0005, along with the camera learning to follow him as he
+  leaves the middle of the floor.</p>
 
   <div class="card turn">
     <span class="label">Done means…</span>
