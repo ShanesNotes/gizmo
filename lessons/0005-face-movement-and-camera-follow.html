@@ -62,7 +62,8 @@ func _physics_process(delta: float) -> void:
 		velocity.z = move_toward(velocity.z, direction.z * speed, acceleration * delta)
 		# Face travel direction (model's front is +Z), turning smoothly.
 		var target_yaw := atan2(direction.x, direction.z)
-		model.rotation.y = lerp_angle(model.rotation.y, target_yaw, turn_speed * delta)
+		var turn_weight := 1.0 - exp(-turn_speed * delta)
+		model.rotation.y = lerp_angle(model.rotation.y, target_yaw, turn_weight)
 	else:
 		velocity.x = move_toward(velocity.x, 0.0, friction * delta)
 		velocity.z = move_toward(velocity.z, 0.0, friction * delta)
@@ -106,11 +107,18 @@ func _physics_process(delta: float) -> void:
 ## How quickly the camera catches up (higher = snappier).
 @export var follow_speed: float = 8.0
 
+func _ready() -> void:
+	# We move the camera ourselves every render frame, so it opts out of physics
+	# interpolation (the world stays interpolated; the camera doesn't fight it).
+	physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
+
 func _process(delta: float) -> void:
 	if target == null:
 		return
-	var desired := target.global_position + offset
-	global_position = global_position.lerp(desired, follow_speed * delta)</code></pre>
+	var target_position := target.get_global_transform_interpolated().origin
+	var desired := target_position + offset
+	var weight := 1.0 - exp(-follow_speed * delta)
+	global_position = global_position.lerp(desired, weight)</code></pre>
     <ol class="steps">
       <li>With the Camera3D still selected, find the new <strong>Target</strong> field in the
       Inspector (under the script). Click it → <em>Assign</em> → pick the <strong>Gizmo</strong>
@@ -119,8 +127,10 @@ func _process(delta: float) -> void:
     </ol>
     <p>Notice the script never touches <code>rotation</code> — only <code>global_position</code>.
     That's what keeps the tilt locked while the view travels. We follow in <code>_process</code>
-    (every drawn frame) for smoothness; the <code>lerp</code> with <code>follow_speed</code> gives
-    that slight, pleasant lag as the camera catches up.</p>
+    (every drawn frame) for smoothness, but read the target through
+    <code>get_global_transform_interpolated()</code> so the camera follows Gizmo's rendered
+    position instead of the stepped physics-tick position. The exponential <code>weight</code>
+    keeps the smoothing consistent across different frame rates.</p>
   </div>
 
   <h2>How you'll know it worked</h2>
