@@ -35,9 +35,9 @@ effort, not "watch the AI build" and not "type everything yourself."
 - Keep the learner in the loop on each decision. Avoid a finished black box they
   can't explain — prefer small slices with a pause to absorb.
 - Lessons are self-contained HTML in `lessons/` (numbered `0001-…`), one win each.
-  Foundations 0001–0006 are dimension-agnostic and done; 0007–0008 were 2D-flavored
-  (concepts transfer, node names become 3D).
-- Compute the next lesson from `learning-records/`.
+  The 3D rogue-lite build starts fresh at `0001` — no lessons completed yet (earlier
+  2.5D-era drafts were removed; in git history).
+- Compute the next lesson from `learning-records/` (empty = from-zero guide).
 - Run or name the verification command after each slice; ask at most one scope
   question when it changes the next step.
 

@@ -45,8 +45,9 @@ v1 is finished.
   match the HUD; do not hand-author.
 - **3D character model** → `godot/assets/gizmo.glb` (meshy.ai: 53-bone rig, no clips yet)
 - **The Godot build** → `godot/` (snake_case files, PascalCase nodes)
-- **Learning path** → `lessons/` (foundations 0001–0006 are dimension-agnostic and
-  done; 0007–0008 were 2D-flavored, concepts transfer), `learning-records/`
+- **Learning path** → `lessons/` (one HTML win each, numbered from `0001`) +
+  `learning-records/` (empty = start from zero). The 3D rogue-lite build starts
+  fresh at lesson `0001`; no lessons completed yet.
 
 ## How it's built
 Co-development via the `/teach` skill — explain a concept, then build the slice
