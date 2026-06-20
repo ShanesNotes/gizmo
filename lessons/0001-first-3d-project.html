@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Gizmo · Lesson 0001 — Your first 3D project</title>
+  <link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<main>
+
+  <header class="masthead">
+    <p class="eyebrow">Gizmo · Lesson 0001 · Foundations</p>
+    <h1>Your first 3D project</h1>
+    <p class="subtitle">From an empty folder to a lit 3D world you can press Play on.</p>
+  </header>
+
+  <div class="card why">
+    <span class="label">Why this, first</span>
+    <p>Every game we will ever build starts as a <strong>Godot project</strong> — a folder
+    Godot recognizes — and an opening <strong>scene</strong> it runs when you press Play.
+    Before Gizmo can walk, before a single enemy spawns, we need those two things, set up
+    <em>correctly for 3D</em>. That is the entire win for this lesson: an empty folder becomes
+    a 3D world that runs.</p>
+  </div>
+
+  <h2>The one idea: a project is just a folder with a <code>project.godot</code></h2>
+  <p>Godot doesn't have a database or a hidden install. A project is a directory containing a
+  plain-text file named <code>project.godot</code>. Open that folder in Godot and you have a
+  project; that file holds your settings. Ours lives at <code>godot/project.godot</code>, and
+  it's already written. The lines that matter:</p>
+
+  <pre><code>[application]
+config/name="Gizmo"
+config/features=PackedStringArray("4.6", "Forward Plus")
+
+[rendering]
+renderer/rendering_method="forward_plus"</code></pre>
+
+  <div class="card heads-up">
+    <span class="label">The decision that makes it 3D</span>
+    <p>The old shell we cleared out used the <strong>GL Compatibility</strong> renderer — a
+    lightweight path built for 2D and old hardware. It <em>can</em> show 3D, but it can't give
+    us the lighting and materials a painted, gouache look needs. We switched to
+    <strong>Forward+</strong>: Godot's full desktop renderer (it runs on Vulkan, which your
+    machine has). This single line is the difference between a flat 3D and one that can hold
+    real light. <em>Rule of thumb: 3D desktop game → Forward+.</em></p>
+  </div>
+
+  <h2>A scene is a tree of nodes</h2>
+  <p>If the project is the folder, the <strong>scene</strong> is what's actually <em>in</em> the
+  world. A scene is a tree: one root node with children. A <strong>node</strong> is one small
+  capable thing — "a camera," "a light," "a chunk of mesh." You compose them into a tree, and
+  that tree is your level. For our first 3D scene we need exactly four kinds:</p>
+
+  <div class="tree">Main            <span style="color:#8a5a00">(Node3D)</span>            the root — an empty 3D anchor
+├─ Camera3D     <span style="color:#8a5a00">(Camera3D)</span>          the eye that renders the view
+├─ Sun          <span style="color:#8a5a00">(DirectionalLight3D)</span> light from a direction, like a sun
+├─ Ground       <span style="color:#8a5a00">(MeshInstance3D)</span>     a flat PlaneMesh to stand on
+└─ Box          <span style="color:#8a5a00">(MeshInstance3D)</span>     a placeholder BoxMesh (Gizmo's stand-in)</div>
+
+  <p>A <code>Node3D</code> is the simplest 3D node: it has a position, rotation, and scale, and
+  nothing else. It makes a good <em>root</em> — a single handle for the whole scene.
+  A <code>MeshInstance3D</code> is a node that draws a mesh; we'll give one a flat plane (the
+  floor) and one a box (a cheap stand-in for Gizmo until lesson 0003).</p>
+
+  <div class="card turn">
+    <span class="label">Build the slice — your call how</span>
+    <p>Two ways to build this scene. Pick whichever you like for this slice; you can switch any
+    time, lesson to lesson.</p>
+    <p><strong>A) Hands-on in the editor</strong> (the default — doing it once builds intuition):</p>
+    <ol class="steps">
+      <li>Open Godot, click <em>Import</em>, choose <code>godot/project.godot</code>, open it.</li>
+      <li>In the <em>Scene</em> dock (top-left): <em>Other Node</em> → search <code>Node3D</code>
+      → Create. Double-click it and rename it <strong>Main</strong>.</li>
+      <li>Select <strong>Main</strong>, click the <strong>+</strong> (Add Child Node), add a
+      <code>Camera3D</code>. Then add a <code>DirectionalLight3D</code> (rename it
+      <strong>Sun</strong>), and two <code>MeshInstance3D</code> nodes (rename
+      <strong>Ground</strong> and <strong>Box</strong>).</li>
+      <li>Select <strong>Ground</strong>. In the <em>Inspector</em> (right), find <em>Mesh</em>
+      → <em>New PlaneMesh</em>. Click the PlaneMesh and set its size to about <code>20 × 20</code>.</li>
+      <li>Select <strong>Box</strong>: <em>Mesh</em> → <em>New BoxMesh</em>. In its
+      <em>Transform → Position</em>, set Y to <code>0.5</code> so it sits on the floor.</li>
+      <li>Position the camera so it looks down at the box: select <strong>Camera3D</strong>, set
+      <em>Position</em> to about <code>(0, 6, 8)</code> and <em>Rotation</em> X to
+      <code>-35°</code>. (We'll make this the proper Diablo angle in lesson 0002 — eyeballing is
+      fine now.)</li>
+      <li><kbd>Ctrl+S</kbd> → save as <code>scenes/main.tscn</code>. When Godot asks to set a
+      main scene (or via <em>Project → Project Settings → Run</em>), choose
+      <code>main.tscn</code>.</li>
+      <li>Press <strong>F5</strong> (Play). A window opens onto a lit floor with a box on it. 🎉</li>
+    </ol>
+    <p><strong>B) Hand it to me.</strong> Say the word and I'll build this exact tree through the
+    Godot runtime, then walk you through every node I added and why — same result, nothing left
+    as a black box.</p>
+  </div>
+
+  <h2>How you'll know it worked</h2>
+  <p>Press Play and you should see a window with a flat ground plane, a box resting on it, and
+  visible shading from the light (one side of the box brighter than the other — that's Forward+
+  doing its job). If the window is black, the camera isn't pointed at anything: check its
+  position and that its rotation tilts it downward. Stuck? Ask me — that's what I'm here for.</p>
+
+  <p class="source">Primary source · Godot Docs — <a
+  href="https://docs.godotengine.org/en/stable/getting_started/first_3d_game/index.html">Your
+  first 3D game</a> and <a
+  href="https://docs.godotengine.org/en/stable/tutorials/3d/introduction_to_3d.html">Introduction
+  to 3D</a>. Read the second for the node vocabulary above.</p>
+
+  <p class="ask">Your teacher is the AI you're building this with. Anything unclear — the renderer
+  choice, what a node is, why the box floats — just ask before moving on.</p>
+
+  <nav class="lesson-nav">
+    <span>— start —</span>
+    <span>Next · 0002 The fixed Diablo camera</span>
+  </nav>
+
+</main>
+</body>
+</html>
