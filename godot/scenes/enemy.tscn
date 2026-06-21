@@ -1,16 +1,20 @@
 [gd_scene load_steps=3 format=3]
 
-[sub_resource type="SphereMesh" id="SphereMesh_nibbler"]
-radius = 0.6
-height = 1.2
+; Intentional PLACEHOLDER (2026-06-21 art refactor). The rigged Nibbler visual
+; (enemy_visual.gd + nibbler GLB + styler) is quarantined under
+; godot/_quarantine/. The Simulation positions this node; the mesh is mock-up only.
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_nibbler"]
-albedo_color = Color(0.85, 0.3, 0.25, 1)
-roughness = 0.7
+[sub_resource type="CapsuleMesh" id="CapsuleMesh_ph"]
+radius = 0.5
+height = 1.6
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_ph"]
+albedo_color = Color(0.85, 0.32, 0.3, 1)
+roughness = 0.85
 
 [node name="Enemy" type="Node3D"]
 
 [node name="Mesh" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.6, 0)
-mesh = SubResource("SphereMesh_nibbler")
-material_override = SubResource("StandardMaterial3D_nibbler")
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.8, 0)
+mesh = SubResource("CapsuleMesh_ph")
+surface_material_override/0 = SubResource("StandardMaterial3D_ph")

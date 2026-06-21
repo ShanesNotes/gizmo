@@ -40,16 +40,13 @@ var sim := Simulation.new()
 var _enemy_views: Dictionary = {}  # Simulation.Enemy  -> Node3D
 var _spark_views: Dictionary = {}  # Simulation.Pickup -> Node3D
 var _prev_phase: String = Simulation.PHASE_PLAYING  # to fire the end screen once, on transition
-var _prev_hp: float = 0.0  # detect the frame Gizmo is hurt, to drive camera/juice feedback
 
-@onready var _camera: Node = get_node_or_null("../Camera3D")
 @onready var _audio: Node = get_node_or_null("../GameAudio")
 
 func _ready() -> void:
 	if auto_instance_ui:
 		_ensure_default_ui()
 	_register_arena_obstacles()
-	_prev_hp = sim.hp
 
 
 ## Mirror every SOLID arena piece's declared footprint into the Simulation as an
@@ -137,19 +134,10 @@ func _sync(agents: Array, views: Dictionary, scene: PackedScene) -> void:
 			views.erase(agent)
 
 
-## Game-feel layer: translate simulation state into camera shake + reactive audio.
-## Additive and guarded — a null camera/audio (e.g. headless tests) is a no-op.
-func _apply_game_feel(frame_events: Array) -> void:
-	if _camera != null and _camera.has_method("add_trauma"):
-		if sim.hp < _prev_hp:
-			_camera.add_trauma(0.5)
-		for ev in frame_events:
-			match ev.get("type", ""):
-				"defeat":
-					_camera.add_trauma(0.12)
-				"levelup":
-					_camera.add_trauma(0.35)
-	_prev_hp = sim.hp
+## Game-feel layer: translate simulation state into reactive audio. Camera shake was
+## stripped 2026-06-21 (the shake/bob read as bad juice). Guarded — a null GameAudio
+## (headless tests, or the quarantined art stream) is a no-op.
+func _apply_game_feel(_frame_events: Array) -> void:
 	if _audio != null:
 		var pressure := clampf(float(sim.enemies.size()) / 12.0, 0.0, 1.0)
 		if _audio.has_method("set_swarm_intensity"):

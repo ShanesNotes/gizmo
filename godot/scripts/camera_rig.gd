@@ -15,6 +15,8 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	if target == null:
 		return
+	# Plain critically-damped follow — no idle bob, no trauma shake (stripped
+	# 2026-06-21; the bobbing/shake read as bad juice). Fixed Diablo pitch.
 	var target_position := target.get_global_transform_interpolated().origin
 	var desired := target_position + offset
 	var weight := 1.0 - exp(-follow_speed * delta)
