@@ -15,5 +15,11 @@ obj/
 .DS_Store
 Thumbs.db
 *.swp
+
+# godot-runtime MCP injection — transient per run, stripped on clean stop.
+# Glob covers mcp_bridge.gd AND mcp_bridge.gd.uid so a crashed teardown can't
+# strand a tracked stray. NOTE: the McpBridge *autoload line* lives in the tracked
+# project.godot and CANNOT be ignored — verify `git diff godot/project.godot` is
+# empty after any MCP run. See docs/godot-mcp-runtime-hazards.md.
 .mcp/
-mcp_bridge.gd
+mcp_bridge.gd*
