@@ -5,8 +5,8 @@ extends RefCounted
 ## Slices: Sparks & leveling (0006); run clock & player health (0007);
 ##         enemies — spawn/chase/separate/contact (0008); auto-fire combat,
 ##         enemy death, Spark drops & collection + per-tick events (0009 — closes
-##         the loop to 0006); director-driven enemy pressure that ramps with a heat
-##         curve (0010).
+##         the loop to 0006); director-driven enemy pressure that ramps with a
+##         pressure curve (0010).
 ## Anchors: design intent -> reference/game-balance-reference.md (§2, §3, §5, §6);
 ##          fiction       -> design-handoff/NARRATIVE.md §4;
 ##          mechanics     -> game-src-phaser/src/game/simulation.ts
@@ -37,12 +37,12 @@ const NIBBLER_COST := 1.1     # director budget to spawn one (ENEMY_SPECS.nibble
 
 # Pressure director (0010) — time-ramped enemy spawning; "the clock is the boss"
 # (balance §5.2). Faithful core of updateDirector + heatCurve (simulation.ts:666-689,
-# 1727-1730): a heat curve off elapsed fills a spawn budget that's spent on enemies.
-const HEAT_EASE := 2.15       # heatCurve easing exponent (simulation.ts:1729)
-const HEAT_MAX := 1.42        # heat clamp (simulation.ts:1730)
-const BUDGET_BASE := 0.45     # budget per second at heat 0 (simulation.ts:671)
-const BUDGET_HEAT_GAIN := 9.5 # weight on heat^1.52 in the budget rate (simulation.ts:671)
-const BUDGET_HEAT_EXP := 1.52 # (simulation.ts:671)
+# 1727-1730): a pressure curve off elapsed fills a spawn budget that's spent on enemies.
+const PRESSURE_EASE := 2.15   # source heatCurve easing exponent (simulation.ts:1729)
+const PRESSURE_MAX := 1.0     # time-only pressure max; source heat reaches 1.42 later with level/kill bonuses
+const BUDGET_BASE := 0.45         # budget per second at pressure 0 (simulation.ts:671)
+const BUDGET_PRESSURE_GAIN := 9.5 # weight on pressure^1.52 in the budget rate (simulation.ts:671)
+const BUDGET_PRESSURE_EXP := 1.52 # (simulation.ts:671)
 const MAX_SPAWNS_PER_TICK := 14  # batch safety: a big budget can't stall one frame (simulation.ts:681)
 
 # Combat & pickups (0009) — the auto-fire "spark" weapon and Spark collection.
@@ -158,12 +158,18 @@ func run_progress() -> float:
 func time_remaining() -> float:
 	return maxf(0.0, run_duration - elapsed)
 
-## Time-driven difficulty scalar, 0..HEAT_MAX — "the clock is the boss" (balance §5.2).
-## The time term of heatCurve (simulation.ts:1727-1730): an eased ramp over the run.
-## Deferred (faithful refinements): the + level*0.014 + kills*0.00135 bonuses.
-func heat() -> float:
+## Time-driven pressure scalar, 0..1 — "the clock is the boss" (balance §5.2).
+## Mirrors the time term of source heatCurve (simulation.ts:1727-1730): an eased
+## ramp over the run. Deferred refinements let the source heat reach 1.42 via
+## + level*0.014 + kills*0.00135 once those systems exist.
+func pressure() -> float:
 	var t := (clampf(elapsed / run_duration, 0.0, 1.0)) if run_duration > 0.0 else 1.0
-	return clampf(1.0 - pow(1.0 - t, HEAT_EASE), 0.0, HEAT_MAX)
+	return clampf(1.0 - pow(1.0 - t, PRESSURE_EASE), 0.0, PRESSURE_MAX)
+
+## Source-fidelity alias. The TypeScript implementation calls this concept heatCurve;
+## the Godot lesson/game language calls it pressure.
+func heat() -> float:
+	return pressure()
 
 ## How full the HP bar is, 0..1 — for the HUD (mirrors xp_progress's shape).
 ## Design: HP is the raw defensive pool (balance §3.1).
@@ -192,12 +198,12 @@ func take_damage(amount: int) -> bool:
 ## Spawn (director-ramped & capped), seek the player, separate, then deal contact
 ## damage. Open-floor seek + soft separation, not navigation (ADR 0002). Called from tick().
 func _update_enemies(dt: float, gizmo_position: Vector3) -> void:
-	# Pressure director: a spawn budget that fills faster as heat rises, spent on
+	# Pressure director: a spawn budget that fills faster as pressure rises, spent on
 	# enemies up to the cap (simulation.ts updateDirector 666-689). Off in unit tests.
 	# Deferred from TS:671 (no player-power system yet): the + sqrt(pScore)*0.54 term
 	# and the (1 + latePressure*0.15 + powerPressure) multiplier on the rate.
 	if spawn_enabled:
-		var budget_rate := BUDGET_BASE + pow(heat(), BUDGET_HEAT_EXP) * BUDGET_HEAT_GAIN
+		var budget_rate := BUDGET_BASE + pow(pressure(), BUDGET_PRESSURE_EXP) * BUDGET_PRESSURE_GAIN
 		_spawn_budget += budget_rate * dt
 		var spawned := 0
 		while _spawn_budget >= NIBBLER_COST and enemies.size() < max_enemies and spawned < MAX_SPAWNS_PER_TICK:

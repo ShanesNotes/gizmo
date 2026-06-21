@@ -36,8 +36,9 @@ Top-left, clockwise:
   with numeric readout (e.g. 126 / 150).
 - **Level badge** — large violet spark gem framed in brass, top-center (e.g. 12).
 - **Objective** — short directive card, top-right: "Carry the Spark to the Beacon."
-- **Minimap + WAVE x/5** — compass-framed minimap with the wave counter beneath
-  (e.g. WAVE 3 / 5): regular enemies → elites → bosses.
+- **Minimap / pressure readout** — compass-framed minimap. The old "WAVE x/5"
+  text visible in concept art is **not active design**; replace it with a
+  pressure/timer/objective readout unless the user explicitly reintroduces waves.
 - **Sparks & Scrap counters** — left edge; **Sparks** (primary, violet gem) over
   **Scrap** (secondary, brass gear).
 - **Core Matrix** — ability bar, bottom-left, keys 1/2/3 (with a locked fourth

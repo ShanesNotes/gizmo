@@ -8,7 +8,7 @@ A **hybrid rules/view split**:
 - **`Simulation`** (the headless `RefCounted` in `scripts/simulation.gd`) is the
   authority for **game rules** — the run lifecycle, player HP, Sparks/leveling,
   and **enemies** (spawn cadence, chase, contact damage, death, and later Spark
-  drops and wave pressure). It is pure data + math, unit-tested headlessly.
+  drops and director pressure). It is pure data + math, unit-tested headlessly.
 - **The Godot scene** owns **player input & feel** (Gizmo's `CharacterBody3D`
   movement/facing/camera, as built in 0004–0005) and **rendering**.
 - A **`GameController`** node bridges them: each physics frame it feeds Gizmo's

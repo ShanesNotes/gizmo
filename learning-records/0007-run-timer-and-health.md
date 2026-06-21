@@ -37,7 +37,7 @@ methods (reject bad damage/dt) with tests. The logic layer can now host enemies.
 - ADR 0001 honored throughout: **HP** (health bar) is distinct from **Sparks**
   (currency) and the **Spark of Humanity** meter (objective, deferred).
 - `RUN_DURATION = 240` is the Phaser/v1 seed, **not** the genre target (balance
-  §13.1: horde runs 20–30 min); real length tuned later with spawn/XP/waves.
+  §13.1: horde runs 20–30 min); real length tuned later with spawn/XP/pressure.
 - Deferred (flagged in-lesson): enemy-contact geometry, the 7s opening grace,
   knockback, and the `secondWind` one-time save (sim.ts:732-736); i-frames will
   need visible/audible feedback later.

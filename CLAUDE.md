@@ -1,19 +1,28 @@
 # CLAUDE.md — Gizmo (3D rogue-lite) · Godot co-development teaching memory
 
+## Current operating directive (2026-06-20)
+You are supporting a **clean-slate 3D Godot rebuild** of Gizmo as a professional
+game developer / expert 3D Godot engineer. The learner will co-develop with Claude
+using `/teach`; preserve understanding over black-box completion. Prior 2.5D,
+sprite-first, or orthographic-presentation attempts are **inactive history** unless
+the user explicitly reactivates them. When stale docs disagree with the clean-slate
+3D direction, `CONTEXT.md` wins.
+
 ## Read first (source anchors)
 - `CONTEXT.md` — orientation keystone: the game, the 3D direction, **the loop**, v1 scope,
   and where each truth lives. If docs disagree, it wins.
 - `design-handoff/NARRATIVE.md` — premise/story canon: a **rogue-lite** where Gizmo the
-  clanker preserves the **spark of humanity** through escalating **waves → elites → bosses**,
-  in a gouache cosmos of lost tech.
+  clanker preserves the **spark of humanity** in a gouache cosmos of lost tech. If it uses
+  "waves" language, treat that as older escalation wording; `CONTEXT.md`'s no-wave correction wins.
 - `design-handoff/ART_DIRECTION.md` + `gizmo-hud.png` — the look (gouache cosmos, brass UI,
   the HUD to match). `godot/assets/gizmo.glb` — the character (meshy.ai, 53-bone rig, no
   animation clips yet; v1 moves it with code, clips are a later lesson).
 - `reference/game-balance-reference.md` — game-agnostic balance foundation (TTK bands,
-  wave/spawn/upgrade math); the north star for tuning.
+  spawn pressure / upgrade math); the north star for tuning.
 - `game-src-phaser/src/game/simulation.ts` — mechanics source of truth; port it before scene polish.
 - Root web build (`npx serve .`, play `index.html`) — feel reference.
 - Direction: **3D, fixed Diablo-style camera** (decided 2026-06-20). Target **Godot 4.6.x stable**.
+- `AGENTS.md` — Codex/agent operating directive; mirrors the clean-slate 3D rule for non-Claude agents.
 
 ## Engineering directive — lead with the skills
 This is a co-development *teaching* project; the available skills are the engineering method.
@@ -46,7 +55,7 @@ the API. Bootstrap with `godot-prompter:using-godot-prompter`, then pull the ski
 | fixed Diablo camera, 3D world | `camera-system`, `3d-essentials` |
 | Gizmo movement + input | `player-controller`, `input-handling` |
 | porting `simulation.ts` logic | `gdscript-patterns`, `gdscript-advanced`, `state-machine`, `resource-pattern` |
-| enemies / waves → elites → bosses | `ai-navigation`, `state-machine` |
+| enemies / director-driven pressure escalation | `ai-navigation`, `state-machine` |
 | HUD (match `gizmo-hud.png`) | `hud-system`, `godot-ui`, `responsive-ui` |
 | cross-system messaging | `event-bus`, `component-system`, `dependency-injection` |
 | headless tests & debugging | `godot-testing`, `godot-debugging` |
@@ -102,6 +111,7 @@ black box the learner can't explain. How hands-on they are is their call, slice 
   `Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>` line.
 
 ## Boundaries
+- Treat old 2.5D docs, archived OMX state, backups, and legacy lesson drafts as stale history, not active scope.
 - Do not rewrite the Phaser source, root web build, or `design-handoff/NARRATIVE.md`.
 - Do not stage `node_modules/`, `dist/`, `godot/.godot/`, exports, or generated cache.
 - Do not attempt a full port in one lesson. Do not expand past v1 scope until v1 ships.

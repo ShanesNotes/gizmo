@@ -41,7 +41,7 @@ alive cap and opening grace. The run now pushes back: stand still → die; move 
 
 ## Deferred (flagged in-lesson)
 - Enemy **death + Spark drops** → 0009 (combat) — closes the loop to 0006.
-- **Ramping** spawn pressure / waves / elites / bosses → 0010. Spatial hash for
+- **Ramping** spawn pressure / pressure director → 0010. Spatial hash for
   separation when counts climb. Per-enemy `_views` map + removal once enemies die.
 
 ## Review history

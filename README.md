@@ -1,8 +1,11 @@
 # Gizmo
 
-A **rogue-lite** in which **Gizmo**, a clanker, preserves the **spark of humanity** through increasingly difficult **waves of enemies, elites, and bosses**, across a **gouache cosmos of lost tech**. Originally a Phaser/TS web prototype; **being rebuilt in Godot as a 3D game with a fixed Diablo-style camera**.
+A **rogue-lite** in which **Gizmo**, a clanker, preserves the **spark of humanity** through escalating **enemy pressure**, across a **gouache cosmos of lost tech**. Originally a Phaser/TS web prototype; **being rebuilt in Godot as a 3D game with a fixed Diablo-style camera**.
 
 **New here? Read `CONTEXT.md` first** — the orientation keystone (what the game is, the 3D direction, v1 scope, where each truth lives).
+
+**Current directive:** this is a clean-slate 3D Godot rebuild. Previous 2.5D /
+sprite-first attempts are inactive history and should not steer new work.
 
 ## Repo layout
 - **`CONTEXT.md`** — orientation keystone. **`design-handoff/NARRATIVE.md`** — premise/story canon.
@@ -15,4 +18,5 @@ A **rogue-lite** in which **Gizmo**, a clanker, preserves the **spark of humanit
 
 ## Notes
 - The Godot 3D rebuild is the active path; the Phaser source + web build are the reference (mechanics + feel).
-- The previous 2.5D sprite scaffolding was removed on 2026-06-20; it lives in git history if needed.
+- The previous 2.5D sprite scaffolding was removed on 2026-06-20; use it only as archaeology if explicitly requested.
+- Do not use the stale concept-art "WAVE x/5" framing as active design; v1 uses director-driven pressure instead of discrete wave rounds.

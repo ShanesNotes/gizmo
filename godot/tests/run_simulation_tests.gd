@@ -35,7 +35,7 @@ func _initialize() -> void:
 	_test_contact_grace()
 	_test_enemies_separate()
 	# Pressure director (0010)
-	_test_heat_curve_ramps()
+	_test_pressure_curve_ramps()
 	_test_director_ramps_spawn_rate()
 	_test_director_respects_cap()
 	_test_no_spawn_when_disabled()
@@ -244,20 +244,20 @@ func _test_enemies_separate() -> void:
 
 # --- Pressure director (0010) — time-ramped enemy spawning ---
 
-func _test_heat_curve_ramps() -> void:
+func _test_pressure_curve_ramps() -> void:
 	var sim := Sim.new()
 	sim.elapsed = 0.0
-	_check("heat starts at zero", absf(sim.heat()) < 0.001)
+	_check("pressure starts at zero", absf(sim.pressure()) < 0.001)
 	sim.elapsed = sim.run_duration * 0.25
-	var quarter := sim.heat()
+	var quarter := sim.pressure()
 	sim.elapsed = sim.run_duration * 0.75
-	var late := sim.heat()
-	_check("heat rises as the run progresses", late > quarter and quarter > 0.0)
+	var late := sim.pressure()
+	_check("pressure rises as the run progresses", late > quarter and quarter > 0.0)
 	sim.elapsed = sim.run_duration
-	_check("heat reaches 1.0 by the run's end", absf(sim.heat() - 1.0) < 0.001)
+	_check("time-only pressure reaches 1.0 by the run's end", absf(sim.pressure() - 1.0) < 0.001)
 
 func _test_director_ramps_spawn_rate() -> void:
-	# Same one-second window, low heat vs high heat -> more spawns under pressure.
+	# Same one-second window, low pressure vs high pressure -> more spawns under pressure.
 	# attack_cooldown huge so we count spawns, not survivors.
 	var early := Sim.new()
 	early.attack_cooldown = 9999.0
@@ -266,18 +266,18 @@ func _test_director_ramps_spawn_rate() -> void:
 		early.tick(0.05, Vector3.ZERO)
 	var late := Sim.new()
 	late.attack_cooldown = 9999.0
-	late.elapsed = 180.0   # heat ~0.96
+	late.elapsed = 180.0   # pressure ~0.96
 	for i in 20:
 		late.tick(0.05, Vector3.ZERO)
-	_check("the director spawns faster under high heat", late.enemies.size() > early.enemies.size())
-	_check("high heat produces a real burst", late.enemies.size() >= 3)
+	_check("the director spawns faster under high pressure", late.enemies.size() > early.enemies.size())
+	_check("high pressure produces a real burst", late.enemies.size() >= 3)
 
 func _test_director_respects_cap() -> void:
 	var sim := Sim.new()
 	sim.attack_cooldown = 9999.0   # isolate: the weapon would otherwise thin the cap
 	sim.hp = 9999                  # isolate: contact must not end the run mid-test
 	sim.max_enemies = 5
-	sim.elapsed = 200.0            # very high heat -> the director wants far more than 5
+	sim.elapsed = 200.0            # very high pressure -> the director wants far more than 5
 	for i in 60:
 		sim.tick(0.05, Vector3.ZERO)
 	_check_eq("the director never exceeds the enemy cap", sim.enemies.size(), 5)
@@ -285,7 +285,7 @@ func _test_director_respects_cap() -> void:
 func _test_no_spawn_when_disabled() -> void:
 	var sim := Sim.new()
 	sim.spawn_enabled = false
-	sim.elapsed = 200.0            # high heat, but the director is off
+	sim.elapsed = 200.0            # high pressure, but the director is off
 	for i in 20:
 		sim.tick(0.05, Vector3.ZERO)
 	_check_eq("no enemies spawn when the director is disabled", sim.enemies.size(), 0)

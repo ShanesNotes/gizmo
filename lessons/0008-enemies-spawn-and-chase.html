@@ -19,8 +19,8 @@
     <span class="label">Why this, now</span>
     <p>You can move, the run can be won or lost — but nothing <em>threatens</em> Gizmo yet. Enemies
     are the run's first <strong>pressure machine</strong>: they force kiting decisions, they'll drop
-    Sparks and trigger the level-up dopamine later, and they're the foundation for waves → elites →
-    bosses. For the horde loop we're after (Vampire Survivors / Diablo / Megabonk), enemies must be
+    Sparks and trigger the level-up dopamine later, and they're the foundation for the pressure
+    director. For the horde loop we're after (Vampire Survivors / Diablo / Megabonk), enemies must be
     <strong>balance data first</strong> — and the <em>crowd</em> must read as a crowd. Tuning intent:
     <code>reference/game-balance-reference.md</code> §3 (defense), §5 (scaling/horde), §6 (caps);
     mechanics: <code>simulation.ts</code> (<code>ENEMY_SPECS</code>, <code>updateEnemies</code>).</p>
@@ -46,7 +46,7 @@
       <li><strong>Spawn cadence</strong> (<code>spawn_interval</code>) → §5.2 (time is the scaling
       axis — "the clock is the boss") + §5.3 (horde tuning). Flat for now; ramping pressure is 0010.</li>
       <li><strong>Alive-enemy cap</strong> (<code>max_enemies</code>) → §6.1 (cap + spawn pressure).
-      A safety bound now; waves tune it later. (<code>simulation.ts</code> caps at 122.)</li>
+      A safety bound now; the pressure director tunes it later. (<code>simulation.ts</code> caps at 122.)</li>
       <li><strong>Contact + i-frames + 7s opening grace</strong> → reuses 0007's
       <code>take_damage</code> (§3.4), gated by a grace (<code>simulation.ts:722</code>) so a fresh
       run isn't lethal on the first spawn.</li>
@@ -245,9 +245,9 @@ func _physics_process(delta: float) -> void:
   <div class="card heads-up">
     <span class="label">Deliberately simple, for now</span>
     <p>Enemies don't <strong>die</strong> yet (no weapons — that's <strong>0009 combat</strong>, which
-    also adds Spark drops), and spawn on a <strong>flat</strong> cadence (ramping pressure +
-    waves/elites/bosses are <strong>0010</strong>). Separation is O(n²), bounded by the alive cap; a
-    spatial hash comes when waves push counts higher. The index-parallel <code>_views</code> mirror
+    also adds Spark drops), and spawn on a <strong>flat</strong> cadence (ramping pressure is
+    <strong>0010</strong>). Separation is O(n²), bounded by the alive cap; a
+    spatial hash comes if pressure pushes counts higher. The index-parallel <code>_views</code> mirror
     works because enemies only <em>grow</em> in 0008; once they can die, the controller switches to a
     per-enemy map with removal.</p>
   </div>

@@ -10,16 +10,23 @@ new work.
 
 ## What the game is
 A **rogue-lite** in which **Gizmo**, a clanker, preserves the **spark of humanity**
-through increasingly difficult **waves of enemies, elites, and bosses**, across a
-**gouache cosmos of lost tech**. Genre tag: **rogue-lite**. Premise canon:
-`design-handoff/NARRATIVE.md`.
+through escalating **enemy pressure** across a **gouache cosmos of lost tech**.
+Genre tag: **rogue-lite**. Premise canon: `design-handoff/NARRATIVE.md`.
+
+## No-wave correction (2026-06-20)
+Do **not** frame Gizmo as discrete "WAVE x/5" rounds. That language came from
+stale concept artwork / earlier ideation and is inactive unless the user
+explicitly reintroduces it. The active model is a **director-driven pressure
+curve**: enemies spawn, pressure ramps, the run can crest into special threats
+later, but the player should not see or learn a wave-round structure in v1.
+If older docs say waves/elites/bosses, read that as generic enemy escalation
+only. See `docs/adr/0003-director-pressure-not-discrete-waves.md`.
 
 ## The loop
-Survive escalating **waves** (regular enemies -> **elites** -> **bosses**) while
-protecting the **Spark of Humanity** meter — keep it alive. Earn two currencies,
-**Sparks** (primary) and **Scrap** (secondary); build the run via the **Core Matrix**
-(ability loadout, keys 1/2/3) and **Gadgets** (L/R activated items), gaining XP and
-drafting upgrades.
+Survive escalating **enemy pressure** while protecting the **Spark of Humanity**
+meter — keep it alive. Earn two currencies, **Sparks** (primary) and **Scrap**
+(secondary); build the run via the **Core Matrix** (ability loadout, keys 1/2/3)
+and **Gadgets** (L/R activated items), gaining XP and drafting upgrades.
 
 ## The direction (decided 2026-06-20)
 Built in **3D with a fixed Diablo-style camera** (looking down ~45°), not 2.5D
@@ -56,7 +63,7 @@ v1 is finished.
   Built so far: `0001`–`0009` — player + fixed Diablo camera, Sparks & leveling,
   run clock & player health, enemies (spawn/chase/separate/contact), and combat
   (auto-fire → death → Spark → XP → level: **the loop is closed**). Next: `0010`
-  waves (escalating pressure → elites → bosses).
+  director-driven enemy pressure (not discrete waves).
 
 ## How it's built
 Co-development via the `/teach` skill — explain a concept, then build the slice
