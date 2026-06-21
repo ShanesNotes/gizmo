@@ -15,7 +15,7 @@ func _initialize() -> void:
 	print("Running end-screen tests…")
 	_test_outcome()
 	print("")
-	if _failed == 0:
+	if _failed == 0 and _passed > 0:
 		print("PASS — %d checks" % _passed)
 		quit(0)
 	else:

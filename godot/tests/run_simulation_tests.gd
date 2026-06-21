@@ -56,7 +56,7 @@ func _initialize() -> void:
 	_test_pickup_and_levelup_events_emitted()
 	_test_events_are_snapshot_safe()
 	print("")
-	if _failed == 0:
+	if _failed == 0 and _passed > 0:
 		print("PASS — %d checks" % _passed)
 		quit(0)
 	else:

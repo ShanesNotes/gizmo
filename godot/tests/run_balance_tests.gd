@@ -43,7 +43,7 @@ func _initialize() -> void:
 	_test_mistake_kite_can_still_lose_naturally()
 	_test_decent_kite_can_complete_the_run()
 	print("")
-	if _failed == 0:
+	if _failed == 0 and _passed > 0:
 		print("PASS — %d checks" % _passed)
 		quit(0)
 	else:

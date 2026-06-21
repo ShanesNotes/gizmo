@@ -14,7 +14,7 @@ func _initialize() -> void:
 	print("Running HUD tests…")
 	_test_format_clock()
 	print("")
-	if _failed == 0:
+	if _failed == 0 and _passed > 0:
 		print("PASS — %d checks" % _passed)
 		quit(0)
 	else:
