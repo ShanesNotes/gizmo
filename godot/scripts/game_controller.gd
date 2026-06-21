@@ -52,23 +52,33 @@ func _ready() -> void:
 	_prev_hp = sim.hp
 
 
-## Mirror every SOLID world-kit piece's declared footprint into the Simulation as an
+## Mirror every SOLID arena piece's declared footprint into the Simulation as an
 ## obstacle, so enemies (rules-world) respect the same geometry Gizmo already collides
 ## with (physics-world, via each piece's StaticBody3D). One source of truth — the
 ## piece — fed into two worlds (ADR 0002). Walkable ground (floor tiles, the foundation)
-## is excluded; decorative pieces with no collider don't block. Dormant if the scene
-## has no world-kit pieces, so headless tests and a bare scene are unaffected. (0014)
+## is excluded; decorative pieces with no collider don't block.
+##
+## DUCK-TYPED ON PURPOSE: the obstacle-bearing pieces (the art stream's WorldKitPiece)
+## live in a separate, not-yet-committed workstream. We match on declared shape — a
+## `footprint_meters` + `placement_role` + a `collision_shape_count()` — instead of the
+## class, so this teaching tree compiles and runs with OR without those art assets
+## present (no pieces → no obstacles; the headless Simulation tests own correctness). (0014)
 func _register_arena_obstacles() -> void:
 	var root := get_tree().current_scene
 	if root == null:
 		return
 	for node in root.find_children("*", "Node3D", true, false):
-		if not node is WorldKitPiece:
+		var piece := node as Node3D
+		if piece == null:
 			continue
-		var piece := node as WorldKitPiece
-		if WALKABLE_ROLES.has(piece.placement_role) or piece.collision_shape_count() <= 0:
-			continue
-		var footprint := piece.footprint_meters
+		var footprint_value: Variant = piece.get(&"footprint_meters")
+		if not (footprint_value is Vector2):
+			continue  # not an arena piece
+		if WALKABLE_ROLES.has(piece.get(&"placement_role")):
+			continue  # floor / foundation — the ground, not a wall
+		if not piece.has_method(&"collision_shape_count") or int(piece.call(&"collision_shape_count")) <= 0:
+			continue  # decorative, no collider — not solid
+		var footprint := footprint_value as Vector2
 		var radius := maxf(footprint.x, footprint.y) * 0.5
 		if radius > 0.0:
 			sim.add_obstacle(piece.global_position, radius)

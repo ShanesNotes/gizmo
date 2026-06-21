@@ -16,11 +16,14 @@ func _initialize() -> void:
 	await _test_force_gameover_for_playtest()
 	await _test_force_complete_for_playtest()
 	print("")
-	if _failed == 0:
+	# A run with zero checks is a FAILURE, not a pass: it means the controller script
+	# failed to load/compile (e.g. GameController.new() returned null), so the asserts
+	# never ran. Require real coverage so a compile break can't exit 0 with "PASS — 0".
+	if _failed == 0 and _passed > 0:
 		print("PASS — %d checks" % _passed)
 		quit(0)
 	else:
-		printerr("FAIL — %d passed, %d failed" % [_passed, _failed])
+		printerr("FAIL — %d passed, %d failed%s" % [_passed, _failed, " (0 checks ⇒ controller failed to load/compile)" if _passed == 0 else ""])
 		quit(1)
 
 func _check(desc: String, condition: bool) -> void:
