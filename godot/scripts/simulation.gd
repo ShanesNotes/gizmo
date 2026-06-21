@@ -76,9 +76,14 @@ const BUDGET_PRESSURE_GAIN := 5.5 # weight on pressure^1.52 — lowered with the
 const BUDGET_PRESSURE_EXP := 1.52 # (simulation.ts:671)
 const MAX_SPAWNS_PER_TICK := 14  # batch safety: a big budget can't stall one frame (simulation.ts:681)
 
-# Combat & pickups (0009) — the auto-fire "spark" weapon and Spark collection.
+# Combat & pickups (0009) — the auto-fire weapon and Spark collection.
+# WEAPON PROGRESSION (ADR 0004): Gizmo STARTS with a rudimentary MELEE auto-attack
+# (MELEE_RANGE) — "fending for his life". Ranged options (the Spark Chain at
+# ATTACK_RANGE, and later fireball/void/explosives) are DRAFTED on level-up once the
+# Core Matrix exists. The ranged logic below is retained but dormant at run start.
 const ATTACK_COOLDOWN := 0.7  # seconds between shots (slower, deliberate v1 pace; sets trash TTK ~0.7s — the single-target-cadence tradeoff vs §5.4's ≤0.5s AoE band)
-const ATTACK_RANGE := 5.0     # metres the weapon reaches (shorter than 6: positioning matters, §2.3 range premium)
+const MELEE_RANGE := 1.6      # starting reach (metres) — short enough that a mob can close to contact, so the opening is an actual fight (ADR 0004)
+const ATTACK_RANGE := 5.0     # the Spark Chain's reach once DRAFTED (dormant at start; §2.3 range premium). Kept so the ranged weapon is one swap away, not scrapped.
 const ATTACK_DAMAGE := 1      # one-shots a nibbler (NIBBLER_HP 1.0)
 const PICKUP_RADIUS := 2.4    # Spark collection radius (metres); v1 baseline avoids inaccessible XP (§6.2)
 const ATTACK_COOLDOWN_MIN := 0.48
@@ -141,7 +146,7 @@ var obstacles: Array[Obstacle] = []
 var pickups: Array[Pickup] = []
 var max_pickups := 90         # uncollected-Spark cap (simulation.ts:207 MAX_PICKUPS); drop oldest over cap
 var attack_cooldown := ATTACK_COOLDOWN
-var attack_range := ATTACK_RANGE
+var attack_range := MELEE_RANGE   # Gizmo starts melee (ADR 0004); drafting the Spark Chain later sets this to ATTACK_RANGE
 var attack_damage := ATTACK_DAMAGE
 var pickup_radius := PICKUP_RADIUS
 var _attack_timer := 0.0

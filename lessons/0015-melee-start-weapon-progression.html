@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Gizmo · Lesson 0015 — The melee start</title>
+  <link rel="stylesheet" href="assets/lesson.css">
+</head>
+<body>
+<main>
+
+  <header class="masthead">
+    <p class="eyebrow">Gizmo · Lesson 0015 · Weapon progression</p>
+    <h1>The melee start — and why the opening had no fight</h1>
+    <p class="subtitle">Gizmo no longer begins fully armed. He starts with a single rudimentary <strong>melee</strong> auto-attack — "fending for his life" — and <em>drafts</em> ranged spark, fireball, void, and explosives as he levels. This is a design pivot (ADR 0004), pinned by a probe and a test, with the ranged logic kept intact.</p>
+  </header>
+
+  <div class="card why">
+    <span class="label">Why this — the opening had nothing to tune</span>
+    <p>The request was "tune the first level so Gizmo can kill the single trash mob before taking too much damage."
+    But a probe of the <em>current</em> ranged auto-fire told the truth: standing <strong>still</strong>, Gizmo took
+    <strong>zero damage in 30 s</strong> — enemies died at 5 m before they could touch him. There was no opening fight
+    to tune. Meanwhile the hero concept art shows Gizmo <em>cradling a spark in its palm</em> — a gentle channeler that
+    <em>grows</em> into power, not one that starts armed. Both point the same way: <strong>start rudimentary (melee),
+    earn range through drafts.</strong></p>
+  </div>
+
+  <h2>Part 1 — the swappable seam pays off</h2>
+  <p>Back in 0013 the combat seam (<code>_update_weapon</code>) was built to be <strong>swappable on purpose</strong>.
+  That foresight makes this pivot tiny — the melee start is a <em>config</em> change, not a rewrite:</p>
+<pre><code>const MELEE_RANGE := 1.6      # rudimentary starting reach
+const ATTACK_RANGE := 5.0     # the Spark Chain's reach once DRAFTED (kept, dormant)
+
+var attack_range := MELEE_RANGE   # Gizmo STARTS melee; drafting the Spark Chain sets this to ATTACK_RANGE</code></pre>
+  <p>The ranged Spark Chain ported in 0009/0013 isn't scrapped — it just moves from "the starting weapon" to
+  "<strong>the first draftable upgrade</strong>." Fireball / void / explosives join it as later drafts. The auto-attack
+  stays auto-targeted the whole time (Megabonk / Brotato style); only the <em>kit</em> grows.</p>
+
+  <h2>Part 2 — what a short reach changes (the whole loop)</h2>
+  <p>Reach is the dial that flips the genre. At 5 m it's a <em>keep-away</em> game; at 1.6 m it's a
+  <em>close-in</em> game. The probe makes the new opening concrete:</p>
+<pre><code>single trash mob (contact live)   killed at 4.9s,  HP lost = 0    -> clean kill, the asked-for beat
+standing still                    dies ~40s                      -> movement now matters from level 1
+light movement                    survives 30s+ on chip damage</code></pre>
+  <p>A lone mob is a clean kill because melee reaches it (2.6 m) just before it can touch (1.4 m) — a ~0.5 s window the
+  auto-attack lands. Pile on a second mob and that window tightens: <em>that's</em> the "fending for his life" tension.
+  And standing still is finally lethal — with no range to farm from, you have to reposition.</p>
+
+  <h2>Part 3 — the honest split (don't fake-pass the late game)</h2>
+  <p>Melee is the <em>only</em> weapon for the whole run right now — and melee-only can't clear a late swarm. So full-run
+  balance is <strong>intentionally deferred</strong> until the draft system exists. The harness is split to say exactly that,
+  instead of loosening bands to go green:</p>
+<pre><code>NEW  melee-start opening   single-mob clean kill · standing-still lethal in 20–45s   (default config)
+KEEP 0013 full-run curve   stationary/kite/TTK/pressure  — pinned at ATTACK_RANGE     (the DRAFTABLE ranged weapon)
+NOT  full-run melee-only   not asserted — unfair until drafts land, and we say so</code></pre>
+  <p>The 0013 profiles now set <code>attack_range = ATTACK_RANGE</code> explicitly, so they keep guarding the ranged
+  Spark Chain's curve — the weapon is retained <em>and</em> still tested. <strong>Balance harness: PASS 38</strong>
+  (was 32; +6 melee checks). Full suite green: sim 71 · controller 10 · playable-slice 766.</p>
+
+  <div class="card heads-up">
+    <span class="label">Prototype — the draft system is now on the critical path</span>
+    <p>This makes the opening feel right and the mid/late run thin out (melee-only). That's expected: "choose an upgrade
+    on level-up" (the <strong>Core Matrix</strong>) just graduated from a deferred nicety to the thing that makes a full
+    run fair. The prototype Spark-Chain auto-scale from 0013 stays as a temporary bridge until real draft choices replace it.</p>
+  </div>
+
+  <div class="card turn">
+    <span class="label">Done means…</span>
+    <p><strong>Done</strong> = Gizmo starts at melee reach (1.6 m); a single opening trash mob is a clean kill (0 HP lost,
+    contact live); standing still naturally loses in the opening window; and the retained ranged Spark Chain is still
+    pinned by the 0013 profiles. Verify: <code>godot --headless --path godot --script res://tests/run_balance_tests.gd</code>
+    → <strong>PASS 38</strong>. You can explain why the ranged opening had no fight, why a short reach inverts the loop,
+    and why full-run balance is deferred to the draft system rather than faked green.</p>
+  </div>
+
+  <div class="card heads-up">
+    <span class="label">Deferred — named, not built</span>
+    <p>The <strong>Core Matrix draft system</strong> (level-up → choose ranged spark / fireball / void / explosives), then
+    a <strong>full-run rebalance</strong> with drafts in play. Animation for a visible melee swing (the rig has no clips yet)
+    is a later polish lesson, not a v1 blocker.</p>
+  </div>
+
+  <p class="source">Primary sources · <code>docs/adr/0004</code> (this decision), <code>design-handoff/concept art/gizmo-concept.png</code>
+  (the spark-cradler), <code>game-src-phaser/src/game/simulation.ts</code> (the Spark Chain canon, now the first draft),
+  <code>reference/game-balance-reference.md</code> (§5.2 the clock is the boss, §5.3 clear-vs-spawn).</p>
+
+  <p class="ask">Want the single-mob timing window math, or to design the Core Matrix draft next? Ask your teacher.</p>
+
+  <nav class="lesson-nav">
+    <span>Prev · 0014 Enemies respect the pillars</span>
+    <span>Next · The Core Matrix — level-up weapon drafts</span>
+  </nav>
+
+</main>
+</body>
+</html>

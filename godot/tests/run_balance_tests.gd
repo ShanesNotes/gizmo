@@ -11,6 +11,13 @@ extends SceneTree
 # - pressure vs clear-pressure is measurable (§5.3); bands are deterministic, so
 #   tight — a careless retune of speed/range/fire/BUDGET trips a red check.
 # - spawn/kill/level telemetry exists for tuning (§6.1, §11.1)
+#
+# WEAPON PROGRESSION (ADR 0004): Gizmo now STARTS with a rudimentary melee auto-attack;
+# the ranged Spark Chain is a later DRAFT. The full-run profiles below explicitly set
+# attack_range = ATTACK_RANGE so they keep pinning the (retained, draftable) ranged
+# weapon's curve; the new opening tests pin the melee start on the default config.
+# Full-run balance UNDER melee-only (no drafts) is intentionally deferred until the
+# Core Matrix draft system exists — so it is NOT asserted here.
 
 const Sim := preload("res://scripts/simulation.gd")
 const DT := 0.05
@@ -24,6 +31,11 @@ var _failed := 0
 
 func _initialize() -> void:
 	print("Running balance tests…")
+	# Weapon progression — the melee start (ADR 0004, lesson 0015)
+	_test_gizmo_starts_with_rudimentary_melee()
+	_test_opening_single_mob_is_a_clean_kill()
+	_test_melee_start_makes_standing_still_lethal()
+	# Draftable ranged Spark Chain + the 0013 curve (pinned explicitly at ATTACK_RANGE)
 	_test_enemy_roles_match_ttk_bands()
 	_test_leveling_increases_spark_chain_output()
 	_test_pressure_probe_at_60s()
@@ -62,6 +74,7 @@ func _profile_position(profile: String, elapsed: float) -> Vector3:
 
 func _run_fixed_profile(profile: String) -> Dictionary:
 	var sim := Sim.new()
+	sim.attack_range = Sim.ATTACK_RANGE   # pin the draftable ranged Spark Chain (ADR 0004); the melee start is tested separately
 	var first_damage := -1.0
 	var damage_events := 0
 	var max_hit_delta := 0
@@ -83,6 +96,7 @@ func _run_fixed_profile(profile: String) -> Dictionary:
 
 func _run_decent_kite_profile() -> Dictionary:
 	var sim := Sim.new()
+	sim.attack_range = Sim.ATTACK_RANGE   # pin the draftable ranged Spark Chain (ADR 0004)
 	var pos := Vector3.ZERO
 	var dir := Vector3.RIGHT
 	var next_reaction := 0.0
@@ -169,6 +183,7 @@ func _summary(sim: Sim, first_damage: float, damage_events: int, max_hit_delta: 
 
 func _run_pressure_probe(until: float) -> Dictionary:
 	var sim := Sim.new()
+	sim.attack_range = Sim.ATTACK_RANGE   # pin the draftable ranged Spark Chain (ADR 0004)
 	sim.hp = 999
 	sim.max_hp = 999
 	var first_damage := -1.0
@@ -207,8 +222,44 @@ func _test_enemy_roles_match_ttk_bands() -> void:
 	_check_between("brute is a bruiser priority target", _time_to_kill(Sim.BRUTE_HP), 2.72, 2.88)
 	_check_between("warden is between trash and brute", _time_to_kill(Sim.WARDEN_HP), 2.02, 2.18)
 
+# --- Weapon progression: the melee start (ADR 0004) ---
+
+func _test_gizmo_starts_with_rudimentary_melee() -> void:
+	var sim := Sim.new()
+	_check("Gizmo starts at melee reach, not the ranged Spark Chain", absf(sim.attack_range - Sim.MELEE_RANGE) < 0.001)
+	_check("the melee start is shorter than the draftable ranged weapon", Sim.MELEE_RANGE < Sim.ATTACK_RANGE)
+
+func _test_opening_single_mob_is_a_clean_kill() -> void:
+	# The first-level promise (ADR 0004): a lone trash mob dies before it can land a hit,
+	# even with contact LIVE. Non-tautological — a too-short melee reach would let the mob
+	# touch first, costing HP (this is the check that pins MELEE_RANGE big enough).
+	var sim := Sim.new()
+	sim.spawn_enabled = false
+	sim.elapsed = Sim.CONTACT_GRACE + 0.1                  # past grace, so a hit COULD land
+	sim._spawn_nibbler(Vector3(0.0, 0.0, Sim.SPAWN_RING))  # one nibbler, 9 m out
+	var hp0 := sim.hp
+	var t := 0.0
+	while sim.phase == Sim.PHASE_PLAYING and not sim.enemies.is_empty() and t < 12.0:
+		sim.tick(DT, Vector3.ZERO)
+		t += DT
+	_check("the opening trash mob dies", sim.enemies.is_empty())
+	_check("Gizmo kills the lone mob without taking a hit", sim.hp == hp0)
+
+func _test_melee_start_makes_standing_still_lethal() -> void:
+	# With only melee reach you cannot clear the board while standing still — movement
+	# matters from the first level. (Contrast the ranged profile, which farms safely for
+	# ~60s.) Bound it well under that so a regression toward "ranged-easy" trips red.
+	var sim := Sim.new()
+	var t := 0.0
+	while sim.phase == Sim.PHASE_PLAYING and t < 90.0:
+		sim.tick(DT, Vector3.ZERO)
+		t += DT
+	_check("standing still with the melee start naturally loses", sim.phase == Sim.PHASE_GAMEOVER)
+	_check_between("melee standstill dies in the opening window, not the ranged farm", t, 20.0, 45.0)
+
 func _test_leveling_increases_spark_chain_output() -> void:
 	var sim := Sim.new()
+	sim.attack_range = Sim.ATTACK_RANGE   # the Spark Chain is the ranged DRAFT (ADR 0004); test it at its reach
 	sim.spawn_enabled = false
 	sim.attack_cooldown = 0.05
 	sim.level = 2
