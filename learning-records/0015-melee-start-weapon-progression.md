@@ -6,7 +6,7 @@
 **Mode:** **design conversation → model-built (probe-grounded TDD).** The learner proposed a melee
 first attack + "tune first-level difficulty"; Claude grounded it in the concept art + a probe, reframed
 the task, the learner approved ("yes please"), Claude implemented + pinned it.
-**Status:** Verified — probe-grounded; balance harness PASS 38; full suite green.
+**Status:** Verified — probe-grounded; balance harness PASS 38; committed-tree gate green on a clean checkout.
 
 ## The reframe (the teaching beat)
 The ask was "tune the ranged opening so Gizmo kills the single trash mob before too much damage." A probe
@@ -31,7 +31,9 @@ A weapon-progression pivot (ADR 0004), scoped to `simulation.gd` + `run_balance_
 
 ## Verified
 - `run_balance_tests.gd` → **PASS 38** (was 32; +6 melee checks). `run_simulation_tests.gd` 71 (combat tests use
-  reach *relative* to `attack_range`, so they held), controller 10, playable-slice 766. `--check-only` clean.
+  reach *relative* to `attack_range`, so they held), controller 10, hud 8, end-screen 6 — the committed-tree gate,
+  re-run on a clean checkout (`--import` clean). `--check-only` clean. (The 766-check playable-slice run cited earlier
+  used untracked art-stream files and is NOT part of the committed gate.)
 - Probe numbers (throwaway, removed): single mob killed 4.9 s / 0 HP lost; stationary melee gameover ~32–40 s
   (dt-dependent); light kite survives 30 s+ on chip.
 

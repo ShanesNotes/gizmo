@@ -29,7 +29,7 @@ half — the same footprint, mirrored into the rules-world. One source of truth,
 
 ## Verified
 - `run_simulation_tests.gd` → **PASS 71** (two new: push-out to the rim; a 12s seek-through-pillar that never tunnels).
-  Full suite green: controller 10 · playable-slice 766 · **balance still 32** (unchanged — opt-in obstacles invisible
+  Committed-tree gate green on a CLEAN checkout (`--import` clean): controller 10 · hud 8 · end-screen 6 · **balance still 32** (unchanged — opt-in obstacles invisible
   to the bare-sim harness). `--check-only` clean on both edited scripts.
 - **Live runtime query** (godot-runtime MCP `run_script`): the running scene registered **27 obstacles** (beacon r≈1.3,
   14 pylons r≈0.7, 12 debris r≈0.8–1.2; **zero** floor tiles / the 18×18 foundation — the role filter worked), with
@@ -51,5 +51,18 @@ half — the same footprint, mirrored into the rules-world. One source of truth,
 - Pillars as deliberate tactical cover in balance tuning.
 - The real **Core Matrix / upgrade-choice** system (still post-v1).
 
+## Review correction (2026-06-21, commit 6cd9af3)
+A code review (BLOCK) caught a real self-containment bug: the committed `game_controller.gd` hard-referenced
+`WorldKitPiece`, whose defining script (`world_kit_piece.gd`) lives in the **untracked art workstream** — so a
+clean checkout failed to compile (`godot --import`: "Could not find type WorldKitPiece"). My green test runs had
+been measured in a *dirty* tree where that file was present. **Lesson (the hard way): verify lessons on a CLEAN
+worktree, not the working tree — committing teaching code that depends on an uncommitted parallel-stream class
+silently breaks the checkout.** Fix: the obstacle registration is now **duck-typed** on the declared shape
+(`footprint_meters` + `placement_role` + `collision_shape_count()`) instead of the class, so the teaching tree
+compiles and runs with or without the art assets (verified: 27 pieces matched on a clean re-run, identical to
+before). Also hardened `run_game_controller_tests.gd` so a 0-check run (compile failure) FAILS instead of printing
+"PASS — 0". Verification claims above were corrected to the committed-tree gate measured on a clean checkout.
+
 See [[v1-loop-complete-balance-pass-next]] (the world-kit-collision deferral is now resolved) and
-[[parallel-workstreams]] (clean 3-file scope; art-stream dirt untouched; `WorldKitPiece` reused as the obstacle source).
+[[parallel-workstreams]] (the 3-file scope was clean, but the cross-stream *class* coupling was the leak — duck-type
+across the art-stream boundary, and validate on a clean worktree).

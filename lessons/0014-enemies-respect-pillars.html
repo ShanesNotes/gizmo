@@ -78,7 +78,7 @@ a seeking enemy never tunnels into the pillar  ok   (12s seeking straight throug
   <div class="card turn">
     <span class="label">Done means…</span>
     <p><strong>Done</strong> = enemies never end a frame inside arena geometry, proven by <code>run_simulation_tests.gd</code>
-    (<strong>71 checks</strong>, full suite green: controller 10 · playable-slice 766 · balance still 32) <em>and</em> live —
+    (<strong>71 checks</strong>; committed-tree gate green on a clean checkout: controller 10 · hud 8 · end-screen 6 · balance still 32) <em>and</em> live —
     the running scene registered <strong>27 obstacles</strong> (beacon + 14 pylons + 12 debris, zero floors), with
     <code>enemies_inside_obstacle: 0</code> and a 16-enemy cluster dropped on the beacon all ejected to its rim. You can
     explain the two-movers-two-worlds seam, why push-out (not a navmesh) fits ADR 0002, and why obstacles are opt-in.</p>
