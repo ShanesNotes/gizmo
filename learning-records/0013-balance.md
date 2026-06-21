@@ -53,6 +53,26 @@ roles vs visuals; director budget priority for pricier roles; one-shot control v
 distinction between **tests that pass** and **tests that verify** (deterministic regression proxies); and
 why this is a **prototype**, not final balance.
 
+## Feel re-tune (post-playtest, 2026-06-21)
+First live playtest read: "feeling decent, but range too high and the whole engine moving too fast —
+slower attack + movement, start conservative and build up per the reference." So a slower-pace re-tune
+(the lesson's Part-3 prototype numbers above are the *historical* snapshot; these supersede them):
+- **Movement ×0.6**: Gizmo `6.0 → 3.6` (in `gizmo.gd`), enemies `2.1 / 3.1 / 1.65 / 2.2` (kite ratio preserved).
+- **Attack**: cooldown `0.5 → 0.7`; range `6.0 → 5.0` (4.0 was too tight — a kiting player out-runs their
+  own weapon's coverage; 5.0 keeps trailing enemies shootable while still demanding positioning, §2.3).
+- **Spawn pressure lowered to match** (§5.3 — weaker offense ⇒ lower spawn-pressure): `BUDGET_BASE 0.9→0.8`,
+  `BUDGET_PRESSURE_GAIN 10.5→5.5`. Honest consequence: a **calmer board** (~9–13 on screen), which suits
+  the deliberate pace and is a conservative start to build up from.
+- **Curve re-pinned** (harness PASS 32, bands re-measured + tightened): stationary loses ~63s, mistake-kite
+  loses ~100s, **decent true-speed kite (now 3.6 m/s) still wins with HP to spare**. Brute/warden TTK stay
+  in the §5.4 bruiser band (2.8s / 2.1s). **Trash TTK rose to ~0.7s** — above §5.4's ≤0.5s AoE band; a
+  documented tradeoff of the slower single-target cadence (commented at the enemy block + `ATTACK_COOLDOWN`).
+- Review caught + fixed: a stale "Trash ≤0.5s" comment, and several over-wide re-banded checks (tightened).
+- **Process note:** Gizmo's `speed` line lives in `gizmo.gd` (the user's active animation file) — committed
+  by the user, not in the balance commit. A stray `12.5wda` typo in `next_xp_for_level` (parallel edit)
+  briefly broke the parse; restored to the HEAD value `12.5`. We were both live-editing `simulation.gd` —
+  worth coordinating handoffs on shared files (see [[parallel-workstreams]]).
+
 ## Honest status & what's NOT proven
 - Verified by **deterministic sim profiles only** — catches structural + gross-tuning regressions, NOT a
   human feel pass.

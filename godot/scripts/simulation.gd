@@ -27,36 +27,37 @@ const PLAYER_CONTACT_RADIUS := 0.4  # the player's own contact reach (metres)
 
 # Enemies — in Godot metres (ADR 0002); relative balance from ENEMY_SPECS
 # (simulation.ts:259). v1 uses the source enemy roles as rules-only variants;
-# visuals can catch up later. Trash stays ≤0.5s TTK; bruisers/wardens punctuate
-# the time-pressure curve instead of flattening difficulty at the alive cap
-# (balance §5.4, §6.2).
+# visuals can catch up later. Trash dies in ~1 shot (~0.7s at the deliberate 0.7s
+# cadence — ABOVE §5.4's ≤0.5s "incidental AoE" band; v1 fires single-target, not
+# AoE). Bruisers/wardens punctuate the time-pressure curve instead of flattening
+# difficulty at the alive cap (balance §5.4, §6.2).
 const ENEMY_NIBBLER := "nibbler"
 const ENEMY_DASHER := "dasher"
 const ENEMY_BRUTE := "brute"
 const ENEMY_WARDEN := "warden"
 const SPAWN_RING := 9.0       # spawn distance from the player (inside the 20x20 floor)
-const NIBBLER_SPEED := 3.5    # m/s — slower than Gizmo (6.0) so he can kite
+const NIBBLER_SPEED := 2.1    # m/s — slower than Gizmo (3.6) so he can kite
 const NIBBLER_RADIUS := 1.0   # contact reach / separation radius
 const NIBBLER_HP := 1.0
 const NIBBLER_DAMAGE := 1     # faithful to ENEMY_SPECS.nibbler.damage
 const NIBBLER_XP := 3         # Spark value on death (ENEMY_SPECS.nibbler.xp)
 const NIBBLER_COST := 1.1     # director budget to spawn one (ENEMY_SPECS.nibbler.cost, simulation.ts:259)
 const DASHER_UNLOCK := 30.0   # source unlockAt: 30s
-const DASHER_SPEED := 5.15
+const DASHER_SPEED := 3.1
 const DASHER_RADIUS := 0.9
 const DASHER_HP := 1.0        # trash: one Spark shot, but fast enough to punish sloppy kiting
 const DASHER_DAMAGE := 1
 const DASHER_XP := 4
 const DASHER_COST := 1.45
 const BRUTE_UNLOCK := 66.0    # source unlockAt: 66s
-const BRUTE_SPEED := 2.75
+const BRUTE_SPEED := 1.65
 const BRUTE_RADIUS := 1.55
-const BRUTE_HP := 4.0         # bruiser: 4 shots × 0.5s ≈ 2s target TTK (balance §5.4)
+const BRUTE_HP := 4.0         # bruiser: 4 shots × 0.7s ≈ 2.8s target TTK (balance §5.4, 1–3s band)
 const BRUTE_DAMAGE := 1
 const BRUTE_XP := 11
 const BRUTE_COST := 3.4
 const WARDEN_UNLOCK := 98.0   # source unlockAt: 98s
-const WARDEN_SPEED := 3.65
+const WARDEN_SPEED := 2.2
 const WARDEN_RADIUS := 1.3
 const WARDEN_HP := 3.0        # short priority target, not an elite/boss yet
 const WARDEN_DAMAGE := 1
@@ -70,17 +71,17 @@ const CONTACT_KNOCKBACK := 1.35 # metres; ports the source bump recoil so one hi
 # 1727-1730): a pressure curve off elapsed fills a spawn budget that's spent on enemies.
 const PRESSURE_EASE := 2.15   # source heatCurve easing exponent (simulation.ts:1729)
 const PRESSURE_MAX := 1.0     # time-only pressure max; source heat reaches 1.42 later with level/kill bonuses
-const BUDGET_BASE := 0.9         # budget per second at pressure 0 (simulation.ts:671; raised for v1 natural threat)
-const BUDGET_PRESSURE_GAIN := 10.5 # weight on pressure^1.52 in the budget rate (simulation.ts:671)
+const BUDGET_BASE := 0.8         # budget/s at pressure 0 — lowered to match the slower clear rate (§5.3)
+const BUDGET_PRESSURE_GAIN := 5.5 # weight on pressure^1.52 — lowered with the slower-pace re-tune (§5.3)
 const BUDGET_PRESSURE_EXP := 1.52 # (simulation.ts:671)
 const MAX_SPAWNS_PER_TICK := 14  # batch safety: a big budget can't stall one frame (simulation.ts:681)
 
 # Combat & pickups (0009) — the auto-fire "spark" weapon and Spark collection.
-const ATTACK_COOLDOWN := 0.5  # seconds between shots (v1 seed; updateWeapons cadence)
-const ATTACK_RANGE := 6.0     # metres the weapon reaches (simulation.ts spark range)
+const ATTACK_COOLDOWN := 0.7  # seconds between shots (slower, deliberate v1 pace; sets trash TTK ~0.7s — the single-target-cadence tradeoff vs §5.4's ≤0.5s AoE band)
+const ATTACK_RANGE := 5.0     # metres the weapon reaches (shorter than 6: positioning matters, §2.3 range premium)
 const ATTACK_DAMAGE := 1      # one-shots a nibbler (NIBBLER_HP 1.0)
 const PICKUP_RADIUS := 2.4    # Spark collection radius (metres); v1 baseline avoids inaccessible XP (§6.2)
-const ATTACK_COOLDOWN_MIN := 0.34
+const ATTACK_COOLDOWN_MIN := 0.48
 const ATTACK_LEVEL_COOLDOWN_MULT := 0.94
 const ATTACK_LEVEL_TARGET_CAP := 3
 const ATTACK_LEVEL_DAMAGE_STEP := 3

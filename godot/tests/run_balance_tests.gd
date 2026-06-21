@@ -5,14 +5,17 @@ extends SceneTree
 # These are deterministic profile proxies, not a claim that the game is "done".
 # They pin the v1 prototype curve from reference/game-balance-reference.md:
 # - no cheap early deaths and no one-shot contact spikes (§3.4)
-# - trash/bruiser TTK bands (§5.4)
-# - pressure vs clear-pressure is measurable (§5.3)
+# - bruiser TTK band §5.4 (brute/warden 1–3s). Trash TTK sits ~0.70s, ABOVE the
+#   strict ≤0.5s "incidental AoE" band — a deliberate v1 tradeoff for the slower
+#   single-target auto-fire cadence (0.7s), not AoE clear.
+# - pressure vs clear-pressure is measurable (§5.3); bands are deterministic, so
+#   tight — a careless retune of speed/range/fire/BUDGET trips a red check.
 # - spawn/kill/level telemetry exists for tuning (§6.1, §11.1)
 
 const Sim := preload("res://scripts/simulation.gd")
 const DT := 0.05
 const ARENA_HALF_EXTENT := 8.0
-const GIZMO_SPEED := 6.0
+const GIZMO_SPEED := 3.6
 const DECENT_SENSE_RADIUS := 5.5
 const DECENT_REACTION_INTERVAL := 0.2
 
@@ -199,10 +202,10 @@ func _time_to_kill(hp: float) -> float:
 	return sim.elapsed
 
 func _test_enemy_roles_match_ttk_bands() -> void:
-	_check_between("trash nibbler TTK is pinned", _time_to_kill(Sim.NIBBLER_HP), 0.50, 0.56)
-	_check_between("dasher remains trash TTK", _time_to_kill(Sim.DASHER_HP), 0.50, 0.56)
-	_check_between("brute is a bruiser priority target", _time_to_kill(Sim.BRUTE_HP), 2.00, 2.10)
-	_check_between("warden is between trash and brute", _time_to_kill(Sim.WARDEN_HP), 1.50, 1.60)
+	_check_between("trash nibbler TTK is pinned", _time_to_kill(Sim.NIBBLER_HP), 0.66, 0.74)
+	_check_between("dasher remains trash TTK", _time_to_kill(Sim.DASHER_HP), 0.66, 0.74)
+	_check_between("brute is a bruiser priority target", _time_to_kill(Sim.BRUTE_HP), 2.72, 2.88)
+	_check_between("warden is between trash and brute", _time_to_kill(Sim.WARDEN_HP), 2.02, 2.18)
 
 func _test_leveling_increases_spark_chain_output() -> void:
 	var sim := Sim.new()
@@ -221,27 +224,27 @@ func _test_leveling_increases_spark_chain_output() -> void:
 
 func _test_pressure_probe_at_60s() -> void:
 	var result := _run_pressure_probe(60.0)
-	_check_between("60s pressure spawns stay in tuning band", result["spawned_count"], 112.0, 120.0)
-	_check_between("60s pressure kills stay in tuning band", result["kills"], 96.0, 108.0)
-	_check_between("60s pressure has real board presence", result["max_alive"], 14.0, 20.0)
+	_check_between("60s pressure spawns stay in tuning band", result["spawned_count"], 73.0, 81.0)
+	_check_between("60s pressure kills stay in tuning band", result["kills"], 63.0, 73.0)
+	_check_between("60s pressure has real board presence", result["max_alive"], 7.0, 11.0)
 	_check("contact damage never one-shots during pressure probe", result["max_hit_delta"] <= 1)
 	var by_kind: Dictionary = result["spawned_by_kind"]
-	_check_between("dashers are present by 60s", int(by_kind.get(Sim.ENEMY_DASHER, 0)), 20.0, 30.0)
+	_check_between("dashers are present by 60s", int(by_kind.get(Sim.ENEMY_DASHER, 0)), 14.0, 19.0)
 
 func _test_stationary_profile_is_lethal_but_not_cheap() -> void:
 	var result := _run_fixed_profile("stationary")
 	_check("standing still naturally loses", result["phase"] == Sim.PHASE_GAMEOVER)
-	_check_between("standing first damage has breathing room", result["first_damage"], 40.0, 52.0)
-	_check_between("standing death proves baseline lethality", result["elapsed"], 50.0, 62.0)
+	_check_between("standing first damage has breathing room", result["first_damage"], 49.0, 58.0)
+	_check_between("standing death proves baseline lethality", result["elapsed"], 60.0, 67.0)
 	_check("standing damage is chip, not a one-shot", result["max_hit_delta"] <= 1)
 
 func _test_mistake_kite_can_still_lose_naturally() -> void:
 	var result := _run_fixed_profile("mistake_kite")
 	_check("mistake kite naturally loses", result["phase"] == Sim.PHASE_GAMEOVER)
-	_check_between("mistake kite loss timing is pinned", result["elapsed"], 165.0, 205.0)
-	_check_between("mistake kite first hit comes from mid-run pressure", result["first_damage"], 60.0, 95.0)
-	_check("mistake kite levels before death", result["level"] >= 4)
-	_check("mistake kite loss happens under real board pressure", result["max_alive"] >= 10)
+	_check_between("mistake kite loss timing is pinned", result["elapsed"], 93.0, 108.0)
+	_check_between("mistake kite first hit comes from rising pressure", result["first_damage"], 27.0, 35.0)
+	_check_between("mistake kite levels before death", result["level"], 2.0, 4.0)
+	_check_between("mistake kite loss happens under real board pressure", result["max_alive"], 7.0, 12.0)
 	_check("mistake kite damage is chip, not a one-shot", result["max_hit_delta"] <= 1)
 	var by_kind: Dictionary = result["spawned_by_kind"]
 	_check("mistake kite survives into brute pressure", int(by_kind.get(Sim.ENEMY_BRUTE, 0)) > 0)
