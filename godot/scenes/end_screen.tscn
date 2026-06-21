@@ -1,0 +1,182 @@
+[gd_scene load_steps=6 format=3 uid="uid://cqe8nd5cr7n12"]
+
+[ext_resource type="Script" path="res://scripts/end_screen.gd" id="1_es"]
+[ext_resource type="Theme" path="res://scenes/hud_theme.tres" id="2_th"]
+
+[sub_resource type="StyleBoxFlat" id="sb_btn_normal"]
+bg_color = Color(0.129, 0.102, 0.063, 1.0)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.776, 0.561, 0.290, 1.0)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+content_margin_left = 18.0
+content_margin_top = 8.0
+content_margin_right = 18.0
+content_margin_bottom = 8.0
+
+[sub_resource type="StyleBoxFlat" id="sb_btn_hover"]
+bg_color = Color(0.224, 0.165, 0.082, 1.0)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.918, 0.682, 0.376, 1.0)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+content_margin_left = 18.0
+content_margin_top = 8.0
+content_margin_right = 18.0
+content_margin_bottom = 8.0
+
+[sub_resource type="StyleBoxFlat" id="sb_btn_pressed"]
+bg_color = Color(0.090, 0.070, 0.043, 1.0)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.776, 0.561, 0.290, 1.0)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+content_margin_left = 18.0
+content_margin_top = 8.0
+content_margin_right = 18.0
+content_margin_bottom = 8.0
+
+[node name="EndScreen" type="CanvasLayer"]
+layer = 3
+script = ExtResource("1_es")
+
+[node name="Root" type="Control" parent="."]
+unique_name_in_owner = true
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("2_th")
+
+[node name="Dim" type="ColorRect" parent="Root"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.043, 0.039, 0.071, 0.72)
+
+[node name="Center" type="CenterContainer" parent="Root"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Panel" type="PanelContainer" parent="Root/Center"]
+custom_minimum_size = Vector2(440, 0)
+layout_mode = 2
+
+[node name="Margin" type="MarginContainer" parent="Root/Center/Panel"]
+layout_mode = 2
+theme_override_constants/margin_left = 28
+theme_override_constants/margin_top = 24
+theme_override_constants/margin_right = 28
+theme_override_constants/margin_bottom = 24
+
+[node name="VBox" type="VBoxContainer" parent="Root/Center/Panel/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 16
+alignment = 1
+
+[node name="TitleLabel" type="Label" parent="Root/Center/Panel/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "RUN COMPLETE"
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(0.902, 0.741, 0.420, 1.0)
+theme_override_font_sizes/font_size = 44
+
+[node name="FlavorLabel" type="Label" parent="Root/Center/Panel/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Gizmo survived the run."
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(0.722, 0.659, 0.557, 1.0)
+theme_override_font_sizes/font_size = 16
+
+[node name="Divider" type="HSeparator" parent="Root/Center/Panel/Margin/VBox"]
+layout_mode = 2
+
+[node name="Stats" type="GridContainer" parent="Root/Center/Panel/Margin/VBox"]
+layout_mode = 2
+theme_override_constants/h_separation = 24
+theme_override_constants/v_separation = 10
+columns = 2
+
+[node name="SurvivedCap" type="Label" parent="Root/Center/Panel/Margin/VBox/Stats"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "SURVIVED"
+theme_override_colors/font_color = Color(0.722, 0.659, 0.557, 1.0)
+theme_override_font_sizes/font_size = 15
+
+[node name="SurvivedValue" type="Label" parent="Root/Center/Panel/Margin/VBox/Stats"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "4:00"
+horizontal_alignment = 2
+theme_override_font_sizes/font_size = 20
+
+[node name="LevelCap" type="Label" parent="Root/Center/Panel/Margin/VBox/Stats"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "LEVEL"
+theme_override_colors/font_color = Color(0.722, 0.659, 0.557, 1.0)
+theme_override_font_sizes/font_size = 15
+
+[node name="LevelValue" type="Label" parent="Root/Center/Panel/Margin/VBox/Stats"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "3"
+horizontal_alignment = 2
+theme_override_font_sizes/font_size = 20
+
+[node name="SparksCap" type="Label" parent="Root/Center/Panel/Margin/VBox/Stats"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "SPARKS"
+theme_override_colors/font_color = Color(0.722, 0.659, 0.557, 1.0)
+theme_override_font_sizes/font_size = 15
+
+[node name="SparksValue" type="Label" parent="Root/Center/Panel/Margin/VBox/Stats"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "64"
+horizontal_alignment = 2
+theme_override_colors/font_color = Color(0.788, 0.667, 0.953, 1.0)
+theme_override_font_sizes/font_size = 20
+
+[node name="Spacer" type="Control" parent="Root/Center/Panel/Margin/VBox"]
+custom_minimum_size = Vector2(0, 8)
+layout_mode = 2
+
+[node name="RetryButton" type="Button" parent="Root/Center/Panel/Margin/VBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(160, 44)
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_font_sizes/font_size = 18
+theme_override_styles/normal = SubResource("sb_btn_normal")
+theme_override_styles/hover = SubResource("sb_btn_hover")
+theme_override_styles/pressed = SubResource("sb_btn_pressed")
+text = "RETRY"

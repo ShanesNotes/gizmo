@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Gizmo · Lesson 0012 — Win / lose: close the loop</title>
+  <link rel="stylesheet" href="assets/lesson.css">
+</head>
+<body>
+<main>
+
+  <header class="masthead">
+    <p class="eyebrow">Gizmo · Lesson 0012 · Win / lose</p>
+    <h1>Win / lose: close the loop</h1>
+    <p class="subtitle">The run has been able to <em>end</em> since 0007 — the timer runs out, or Gizmo's HP hits zero — but nothing showed for it. 0012 surfaces those two endings as a brass screen with your run stats and a RETRY button. That closes the v1 loop: play → win or die → go again.</p>
+  </header>
+
+  <div class="card why">
+    <span class="label">Why this, now</span>
+    <p>The Simulation already reaches two end states: <code>PHASE_COMPLETE</code> when the clock
+    runs out (a <strong>win</strong> — survive the run, <code>simulation.ts:490</code>) and
+    <code>PHASE_GAMEOVER</code> when HP reaches 0 (a <strong>loss</strong>,
+    <code>simulation.ts:737</code>). Until now the run just <em>froze</em> there. 0012 reads that
+    phase and shows a result. The architecture holds (ADR 0002): the Simulation owns the phase,
+    the screen only renders it.</p>
+  </div>
+
+  <h2>Part 1 — the outcome is pure (test-first)</h2>
+  <p>What text does each ending get? That's a pure function of the phase — no nodes, no scene — so
+  it's a <code>static</code> that gets a test before any UI exists:</p>
+<pre><code># end_screen.gd
+static func outcome(phase: String) -&gt; Dictionary:
+	if phase == Simulation.PHASE_COMPLETE:
+		return {"title": "RUN COMPLETE", "flavor": "Gizmo survived the run.", "win": true}
+	if phase == Simulation.PHASE_GAMEOVER:
+		return {"title": "GIZMO OFFLINE", "flavor": "Gizmo's chassis gave out.", "win": false}
+	return {"title": "", "flavor": "", "win": false}   # still playing → no banner</code></pre>
+<pre><code>func _test_outcome() -&gt; void:
+	var win := EndScreen.outcome(Simulation.PHASE_COMPLETE)
+	_check_eq("complete -&gt; win", win["win"], true)
+	_check_eq("complete -&gt; RUN COMPLETE", win["title"], "RUN COMPLETE")
+	var loss := EndScreen.outcome(Simulation.PHASE_GAMEOVER)
+	_check_eq("gameover -&gt; not win", loss["win"], false)
+	_check_eq("gameover -&gt; GIZMO OFFLINE", loss["title"], "GIZMO OFFLINE")
+	var playing := EndScreen.outcome(Simulation.PHASE_PLAYING)
+	_check_eq("playing -&gt; no outcome (empty title)", playing["title"], "")   # defensive
+	_check_eq("playing -&gt; not win", playing["win"], false)</code></pre>
+  <p><code>godot --headless --path godot --script res://tests/run_end_screen_tests.gd</code> →
+  <strong>PASS — 6 checks</strong>. The defensive "playing → empty" case means a mis-timed call shows
+  <em>nothing</em>, never a wrong banner.</p>
+
+  <h2>Part 2 — the end screen (brass overlay)</h2>
+  <p>The screen is its own <code>CanvasLayer</code> on a higher layer than the HUD (3 vs 2), so it sits
+  <em>on top</em>. It reuses the same <code>scenes/hud_theme.tres</code> the HUD uses, so it's the same
+  brass family for free. A dim <code>ColorRect</code> darkens the frozen game behind a centered panel:</p>
+<pre><code>EndScreen (CanvasLayer, layer 3)        scripts/end_screen.gd
+└─ Root (Control, Full Rect)            theme = hud_theme.tres
+   ├─ Dim    (ColorRect, full)          → darkens the world behind
+   └─ Center (CenterContainer)
+      └─ Panel (PanelContainer, brass)
+         └─ VBox
+            ├─ TitleLabel   → "RUN COMPLETE" / "GIZMO OFFLINE"
+            ├─ FlavorLabel  → one line of flavor
+            ├─ Stats (Grid) → SURVIVED 4:00 · LEVEL 5 · SPARKS 120
+            └─ RetryButton  → "RETRY"</code></pre>
+  <p>Touched widgets are <strong>unique</strong> (<code>%TitleLabel</code>, <code>%SurvivedValue</code>…),
+  and the script hides <code>%Root</code> in <code>_ready</code> — so the screen is invisible until the run
+  actually ends. <code>show_outcome(sim)</code> fills it and reveals it:</p>
+<pre><code># end_screen.gd
+func show_outcome(sim: Simulation) -&gt; void:
+	var copy := outcome(sim.phase)
+	_title.text = copy["title"]
+	_flavor.text = copy["flavor"]
+	_survived_value.text = Hud.format_clock(floorf(minf(sim.elapsed, sim.run_duration)))
+	_level_value.text = str(sim.level)
+	_sparks_value.text = str(sim.xp)
+	_root.visible = true
+	_retry_button.grab_focus()</code></pre>
+
+  <div class="card heads-up">
+    <span class="label">One formatter, two rounding rules</span>
+    <p>The survived time reuses <code>Hud.format_clock</code> from 0011 — but the HUD clock counts
+    <em>down</em> and rounds <strong>up</strong> (so any time left still shows), while "time survived" counts
+    <em>up</em> and should round <strong>down</strong> (you died at 2:17.6, not 2:18). Same M:SS formatter; the
+    caller picks the rounding by <strong>pre-flooring</strong> the value it passes in. The
+    <code>minf(…, run_duration)</code> also clamps a win's tiny overshoot back to a clean <code>4:00</code>.</p>
+  </div>
+
+  <h2>Part 3 — show it once, on the transition</h2>
+  <p>The controller already ticks the Simulation every frame. It just has to notice the <em>one frame</em>
+  the run leaves <code>playing</code> and reveal the screen — exactly once, not every frame after:</p>
+<pre><code># game_controller.gd
+@export var end_screen: EndScreen          # assign an end_screen.tscn instance (optional)
+var _prev_phase: String = Simulation.PHASE_PLAYING
+
+func _physics_process(delta: float) -&gt; void:
+	...
+	if hud != null:
+		hud.render(sim)
+	# the frame the run leaves "playing" (win or loss), show the end screen once
+	if end_screen != null and sim.phase != Simulation.PHASE_PLAYING and _prev_phase == Simulation.PHASE_PLAYING:
+		end_screen.show_outcome(sim)
+	_prev_phase = sim.phase</code></pre>
+  <p>Comparing this frame's phase against the previous one is the whole trick: it fires on the
+  <strong>edge</strong> (playing → ended), so the panel and the button's focus aren't re-set 60 times a
+  second.</p>
+
+  <div class="card heads-up">
+    <span class="label">RETRY = a fresh run</span>
+    <p>The button calls <code>get_tree().reload_current_scene()</code>. That tears the scene down and rebuilds
+    it from disk — a brand-new <code>Simulation.new()</code>, timer back to 4:00, HP full, no enemies. No
+    reset bookkeeping to maintain: reloading <em>is</em> the reset. (When a run later carries meta-progress,
+    that's a save concern for its own lesson — ADR 0001.)</p>
+  </div>
+
+  <div class="card turn">
+    <span class="label">Wire it up (one editor step)</span>
+    <p>Both 0011's HUD and this screen are self-contained scenes, so the only integration is: instance
+    <code>scenes/hud.tscn</code> <em>and</em> <code>scenes/end_screen.tscn</code> under <strong>Main</strong>,
+    then drag each into the GameController's <code>HUD</code> and <code>End Screen</code> slots. (<code>main.tscn</code>
+    is in active art-pipeline flux, so this last click is yours — the controller guards both
+    against <code>null</code>, so nothing breaks until they're assigned.)</p>
+  </div>
+
+  <div class="card heads-up">
+    <span class="label">Faithful, not invented (ADR 0001)</span>
+    <p>The loss copy is "Gizmo's chassis gave out" — Gizmo's <strong>HP</strong> ran out, the robot was
+    destroyed. It is deliberately <em>not</em> "the Spark faded": HP is not the Spark of Humanity (ADR 0001),
+    and the Spark's real stakes arrive with that system. The flavor here stays factual so it doesn't quietly
+    invent a mechanic we haven't built.</p>
+  </div>
+
+  <div class="card turn">
+    <span class="label">Done means…</span>
+    <p><strong>Done</strong> = <code>end_screen.tscn</code> renders the brass result; <code>outcome</code> is
+    green (6 checks); a finished run shows <strong>RUN COMPLETE</strong> (win) or <strong>GIZMO OFFLINE</strong>
+    (loss) with SURVIVED / LEVEL / SPARKS; and RETRY starts a fresh run. That's verified standalone and via a
+    runtime probe — the full in-game loop closes the moment you finish the one wiring step above. You can explain
+    why the outcome is a pure static, why the controller fires on the phase <em>edge</em>, and why RETRY just
+    reloads the scene. With this, <strong>v1's core loop is complete</strong>: play → win or die → go again.</p>
+  </div>
+
+  <div class="card heads-up">
+    <span class="label">Deferred — named, not built</span>
+    <p>The <strong>level-up choice</strong> screen (the Phaser <code>"levelup"</code> phase — pick an upgrade
+    mid-run), richer end-screen <strong>narrative</strong> + the real <strong>Spark of Humanity</strong> stakes
+    (ADR 0001), a <strong>score</strong> / best-run record, and a proper <strong>title/start</strong> screen —
+    each lands with its system, after v1 ships.</p>
+  </div>
+
+  <p class="source">Primary sources · <code>game-src-phaser/src/game/simulation.ts</code> (phase →
+  <code>complete</code> at :490, <code>gameover</code> at :737), <code>godot/scripts/simulation.gd</code>
+  (<code>PHASE_COMPLETE</code> / <code>PHASE_GAMEOVER</code>), <code>docs/adr/0002</code> (Simulation owns rules;
+  scene renders) + <code>docs/adr/0001</code> (HP ≠ Spark of Humanity), and the
+  <code>design-handoff/gizmo-hud.png</code> brass look. Godot Docs —
+  <a href="https://docs.godotengine.org/en/4.6/classes/class_canvaslayer.html">CanvasLayer</a>,
+  <a href="https://docs.godotengine.org/en/4.6/classes/class_centercontainer.html">CenterContainer</a>,
+  <a href="https://docs.godotengine.org/en/4.6/classes/class_scenetree.html#class-scenetree-method-reload-current-scene">SceneTree.reload_current_scene</a>.</p>
+
+  <p class="ask">Want the GridContainer stat layout or the brass button StyleBox unpacked? Ask your teacher.</p>
+
+  <nav class="lesson-nav">
+    <span>Prev · 0011 HUD</span>
+    <span>Next · v1 — instance the HUD + end screen under Main, then playtest the full loop</span>
+  </nav>
+
+</main>
+</body>
+</html>
