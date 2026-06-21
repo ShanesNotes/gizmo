@@ -59,9 +59,12 @@ been measured in a *dirty* tree where that file was present. **Lesson (the hard 
 worktree, not the working tree — committing teaching code that depends on an uncommitted parallel-stream class
 silently breaks the checkout.** Fix: the obstacle registration is now **duck-typed** on the declared shape
 (`footprint_meters` + `placement_role` + `collision_shape_count()`) instead of the class, so the teaching tree
-compiles and runs with or without the art assets (verified: 27 pieces matched on a clean re-run, identical to
-before). Also hardened `run_game_controller_tests.gd` so a 0-check run (compile failure) FAILS instead of printing
-"PASS — 0". Verification claims above were corrected to the committed-tree gate measured on a clean checkout.
+compiles and runs with or without the art assets. Verified two ways: a **clean committed checkout** now imports
+clean and passes the tracked gate; and in the **art-stream working scene** (where the pieces exist) the duck-typed
+predicate matched the same **27** pieces as the old class check — identical behavior. (A clean checkout has no
+art-stream pieces, so it registers **0** obstacles by design — the headless Simulation tests own the push-out
+correctness; a fixture test in `run_game_controller_tests.gd` now covers the registration predicate itself.) Also
+hardened `run_game_controller_tests.gd` so a 0-check run (compile failure) FAILS instead of printing "PASS — 0". Verification claims above were corrected to the committed-tree gate measured on a clean checkout.
 
 See [[v1-loop-complete-balance-pass-next]] (the world-kit-collision deferral is now resolved) and
 [[parallel-workstreams]] (the 3-file scope was clean, but the cross-stream *class* coupling was the leak — duck-type

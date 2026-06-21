@@ -15,6 +15,7 @@ func _initialize() -> void:
 	await _test_auto_instances_default_ui()
 	await _test_force_gameover_for_playtest()
 	await _test_force_complete_for_playtest()
+	await _test_obstacle_registration_duck_types_solid_pieces()
 	print("")
 	# A run with zero checks is a FAILURE, not a pass: it means the controller script
 	# failed to load/compile (e.g. GameController.new() returned null), so the asserts
@@ -74,4 +75,41 @@ func _test_force_complete_for_playtest() -> void:
 	_check_eq("force complete clamps elapsed to the run duration", controller.sim.elapsed, controller.sim.run_duration)
 	_check("win overlay is visible", controller.end_screen.get_node("Root").visible)
 	_check_eq("win title renders", controller.end_screen.get_node("Root/Center/Panel/Margin/VBox/TitleLabel").text, "RUN COMPLETE")
+	await _cleanup(controller)
+
+# A minimal stand-in for the art-stream WorldKitPiece: just the duck-typed shape the
+# controller matches on. Lets the COMMITTED gate cover obstacle registration without
+# depending on the (untracked) art assets. (review LOW)
+class FakeArenaPiece extends Node3D:
+	var footprint_meters: Vector2 = Vector2.ONE
+	var placement_role: StringName = &""
+	var shape_count: int = 1
+	func collision_shape_count() -> int:
+		return shape_count
+
+func _fake_piece(pos: Vector3, footprint: Vector2, role: StringName, shapes: int) -> Node3D:
+	var p := FakeArenaPiece.new()
+	p.position = pos
+	p.footprint_meters = footprint
+	p.placement_role = role
+	p.shape_count = shapes
+	return p
+
+func _test_obstacle_registration_duck_types_solid_pieces() -> void:
+	var controller = _new_controller()
+	await process_frame
+	var arena := Node3D.new()
+	root.add_child(arena)
+	arena.add_child(_fake_piece(Vector3(5, 0, 0), Vector2(2.6, 2.6), &"major_landmark", 1))  # solid -> ADD (r 1.3)
+	arena.add_child(_fake_piece(Vector3(0, 0, 0), Vector2(2, 2), &"walkable_tile", 1))         # floor role -> skip
+	arena.add_child(_fake_piece(Vector3(8, 0, 0), Vector2(18, 18), &"foundation", 1))          # foundation role -> skip
+	arena.add_child(_fake_piece(Vector3(-5, 0, 0), Vector2(2, 2), &"edge_detail", 0))          # no collider -> skip
+	arena.add_child(Node3D.new())                                                              # not a piece -> skip
+	controller.sim.obstacles.clear()
+	controller._register_obstacles_under(arena)
+	_check_eq("duck-typed registration adds only the one solid piece", controller.sim.obstacles.size(), 1)
+	if controller.sim.obstacles.size() == 1:
+		_check("footprint 2.6 -> radius 1.3", absf(controller.sim.obstacles[0].radius - 1.3) < 0.001)
+		_check("obstacle mirrors the piece position", controller.sim.obstacles[0].position.distance_to(Vector3(5, 0, 0)) < 0.001)
+	arena.queue_free()
 	await _cleanup(controller)

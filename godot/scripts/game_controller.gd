@@ -64,7 +64,12 @@ func _ready() -> void:
 ## class, so this teaching tree compiles and runs with OR without those art assets
 ## present (no pieces → no obstacles; the headless Simulation tests own correctness). (0014)
 func _register_arena_obstacles() -> void:
-	var root := get_tree().current_scene
+	_register_obstacles_under(get_tree().current_scene)
+
+## Register every solid arena piece under `root` as a Simulation obstacle. Split from
+## _register_arena_obstacles so the duck-typed predicate is unit-testable with a fake
+## arena (no current_scene needed) — see run_game_controller_tests.gd.
+func _register_obstacles_under(root: Node) -> void:
 	if root == null:
 		return
 	for node in root.find_children("*", "Node3D", true, false):
