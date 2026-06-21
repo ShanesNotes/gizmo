@@ -123,12 +123,11 @@ func render(sim: Simulation) -&gt; void:              # typed: the controller→
   </div>
 
   <div class="card turn">
-    <span class="label">Wire it up (one editor step)</span>
-    <p>The HUD is a self-contained scene, so the only integration is: instance
-    <code>scenes/hud.tscn</code> under <strong>Main</strong>, then drag it into the GameController's
-    <code>HUD</code> slot in the Inspector. (<code>main.tscn</code> is in active art-pipeline flux, so
-    this last click is yours to make — the controller already guards <code>hud == null</code>, so nothing
-    breaks until it's assigned.)</p>
+    <span class="label">Integration update</span>
+    <p>Originally this HUD was a one-step editor wiring task. After 0012's playtest follow-up,
+    <code>GameController</code> now auto-instances <code>scenes/hud.tscn</code> if its <code>HUD</code> slot
+    is empty, so the playable scene shows state even while <code>main.tscn</code> is changing in the
+    art stream. Manual wiring still works later and overrides the default.</p>
   </div>
 
   <div class="card heads-up">

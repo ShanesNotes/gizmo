@@ -90,17 +90,23 @@ func show_outcome(sim: Simulation) -&gt; void:
   <p>The controller already ticks the Simulation every frame. It just has to notice the <em>one frame</em>
   the run leaves <code>playing</code> and reveal the screen — exactly once, not every frame after:</p>
 <pre><code># game_controller.gd
-@export var end_screen: EndScreen          # assign an end_screen.tscn instance (optional)
+const HudScene := preload("res://scenes/hud.tscn")
+const EndScreenScene := preload("res://scenes/end_screen.tscn")
+
+@export var hud: Hud
+@export var end_screen: EndScreen
+@export var auto_instance_ui: bool = true
 var _prev_phase: String = Simulation.PHASE_PLAYING
+
+func _ready() -&gt; void:
+	if auto_instance_ui:
+		_ensure_default_ui()   # creates HUD/end screen if Inspector slots are empty
 
 func _physics_process(delta: float) -&gt; void:
 	...
 	if hud != null:
 		hud.render(sim)
-	# the frame the run leaves "playing" (win or loss), show the end screen once
-	if end_screen != null and sim.phase != Simulation.PHASE_PLAYING and _prev_phase == Simulation.PHASE_PLAYING:
-		end_screen.show_outcome(sim)
-	_prev_phase = sim.phase</code></pre>
+	_show_end_screen_on_phase_edge()</code></pre>
   <p>Comparing this frame's phase against the previous one is the whole trick: it fires on the
   <strong>edge</strong> (playing → ended), so the panel and the button's focus aren't re-set 60 times a
   second.</p>
@@ -114,12 +120,19 @@ func _physics_process(delta: float) -&gt; void:
   </div>
 
   <div class="card turn">
-    <span class="label">Wire it up (one editor step)</span>
-    <p>Both 0011's HUD and this screen are self-contained scenes, so the only integration is: instance
-    <code>scenes/hud.tscn</code> <em>and</em> <code>scenes/end_screen.tscn</code> under <strong>Main</strong>,
-    then drag each into the GameController's <code>HUD</code> and <code>End Screen</code> slots. (<code>main.tscn</code>
-    is in active art-pipeline flux, so this last click is yours — the controller guards both
-    against <code>null</code>, so nothing breaks until they're assigned.)</p>
+    <span class="label">Playable now — no editor wiring required</span>
+    <p>The controller now has safe defaults: if <code>HUD</code> or <code>End Screen</code> is empty in the
+    Inspector, it instances <code>scenes/hud.tscn</code> and <code>scenes/end_screen.tscn</code> in
+    <code>_ready()</code>. That keeps the playable scene testable while <code>main.tscn</code> is in active
+    art-pipeline flux. Manual scene wiring still works later — assigned nodes override the defaults.</p>
+  </div>
+
+  <div class="card heads-up">
+    <span class="label">Playtest shortcut</span>
+    <p>If balance is too gentle to die on demand, debug builds include two test keys:
+    <strong>F8</strong> forces <code>gameover</code> and <strong>F9</strong> forces <code>complete</code>. These call the
+    same controller path as a real phase transition, so you can verify both result screens and RETRY
+    without waiting for final difficulty tuning.</p>
   </div>
 
   <div class="card heads-up">
@@ -135,7 +148,7 @@ func _physics_process(delta: float) -&gt; void:
     <p><strong>Done</strong> = <code>end_screen.tscn</code> renders the brass result; <code>outcome</code> is
     green (6 checks); a finished run shows <strong>RUN COMPLETE</strong> (win) or <strong>GIZMO OFFLINE</strong>
     (loss) with SURVIVED / LEVEL / SPARKS; and RETRY starts a fresh run. That's verified standalone and via a
-    runtime probe — the full in-game loop closes the moment you finish the one wiring step above. You can explain
+    runtime probe — and the controller auto-instances the HUD/end screen if the Inspector slots are empty. You can explain
     why the outcome is a pure static, why the controller fires on the phase <em>edge</em>, and why RETRY just
     reloads the scene. With this, <strong>v1's core loop is complete</strong>: play → win or die → go again.</p>
   </div>
@@ -161,7 +174,7 @@ func _physics_process(delta: float) -&gt; void:
 
   <nav class="lesson-nav">
     <span>Prev · 0011 HUD</span>
-    <span>Next · v1 — instance the HUD + end screen under Main, then playtest the full loop</span>
+    <span>Next · v1 playtest — tune difficulty and polish the loop</span>
   </nav>
 
 </main>

@@ -21,13 +21,16 @@ The win/lose screen that closes the v1 loop. The Simulation already reached `PHA
 - `scenes/end_screen.tscn`: `CanvasLayer` (layer 3, above the HUD's 2) → `Root` (Control, hidden in
   `_ready`) → `Dim` (ColorRect) + `Center`→`Panel` (reuses `hud_theme.tres`) → title, flavor,
   `Stats` GridContainer, brass `RetryButton`. Touched widgets use unique names.
-- `scripts/game_controller.gd`: `@export var end_screen: EndScreen` + a `_prev_phase` edge check —
-  fires `show_outcome` the single frame the run leaves `playing`, then never again. Guarded on null.
+- `scripts/game_controller.gd`: `@export var hud`, `@export var end_screen`, default UI auto-instancing
+  when those slots are empty, a `_prev_phase` edge check that fires `show_outcome` once, and debug-build
+  F8/F9 playtest shortcuts for forcing loss/win without waiting for balance.
 - `tests/run_end_screen_tests.gd`: dedicated runner for `outcome()` (6 checks).
+- `tests/run_game_controller_tests.gd`: integration runner for default UI instancing and forced win/loss
+  playtest paths (10 checks).
 
 ## Verified (implementation)
-- `run_end_screen_tests.gd` → **PASS — 6 checks**; `run_hud_tests.gd` still **PASS — 8** (the shared
-  `format_clock` is unchanged).
+- `run_end_screen_tests.gd` → **PASS — 6 checks**; `run_game_controller_tests.gd` → **PASS — 10 checks**;
+  `run_hud_tests.gd` still **PASS — 8** (the shared `format_clock` is unchanged).
 - godot-runtime MCP `validate`: `end_screen.gd`, `game_controller.gd`, `run_end_screen_tests.gd`,
   `end_screen.tscn` all valid (`EndScreen` registered via `--import`).
 - Live (MCP): `show_outcome` driven both ways — **win** = "RUN COMPLETE" / "Gizmo survived the run." /
@@ -41,10 +44,11 @@ reusing a `Theme` across scenes; the **edge-trigger** pattern (`_prev_phase`) to
 state transition; `reload_current_scene()` as a zero-bookkeeping reset; and reusing one pure formatter
 with caller-chosen rounding.
 
-## Integration (the learner's one editor step)
-Instance both `scenes/hud.tscn` and `scenes/end_screen.tscn` under `Main`, assign them to
-`GameController.hud` and `GameController.end_screen`. Left for the learner because `main.tscn` is in
-active art-pipeline flux; the controller guards both against `null` so nothing breaks until wired.
+## Integration / playtest access
+No editor wiring is required now: `GameController._ready()` auto-instances `hud.tscn` and
+`end_screen.tscn` when the Inspector slots are empty. Manual wiring still works later and overrides
+the defaults. Debug builds also expose F8 = force `gameover`, F9 = force `complete`, so both overlays
+can be tested before final difficulty tuning makes dying natural.
 
 ## Deferred (named, flagged in-lesson)
 - **Level-up choice** screen (the Phaser `"levelup"` phase — pick an upgrade mid-run).
@@ -53,5 +57,7 @@ active art-pipeline flux; the controller guards both against `null` so nothing b
 - **Score** / best-run record, and a **title/start** screen — each with its system, after v1 ships.
 
 ## Decision (scope)
-- HUD + end screen wiring into `main.tscn` stays the learner's one editor step — `main.tscn` is dirty in
-  the user's parallel art stream (see [[parallel-workstreams]]); wiring it now would collide.
+- Avoided editing `main.tscn` directly because it is dirty in the user's parallel art stream
+  (see [[parallel-workstreams]]). Instead, the controller provides safe default UI instances at runtime.
+- The F8/F9 finish shortcuts are debug-build playtest affordances, not balance design; real lethality
+  still belongs to the next tuning pass.
