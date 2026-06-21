@@ -70,11 +70,11 @@ func _physics_process(delta: float) -&gt; void:
   <p>And <code>render(sim)</code> is a flat mapping — read a value, set a widget. No game logic lives in
   the HUD:</p>
 <pre><code># hud.gd
-func render(sim) -&gt; void:
+func render(sim: Simulation) -&gt; void:              # typed: the controller→HUD contract
 	_hp_bar.value = sim.hp_progress() * 100.0
 	_hp_label.text = "%d / %d" % [sim.hp, sim.max_hp]
 	_level_label.text = str(sim.level)
-	_xp_bar.value = sim.xp_progress() * 100.0
+	_update_xp_fill(sim.xp_progress() * 100.0)    # eases the fill — see below
 	_sparks_label.text = str(sim.xp)              # Sparks ARE the xp currency (ADR 0001)
 	_timer_label.text = format_clock(sim.time_remaining())
 	for event in sim.last_events:                 # the 0009 seam, finally consumed
@@ -83,10 +83,13 @@ func render(sim) -&gt; void:
 			break</code></pre>
 
   <h2>Part 3 — the run clock (test-first)</h2>
-  <p>The one piece of real logic in the HUD is formatting the clock — pure, so it gets a test (its own
-  runner, <code>run_hud_tests.gd</code>; the visual layout is verified by eye):</p>
+  <p>The one piece of pure logic in the HUD is formatting the clock, so it gets a test (its own runner,
+  <code>run_hud_tests.gd</code>; the visual layout is verified by eye). It's a <strong>count-down</strong>,
+  so it rounds <em>up</em> — a run with 0.4s left still reads <code>0:01</code>, never a premature
+  <code>0:00</code>:</p>
 <pre><code>static func format_clock(seconds: float) -&gt; String:
-	var total: int = int(maxf(seconds, 0.0))   # clamp at zero
+	# count-DOWN clock: round up, so any time left still shows (0.1s -&gt; "0:01")
+	var total: int = 0 if seconds &lt;= 0.0 else int(ceilf(seconds))
 	return "%d:%02d" % [total / 60, total % 60]</code></pre>
 <pre><code>func _test_format_clock() -&gt; void:
 	_check_eq("zero -&gt; 0:00", Hud.format_clock(0.0), "0:00")
@@ -94,9 +97,11 @@ func render(sim) -&gt; void:
 	_check_eq("65s -&gt; 1:05", Hud.format_clock(65.0), "1:05")
 	_check_eq("125s -&gt; 2:05", Hud.format_clock(125.0), "2:05")
 	_check_eq("full run 240s -&gt; 4:00", Hud.format_clock(240.0), "4:00")
-	_check_eq("negative clamps to 0:00", Hud.format_clock(-5.0), "0:00")</code></pre>
+	_check_eq("negative clamps to 0:00", Hud.format_clock(-5.0), "0:00")
+	_check_eq("0.1s left rounds up -&gt; 0:01", Hud.format_clock(0.1), "0:01")   # count-down
+	_check_eq("59.1s left rounds up -&gt; 1:00", Hud.format_clock(59.1), "1:00")</code></pre>
   <p><code>godot --headless --path godot --script res://tests/run_hud_tests.gd</code> →
-  <strong>PASS — 6 checks</strong>.</p>
+  <strong>PASS — 8 checks</strong>.</p>
 
   <div class="card heads-up">
     <span class="label">The level-up flash — the seam pays off</span>
@@ -105,6 +110,16 @@ func render(sim) -&gt; void:
     <code>levelup</code> event, it shows the centered "LEVEL UP" label and tweens its alpha 1 → 0 over
     1.2s (killing any prior tween, so back-to-back level-ups restart cleanly). No state-diffing, no
     guessing — the HUD just reacts to what the Simulation reported.</p>
+  </div>
+
+  <div class="card heads-up">
+    <span class="label">The XP bar fills — it doesn't snap</span>
+    <p>Sparks should feel <em>earned</em>, so the XP bar <strong>eases</strong> toward each new fill instead
+    of jumping. <code>render</code> never pokes the bar's value directly — it calls
+    <code>_update_xp_fill(target)</code>, which snaps on the very first frame (no startup animation) and after
+    that retargets a short <code>TRANS_CUBIC</code> / <code>EASE_OUT</code> tween whenever the fill changes.
+    It's a no-op when the value is unchanged, so it's safe to call every frame. (The HP bar still snaps —
+    damage should read instantly; only the reward bar gets the flourish.)</p>
   </div>
 
   <div class="card turn">
@@ -127,12 +142,14 @@ func render(sim) -&gt; void:
 
   <div class="card turn">
     <span class="label">Done means…</span>
-    <p><strong>Done</strong> = <code>hud.tscn</code> renders the brass HUD; the controller drives it with
-    one <code>render(sim)</code> call; HP / level / XP / Sparks / clock update live; a level-up flashes;
-    and <code>format_clock</code> is green (6 checks). You can explain why the HUD only <em>reads</em>
-    (ADR 0002), how unique names wire the widgets, and how the <code>last_events</code> seam powers the
-    flash. Then I log <code>0011</code>, and <strong>0012</strong> closes v1 — the <strong>win/lose</strong>
-    screens (the run already reaches <code>complete</code> and <code>gameover</code>; now they show).</p>
+    <p><strong>Done</strong> = <code>hud.tscn</code> renders the brass HUD; the controller's one
+    <code>render(sim)</code> call maps state→widgets (HP / level / XP / Sparks / clock); the XP bar
+    <em>eases</em> as it fills; a level-up flashes; and <code>format_clock</code> is green (8 checks). That's
+    verified standalone and via a controller probe — the HUD lights up <em>in the running game</em> the
+    moment you finish the one wiring step above. You can explain why the HUD only <em>reads</em> (ADR 0002),
+    how unique names wire the widgets, and how the <code>last_events</code> seam powers the flash. Then I log
+    <code>0011</code>, and <strong>0012</strong> closes v1 — the <strong>win/lose</strong> screens (the run
+    already reaches <code>complete</code> and <code>gameover</code>; now they show).</p>
   </div>
 
   <p class="source">Primary sources · <code>design-handoff/gizmo-hud.png</code> +
