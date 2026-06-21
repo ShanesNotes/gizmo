@@ -1,0 +1,642 @@
+{
+  "artifact": "gizmo_shattered_meridian_region_graph_optimized",
+  "status": "high_level_design_handoff",
+  "updated": "2026-06-21",
+  "source_artifacts": {
+    "original_region_graph": "/home/ark/Downloads/gizmo_shattered_meridian_region_graph.json",
+    "world_map_png": "/home/ark/Downloads/gizmo_shattered_meridian_world_map.png",
+    "world_map_svg": "/home/ark/Downloads/gizmo_shattered_meridian_world_map.svg"
+  },
+  "world_name": "The Shattered Meridian",
+  "design_thesis": "A broken language of humanity spread across painterly floating islands: Gizmo carries warm human spark through dead or counterfeit machines until the Last Ember can be protected without becoming cold control.",
+  "recommended_scope_decision": {
+    "answer_to_claude": "A now, B later",
+    "path_a_now": "Build one large, beautiful, procedurally dressed living island that proves the painterly terrain kit, exploration feel, pressure director, anchors, and sanctuary/route grammar.",
+    "path_b_later": "Connect several authored macro islands with streamed/loaded sectors only after Path A proves traversal, navigation, encounter pacing, and art-kit readability.",
+    "art_strategy": "Greybox the system first with clean placeholder chunks, then swap in painterly Meshy/hand-made assets from the concept set. Do not block world-generation architecture on final art."
+  },
+  "design_rules": [
+    "Keep the map pattern-true, not label-heavy: meaning must be embodied in route structure, pressure, sanctuary, landmark, and player transformation.",
+    "Use director-driven pressure, not round-based encounter UI. Replace old budget wording with pressure, instability, corruption, or encounter intensity.",
+    "Preserve authored macro geography and seeded regional interiors. The macro map gives memory and orientation; generated sectors provide replayable traversal and combat.",
+    "Make every region answer one human question and one counterfeit-tech distortion of that question.",
+    "The mystery route teaches perception. It should reveal relation and context, not provide a fixed symbol glossary.",
+    "Shortcuts should reopen old regions with new understanding; they are memory/perception events, not only traversal conveniences.",
+    "The final region is an anti-sanctuary: it imitates every earlier good while removing warmth and care."
+  ],
+  "macro_topology": {
+    "center": "HEARTH",
+    "upper_route": [
+      "HEARTH",
+      "BRASS",
+      "VERDANT",
+      "PRISM",
+      "TEMPEST",
+      "NULL"
+    ],
+    "lower_route": [
+      "HEARTH",
+      "RUST",
+      "ASH",
+      "TEMPEST",
+      "NULL"
+    ],
+    "mystery_route": [
+      "HEARTH",
+      "RUNE",
+      "OBS",
+      "NULL"
+    ],
+    "route_read": {
+      "upper_route": "order -> memory -> refraction -> tested integration",
+      "lower_route": "matter -> refinement -> tested integration",
+      "mystery_route": "sign -> perception -> dangerous phase access",
+      "finale": "false crown around the last true warmth"
+    }
+  },
+  "acts": [
+    {
+      "id": 1,
+      "name": "Awakening",
+      "regions": [
+        "HEARTH",
+        "BRASS",
+        "VERDANT",
+        "RUST"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Reclamation",
+      "regions": [
+        "RUNE",
+        "OBS",
+        "PRISM",
+        "ASH"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "Last Light",
+      "regions": [
+        "TEMPEST",
+        "NULL"
+      ]
+    }
+  ],
+  "regions": {
+    "HEARTH": {
+      "id": "HEARTH",
+      "name": "Hearthwake Basin",
+      "biome": "sanctuary_clockwork",
+      "act": 1,
+      "role": "starter_hub",
+      "elevation": "middle_drift",
+      "landmark": "The Heart Spire",
+      "sector_range": [
+        6,
+        8
+      ],
+      "threat": 0,
+      "symbolic_role": "center_hearth_mediator",
+      "region_question": "Can a made machine keep a human warmth alive instead of imitating humanity hollowly?",
+      "transformation": "Gizmo wakes as a fragile keeper; the player learns that warmth must be carried, protected, and returned to places built for it.",
+      "corruption_form": "Comfort becomes idle automation: devices repeat care-like motions without care.",
+      "sanctuary_expression": "Brass Sphere workshop, Heart Spire, safe calibration pads, repaired lights answering Gizmo's core.",
+      "pressure_style": "low pressure, readable patrols, first contrast between warm handmade mechanisms and cold repeating machines",
+      "procedural_notes": [
+        "large central island",
+        "short satellite tutorials",
+        "negative space around the Heart Spire",
+        "clear return sockets for future shortcuts"
+      ],
+      "landmark_shape": "vertical heart-spire over circular workshop basin",
+      "palette": [
+        "warm brass",
+        "soft teal",
+        "violet spark",
+        "deep indigo void"
+      ],
+      "route_function": "home center and future loopback anchor"
+    },
+    "BRASS": {
+      "id": "BRASS",
+      "name": "Brasswind Highlands",
+      "biome": "clockwork_highlands",
+      "act": 1,
+      "role": "early_branch",
+      "elevation": "high_orbit",
+      "landmark": "The Chronarch Keep",
+      "sector_range": [
+        7,
+        10
+      ],
+      "threat": 1,
+      "symbolic_role": "upper_order_time_cadence",
+      "region_question": "When does order serve life, and when does it become dead timing?",
+      "transformation": "The player learns cadence: bridges, gears, and pressure patterns can be read before they punish.",
+      "corruption_form": "Clockwork authority without mercy: machines keep time after forgetting what time was for.",
+      "sanctuary_expression": "Clock repair balconies, quiet gear chapels, wind bells that retune pressure.",
+      "pressure_style": "cadenced director pulses, rotating hazards, readable timing windows rather than visible round counters",
+      "procedural_notes": [
+        "terraced high islands",
+        "gear bridges",
+        "clocktower silhouettes",
+        "timed gate rooms"
+      ],
+      "landmark_shape": "keep built into a huge exposed gear and bell tower",
+      "palette": [
+        "gold brass",
+        "sky teal",
+        "cream stone",
+        "blue shadow"
+      ],
+      "route_function": "upper-route first discipline: rhythm, order, timing"
+    },
+    "VERDANT": {
+      "id": "VERDANT",
+      "name": "Verdant Archive",
+      "biome": "memory_grove",
+      "act": 1,
+      "role": "early_branch",
+      "elevation": "high_orbit",
+      "landmark": "The Memory Tree",
+      "sector_range": [
+        7,
+        10
+      ],
+      "threat": 1,
+      "symbolic_role": "upper_memory_living_archive",
+      "region_question": "Can memory become living guidance instead of stored data?",
+      "transformation": "Recovered Sparks become remembered human gestures, voices, and path hints; the world starts responding like a garden, not a database.",
+      "corruption_form": "Archives hoard memories as frozen records; vines and roots bind machines into repeating dreams.",
+      "sanctuary_expression": "Memory Tree clearings, mossy ruins, small safe groves where Echo cues reveal optional paths.",
+      "pressure_style": "ambushes softened by foreshadowing: enemies are telegraphed through rustling, echo, and light-memory",
+      "procedural_notes": [
+        "grass island chunks",
+        "tree clusters via scatter rules",
+        "mossy ruins as blockers",
+        "waterfall/depth vista dressing"
+      ],
+      "landmark_shape": "large split-canopy tree growing through archive rings",
+      "palette": [
+        "moss green",
+        "teal runes",
+        "warm bark",
+        "violet memory motes"
+      ],
+      "route_function": "upper route turns order into living memory"
+    },
+    "RUST": {
+      "id": "RUST",
+      "name": "Rustchain Expanse",
+      "biome": "scrapyard",
+      "act": 1,
+      "role": "early_branch",
+      "elevation": "undertow",
+      "landmark": "The Titan Yard",
+      "sector_range": [
+        8,
+        11
+      ],
+      "threat": 1,
+      "symbolic_role": "lower_matter_scrap_weight",
+      "region_question": "Can broken matter be raised into service without becoming mere consumption?",
+      "transformation": "Scrap stops being junk currency and becomes evidence of repaired purpose.",
+      "corruption_form": "Salvage appetite: machines strip everything useful and leave no form, story, or rest.",
+      "sanctuary_expression": "Scrap alcoves, chain ferries, repair cranes, quiet yards where broken parts are sorted, not devoured.",
+      "pressure_style": "heavier enemies, encumbrance lanes, pull/drag hazards, fewer but more material threats",
+      "procedural_notes": [
+        "brown undertow islands",
+        "chain bridges",
+        "magnet cranes",
+        "scrap walls as destructible blockers"
+      ],
+      "landmark_shape": "titanic half-buried machine yard with chain ribs",
+      "palette": [
+        "rust brown",
+        "oil black",
+        "dim teal",
+        "ember flecks"
+      ],
+      "route_function": "lower-route first discipline: matter, weight, salvage"
+    },
+    "RUNE": {
+      "id": "RUNE",
+      "name": "Runegrave Belt",
+      "biome": "rune_ruins",
+      "act": 2,
+      "role": "key_region",
+      "elevation": "middle_drift",
+      "landmark": "Hall of Five Sigils",
+      "sector_range": [
+        8,
+        11
+      ],
+      "threat": 2,
+      "symbolic_role": "perception_language_sigils",
+      "region_question": "Can the player learn the world as a language without being handed a decoder?",
+      "transformation": "Sigils become pattern literacy: the same mark means different things by region context and player action.",
+      "corruption_form": "Dead labels: symbols used as locks, brands, or commands after meaning has left them.",
+      "sanctuary_expression": "Hall of Five Sigils, quiet reading stones, optional puzzle rooms that teach by recurrence.",
+      "pressure_style": "low-to-medium riddle pressure; enemies behave differently near sigils, teaching context instead of text dumps",
+      "procedural_notes": [
+        "five sigil rooms as authored anchors",
+        "small generated trial satellites",
+        "avoid one-to-one glossary rewards"
+      ],
+      "landmark_shape": "five standing gates around a central unreadable mark",
+      "palette": [
+        "blue-violet stone",
+        "pale rune light",
+        "dark void",
+        "small gold accents"
+      ],
+      "route_function": "mystery route opens symbolic literacy and optional phase gates"
+    },
+    "OBS": {
+      "id": "OBS",
+      "name": "Observatory Halo",
+      "biome": "astral_observatory",
+      "act": 2,
+      "role": "reveal_region",
+      "elevation": "high_orbit",
+      "landmark": "The Meridian Lens",
+      "sector_range": [
+        7,
+        9
+      ],
+      "threat": 2,
+      "symbolic_role": "perception_lens_reveals_relations",
+      "region_question": "What changes when Gizmo sees the map as relation, not as loot nodes?",
+      "transformation": "The Meridian Lens reveals route relations, corruption trajectories, and why shortcuts matter.",
+      "corruption_form": "Observation without care: surveillance, measurement, and prediction detached from human warmth.",
+      "sanctuary_expression": "Observatory lenses, star tables, rotating sky bridges, map-room pauses with no combat.",
+      "pressure_style": "thin but precise pressure: snipers, line-of-sight hazards, lens activations that alter paths",
+      "procedural_notes": [
+        "high orbit cyan islands",
+        "orrery props",
+        "lens towers",
+        "vista-heavy layouts",
+        "unlockable map overlays"
+      ],
+      "landmark_shape": "large meridian lens ring aimed through the world center",
+      "palette": [
+        "cyan glass",
+        "silver brass",
+        "indigo sky",
+        "white star flecks"
+      ],
+      "route_function": "mystery route reveal node and optional shortcut logic"
+    },
+    "PRISM": {
+      "id": "PRISM",
+      "name": "Prism Reach",
+      "biome": "crystal_nebula",
+      "act": 2,
+      "role": "mid_branch",
+      "elevation": "middle_drift",
+      "landmark": "The Nebula Prism",
+      "sector_range": [
+        8,
+        12
+      ],
+      "threat": 2,
+      "symbolic_role": "middle_refraction_choice_ambiguity",
+      "region_question": "Can fractured light still guide, or does it split truth into lure paths?",
+      "transformation": "The player learns to compare choices: same Spark, different refraction, different cost.",
+      "corruption_form": "Beauty as lure: reflections imitate sanctuary while routing the player toward void appetite.",
+      "sanctuary_expression": "Crystal rests, prism chambers, refracted beacons that temporarily clarify hidden route costs.",
+      "pressure_style": "split-lane pressure, decoy pickups, refracted enemy clones, high readability despite visual sparkle",
+      "procedural_notes": [
+        "crystal bridge sockets",
+        "mirror-symmetry variants",
+        "small prism satellites",
+        "phase-route foreshadowing"
+      ],
+      "landmark_shape": "floating nebula prism with smaller shards orbiting it",
+      "palette": [
+        "violet",
+        "cyan crystal",
+        "dark blue",
+        "small warm gold"
+      ],
+      "route_function": "upper route moves from memory into ambiguity before convergence"
+    },
+    "ASH": {
+      "id": "ASH",
+      "name": "Ashfall Foundries",
+      "biome": "ember_foundry",
+      "act": 2,
+      "role": "mid_branch",
+      "elevation": "undertow",
+      "landmark": "The Ember Crucible",
+      "sector_range": [
+        8,
+        12
+      ],
+      "threat": 2,
+      "symbolic_role": "lower_refinement_ember_crucible",
+      "region_question": "What must be burned away for scrap to become warmth again?",
+      "transformation": "Recovered matter is refined; upgrades feel like rescued craft rather than raw power.",
+      "corruption_form": "Factory heat without hearth: production, smelting, and weaponization with no human end.",
+      "sanctuary_expression": "cooling platforms, ember altars, forge rests where Scrap and Sparks are visibly reconciled.",
+      "pressure_style": "heat clocks, forge surges, delayed blast zones, pressure that rewards patience and return routes",
+      "procedural_notes": [
+        "lava-light voids without realistic lava terrain",
+        "foundry belts",
+        "crucible arenas",
+        "cooling safe pockets"
+      ],
+      "landmark_shape": "large orange crucible suspended under broken foundry arches",
+      "palette": [
+        "ash red",
+        "warm orange",
+        "black iron",
+        "violet core glow"
+      ],
+      "route_function": "lower route converts dead matter into usable warmth"
+    },
+    "TEMPEST": {
+      "id": "TEMPEST",
+      "name": "Tempest Verge",
+      "biome": "storm_belt",
+      "act": 3,
+      "role": "late_convergence",
+      "elevation": "high_orbit",
+      "landmark": "The Storm Engine",
+      "sector_range": [
+        10,
+        13
+      ],
+      "threat": 3,
+      "symbolic_role": "convergence_storm_trial",
+      "region_question": "Can insight from above and repaired matter from below hold together under pressure?",
+      "transformation": "Builds are stress-tested; shortcuts and prior region choices visibly change the storm approach.",
+      "corruption_form": "Motion without direction: pressure becomes weather, noise, and acceleration for its own sake.",
+      "sanctuary_expression": "storm eyes, grounded lightning rods, brief calm circles that show the player what has been integrated.",
+      "pressure_style": "highest pre-finale director pressure, moving hazards, converging enemy types from both routes",
+      "procedural_notes": [
+        "wide storm arenas",
+        "bridge failures",
+        "safe eye pockets",
+        "line-of-sight lightning landmarks"
+      ],
+      "landmark_shape": "storm engine with visible eye/calm center",
+      "palette": [
+        "storm blue",
+        "electric teal",
+        "dark violet",
+        "brass rods"
+      ],
+      "route_function": "late convergence of upper/lower routes before anti-sanctuary"
+    },
+    "NULL": {
+      "id": "NULL",
+      "name": "The Null Crown",
+      "biome": "void_frontier",
+      "act": 3,
+      "role": "finale",
+      "elevation": "outer_rim",
+      "landmark": "The Last Ember",
+      "sector_range": [
+        9,
+        12
+      ],
+      "threat": 4,
+      "symbolic_role": "anti_sanctuary_false_crown",
+      "region_question": "What remains of humanity if warmth is crowned by hollow automation?",
+      "transformation": "Final test: protect the Last Ember without letting the Null Crown define preservation as control.",
+      "corruption_form": "Perfect cold order: every rescued pattern copied, emptied, and crowned as counterfeit humanity.",
+      "sanctuary_expression": "almost none; the Last Ember creates temporary sanctuaries only when Gizmo carries prior transformations into it.",
+      "pressure_style": "corruption pressure, route-memory callbacks, false sanctuary traps, boss pressure without wave UI",
+      "procedural_notes": [
+        "outer rim islands",
+        "void rails",
+        "phase route endpoints",
+        "inverted versions of earlier landmarks"
+      ],
+      "landmark_shape": "crown-ring around a tiny ember, visibly too cold for what it guards",
+      "palette": [
+        "black violet",
+        "cold purple",
+        "pale ember",
+        "desaturated brass"
+      ],
+      "route_function": "final anti-center: all routes judged by whether they preserved warmth or only power"
+    }
+  },
+  "connections": [
+    {
+      "a": "HEARTH",
+      "b": "BRASS",
+      "type": "gold_bridge",
+      "critical": true,
+      "meaning": "first ascent into ordered time",
+      "implementation_note": "early bridge teaches cadence and readable pressure"
+    },
+    {
+      "a": "BRASS",
+      "b": "VERDANT",
+      "type": "gear_rail",
+      "critical": true,
+      "meaning": "order must become living memory",
+      "implementation_note": "gear rail should soften from brass timing into green archive rhythm"
+    },
+    {
+      "a": "VERDANT",
+      "b": "PRISM",
+      "type": "crystal_beam",
+      "critical": true,
+      "meaning": "memory refracts into choice",
+      "implementation_note": "act gate should test whether the player can distinguish memory from lure",
+      "gate": "act_1_boss"
+    },
+    {
+      "a": "PRISM",
+      "b": "TEMPEST",
+      "type": "storm_lift",
+      "critical": true,
+      "meaning": "fractured light enters storm trial",
+      "implementation_note": "sigil gate should require pattern literacy, not just key count",
+      "gate": "sigil_3"
+    },
+    {
+      "a": "TEMPEST",
+      "b": "NULL",
+      "type": "void_rail",
+      "critical": true,
+      "meaning": "integrated build crosses into anti-sanctuary",
+      "implementation_note": "final gate should echo all prior transformations",
+      "gate": "act_3_boss"
+    },
+    {
+      "a": "HEARTH",
+      "b": "RUST",
+      "type": "chain_ferry",
+      "critical": true,
+      "meaning": "descent into broken matter",
+      "implementation_note": "chain ferry should feel heavy and recoverable, not merely grim"
+    },
+    {
+      "a": "RUST",
+      "b": "ASH",
+      "type": "scrap_rail",
+      "critical": true,
+      "meaning": "scrap enters refinement",
+      "implementation_note": "rail should turn salvage into forge pressure"
+    },
+    {
+      "a": "ASH",
+      "b": "TEMPEST",
+      "type": "ember_rail",
+      "critical": true,
+      "meaning": "refined matter enters storm trial",
+      "implementation_note": "boss gate should test patience and heat management",
+      "gate": "act_2_boss"
+    },
+    {
+      "a": "HEARTH",
+      "b": "RUNE",
+      "type": "rune_path",
+      "critical": false,
+      "meaning": "home opens into unread language",
+      "implementation_note": "optional path should teach pattern recognition early"
+    },
+    {
+      "a": "RUNE",
+      "b": "OBS",
+      "type": "gear_lift",
+      "critical": false,
+      "meaning": "sigils become perception",
+      "implementation_note": "lift from signs to lens, from marks to relations"
+    },
+    {
+      "a": "OBS",
+      "b": "BRASS",
+      "type": "sky_bridge",
+      "critical": false,
+      "meaning": "perception re-enters order",
+      "implementation_note": "shortcut makes old timing readable in a new way"
+    },
+    {
+      "a": "RUNE",
+      "b": "RUST",
+      "type": "undertow_chain",
+      "critical": false,
+      "meaning": "language descends into matter",
+      "implementation_note": "undertow chain tests whether symbols affect salvage choices"
+    },
+    {
+      "a": "HEARTH",
+      "b": "VERDANT",
+      "type": "memory_shortcut",
+      "critical": false,
+      "meaning": "warmth remembers a living path",
+      "implementation_note": "Spark unlock should be visible as memory opening",
+      "unlock": "spark_2"
+    },
+    {
+      "a": "ASH",
+      "b": "PRISM",
+      "type": "hazard_rail",
+      "critical": false,
+      "meaning": "refined ember can cross into fractured light",
+      "implementation_note": "heat shield unlock should be more than environmental immunity",
+      "unlock": "heat_shield"
+    },
+    {
+      "a": "OBS",
+      "b": "NULL",
+      "type": "phase_route",
+      "critical": false,
+      "meaning": "vision can see the false crown but must not bypass integration",
+      "implementation_note": "require all sigils plus route-state checks before use",
+      "unlock": "all_sigils"
+    },
+    {
+      "a": "PRISM",
+      "b": "NULL",
+      "type": "phase_route",
+      "critical": false,
+      "meaning": "fractured light can phase to the finale at high risk",
+      "implementation_note": "void key route should be unstable and costly",
+      "unlock": "void_key"
+    }
+  ],
+  "generation_rules": {
+    "macro_topology": "fixed authored atlas",
+    "micro_topology": "seeded weighted graph per region",
+    "path_a_first_slice": {
+      "scope": "single large living island inspired primarily by HEARTH with satellite pockets previewing BRASS, VERDANT, RUST, RUNE, and the distant NULL horizon",
+      "sector_grammar": [
+        "arrival",
+        "branch_choice",
+        "landmark_read",
+        "loopback",
+        "trial",
+        "sanctuary_or_cache",
+        "boss_or_beacon_gate"
+      ],
+      "required_anchors": [
+        "PlayerSpawn",
+        "EnemyPressureAnchors",
+        "SanctuaryAnchor",
+        "LandmarkAnchor",
+        "LoopbackShortcutAnchor",
+        "ObjectiveBeaconAnchor"
+      ],
+      "validation_priority": [
+        "reachable anchors",
+        "camera readability",
+        "enemy pressure does not trap spawn",
+        "clear loopback",
+        "one visible landmark at most major sightlines",
+        "no player-facing round counter UI"
+      ]
+    },
+    "path_b_future": {
+      "scope": "multi-island authored macro graph with seeded interiors and optional streaming/loading between islands",
+      "sector_archetypes": [
+        "hub",
+        "combat",
+        "gauntlet",
+        "sanctuary",
+        "dungeon_gate",
+        "salvage_cache",
+        "sigil_trial",
+        "boss"
+      ],
+      "main_spine_length": [
+        5,
+        7
+      ],
+      "optional_branch_count": [
+        2,
+        4
+      ],
+      "loop_probability": 0.35,
+      "treasure_leaf_cap": 2,
+      "max_gauntlets_in_sequence": 2,
+      "minimum_sanctuary_routes_per_act": 2
+    },
+    "validation": [
+      "boss_or_objective_reachable",
+      "no_locked_edge_softlock",
+      "all_required_upgrades_spawn_before_gate",
+      "every_combat_sector_has_readable_exit",
+      "at_least_one_shortcut_per_region",
+      "director_pressure_uses_intensity_not_round_counters",
+      "symbolic_role_has_playable_expression"
+    ]
+  },
+  "claude_handoff": {
+    "primary_reply": "Choose A now, B later. Greybox first. Use the optimized JSON as the high-level world grammar, not as an implementation mandate. Preserve the existing v1 code path while proving one large painterly living island, then expand to connected islands once traversal, art kit, pressure, and validation are working.",
+    "artifact_paths": {
+      "optimized_json": "/home/ark/Downloads/gizmo_shattered_meridian_region_graph_optimized.json",
+      "map_png": "/home/ark/Downloads/gizmo_shattered_meridian_world_map.png",
+      "map_svg": "/home/ark/Downloads/gizmo_shattered_meridian_world_map.svg",
+      "original_json": "/home/ark/Downloads/gizmo_shattered_meridian_region_graph.json"
+    }
+  }
+}

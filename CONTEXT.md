@@ -22,11 +22,30 @@ later, but the player should not see or learn a wave-round structure in v1.
 If older docs say waves/elites/bosses, read that as generic enemy escalation
 only. See `docs/adr/0003-director-pressure-not-discrete-waves.md`.
 
-## The loop
-Survive escalating **enemy pressure** while protecting the **Spark of Humanity**
-meter — keep it alive. Earn two currencies, **Sparks** (primary) and **Scrap**
-(secondary); build the run via the **Core Matrix** (ability loadout, keys 1/2/3)
-and **Gadgets** (L/R activated items), gaining XP and drafting upgrades.
+## The loop (active model — Path A, 2026-06-21)
+**Traverse a wounded floating island under director-driven enemy pressure and
+rekindle a cold Beacon.** Win = **Beacon Rekindled**; lose = **HP 0**. The run clock
+no longer wins — it is the **`pressure_clock`** that only fuels the director (ADR 0005).
+Pressure is **place-aware**: the island decides how cruel the swarm becomes (ADR 0006).
+Survivability is a **recoverable guard over fixed mortal HP** (ADR 0007).
+
+The broader rogue-lite economy still stands as the eventual target: two currencies,
+**Sparks** (primary) and **Scrap** (secondary), and run-building via the **Core Matrix**
+(ability draft, keys 1/2/3) and **Gadgets**. Per ADR 0001 these — and the **Spark of
+Humanity** meter — stay **distinct quantities**: the rekindle is *not* the Spark of
+Humanity, and HP is *not* the Spark of Humanity. Full target:
+`docs/path-a-shattered-meridian-spec.md`.
+
+## Path A is a microcosm of the Shattered Meridian (2026-06-21)
+The first island is **not "the first level"** — it is the first small enactment of the
+whole world pattern: *warm origin → broken route → discernment branch → landmark memory
+→ sanctuary breath → cold Beacon rekindled → road opens outward.* The world is
+**painterly floating islands in a gouache cosmos of lost tech**; Path A is a **flat
+combat-readability layer with dramatic non-walkable vertical scenery**. The **Brass
+Sphere** survives as spawn / workshop / ceremony, and the **codex** as a UI / memory /
+record motif — not as the whole world premise. **No player-facing countdown or
+wave-round framing.** Greybox first, painterly assets swapped in as they arrive
+(ADR 0008). Spec: `docs/path-a-shattered-meridian-spec.md`.
 
 ## The direction (decided 2026-06-20)
 Built in **3D with a fixed Diablo-style camera** (looking down ~45°), not 2.5D
@@ -36,14 +55,19 @@ sheets fall apart. The old 2.5D sprite scaffolding was removed; recover anything
 from git history only if the user explicitly asks for archaeology.
 
 ## v1 scope (the only thing we're building first)
-Gizmo moves under a fixed Diablo camera; enemies spawn; you fight; you can die;
-win/lose screen. **The character is `godot/assets/gizmo.glb` — a meshy.ai model
-with a 53-bone rig but no animation clips yet.** v1 moves it with code (no clips
-needed); adding a walk/attack clip (via meshy's "Animate", played through an
-`AnimationPlayer`) is a *later* lesson, not a v1 blocker. Don't expand scope until
-v1 is finished.
+The active first build is **Path A — one large painterly floating island** Gizmo
+**traverses** under director pressure to **rekindle a Beacon** (win = rekindled, lose =
+HP 0); see `docs/path-a-shattered-meridian-spec.md` and ADRs 0005–0008. The prior
+"static arena + survive-the-countdown + win/lose screen" framing is **retired**.
+**The character is `godot/assets/gizmo.glb` — a meshy.ai model with a 53-bone rig but
+no animation clips yet.** v1 moves it with code (no clips needed); adding a walk/attack
+clip (via meshy's "Animate", played through an `AnimationPlayer`) is a *later* lesson,
+not a v1 blocker. Don't expand scope past Path A until it ships.
 
 ## Where each truth lives
+- **Path A build target (active first level)** → `docs/path-a-shattered-meridian-spec.md`,
+  pinned by `docs/adr/0005`–`0008`. World-grammar source = the Shattered Meridian region
+  graph (HEARTH / Hearthwake Basin region).
 - **Premise / story** → `design-handoff/NARRATIVE.md`
 - **Balance / design foundation (game-agnostic theory)** →
   `reference/game-balance-reference.md` — formulas, TTK bands, spawn budgets,
