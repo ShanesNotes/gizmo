@@ -1,15 +1,19 @@
 extends Node3D
 
 ## The bridge between the headless Simulation (the rules) and the scene (ADR 0002).
-## Owns one Simulation, feeds it Gizmo's position each physics frame, and mirrors
-## its enemy and Spark data onto visual nodes. The Simulation is the source of
-## truth; this node only renders it.
+## Owns one Simulation, feeds it Gizmo's position each physics frame, mirrors its
+## enemy and Spark data onto visual nodes, and drives the HUD (0011). The Simulation
+## is the source of truth; this node only renders it.
 
 const EnemyScene := preload("res://scenes/enemy.tscn")
 const SparkScene := preload("res://scenes/spark.tscn")
 
 ## The player node, read for its position (assign Gizmo in the Inspector).
 @export var gizmo: Node3D
+
+## The HUD to drive each frame (assign a hud.tscn instance in the Inspector; 0011).
+## Optional — the bridge runs fine without it (the HUD just won't update).
+@export var hud: Hud
 
 var sim := Simulation.new()
 var _enemy_views: Dictionary = {}  # Simulation.Enemy  -> Node3D
@@ -20,6 +24,8 @@ func _physics_process(delta: float) -> void:
 	sim.tick(delta, gizmo_position)
 	_sync(sim.enemies, _enemy_views, EnemyScene)
 	_sync(sim.pickups, _spark_views, SparkScene)
+	if hud != null:
+		hud.render(sim)
 
 ## Mirror a list of data agents (each with a `position`) onto visual nodes:
 ## add a view for each new agent, move existing views, and free the view of any

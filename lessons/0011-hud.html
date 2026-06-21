@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Gizmo · Lesson 0011 — HUD: show the state</title>
+  <link rel="stylesheet" href="assets/lesson.css">
+</head>
+<body>
+<main>
+
+  <header class="masthead">
+    <p class="eyebrow">Gizmo · Lesson 0011 · The HUD</p>
+    <h1>HUD: show the state</h1>
+    <p class="subtitle">Five lessons of hidden state finally surface — a brass nameplate with cyan HP, a violet level gem, Sparks, the run clock, and a level-up flash off the 0009 event seam.</p>
+  </header>
+
+  <div class="card why">
+    <span class="label">Why this, now</span>
+    <p>0006–0010 built a lot of state — HP, XP, level, the run clock, the pressure curve —
+    but it all lived <strong>inside the Simulation</strong>, invisible. 0011 puts it
+    <strong>on screen</strong>, themed to the canonical target
+    <code>design-handoff/gizmo-hud.png</code> (the gouache cosmos: <strong>brass</strong> frames,
+    <strong>cyan</strong> energy, the <strong>violet spark gem</strong>). It also cashes in the
+    <code>last_events</code> seam from 0009 — the <strong>level-up flash</strong>. The architecture
+    holds (ADR 0002): the Simulation is the truth, the scene renders it; the HUD just
+    <em>reads</em>.</p>
+  </div>
+
+  <div class="card heads-up">
+    <span class="label">v1-scoped — only what has data</span>
+    <p>The full mockup shows a lot (Spark-of-Humanity meter, Core Matrix abilities, Gadgets, Scrap,
+    minimap, objective) — but those drive <strong>systems we haven't built</strong>. Building their chrome
+    now would be dead UI. So 0011 themes only the <strong>data-backed</strong> pieces: the Gizmo
+    nameplate + HP bar, the level gem, XP/Sparks, and a <strong>run-clock readout</strong> where the old
+    "WAVE x/5" sat (ART_DIRECTION + ADR 0003 — no wave counter). The rest land with their systems.</p>
+  </div>
+
+  <h2>Part 1 — the HUD scene (brass, themed)</h2>
+  <p>The HUD is a <code>CanvasLayer</code> (it floats above the 3D world) holding a <code>Control</code>
+  tree, anchored into the screen corners so it survives any resolution. The brass look is a
+  <code>Theme</code> resource (<code>scenes/hud_theme.tres</code>) of <code>StyleBoxFlat</code>s —
+  beveled borders, riveted corners, dark translucent fills — with the two energy fills (cyan HP, violet
+  XP) set per-bar:</p>
+<pre><code>Hud (CanvasLayer)               scripts/hud.gd
+└─ Root (Control, Full Rect)
+   ├─ Nameplate   (PanelContainer, Top-Left)   → "GIZMO" · HpBar (cyan) · HpLabel "7 / 7"
+   ├─ LevelCluster(VBox,          Top-Center)  → GemBadge (violet) "1" · XpBar (violet)
+   ├─ SparksReadout(PanelContainer,Top-Left ↓) → gem · SparksLabel "0" · "SPARKS"
+   ├─ TimerPanel  (PanelContainer, Top-Right)  → TimerLabel "4:00"
+   └─ LevelUpFlash(Label,          Center)     → "LEVEL UP" (hidden until it fires)</code></pre>
+  <p>Each widget the script touches is marked <strong>unique</strong> (<code>%HpBar</code>,
+  <code>%LevelLabel</code>…) so <code>hud.gd</code> can reach it by name without brittle paths. The scene
+  ships with sensible default values, so running <code>hud.tscn</code> by itself shows a populated HUD —
+  handy for tuning the look against the mockup.</p>
+
+  <h2>Part 2 — drive it from the controller</h2>
+  <p>The HUD never reaches into the Simulation. Instead the <strong>controller pushes</strong> one frame
+  of state into it each tick — one call, after the world is synced:</p>
+<pre><code># game_controller.gd
+@export var hud: Hud   # assign a hud.tscn instance in the Inspector (optional)
+
+func _physics_process(delta: float) -&gt; void:
+	var gizmo_position := gizmo.global_position if gizmo != null else Vector3.ZERO
+	sim.tick(delta, gizmo_position)
+	_sync(sim.enemies, _enemy_views, EnemyScene)
+	_sync(sim.pickups, _spark_views, SparkScene)
+	if hud != null:
+		hud.render(sim)   # one-way: state in, pixels out</code></pre>
+  <p>And <code>render(sim)</code> is a flat mapping — read a value, set a widget. No game logic lives in
+  the HUD:</p>
+<pre><code># hud.gd
+func render(sim) -&gt; void:
+	_hp_bar.value = sim.hp_progress() * 100.0
+	_hp_label.text = "%d / %d" % [sim.hp, sim.max_hp]
+	_level_label.text = str(sim.level)
+	_xp_bar.value = sim.xp_progress() * 100.0
+	_sparks_label.text = str(sim.xp)              # Sparks ARE the xp currency (ADR 0001)
+	_timer_label.text = format_clock(sim.time_remaining())
+	for event in sim.last_events:                 # the 0009 seam, finally consumed
+		if event.get("type") == "levelup":
+			_play_level_up_flash()
+			break</code></pre>
+
+  <h2>Part 3 — the run clock (test-first)</h2>
+  <p>The one piece of real logic in the HUD is formatting the clock — pure, so it gets a test (its own
+  runner, <code>run_hud_tests.gd</code>; the visual layout is verified by eye):</p>
+<pre><code>static func format_clock(seconds: float) -&gt; String:
+	var total: int = int(maxf(seconds, 0.0))   # clamp at zero
+	return "%d:%02d" % [total / 60, total % 60]</code></pre>
+<pre><code>func _test_format_clock() -&gt; void:
+	_check_eq("zero -&gt; 0:00", Hud.format_clock(0.0), "0:00")
+	_check_eq("5s -&gt; 0:05 (zero-padded)", Hud.format_clock(5.0), "0:05")
+	_check_eq("65s -&gt; 1:05", Hud.format_clock(65.0), "1:05")
+	_check_eq("125s -&gt; 2:05", Hud.format_clock(125.0), "2:05")
+	_check_eq("full run 240s -&gt; 4:00", Hud.format_clock(240.0), "4:00")
+	_check_eq("negative clamps to 0:00", Hud.format_clock(-5.0), "0:00")</code></pre>
+  <p><code>godot --headless --path godot --script res://tests/run_hud_tests.gd</code> →
+  <strong>PASS — 6 checks</strong>.</p>
+
+  <div class="card heads-up">
+    <span class="label">The level-up flash — the seam pays off</span>
+    <p>0009 had the Simulation record a per-tick <code>last_events</code> list (attack/hit/defeat/pickup/
+    <strong>levelup</strong>) that nothing read yet. Now it does: when <code>render</code> sees a
+    <code>levelup</code> event, it shows the centered "LEVEL UP" label and tweens its alpha 1 → 0 over
+    1.2s (killing any prior tween, so back-to-back level-ups restart cleanly). No state-diffing, no
+    guessing — the HUD just reacts to what the Simulation reported.</p>
+  </div>
+
+  <div class="card turn">
+    <span class="label">Wire it up (one editor step)</span>
+    <p>The HUD is a self-contained scene, so the only integration is: instance
+    <code>scenes/hud.tscn</code> under <strong>Main</strong>, then drag it into the GameController's
+    <code>HUD</code> slot in the Inspector. (<code>main.tscn</code> is in active art-pipeline flux, so
+    this last click is yours to make — the controller already guards <code>hud == null</code>, so nothing
+    breaks until it's assigned.)</p>
+  </div>
+
+  <div class="card heads-up">
+    <span class="label">Deferred — the rest of the mockup</span>
+    <p>Named, not built (each waits for its system): the <strong>Spark of Humanity</strong> meter (its
+    mechanic is still TBD — ADR 0001), the <strong>Core Matrix</strong> ability bar, <strong>Gadgets</strong>,
+    the <strong>Scrap</strong> currency, the <strong>minimap</strong>, and the <strong>objective</strong>
+    card. The brass theme is a <code>StyleBoxFlat</code> family, not literal filigree texture — the art
+    pipeline can swap richer frames into the same <code>Theme</code> without touching <code>hud.gd</code>.</p>
+  </div>
+
+  <div class="card turn">
+    <span class="label">Done means…</span>
+    <p><strong>Done</strong> = <code>hud.tscn</code> renders the brass HUD; the controller drives it with
+    one <code>render(sim)</code> call; HP / level / XP / Sparks / clock update live; a level-up flashes;
+    and <code>format_clock</code> is green (6 checks). You can explain why the HUD only <em>reads</em>
+    (ADR 0002), how unique names wire the widgets, and how the <code>last_events</code> seam powers the
+    flash. Then I log <code>0011</code>, and <strong>0012</strong> closes v1 — the <strong>win/lose</strong>
+    screens (the run already reaches <code>complete</code> and <code>gameover</code>; now they show).</p>
+  </div>
+
+  <p class="source">Primary sources · <code>design-handoff/gizmo-hud.png</code> +
+  <code>design-handoff/ART_DIRECTION.md</code> (the brass cosmos look), <code>docs/adr/0002</code>
+  (Simulation owns rules; scene renders) + <code>docs/adr/0003</code> (timer/pressure, not waves). Godot
+  Docs — <a href="https://docs.godotengine.org/en/4.6/classes/class_canvaslayer.html">CanvasLayer</a>,
+  <a href="https://docs.godotengine.org/en/4.6/tutorials/ui/gui_using_theme_editor.html">Theme &amp; StyleBox</a>,
+  and <a href="https://docs.godotengine.org/en/4.6/classes/class_tween.html">Tween</a>.</p>
+
+  <p class="ask">Want the anchor presets or the brass StyleBox unpacked? Ask your teacher.</p>
+
+  <nav class="lesson-nav">
+    <span>Prev · 0010 Pressure director</span>
+    <span>Next · 0012 Win / lose screens</span>
+  </nav>
+
+</main>
+</body>
+</html>
