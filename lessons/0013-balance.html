@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Gizmo · Lesson 0013 — Balance: make the run lethal</title>
+  <link rel="stylesheet" href="assets/lesson.css">
+</head>
+<body>
+<main>
+
+  <header class="masthead">
+    <p class="eyebrow">Gizmo · Lesson 0013 · Balance</p>
+    <h1>Balance: make the run lethal</h1>
+    <p class="subtitle">0012 closed the loop, but you could only win or die by pressing F8/F9. 0013 tunes the run so it's <em>naturally</em> survivable <strong>and</strong> lethal — and, just as importantly, builds a deterministic test harness that pins that curve so a future tweak can't silently break it.</p>
+  </header>
+
+  <div class="card why">
+    <span class="label">Why this, now — and how (metric-driven)</span>
+    <p>A balance pass is the difference between "the loop runs" and "the loop is a <em>game</em>." But balance by vibes
+    regresses the moment you touch a constant. So the rule for 0013 was: <strong>define the target curve from
+    <code>reference/game-balance-reference.md</code> first</strong>, then tune to hit it, then <strong>pin it with
+    tests</strong>. The reference is the north star: TTK bands (§5.4), the horde clear-vs-spawn pressure equation
+    (§5.3), one-shot control (§3.4), spawn failure modes (§6.2).</p>
+  </div>
+
+  <h2>Part 1 — enemy roles (rules-only, still no waves)</h2>
+  <p>One enemy type can't make a curve. 0013 ports the source roles (<code>simulation.ts:259</code>) as
+  <strong>rules-only variants</strong> — same chaser logic, different stats — gated by the clock, <em>not</em> by
+  discrete rounds (ADR 0003):</p>
+<pre><code>nibbler  — baseline trash         (from 0s)
+dasher   — fast trash             (unlocks 30s)   §5.4 trash: die fast, punish sloppy kiting
+brute    — bruiser, 4-shot HP     (unlocks 66s)   §5.4 bruiser: force target priority
+warden   — mid priority target    (unlocks 98s)</code></pre>
+  <p>The director still spends a time-ramped budget (0010), but now it <strong>picks a role and saves budget for a
+  pricier one</strong> instead of always defaulting to nibblers (mirrors <code>simulation.ts:684</code>). The mix is a
+  deterministic cadence over the clock — <strong>continuous pressure with variety, never a "WAVE x/5" spike.</strong></p>
+
+  <h2>Part 2 — survivable AND lethal</h2>
+  <p>The §5.3 horde equation says: a run is fair when <em>ClearPressure ≥ SpawnPressure at intended build power</em>.
+  Tuned for v1:</p>
+  <ul>
+    <li><strong>More early threat</strong> so standing still actually kills you: <code>BUDGET_BASE 0.45 → 0.9</code>,
+      <code>BUDGET_PRESSURE_GAIN 9.5 → 10.5</code>.</li>
+    <li><strong>Contact knockback</strong> (<code>1.35 m</code>) — ports the source bump recoil so one touch isn't an
+      instant death-spiral (§3.4 one-shot control). It only fires on a <em>real</em> hit (after i-frames), so it can't
+      gift free escapes.</li>
+    <li><strong>Reachable XP</strong>: <code>PICKUP_RADIUS 1.8 → 2.4</code> (§6.2 "XP inaccessible" failure mode).</li>
+    <li><strong>Level-ups that matter</strong>: a prototype <strong>Spark Chain</strong> (the canon weapon,
+      <code>simulation.ts:267</code>) auto-scales with level — more chain targets, a shorter cooldown (floored), more
+      damage every 3 levels. <em>This is a temporary stand-in</em> so leveling has teeth before the real Core Matrix /
+      upgrade-choice system exists (ADR 0001); the combat seam is unchanged, so those lessons can swap it out.</li>
+  </ul>
+
+  <h2>Part 3 — pin the curve (the honest part)</h2>
+  <p>Tests that <em>pass</em> aren't the same as tests that <em>verify</em>. The first cut of this harness passed but
+  several checks were tautological or geometry-bound — they'd green-light a real balance regression. So the harness was
+  hardened into a genuine <strong>deterministic regression guard</strong> (<code>run_balance_tests.gd</code>,
+  <strong>PASS — 32</strong>):</p>
+<pre><code>TTK bands (§5.4)      trash ≈0.55s · brute ≈2.05s · warden ≈1.55s   (tight, role-separating)
+one-shot guard (§3.4) max_hit_delta ≤ 1 in every profile            (no contact ever spikes &gt;1 HP)
+stationary            loses ~55s, first damage ~46s                 (lethal, but no cheap early death)
+mistake-kite          loses ~187s under real board pressure          (weak routing eventually fails)
+decent kite           WINS with HP left                              (a fair "decent play" proxy — below)
+60s pressure probe    spawns/kills/max-alive/dashers in tuning bands (moves if you retune BUDGET_*)</code></pre>
+  <p>The decent-kite profile is the one that earns the word "decent": it moves at Gizmo's <strong>true 6.0 m/s</strong>,
+  <strong>only sees enemies within 5.5 m</strong>, and <strong>re-decides every 0.2 s</strong> (straight lines between),
+  bouncing off the arena walls. It is <em>not</em> an omniscient frame-perfect avoider — so "it wins" honestly means a
+  competent human <em>can</em> win, not that only a robot can. The 60s probe is the regression-sensitive one: its
+  spawn/kill bands move when you touch <code>BUDGET_*</code>, so a careless ±15% retune trips a red test.</p>
+
+  <div class="card heads-up">
+    <span class="label">Prototype balance — verified by sim proxies, NOT "final game balance"</span>
+    <p>Be precise about what's proven: the curve is <strong>pinned by deterministic sim profiles</strong>, which catch
+    structural and gross-tuning regressions. They are <em>not</em> a human playtest. Still open: a real
+    hands-on feel pass, and <strong>enemy behaviour around the world-kit pillars</strong> — the Simulation is a flat-plane
+    positional model with enemy separation but no knowledge of 3D obstacles, so clipping/stacking can only be judged
+    live. And the Spark Chain auto-scaling is a balance bridge, not the final upgrade design.</p>
+  </div>
+
+  <div class="card turn">
+    <span class="label">Done means…</span>
+    <p><strong>Done</strong> = a run is naturally survivable and lethal <em>without</em> F8/F9; the curve is grounded in
+    the balance reference; and <code>run_balance_tests.gd</code> is green (<strong>32 checks</strong>) as a regression
+    guard, with the full suite still passing (sim 69 · hud 8 · end 6 · controller 10). You can explain why "tests pass"
+    needed sharpening into "tests verify," why the roles are continuous pressure (not waves), and why this is a
+    <strong>prototype</strong> balance — proven by sim proxies, awaiting a live playtest.</p>
+  </div>
+
+  <div class="card heads-up">
+    <span class="label">Deferred — named, not built</span>
+    <p>The real <strong>Core Matrix / upgrade-choice</strong> system (replaces the Spark Chain auto-scale), the live
+    <strong>human playtest</strong> + <strong>world-kit collision</strong> check, <strong>elite/boss</strong> tiers
+    (§5.4 has the bands ready), and finer second-pass tuning once those exist.</p>
+  </div>
+
+  <p class="source">Primary sources · <code>reference/game-balance-reference.md</code> (§3.4 one-shot, §5.2 "clock is
+  the boss", §5.3 horde equation, §5.4 TTK bands, §6.1 spawn telemetry, §6.2 spawn failure modes),
+  <code>game-src-phaser/src/game/simulation.ts</code> (ENEMY_SPECS :259, Spark Chain :267, director budget :684),
+  <code>docs/adr/0003</code> (pressure, not waves) + <code>docs/adr/0001</code> (Sparks ≠ HP ≠ Spark of Humanity).</p>
+
+  <p class="ask">Want the §5.3 clear-vs-spawn equation or the decent-kite proxy unpacked? Ask your teacher.</p>
+
+  <nav class="lesson-nav">
+    <span>Prev · 0012 Win / lose</span>
+    <span>Next · v1 — live playtest (feel + world-kit collision), then ship</span>
+  </nav>
+
+</main>
+</body>
+</html>
