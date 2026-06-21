@@ -101,6 +101,12 @@ class Pickup extends RefCounted:
 	var position := Vector3.ZERO
 	var value: int = 0
 
+## A static arena obstacle: a circular footprint on the XZ plane (the beacon, a
+## pylon). NEW in 0014 — no simulation.ts source; the Phaser arena is open floor.
+class Obstacle extends RefCounted:
+	var position := Vector3.ZERO
+	var radius: float = 1.0
+
 var phase := PHASE_PLAYING
 
 # --- Sparks & leveling (0006) ---
@@ -123,6 +129,13 @@ var _spawn_budget := 0.0      # director credit; spend NIBBLER_COST per spawn (0
 var _spawn_count := 0
 var spawned_count := 0        # balance telemetry: total enemies created this run (§6.1, §11.1)
 var spawned_by_kind := {}     # balance telemetry: enemy_spawned counts by kind (§11.1)
+
+# --- Static arena obstacles (0014) — circular XZ footprints enemies can't enter
+# (the beacon, pylons). NEW: no simulation.ts source (the Phaser arena is open
+# floor). EMPTY BY DEFAULT, so headless balance tests run on open floor and their
+# pinned numbers stand; the live scene registers the real props via add_obstacle()
+# (ADR 0002: the scene feeds the rules engine, the engine stays scene-agnostic).
+var obstacles: Array[Obstacle] = []
 
 # --- Combat & pickups (0009) ---
 var pickups: Array[Pickup] = []
@@ -267,6 +280,7 @@ func _update_enemies(dt: float, gizmo_position: Vector3) -> void:
 			if dist <= e.radius + PLAYER_CONTACT_RADIUS and take_damage(e.damage):
 				var away_from_player := (-to_player / dist) if dist > 0.0001 else Vector3.RIGHT
 				e.position += away_from_player * CONTACT_KNOCKBACK
+	_resolve_obstacles()  # eject from arena geometry LAST, so the post-tick invariant holds
 
 ## Auto-fire: on a cooldown, the spark weapon hits the nearest live enemy bodies in
 ## range. Leveling gives the prototype Spark Chain just enough automatic scaling
@@ -366,6 +380,35 @@ func _separate_enemies() -> void:
 					push = Vector3(cos(i + j), 0.0, sin(i + j)) * min_d * 0.5
 				a.position -= push
 				b.position += push
+
+## Register a static circular obstacle (metres). The controller calls this at
+## startup from the arena's solid props; the Simulation stays scene-agnostic so
+## headless tests build their own world (ADR 0002).
+func add_obstacle(p_position: Vector3, p_radius: float) -> Obstacle:
+	var o := Obstacle.new()
+	o.position = p_position
+	o.radius = maxf(0.0, p_radius)
+	obstacles.append(o)
+	return o
+
+## Push each enemy out of any static obstacle it overlaps, on the XZ plane — the
+## same circle push-out as _separate_enemies(), but against fixed arena geometry.
+## Runs LAST in _update_enemies so the post-tick invariant holds: no enemy ends a
+## frame inside an obstacle, even after seek / separation / knockback nudged it in.
+## Soft push-out, not navigation (ADR 0002): an enemy can pin against a pillar
+## rather than route cleverly around it — enough for v1 cover; refine if feel needs it.
+func _resolve_obstacles() -> void:
+	for e in enemies:
+		for o in obstacles:
+			var delta := e.position - o.position
+			delta.y = 0.0
+			var d := delta.length()
+			var min_d := o.radius + e.radius
+			if d < min_d:
+				if d > 0.0001:
+					e.position += delta / d * (min_d - d)
+				else:
+					e.position += Vector3.RIGHT * min_d
 
 func _choose_enemy_kind() -> String:
 	# Deterministic, director-driven mix: not discrete waves, just more demanding

@@ -34,6 +34,9 @@ func _initialize() -> void:
 	_test_no_spawning_after_run_over()
 	_test_contact_grace()
 	_test_enemies_separate()
+	# Static arena obstacles (0014)
+	_test_enemy_pushed_out_of_obstacle()
+	_test_enemy_does_not_tunnel_into_obstacle()
 	# Pressure director (0010)
 	_test_pressure_curve_ramps()
 	_test_director_ramps_spawn_rate()
@@ -241,6 +244,31 @@ func _test_enemies_separate() -> void:
 	sim._separate_enemies()
 	var after := sim.enemies[0].position.distance_to(sim.enemies[1].position)
 	_check("overlapping enemies push apart", after > before)
+
+# --- Static arena obstacles (0014) — circle push-out vs fixed arena geometry ---
+
+func _test_enemy_pushed_out_of_obstacle() -> void:
+	var sim := Sim.new()
+	sim.spawn_enabled = false
+	sim.add_obstacle(Vector3.ZERO, 3.0)               # a pillar, radius 3, at the origin
+	sim._spawn_nibbler(Vector3.ZERO)
+	sim.enemies[0].position = Vector3(0.5, 0.0, 0.0)  # standing inside the pillar
+	sim._resolve_obstacles()
+	var d := sim.enemies[0].position.distance_to(Vector3.ZERO)
+	_check("enemy is pushed to the pillar's edge", d >= 3.0 + sim.enemies[0].radius - 0.001)
+
+func _test_enemy_does_not_tunnel_into_obstacle() -> void:
+	var sim := Sim.new()
+	sim.spawn_enabled = false
+	sim.attack_damage = 0                             # weapon off: isolate movement so the enemy survives the window
+	sim.add_obstacle(Vector3.ZERO, 3.0)
+	sim._spawn_nibbler(Vector3(0.6, 0.0, 6.0))        # north of the pillar, slightly off-axis
+	var edge := 3.0 + sim.enemies[0].radius
+	var min_clearance := INF
+	for i in 240:                                     # 12s seeking straight at Gizmo on the far side
+		sim.tick(0.05, Vector3(0.0, 0.0, -6.0))
+		min_clearance = minf(min_clearance, sim.enemies[0].position.distance_to(Vector3.ZERO))
+	_check("a seeking enemy never tunnels into the pillar", min_clearance >= edge - 0.05)
 
 # --- Pressure director (0010) — time-ramped enemy spawning ---
 

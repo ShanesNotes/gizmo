@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Gizmo · Lesson 0014 — Enemies respect the pillars</title>
+  <link rel="stylesheet" href="assets/lesson.css">
+</head>
+<body>
+<main>
+
+  <header class="masthead">
+    <p class="eyebrow">Gizmo · Lesson 0014 · Solid arena</p>
+    <h1>Enemies respect the pillars</h1>
+    <p class="subtitle">The art stream dressed the flat floor into the Clockwork Observatory — a beacon, pylons, debris. But the Simulation moves enemies on a flat plane with no idea those props exist, so they ghosted straight through. This lesson makes the arena geometry <em>solid to enemies</em> — the gap 0013 flagged as "judge it live."</p>
+  </header>
+
+  <div class="card why">
+    <span class="label">Why this, now — two movers, two worlds</span>
+    <p>Your arena has <strong>two movers owned by two different worlds</strong>, and that seam (ADR 0002) <em>is</em> the lesson.
+    Enemies live in the headless <strong>Simulation</strong> (the rules-world) and move by flat-plane seek + separation.
+    Gizmo lives in the <strong>Godot scene</strong> (the physics-world) and moves by <code>CharacterBody3D</code> physics.
+    A prop is only <em>solid</em> to a mover if the obstacle exists <strong>in the world that owns that mover</strong>.
+    The art stream already gave each prop a <code>StaticBody3D</code> — so Gizmo collided with the beacon all along. The
+    enemies didn't, because nothing put the beacon into the rules-world. This lesson adds that missing half.</p>
+  </div>
+
+  <h2>Part 1 — the technique is one you already wrote</h2>
+  <p>Back in 0008, <code>_separate_enemies()</code> pushed two overlapping <em>circles</em> apart. An obstacle is the
+  exact same push-out against a <strong>static</strong> circle. The beacon and pylons are roughly cylindrical, so a circle
+  footprint on the XZ plane is faithful and tiny to write. We stay "soft push-out, <strong>not</strong> navigation" —
+  precisely what ADR 0002 commits to (no navmesh, no pathfinder):</p>
+<pre><code>func _resolve_obstacles() -&gt; void:
+    for e in enemies:
+        for o in obstacles:
+            var delta := e.position - o.position
+            delta.y = 0.0
+            var d := delta.length()
+            var min_d := o.radius + e.radius
+            if d &lt; min_d:                       # overlapping the pillar
+                e.position += delta / d * (min_d - d)   # eject to the rim</code></pre>
+  <p>It runs <strong>last</strong> in <code>_update_enemies()</code> — after seek, separation, and contact knockback —
+  so the post-tick invariant always holds: <strong>no enemy ends a frame inside an obstacle</strong>, even if an earlier
+  step nudged it in. A nice surprise fell out for free: an off-axis enemy seeking past a pillar doesn't just pin — the
+  redirecting seek plus the radial push-out makes it <em>slide around</em> the pillar to reach you.</p>
+
+  <h2>Part 2 — opt-in, so balance stays pinned</h2>
+  <p>Obstacles are an <strong>empty list by default</strong>. That's deliberate: the 0013 balance harness builds a bare
+  <code>Simulation</code> on open floor, so leaving obstacles empty means its 32 pinned checks are <em>untouched</em> —
+  the regression guard stays valid. The live arena is the only thing that adds pillars, via the scene feeding the rules
+  engine (ADR 0002):</p>
+<pre><code>class Obstacle:                       # a circular XZ footprint
+    var position; var radius
+
+func add_obstacle(pos, radius)        # the scene calls this; the sim stays scene-agnostic</code></pre>
+  <p>The <code>game_controller</code> wires it with <strong>one source of truth and zero scene edits</strong>: every
+  world-kit piece already <em>declares</em> a <code>footprint_meters</code> and already carries a collider for Gizmo. So
+  the controller mirrors each <strong>solid</strong> piece's footprint into the sim — excluding the two walkable roles
+  (<code>walkable_tile</code>, <code>foundation</code>), or the 18×18 foundation would shove every enemy off a 9 m circle.</p>
+
+  <h2>Part 3 — red first (and a harness gotcha)</h2>
+  <p>The test went red before green — but <em>quietly</em>. Calling a not-yet-existing <code>add_obstacle()</code> doesn't
+  fail a <code>_check</code>; it errors mid-test and the count just <em>doesn't rise</em> (69, not 71). Worth knowing: in
+  this harness a <strong>missing method reads as a silent skip, not a red bar</strong> — you confirm red by reading the
+  <code>Nonexistent function</code> error, then watch the count climb when it's green.</p>
+<pre><code>enemy is pushed to the pillar's edge          ok   (place inside r=3 pillar -&gt; ejected to the rim)
+a seeking enemy never tunnels into the pillar  ok   (12s seeking straight through -&gt; never inside)
+                                              PASS — 71 checks</code></pre>
+
+  <div class="card heads-up">
+    <span class="label">First mechanic with no <code>simulation.ts</code> source</span>
+    <p>The Phaser arena is open floor — it has <em>no</em> obstacles. So this is the first rule we've added that isn't a
+    port; it's a deliberate 3D-arena addition, flagged as such in the code. And it's <strong>push-out, not pathfinding</strong>:
+    an enemy can still pin against a pillar in the degenerate head-on case rather than route cleverly around it. That's
+    enough for v1 cover; if the feel ever needs smarter routing, that's a tangential-slide or navmesh lesson — named, not built now.</p>
+  </div>
+
+  <div class="card turn">
+    <span class="label">Done means…</span>
+    <p><strong>Done</strong> = enemies never end a frame inside arena geometry, proven by <code>run_simulation_tests.gd</code>
+    (<strong>71 checks</strong>, full suite green: controller 10 · playable-slice 766 · balance still 32) <em>and</em> live —
+    the running scene registered <strong>27 obstacles</strong> (beacon + 14 pylons + 12 debris, zero floors), with
+    <code>enemies_inside_obstacle: 0</code> and a 16-enemy cluster dropped on the beacon all ejected to its rim. You can
+    explain the two-movers-two-worlds seam, why push-out (not a navmesh) fits ADR 0002, and why obstacles are opt-in.</p>
+  </div>
+
+  <div class="card heads-up">
+    <span class="label">Deferred — named, not built</span>
+    <p>Smarter enemy routing (tangential slide / navmesh) <em>if</em> a live feel pass demands it; pillars as deliberate
+    tactical cover in balance tuning; and the real <strong>Core Matrix / upgrade-choice</strong> system still waits for v1
+    to ship. The player half needed nothing — Gizmo's collisions came free from the art stream's <code>StaticBody3D</code> props.</p>
+  </div>
+
+  <p class="source">Primary source · Godot <em>Using CharacterBody2D/3D</em> &amp; vector math (circle push-out) — and your
+  own <code>simulation.gd:_separate_enemies()</code>, the 0008 original this mirrors. Decision anchor:
+  <code>docs/adr/0002</code> (the Simulation owns the rules; the scene only renders + feeds it).</p>
+
+  <p class="ask">Want the off-axis "slide around" behaviour or the tangential-slide refinement unpacked? Ask your teacher.</p>
+
+  <nav class="lesson-nav">
+    <span>Prev · 0013 Balance: make the run lethal</span>
+    <span>Next · v1 — the Spark of Humanity objective, or live feel pass → ship</span>
+  </nav>
+
+</main>
+</body>
+</html>

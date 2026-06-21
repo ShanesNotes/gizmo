@@ -11,6 +11,12 @@ const SparkScene := preload("res://scenes/spark.tscn")
 const HudScene := preload("res://scenes/hud.tscn")
 const EndScreenScene := preload("res://scenes/end_screen.tscn")
 
+signal simulation_events_emitted(events: Array)
+
+## Arena pieces with these roles are the floor, not walls — never registered as
+## obstacles. Everything else solid (has a collider) becomes a sim obstacle. (0014)
+const WALKABLE_ROLES: Array[StringName] = [&"walkable_tile", &"foundation"]
+
 ## The player node, read for its position (assign Gizmo in the Inspector).
 @export var gizmo: Node3D
 
@@ -34,10 +40,38 @@ var sim := Simulation.new()
 var _enemy_views: Dictionary = {}  # Simulation.Enemy  -> Node3D
 var _spark_views: Dictionary = {}  # Simulation.Pickup -> Node3D
 var _prev_phase: String = Simulation.PHASE_PLAYING  # to fire the end screen once, on transition
+var _prev_hp: float = 0.0  # detect the frame Gizmo is hurt, to drive camera/juice feedback
+
+@onready var _camera: Node = get_node_or_null("../Camera3D")
+@onready var _audio: Node = get_node_or_null("../GameAudio")
 
 func _ready() -> void:
 	if auto_instance_ui:
 		_ensure_default_ui()
+	_register_arena_obstacles()
+	_prev_hp = sim.hp
+
+
+## Mirror every SOLID world-kit piece's declared footprint into the Simulation as an
+## obstacle, so enemies (rules-world) respect the same geometry Gizmo already collides
+## with (physics-world, via each piece's StaticBody3D). One source of truth — the
+## piece — fed into two worlds (ADR 0002). Walkable ground (floor tiles, the foundation)
+## is excluded; decorative pieces with no collider don't block. Dormant if the scene
+## has no world-kit pieces, so headless tests and a bare scene are unaffected. (0014)
+func _register_arena_obstacles() -> void:
+	var root := get_tree().current_scene
+	if root == null:
+		return
+	for node in root.find_children("*", "Node3D", true, false):
+		if not node is WorldKitPiece:
+			continue
+		var piece := node as WorldKitPiece
+		if WALKABLE_ROLES.has(piece.placement_role) or piece.collision_shape_count() <= 0:
+			continue
+		var footprint := piece.footprint_meters
+		var radius := maxf(footprint.x, footprint.y) * 0.5
+		if radius > 0.0:
+			sim.add_obstacle(piece.global_position, radius)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -59,10 +93,14 @@ func _unhandled_input(event: InputEvent) -> void:
 func _physics_process(delta: float) -> void:
 	var gizmo_position := gizmo.global_position if gizmo != null else Vector3.ZERO
 	sim.tick(delta, gizmo_position)
+	var frame_events: Array = sim.last_events.duplicate(true)
+	_apply_game_feel(frame_events)
 	_sync(sim.enemies, _enemy_views, EnemyScene)
 	_sync(sim.pickups, _spark_views, SparkScene)
 	if hud != null:
 		hud.render(sim)
+	if not frame_events.is_empty():
+		simulation_events_emitted.emit(frame_events)
 	# The frame the run leaves "playing" (win or loss), show the end screen once.
 	_show_end_screen_on_phase_edge()
 
@@ -82,6 +120,27 @@ func _sync(agents: Array, views: Dictionary, scene: PackedScene) -> void:
 		if not agents.has(agent):
 			views[agent].queue_free()
 			views.erase(agent)
+
+
+## Game-feel layer: translate simulation state into camera shake + reactive audio.
+## Additive and guarded — a null camera/audio (e.g. headless tests) is a no-op.
+func _apply_game_feel(frame_events: Array) -> void:
+	if _camera != null and _camera.has_method("add_trauma"):
+		if sim.hp < _prev_hp:
+			_camera.add_trauma(0.5)
+		for ev in frame_events:
+			match ev.get("type", ""):
+				"defeat":
+					_camera.add_trauma(0.12)
+				"levelup":
+					_camera.add_trauma(0.35)
+	_prev_hp = sim.hp
+	if _audio != null:
+		var pressure := clampf(float(sim.enemies.size()) / 12.0, 0.0, 1.0)
+		if _audio.has_method("set_swarm_intensity"):
+			_audio.set_swarm_intensity(pressure)
+		if _audio.has_method("duck_music"):
+			_audio.duck_music(sim.enemies.size() >= 4)
 
 
 func force_gameover_for_playtest() -> void:
