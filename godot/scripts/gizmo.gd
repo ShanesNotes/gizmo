@@ -1,7 +1,7 @@
 extends CharacterBody3D
 
 ## How fast Gizmo moves, in metres per second.
-@export var speed: float = 6.0
+@export var speed: float = 3.6
 ## How quickly he reaches top speed and how hard he brakes.
 @export var acceleration: float = 40.0
 @export var friction: float = 50.0

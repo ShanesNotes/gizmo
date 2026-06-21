@@ -297,7 +297,7 @@ func _test_autofire_damages_enemy() -> void:
 	sim.spawn_enabled = false   # no auto-spawn; we place the enemy
 	sim.attack_cooldown = 0.05    # fire on the first tick
 	var e := Sim.Enemy.new()
-	e.position = Vector3(2.0, 0.0, 0.0)  # within attack_range (6)
+	e.position = Vector3(sim.attack_range * 0.4, 0.0, 0.0)
 	e.hp = 5.0
 	e.radius = 1.0
 	sim.enemies.append(e)
@@ -308,16 +308,16 @@ func _test_autofire_range_includes_radius() -> void:
 	var sim := Sim.new()
 	sim.spawn_enabled = false
 	sim.attack_cooldown = 0.05
-	# centre at 6.5m, radius 1.0 -> body within range+radius (7.0); should be hit
 	var near := Sim.Enemy.new()
-	near.position = Vector3(6.5, 0.0, 0.0)
 	near.hp = 5.0
 	near.radius = 1.0
+	# Place the center just outside pure range but inside range + body radius.
+	near.position = Vector3(sim.attack_range + near.radius - 0.1, 0.0, 0.0)
 	sim.enemies.append(near)
 	var far := Sim.Enemy.new()
-	far.position = Vector3(20.0, 0.0, 0.0)  # well out of reach
 	far.hp = 5.0
 	far.radius = 1.0
+	far.position = Vector3(sim.attack_range + far.radius + 5.0, 0.0, 0.0)
 	sim.enemies.append(far)
 	sim.tick(0.05, Vector3.ZERO)
 	_check("an enemy within range+radius is hit", near.hp < 5.0)
