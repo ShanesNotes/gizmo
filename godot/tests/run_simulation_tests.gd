@@ -22,7 +22,7 @@ func _initialize() -> void:
 	# Run clock & health (0007)
 	_test_run_clock()
 	_test_dt_is_clamped()
-	_test_run_completes()
+	_test_timer_no_longer_wins()
 	_test_damage_and_iframes()
 	_test_damage_zero_and_negative()
 	_test_negative_dt_does_not_rewind()
@@ -136,16 +136,17 @@ func _test_dt_is_clamped() -> void:
 	sim.tick(10.0)  # a huge frame must not skip the whole run
 	_check("dt clamped to 0.05", absf(sim.elapsed - 0.05) < 0.0001)
 
-func _test_run_completes() -> void:
+func _test_timer_no_longer_wins() -> void:
+	# Path A (ADR 0005): the clock no longer ends the run. Crossing run_duration
+	# keeps the run PLAYING — the Beacon channel (lesson 0018) becomes the win.
 	var sim := Sim.new()
 	sim.run_duration = 0.08
 	sim.tick(0.05)
 	_check_eq("still playing mid-run", sim.phase, Sim.PHASE_PLAYING)
-	sim.tick(0.05)  # elapsed 0.10 >= 0.08
-	_check_eq("run completes (a win) when the timer elapses", sim.phase, Sim.PHASE_COMPLETE)
-	var before := sim.elapsed
+	sim.tick(0.05)  # elapsed 0.10 >= run_duration — old deadline crossed
+	_check_eq("clock elapsing no longer completes the run", sim.phase, Sim.PHASE_PLAYING)
 	sim.tick(0.05)
-	_check("tick is a no-op once the run is over", sim.elapsed == before)
+	_check("the run keeps ticking past the old deadline", sim.phase == Sim.PHASE_PLAYING)
 
 func _test_damage_and_iframes() -> void:
 	var sim := Sim.new()  # hp 7, invulnerable 0

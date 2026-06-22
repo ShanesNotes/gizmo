@@ -190,7 +190,8 @@ func xp_progress() -> float:
 ## Advance the run by dt seconds, given where Gizmo is.
 ## Mirrors updateGameState (simulation.ts:459-494): starts a fresh events array,
 ## then (unless not playing) clamps dt; enemies update, the weapon fires, Sparks
-## are collected; the run COMPLETES (a win) when the timer runs out.
+## are collected. Path A (ADR 0005): the clock no longer ends the run — `elapsed`
+## is now only pressure fuel; the win returns as the Beacon channel (lesson 0018).
 func tick(dt: float, gizmo_position := Vector3.ZERO) -> void:
 	last_events = []   # fresh array each frame (simulation.ts:462) — snapshot-safe; before the phase guard so a non-playing tick reports none, not stale
 	if phase != PHASE_PLAYING:
@@ -201,8 +202,6 @@ func tick(dt: float, gizmo_position := Vector3.ZERO) -> void:
 	_update_enemies(safe_dt, gizmo_position)
 	_update_weapon(safe_dt, gizmo_position)
 	_update_pickups(gizmo_position)
-	if elapsed >= run_duration:
-		phase = PHASE_COMPLETE
 
 ## 0..1 fraction of the run elapsed. Faithful to runProgress (simulation.ts:533).
 func run_progress() -> float:

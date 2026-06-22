@@ -41,7 +41,7 @@ func _initialize() -> void:
 	_test_pressure_probe_at_60s()
 	_test_stationary_profile_is_lethal_but_not_cheap()
 	_test_mistake_kite_can_still_lose_naturally()
-	_test_decent_kite_can_complete_the_run()
+	_test_decent_kite_survives_the_clock()
 	print("")
 	if _failed == 0 and _passed > 0:
 		print("PASS — %d checks" % _passed)
@@ -300,11 +300,14 @@ func _test_mistake_kite_can_still_lose_naturally() -> void:
 	var by_kind: Dictionary = result["spawned_by_kind"]
 	_check("mistake kite survives into brute pressure", int(by_kind.get(Sim.ENEMY_BRUTE, 0)) > 0)
 
-func _test_decent_kite_can_complete_the_run() -> void:
+func _test_decent_kite_survives_the_clock() -> void:
+	# Path A (ADR 0005): the timer-win is gone; the Beacon channel win returns in
+	# lesson 0018. Until then a competent kite can no longer WIN — but the board
+	# pressure must stay fair, so it still SURVIVES the full pressure clock.
 	var result := _run_decent_kite_profile()
-	_check("decent true-speed kite can win naturally", result["phase"] == Sim.PHASE_COMPLETE)
+	_check("decent kite no longer wins (no Beacon yet)", result["phase"] == Sim.PHASE_PLAYING)
+	_check("decent kite survives the full clock", result["hp"] >= 1)
 	_check_between("decent kite takes some but not lethal damage", result["damage_events"], 2.0, 6.0)
-	_check("decent kite still has HP remaining", result["hp"] >= 1)
 	_check("decent kite reaches several level-ups", result["level"] >= 6)
 	_check_between("decent kite first damage is not instant", result["first_damage"], 15.0, 60.0)
 	_check_between("decent kite board pressure remains bounded", result["max_alive"], 10.0, 25.0)

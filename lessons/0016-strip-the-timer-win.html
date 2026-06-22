@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Gizmo · Lesson 0016 — Strip the timer-win</title>
+  <link rel="stylesheet" href="assets/lesson.css">
+</head>
+<body>
+<main>
+
+  <header class="masthead">
+    <p class="eyebrow">Gizmo · Lesson 0016 · Path A refactor</p>
+    <h1>Strip the timer-win — delete the old loop before building the new one</h1>
+    <p class="subtitle">The first move of the Path A arc (0016→0023): turn survive-the-timer into traverse-and-rekindle-a-Beacon. Today we don't <em>add</em> the Beacon — we <strong>remove the old win</strong>, let the gate go red on it, and let the test suite prove we deleted exactly what we meant to. The run ends today <strong>intentionally un-winnable</strong>.</p>
+  </header>
+
+  <div class="card why">
+    <span class="label">Why delete first — code gravity</span>
+    <p>ADR 0005 names the real risk in its own words: <em>"a finish-line timer and a destination are different games, and code gravity pulls back toward the arena unless the win condition itself moves."</em> If we built the Beacon while the old <code>elapsed&nbsp;&gt;=&nbsp;run_duration</code> win still sat there, every run could still be won by <em>standing still</em> — the arena would quietly survive. So the disciplined first step is to make the old win <strong>honestly disappear</strong>. The test suite is what keeps that honest.</p>
+  </div>
+
+  <h2>Part 1 — the old win lived in three places</h2>
+  <p>A win condition is never one line. It's a <em>rule</em> plus every test that <em>pins</em> the rule. Before deleting, we found all three:</p>
+<pre><code>RULE   simulation.gd:204         if elapsed >= run_duration: phase = PHASE_COMPLETE
+PIN A  run_simulation_tests.gd   _test_run_completes        — clock elapses → PHASE_COMPLETE
+PIN B  run_balance_tests.gd      _test_decent_kite_can_complete_the_run — a fair run reaches PHASE_COMPLETE</code></pre>
+  <p>Miss a pin and the gate stays green for the wrong reason. Find them all and the gate becomes a <strong>tripwire</strong>: delete the rule, and exactly those two pins must go red — no more, no fewer.</p>
+
+  <h2>Part 2 — red first (the deletion is load-bearing)</h2>
+  <p>We delete the two-line rule and run the gate <em>before</em> fixing anything. The red is the evidence:</p>
+<pre><code>SIM      FAIL - run completes (a win) when the timer elapses (got playing, expected complete)
+         FAIL - tick is a no-op once the run is over
+BALANCE  FAIL - decent true-speed kite can win naturally
+         FAIL — 69 passed, 2 failed   ·   FAIL — 37 passed, 1 failed</code></pre>
+  <p>Exactly the two pins, nothing else. That clean red is the proof the win was load-bearing and we located all of it. (If an <em>unexpected</em> test had broken, that would mean a hidden dependency on the timer-win we hadn't accounted for.)</p>
+
+  <h2>Part 3 — rewrite the intent, don't flip a flag</h2>
+  <p>Green is not "make the red go away." It's "assert the <strong>new</strong> truth." Both pins get rewritten to say what Path A means:</p>
+<pre><code>PIN A  _test_run_completes  ->  _test_timer_no_longer_wins
+       crossing run_duration now keeps the run PHASE_PLAYING.
+       Its old "tick is a no-op once the run is over" tail was meaningless
+       (the run never ends now) — rewritten, not kept.
+
+PIN B  _test_decent_kite_can_complete_the_run  ->  _test_decent_kite_survives_the_clock
+       no win (no Beacon yet) — but a competent kite must still SURVIVE the
+       full pressure clock. The real win returns in lesson 0018.</code></pre>
+  <p>This is the difference between a refactor and a hack: the test now <em>describes the game we're building</em>, so it will keep guarding the new loop instead of rubber-stamping the deletion.</p>
+
+  <div class="card heads-up">
+    <span class="label">The honest catch — don't quietly weaken a guard</span>
+    <p>Removing the win meant the kite no longer stops at 240&nbsp;s; it now runs the harness to its 300&nbsp;s cap — <strong>60&nbsp;s longer under peak pressure</strong>. My first rewrite silently dropped the old "takes some but not lethal damage (2–6 events)" fairness band. That's a real regression guard — dropping it to go green is exactly the kind of quiet erosion to catch. So we <em>measured</em> the longer run instead of guessing: <code>damage_events&nbsp;=&nbsp;4</code>, <code>hp&nbsp;=&nbsp;3</code>, <code>elapsed&nbsp;=&nbsp;300</code>. The 2–6 band still holds, so it's <strong>restored at full strength</strong> — the guard survives the refactor, it isn't loosened to fit it.</p>
+  </div>
+
+  <div class="card turn">
+    <span class="label">Done means…</span>
+    <p><strong>Done</strong> = the timer-win rule is deleted; the gate is green again on the <em>rewritten</em> truth; the run is intentionally un-winnable (HP-0 loss still works, no Beacon yet); and no fairness guard was weakened to get there. Verify: <code>godot --headless --path godot --script res://tests/run_simulation_tests.gd</code> &amp; <code>…/run_balance_tests.gd</code> → <strong>71 + 38</strong>, full gate <strong>136</strong>. You can explain why we deleted the win <em>before</em> building the new one, why a clean red proves the deletion was complete, and why a rewritten test guards the new loop while a flipped flag wouldn't.</p>
+  </div>
+
+  <div class="card heads-up">
+    <span class="label">Next — named, not built</span>
+    <p><strong>0017</strong>: prove the rekindle channel headless in pure isolation (<code>Dormant&nbsp;→&nbsp;Rekindling&nbsp;→&nbsp;Rekindled</code>; hold fills, leaving pauses, entry is never instant) — still un-winnable. <strong>0018</strong>: the channel completing <em>becomes</em> the win (<code>PHASE_COMPLETE</code> fires from the Beacon, not the clock). We kept the <code>elapsed</code>/<code>run_duration</code> symbols on purpose — 0020 retires those <em>concepts</em> into pressure fuel; today was only the <em>win</em>.</p>
+  </div>
+
+  <p class="source">Primary source · <code>docs/adr/0005-beacon-rekindle-replaces-timer-survival.md</code> (this decision, incl. the code-gravity rationale). Also <code>simulation.gd:204</code> (the deleted rule), <code>docs/path-a-shattered-meridian-spec.md</code> (the arc).</p>
+
+  <p class="ask">Want to walk the red→green discipline again on a different rule, or start the rekindle channel (0017) next? Ask your teacher.</p>
+
+  <nav class="lesson-nav">
+    <span>Prev · 0015 The melee start</span>
+    <span>Next · 0017 The rekindle channel, in isolation</span>
+  </nav>
+
+</main>
+</body>
+</html>
