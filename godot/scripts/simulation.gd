@@ -91,6 +91,18 @@ const ATTACK_LEVEL_COOLDOWN_MULT := 0.94
 const ATTACK_LEVEL_TARGET_CAP := 3
 const ATTACK_LEVEL_DAMAGE_STEP := 3
 
+# --- Beacon rekindle channel (0017, ADR 0005) — the Path A win-in-progress ---
+# Reaching the beacon radius starts a Dormant→Rekindling→Rekindled channel; holding
+# the AREA fills it linearly, leaving PAUSES it (slow-decay is the agreed later
+# upgrade — see the grill log). Entry is never instant. The channel is INERT until a
+# beacon is authored (beacon_radius > 0) — so the open-floor balance harness is
+# untouched, same discipline as `obstacles`. A full channel reaches Rekindled; wiring
+# that to the win (PHASE_COMPLETE) is lesson 0018, NOT here — 0017 stays un-winnable.
+const BEACON_DORMANT := "dormant"
+const BEACON_REKINDLING := "rekindling"
+const BEACON_REKINDLED := "rekindled"
+const BEACON_CHANNEL_SECONDS := 8.0   # placeholder hold duration; retuned vs the real siege (0018/0023)
+
 ## One enemy as a lightweight data agent (ADR 0002). The scene mirrors these.
 class Enemy extends RefCounted:
 	var position := Vector3.ZERO
@@ -141,6 +153,15 @@ var spawned_by_kind := {}     # balance telemetry: enemy_spawned counts by kind 
 # pinned numbers stand; the live scene registers the real props via add_obstacle()
 # (ADR 0002: the scene feeds the rules engine, the engine stays scene-agnostic).
 var obstacles: Array[Obstacle] = []
+
+# --- Beacon rekindle channel (0017) — see the BEACON_* constants. Inert until a
+# beacon is authored (beacon_radius > 0); the controller places it in 0019, the
+# isolation tests set these fields directly. The state machine lives INSIDE the
+# Simulation (ADR 0002), not the controller. ---
+var beacon_state := BEACON_DORMANT
+var beacon_channel_progress := 0.0     # 0..1; fills while inside the radius, pauses outside
+var beacon_position := Vector3.ZERO
+var beacon_radius := 0.0               # 0 = no beacon authored ⇒ channel inert
 
 # --- Combat & pickups (0009) ---
 var pickups: Array[Pickup] = []
@@ -202,6 +223,26 @@ func tick(dt: float, gizmo_position := Vector3.ZERO) -> void:
 	_update_enemies(safe_dt, gizmo_position)
 	_update_weapon(safe_dt, gizmo_position)
 	_update_pickups(gizmo_position)
+	_update_beacon(safe_dt, gizmo_position)
+
+## Advance the Dormant→Rekindling→Rekindled beacon channel (0017, ADR 0005). Inert
+## until a beacon is authored (beacon_radius > 0). Inside the radius the channel fills
+## linearly over BEACON_CHANNEL_SECONDS; outside, it PAUSES — the bank is preserved
+## (slow-decay is the agreed later upgrade). Rekindling is a one-way door: leaving
+## never reverts to Dormant. A full channel reaches Rekindled; turning that into the
+## win (PHASE_COMPLETE) is lesson 0018, so this method never ends the run.
+func _update_beacon(dt: float, gizmo_position: Vector3) -> void:
+	if beacon_radius <= 0.0 or beacon_state == BEACON_REKINDLED:
+		return
+	var to_beacon := gizmo_position - beacon_position
+	to_beacon.y = 0.0
+	if to_beacon.length() > beacon_radius:
+		return   # outside: PAUSE — hold the bank, keep the Rekindling state (one-way door)
+	if beacon_state == BEACON_DORMANT:
+		beacon_state = BEACON_REKINDLING
+	beacon_channel_progress = minf(1.0, beacon_channel_progress + dt / BEACON_CHANNEL_SECONDS)
+	if beacon_channel_progress >= 1.0:
+		beacon_state = BEACON_REKINDLED
 
 ## 0..1 fraction of the run elapsed. Faithful to runProgress (simulation.ts:533).
 func run_progress() -> float:

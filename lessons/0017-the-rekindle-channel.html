@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Gizmo · Lesson 0017 — The rekindle channel, in isolation</title>
+  <link rel="stylesheet" href="assets/lesson.css">
+</head>
+<body>
+<main>
+
+  <header class="masthead">
+    <p class="eyebrow">Gizmo · Lesson 0017 · Path A refactor</p>
+    <h1>The rekindle channel — a state machine, proven in isolation</h1>
+    <p class="subtitle">0016 deleted the old win. Now we build the <em>shape</em> of the new one: a Beacon that goes <code>Dormant → Rekindling → Rekindled</code> as Gizmo holds its radius. We prove the whole machine headless, by hand-ticking positions — and on purpose it <strong>still doesn't win the run</strong>. That wire is 0018.</p>
+  </header>
+
+  <div class="card why">
+    <span class="label">Why build the machine before the win</span>
+    <p>The risky, novel thing in Path A isn't "set <code>phase = COMPLETE</code>" — we did that in one line for years. It's the <strong>area-hold</strong>: a thing that fills while you're somewhere, pauses when you leave, and can't be cheesed by tapping it once. So we de-risk <em>that</em> first, in pure isolation, where a test can hand-feed Gizmo's position and check every edge. Wiring it to the win (0018) is then trivial and safe, because the hard part is already pinned.</p>
+  </div>
+
+  <h2>Part 1 — the design we grilled</h2>
+  <p>Before any code, we settled the one behaviour that defines the channel: <strong>what happens when Gizmo leaves the radius mid-channel.</strong> Two options — <strong>PAUSE</strong> (the number freezes) or <strong>DECAY</strong> (it drains while you're away). Decay is the more interesting game (the "cold world pushes back"), but it's just a <em>number rule on top of</em> a working pause — not a different machine. So:</p>
+<pre><code>LEAVE-RADIUS    PAUSE now; DECAY is the agreed later upgrade (same machine, one rule swapped)
+STATE vs NUMBER leaving touches ONLY the number; Rekindling is a one-way door (never back to Dormant)
+FILL            linear, constant rate
+DURATION        BEACON_CHANNEL_SECONDS = 8.0  — a placeholder, retuned vs the real siege (0018/0023)</code></pre>
+  <p>Choosing "leaving touches only the number" is what makes decay-later free: decay becomes <code>progress -= rate*dt</code> while outside, and the state machine proved here never changes.</p>
+
+  <h2>Part 2 — the machine (≈12 lines inside <code>Simulation</code>)</h2>
+  <p>The whole channel is one method, called from <code>tick()</code> after the enemies/weapon/pickups. It lives <em>inside</em> <code>Simulation</code> (ADR 0002 — the sim owns rules), not the controller:</p>
+<pre><code>func _update_beacon(dt, gizmo_position):
+    if beacon_radius &lt;= 0.0 or beacon_state == BEACON_REKINDLED:
+        return                          # inert until authored; Rekindled is terminal
+    var to_beacon = gizmo_position - beacon_position;  to_beacon.y = 0.0
+    if to_beacon.length() &gt; beacon_radius:
+        return                          # OUTSIDE → PAUSE: hold the bank, keep Rekindling (one-way door)
+    if beacon_state == BEACON_DORMANT:
+        beacon_state = BEACON_REKINDLING      # the door opens, once
+    beacon_channel_progress = min(1.0, beacon_channel_progress + dt / BEACON_CHANNEL_SECONDS)
+    if beacon_channel_progress &gt;= 1.0:
+        beacon_state = BEACON_REKINDLED       # NOTE: the WIN is wired in 0018, not here</code></pre>
+  <p>Read the two early <code>return</code>s as the two design decisions made physical: the first keeps the channel <strong>inert</strong> when no beacon is placed; the second is <strong>PAUSE</strong> (leave → return with the bank untouched, and never a state reset).</p>
+
+  <div class="card heads-up">
+    <span class="label">Inert by default — why the balance harness didn't move</span>
+    <p><code>beacon_radius</code> defaults to <code>0.0</code>, so a sim with no authored beacon skips the channel entirely — exactly like <code>obstacles</code> being empty by default. That's not a nicety: it's why the 300 s decent-kite balance run (open floor, no beacon) stayed at <strong>PASS 38</strong>. A new system that silently shifted the balance numbers would be a refactor smell; this one provably doesn't touch them.</p>
+  </div>
+
+  <h2>Part 3 — proving it by hand-ticking</h2>
+  <p>Because <code>Simulation</code> is pure <code>RefCounted</code>, a test <em>is</em> the player: it feeds a position each tick. "Inside" is <code>Vector3.ZERO</code> (the beacon centre); "outside" is far away. Six tests pin the machine, including the ones that catch the cheese:</p>
+<pre><code>entry never instant   one tick inside → Rekindling, 0 &lt; progress &lt; 1   (can't tap-to-win)
+fills while held      8.5 s inside    → progress ≥ 1.0, Rekindled
+pauses + one-way      in 3 s, out 4 s → bank HELD (±0.0001), state still Rekindling
+resumes after return  in → out → in   → completes (the bank survived the trip)
+no win yet            Rekindled        → phase is STILL playing  (0018 wires the win)</code></pre>
+  <p>The "no win yet" test is the honest one: it asserts the thing we deliberately <em>didn't</em> do, so a future edit that wires the win early can't slip past unnoticed.</p>
+
+  <div class="card turn">
+    <span class="label">Done means…</span>
+    <p><strong>Done</strong> = the Beacon state machine exists inside <code>Simulation</code>, fills as an area-hold, pauses on leave without ever reverting, can't be entered instantly, and <em>does not</em> end the run. Verify: <code>godot --headless --path godot --script res://tests/run_simulation_tests.gd</code> → <strong>PASS 86</strong> (+15), full gate <strong>151</strong>, balance unchanged at 38. You can explain why we proved the machine before the win, why "leaving touches only the number" makes decay a free later upgrade, and why inert-by-default kept the balance harness honest.</p>
+  </div>
+
+  <div class="card heads-up">
+    <span class="label">Next — named, not built</span>
+    <p><strong>0018</strong>: the channel completing <em>becomes</em> the win — <code>Rekindled → phase = PHASE_COMPLETE</code>, while HP-0 still loses. And the balance driver re-pins itself: today's "decent kite" is pure <em>evasion</em> (it steers <em>away</em> from danger) and can't dwell in a radius, so 0018 authors a <strong>seek-and-hold</strong> profile to prove a fair run can actually rekindle. Decay (the on-theme leave-cost) layers on in 0018/0023 as the single rule swap we set up today.</p>
+  </div>
+
+  <p class="source">Primary source · <code>docs/adr/0005-beacon-rekindle-replaces-timer-survival.md</code> (the channel + one-way door). Also <code>simulation.gd</code> <code>_update_beacon</code> (the machine), <code>tests/run_simulation_tests.gd</code> (the six isolation pins), <code>docs/path-a-shattered-meridian-spec.md</code> (the arc).</p>
+
+  <p class="ask">Want to wire the win (0018) next, or see how decay would drop into <code>_update_beacon</code> as one line? Ask your teacher.</p>
+
+  <nav class="lesson-nav">
+    <span>Prev · 0016 Strip the timer-win</span>
+    <span>Next · 0018 The Beacon becomes the win</span>
+  </nav>
+
+</main>
+</body>
+</html>

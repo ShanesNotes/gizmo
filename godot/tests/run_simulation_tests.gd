@@ -55,6 +55,13 @@ func _initialize() -> void:
 	_test_combat_events_emitted()
 	_test_pickup_and_levelup_events_emitted()
 	_test_events_are_snapshot_safe()
+	# Beacon rekindle channel (0017) — Dormant→Rekindling→Rekindled, in isolation
+	_test_beacon_inert_by_default()
+	_test_beacon_entry_is_never_instant()
+	_test_beacon_fills_to_rekindled_while_held()
+	_test_beacon_pauses_outside_and_is_one_way()
+	_test_beacon_resumes_after_returning()
+	_test_rekindled_beacon_does_not_win_yet()
 	print("")
 	if _failed == 0 and _passed > 0:
 		print("PASS — %d checks" % _passed)
@@ -487,3 +494,75 @@ func _test_events_are_snapshot_safe() -> void:
 	sim.tick(0.05, Vector3.ZERO)         # next frame: no enemies left -> no new events
 	_check("a stored snapshot is not emptied by the next tick", snapshot.size() == snapshot_size)
 	_check("the live events did reset for the new frame", sim.last_events.size() == 0)
+
+# --- Beacon rekindle channel (0017) ---
+# Path A (ADR 0005): reaching the beacon radius starts a Dormant→Rekindling→Rekindled
+# channel. It's an AREA-HOLD: progress fills while Gizmo is inside the radius, PAUSES
+# when he leaves (slow-decay is the agreed later upgrade — 0017 ships PAUSE), and entry
+# is never instant. The win (PHASE_COMPLETE) is NOT wired here — that's 0018; this slice
+# proves the machine in isolation, so the run stays un-winnable.
+
+# Author a beacon at the origin so a hand-ticked position can be inside/outside it.
+func _place_beacon(sim, radius := 3.0) -> void:
+	sim.beacon_position = Vector3.ZERO
+	sim.beacon_radius = radius
+
+func _tick_inside(sim, seconds: float) -> void:
+	var n := int(round(seconds / 0.05))
+	for i in n:
+		sim.tick(0.05, Vector3.ZERO)          # at the beacon centre — inside
+
+func _tick_outside(sim, seconds: float) -> void:
+	var n := int(round(seconds / 0.05))
+	for i in n:
+		sim.tick(0.05, Vector3(100.0, 0.0, 0.0))  # far away — outside any radius
+
+func _test_beacon_inert_by_default() -> void:
+	# No beacon authored (beacon_radius 0) ⇒ the channel never engages. This is the
+	# guard that the balance harness (open floor, no beacon) is untouched by 0017.
+	var sim := Sim.new()
+	_tick_inside(sim, 10.0)
+	_check_eq("a sim with no beacon stays Dormant", sim.beacon_state, Sim.BEACON_DORMANT)
+	_check("no beacon ⇒ no channel progress", sim.beacon_channel_progress == 0.0)
+
+func _test_beacon_entry_is_never_instant() -> void:
+	var sim := Sim.new()
+	_place_beacon(sim)
+	sim.tick(0.05, Vector3.ZERO)              # a single tick inside the radius
+	_check_eq("entering the radius starts Rekindling", sim.beacon_state, Sim.BEACON_REKINDLING)
+	_check("one tick inside makes some progress", sim.beacon_channel_progress > 0.0)
+	_check("but entry is never an instant win", sim.beacon_channel_progress < 1.0)
+	_check_eq("not Rekindled on entry", sim.beacon_state, Sim.BEACON_REKINDLING)
+
+func _test_beacon_fills_to_rekindled_while_held() -> void:
+	var sim := Sim.new()
+	_place_beacon(sim)
+	_tick_inside(sim, Sim.BEACON_CHANNEL_SECONDS + 0.5)  # hold past the channel duration
+	_check("holding the radius fills the channel", sim.beacon_channel_progress >= 1.0)
+	_check_eq("a full channel reaches Rekindled", sim.beacon_state, Sim.BEACON_REKINDLED)
+
+func _test_beacon_pauses_outside_and_is_one_way() -> void:
+	var sim := Sim.new()
+	_place_beacon(sim)
+	_tick_inside(sim, 3.0)                    # partway up the channel
+	var banked := sim.beacon_channel_progress
+	_check("partway is between empty and full", banked > 0.0 and banked < 1.0)
+	_tick_outside(sim, 4.0)                   # leave the radius
+	_check("leaving PAUSES progress (held, not drained)", absf(sim.beacon_channel_progress - banked) < 0.0001)
+	_check_eq("leaving never reverts the state (one-way door)", sim.beacon_state, Sim.BEACON_REKINDLING)
+
+func _test_beacon_resumes_after_returning() -> void:
+	var sim := Sim.new()
+	_place_beacon(sim)
+	_tick_inside(sim, 5.0)                    # most of the channel
+	_tick_outside(sim, 3.0)                   # step out — banked progress is preserved
+	_tick_inside(sim, 4.0)                    # come back and finish
+	_check("a paused channel resumes and completes", sim.beacon_channel_progress >= 1.0)
+	_check_eq("returning completes to Rekindled", sim.beacon_state, Sim.BEACON_REKINDLED)
+
+func _test_rekindled_beacon_does_not_win_yet() -> void:
+	var sim := Sim.new()
+	_place_beacon(sim)
+	_tick_inside(sim, Sim.BEACON_CHANNEL_SECONDS + 0.5)
+	_check_eq("the channel reached Rekindled", sim.beacon_state, Sim.BEACON_REKINDLED)
+	_check_eq("but the run is still un-winnable in 0017", sim.phase, Sim.PHASE_PLAYING)
