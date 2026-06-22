@@ -35,7 +35,7 @@ func _check_eq(desc: String, actual: Variant, expected: Variant) -> void:
 func _test_outcome() -> void:
 	var win := EndScreen.outcome(Simulation.PHASE_COMPLETE)
 	_check_eq("complete -> win", win["win"], true)
-	_check_eq("complete -> RUN COMPLETE", win["title"], "RUN COMPLETE")
+	_check_eq("complete -> BEACON REKINDLED", win["title"], "BEACON REKINDLED")
 
 	var loss := EndScreen.outcome(Simulation.PHASE_GAMEOVER)
 	_check_eq("gameover -> not win", loss["win"], false)

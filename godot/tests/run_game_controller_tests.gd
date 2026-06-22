@@ -16,6 +16,8 @@ func _initialize() -> void:
 	await _test_force_gameover_for_playtest()
 	await _test_force_complete_for_playtest()
 	await _test_obstacle_registration_duck_types_solid_pieces()
+	await _test_beacon_registration_reads_the_dais_marker()
+	await _test_beacon_inert_without_a_dais_marker()
 	print("")
 	# A run with zero checks is a FAILURE, not a pass: it means the controller script
 	# failed to load/compile (e.g. GameController.new() returned null), so the asserts
@@ -72,9 +74,9 @@ func _test_force_complete_for_playtest() -> void:
 	controller.force_complete_for_playtest()
 	await process_frame
 	_check_eq("force complete sets phase", controller.sim.phase, Simulation.PHASE_COMPLETE)
-	_check_eq("force complete clamps elapsed to the run duration", controller.sim.elapsed, controller.sim.run_duration)
+	_check_eq("force complete rekindles the Beacon", controller.sim.beacon_state, Simulation.BEACON_REKINDLED)
 	_check("win overlay is visible", controller.end_screen.get_node("Root").visible)
-	_check_eq("win title renders", controller.end_screen.get_node("Root/Center/Panel/Margin/VBox/TitleLabel").text, "RUN COMPLETE")
+	_check_eq("win title renders", controller.end_screen.get_node("Root/Center/Panel/Margin/VBox/TitleLabel").text, "BEACON REKINDLED")
 	await _cleanup(controller)
 
 # A minimal stand-in for the art-stream WorldKitPiece: just the duck-typed shape the
@@ -111,5 +113,35 @@ func _test_obstacle_registration_duck_types_solid_pieces() -> void:
 	if controller.sim.obstacles.size() == 1:
 		_check("footprint 2.6 -> radius 1.3", absf(controller.sim.obstacles[0].radius - 1.3) < 0.001)
 		_check("obstacle mirrors the piece position", controller.sim.obstacles[0].position.distance_to(Vector3(5, 0, 0)) < 0.001)
+	arena.queue_free()
+	await _cleanup(controller)
+
+# The controller authors the Beacon into the sim by reading the NorthBeaconDaisZone
+# marker's position (ADR 0005/0006), with the radius coming from a controller-side
+# export — the marker is a bare Marker3D with no radius metadata to duck-type. (0019)
+func _test_beacon_registration_reads_the_dais_marker() -> void:
+	var controller = _new_controller()
+	await process_frame
+	var arena := Node3D.new()
+	root.add_child(arena)
+	var dais := Marker3D.new()
+	dais.name = "NorthBeaconDaisZone"
+	dais.position = Vector3(0, 0, -13)
+	arena.add_child(dais)
+	controller.beacon_radius = 3.0
+	controller._register_beacon_under(arena)
+	_check_eq("beacon radius comes from the controller export", controller.sim.beacon_radius, 3.0)
+	_check("beacon position mirrors the dais marker", controller.sim.beacon_position.distance_to(Vector3(0, 0, -13)) < 0.001)
+	arena.queue_free()
+	await _cleanup(controller)
+
+func _test_beacon_inert_without_a_dais_marker() -> void:
+	var controller = _new_controller()
+	await process_frame
+	var arena := Node3D.new()      # no NorthBeaconDaisZone present
+	root.add_child(arena)
+	controller.sim.beacon_radius = 0.0
+	controller._register_beacon_under(arena)
+	_check_eq("no dais marker ⇒ beacon stays inert", controller.sim.beacon_radius, 0.0)
 	arena.queue_free()
 	await _cleanup(controller)

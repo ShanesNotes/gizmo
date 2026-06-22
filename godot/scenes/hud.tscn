@@ -175,31 +175,31 @@ text = "SPARKS"
 theme_override_colors/font_color = Color(0.722, 0.627, 0.886, 1.0)
 theme_override_font_sizes/font_size = 11
 
-[node name="TimerPanel" type="PanelContainer" parent="Root"]
+[node name="ObjectivePanel" type="PanelContainer" parent="Root"]
 layout_mode = 1
 anchors_preset = 1
 anchor_left = 1.0
 anchor_right = 1.0
-offset_left = -112.0
+offset_left = -216.0
 offset_top = 16.0
 offset_right = -16.0
 offset_bottom = 60.0
 grow_horizontal = 0
 mouse_filter = 2
 
-[node name="Margin" type="MarginContainer" parent="Root/TimerPanel"]
+[node name="Margin" type="MarginContainer" parent="Root/ObjectivePanel"]
 layout_mode = 2
 theme_override_constants/margin_left = 12
 theme_override_constants/margin_top = 6
 theme_override_constants/margin_right = 12
 theme_override_constants/margin_bottom = 6
 
-[node name="TimerLabel" type="Label" parent="Root/TimerPanel/Margin"]
+[node name="ObjectiveLabel" type="Label" parent="Root/ObjectivePanel/Margin"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "4:00"
+text = "REKINDLE BEACON"
 horizontal_alignment = 1
-theme_override_font_sizes/font_size = 24
+theme_override_font_sizes/font_size = 18
 
 [node name="LevelUpFlash" type="Label" parent="Root"]
 unique_name_in_owner = true

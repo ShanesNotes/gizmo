@@ -36,6 +36,11 @@ const WALKABLE_ROLES: Array[StringName] = [&"walkable_tile", &"foundation"]
 ## Lets 0012 be verified without waiting for balance to become lethal.
 @export var debug_playtest_shortcuts: bool = true
 
+## The rekindle channel radius (metres) authored into the sim at the Beacon (0019,
+## ADR 0005). Lives controller-side because the NorthBeaconDaisZone marker is a bare
+## Marker3D with no radius metadata to read — the controller is the radius source.
+@export var beacon_radius: float = 3.0
+
 var sim := Simulation.new()
 var _enemy_views: Dictionary = {}  # Simulation.Enemy  -> Node3D
 var _spark_views: Dictionary = {}  # Simulation.Pickup -> Node3D
@@ -47,6 +52,7 @@ func _ready() -> void:
 	if auto_instance_ui:
 		_ensure_default_ui()
 	_register_arena_obstacles()
+	_register_beacon()
 
 
 ## Mirror every SOLID arena piece's declared footprint into the Simulation as an
@@ -84,6 +90,24 @@ func _register_obstacles_under(root: Node) -> void:
 		var radius := maxf(footprint.x, footprint.y) * 0.5
 		if radius > 0.0:
 			sim.add_obstacle(piece.global_position, radius)
+
+
+## Author the Beacon into the sim from the scene's NorthBeaconDaisZone marker (ADR
+## 0005/0006). Mirrors the obstacle-registration seam: the scene holds the position,
+## the controller feeds it to the rules engine (ADR 0002). No marker → beacon stays
+## inert (headless tests, or a scene without the dais), exactly like empty obstacles.
+func _register_beacon() -> void:
+	_register_beacon_under(get_tree().current_scene)
+
+## Split out so the marker-reading is unit-testable with a fake scene — see
+## run_game_controller_tests.gd.
+func _register_beacon_under(root: Node) -> void:
+	if root == null:
+		return
+	var dais := root.find_child("NorthBeaconDaisZone", true, false)
+	if dais is Node3D:
+		sim.beacon_position = (dais as Node3D).global_position
+		sim.beacon_radius = beacon_radius
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -177,7 +201,9 @@ func _force_finished_phase_for_playtest(phase: String) -> void:
 	if phase == Simulation.PHASE_GAMEOVER:
 		sim.hp = 0
 	else:
-		sim.elapsed = sim.run_duration
+		# A faithful forced win is a completed rekindle, not a spent clock (ADR 0005).
+		sim.beacon_channel_progress = 1.0
+		sim.beacon_state = Simulation.BEACON_REKINDLED
 	sim.phase = phase
 	if hud != null:
 		hud.render(sim)

@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Gizmo · Lesson 0019 — Wire the Beacon into the live run</title>
+  <link rel="stylesheet" href="assets/lesson.css">
+</head>
+<body>
+<main>
+
+  <header class="masthead">
+    <p class="eyebrow">Gizmo · Lesson 0019 · Path A refactor</p>
+    <h1>Wire the Beacon into the live run — the first Path A win you can play</h1>
+    <p class="subtitle">0017–0018 proved the rekindle channel and made it the win, all headless. Now it crosses into the running game: the controller authors the real Beacon from the scene, the HUD drops its countdown for a rekindle readout, and the end-screen reads <strong>"Beacon Rekindled."</strong> Walk Gizmo north, hold the light — and win.</p>
+  </header>
+
+  <div class="card why">
+    <span class="label">Why this is the bridge, not new mechanics</span>
+    <p>The rules are done. What's missing is the seam where the headless <code>Simulation</code> meets the scene (ADR 0002): the sim has a beacon at <code>(0,0,0)</code> with radius <code>0</code> — inert — and nothing ever places a real one. 0019 is four small wirings that turn "the mechanic is proven" into "you can play it." No new game logic; just connecting the proven engine to the live world.</p>
+  </div>
+
+  <h2>Part 1 — the controller authors the Beacon</h2>
+  <p>The scene already holds the truth: a bare <code>NorthBeaconDaisZone</code> Marker3D at <code>z = -13</code>, with the glowing placeholder cylinder on top. The controller reads that position and feeds it to the sim — the same seam that mirrors arena obstacles (one source of truth, fed into the rules engine):</p>
+<pre><code>@export var beacon_radius: float = 3.0   // controller-side: the bare marker has no radius to read
+
+func _register_beacon_under(root):
+    var dais = root.find_child("NorthBeaconDaisZone", true, false)
+    if dais is Node3D:
+        sim.beacon_position = dais.global_position
+        sim.beacon_radius   = beacon_radius      // no marker → stays inert (headless tests, bare scenes)</code></pre>
+  <p><strong>The radius lives on the controller, not the marker.</strong> The markers are plain <code>Marker3D</code>s — adding a <code>radius</code> field to them would mean editing the off-limits art-stream scene and inventing metadata. The controller is the honest home for it.</p>
+
+  <h2>Part 2 — the HUD drops the countdown</h2>
+  <p>The old HUD showed <code>4:00</code> ticking down — exactly the round-counter the project ruled out (ADR 0003/0005: no player-facing timer). We replace that one label with a Beacon readout, a pure formatter so it's unit-tested:</p>
+<pre><code>rekindle_readout(Dormant,  _)   -> "REKINDLE BEACON"     // the objective
+rekindle_readout(Rekindling, p) -> "REKINDLING 60%"      // the live channel
+rekindle_readout(Rekindled, _)  -> "BEACON REKINDLED"    // the win</code></pre>
+  <p>(The pure <code>format_clock</code> stays — the end-screen still uses it for a "survived" run-length stat — but the HUD no longer counts anything down.)</p>
+
+  <h2>Part 3 — a faithful forced win, and the new end-screen</h2>
+  <p>Two smaller wirings finish it. The debug F9 shortcut used to fake a win by spending the clock (<code>elapsed = run_duration</code>) — meaningless now, so it <em>rekindles</em> instead (<code>beacon_state = Rekindled</code>). And the end-screen copy becomes Path A:</p>
+<pre><code>PHASE_COMPLETE -> "BEACON REKINDLED"  · "The hearth catches; the cold world holds back."
+PHASE_GAMEOVER -> "GIZMO OFFLINE"     · "Gizmo's light failed."</code></pre>
+
+  <div class="card heads-up">
+    <span class="label">Verified live, not just headless</span>
+    <p>The 165-check gate proves the logic, but the renamed <code>%ObjectiveLabel</code> and the real-scene marker lookup only count when the game runs. So we ran it: the HUD reads <strong>REKINDLE BEACON</strong> (no clock); a script confirms the sim received <code>beacon_radius 3</code> at <code>(0,0,-13)</code> from <code>main.tscn</code>; and holding the radius drives <code>REKINDLING&nbsp;%</code> up to a <code>PHASE_COMPLETE</code> with the end-screen banner <strong>BEACON REKINDLED</strong>. The win you proved in tests is the win you see on screen.</p>
+  </div>
+
+  <div class="card turn">
+    <span class="label">Done means…</span>
+    <p><strong>Done</strong> = a played run can be won the Path A way — walk to the Beacon, hold its radius, watch the readout climb, and reach the "Beacon Rekindled" screen; HP-0 still loses. Verify: full gate <strong>165</strong> (sim 88 · balance 43 · controller 16 · hud 12 · end-screen 6), plus a live playthrough. You can explain why the radius lives on the controller, why the countdown had to go, and why F9 now rekindles instead of spending a clock.</p>
+  </div>
+
+  <div class="card heads-up">
+    <span class="label">Next — named, not built</span>
+    <p>The win is playable but <strong>easy</strong>: the Beacon sits in low pressure, so rekindling is a short stroll. The arc's back half makes it a real journey — <strong>0020</strong> retires the leftover timer <em>symbols</em> into pressure fuel; <strong>0021</strong> makes pressure <em>place-aware</em> (temporal ramp × spatial exposure); <strong>0022</strong> adds the walkable region; <strong>0023</strong> turns the rekindle into a <em>siege</em> (Rekindling overrides exposure to peak — the swarm at the hearth is the boss).</p>
+  </div>
+
+  <p class="source">Primary source · <code>docs/adr/0005-beacon-rekindle-replaces-timer-survival.md</code> (HUD/end-screen consequences) + <code>docs/adr/0006</code> (the dais as objective anchor). Also <code>game_controller.gd</code> <code>_register_beacon_under</code>, <code>hud.gd</code> <code>rekindle_readout</code>, <code>end_screen.gd</code> <code>outcome</code>.</p>
+
+  <p class="ask">Want to play it yourself in the editor (walk north and hold the light), or move on to retiring the timer symbols (0020)? Ask your teacher.</p>
+
+  <nav class="lesson-nav">
+    <span>Prev · 0018 The Beacon becomes the win</span>
+    <span>Next · 0020 Retire the timer symbols</span>
+  </nav>
+
+</main>
+</body>
+</html>

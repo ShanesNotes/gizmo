@@ -20,7 +20,7 @@ const XP_FILL_SECONDS: float = 0.35
 @onready var _level_label: Label = %LevelLabel
 @onready var _xp_bar: ProgressBar = %XpBar
 @onready var _sparks_label: Label = %SparksLabel
-@onready var _timer_label: Label = %TimerLabel
+@onready var _objective_label: Label = %ObjectiveLabel
 @onready var _level_up_flash: Label = %LevelUpFlash
 
 var _flash_tween: Tween
@@ -40,7 +40,7 @@ func render(sim: Simulation) -> void:
 	_update_xp_fill(sim.xp_progress() * 100.0)
 	_sparks_label.text = str(sim.xp)
 
-	_timer_label.text = format_clock(sim.time_remaining())
+	_objective_label.text = rekindle_readout(sim.beacon_state, sim.beacon_channel_progress)
 
 	for event in sim.last_events:
 		if event.get("type") == "levelup":
@@ -48,9 +48,23 @@ func render(sim: Simulation) -> void:
 			break
 
 
-## Whole-minute:zero-padded-seconds for a COUNT-DOWN clock: round up so any time
-## left still reads on the dial (0.1s shows "0:01"), and only the true end shows
-## "0:00". Pure — unit-tested headless.
+## The Beacon objective readout that replaced the run countdown (ADR 0005 — no
+## player-facing timer/round counter). Pure, so it's unit-tested headless. Dormant
+## (incl. before Gizmo reaches the Beacon) shows the objective; Rekindling shows the
+## live channel %; Rekindled shows the win line.
+static func rekindle_readout(beacon_state: String, progress: float) -> String:
+	match beacon_state:
+		Simulation.BEACON_REKINDLING:
+			return "REKINDLING %d%%" % int(round(clampf(progress, 0.0, 1.0) * 100.0))
+		Simulation.BEACON_REKINDLED:
+			return "BEACON REKINDLED"
+		_:
+			return "REKINDLE BEACON"
+
+
+## Whole-minute:zero-padded-seconds clock, kept as a pure formatter for the end
+## screen's "survived" run-length stat (the HUD no longer shows a countdown — ADR
+## 0005). Rounds up so a partial second still reads; only true zero shows "0:00".
 static func format_clock(seconds: float) -> String:
 	var total: int = 0 if seconds <= 0.0 else int(ceilf(seconds))
 	var minutes: int = total / 60

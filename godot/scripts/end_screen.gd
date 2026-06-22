@@ -5,8 +5,8 @@ extends CanvasLayer
 ##
 ## The Simulation owns the run's phase (ADR 0002); this screen only renders the
 ## outcome. The controller calls show_outcome(sim) once, the frame the run leaves
-## the "playing" phase — a win (timer out, simulation.ts:490) or a loss (HP 0,
-## simulation.ts:737). Starts hidden; RETRY reloads the scene for a fresh run.
+## the "playing" phase — a win (the Beacon rekindled, ADR 0005) or a loss (HP 0).
+## Starts hidden; RETRY reloads the scene for a fresh run.
 
 @onready var _root: Control = %Root
 @onready var _title: Label = %TitleLabel
@@ -26,9 +26,9 @@ func _ready() -> void:
 ## stays empty, so a mis-call shows nothing rather than a wrong banner).
 static func outcome(phase: String) -> Dictionary:
 	if phase == Simulation.PHASE_COMPLETE:
-		return {"title": "RUN COMPLETE", "flavor": "Gizmo survived the run.", "win": true}
+		return {"title": "BEACON REKINDLED", "flavor": "The hearth catches; the cold world holds back.", "win": true}
 	if phase == Simulation.PHASE_GAMEOVER:
-		return {"title": "GIZMO OFFLINE", "flavor": "Gizmo's chassis gave out.", "win": false}
+		return {"title": "GIZMO OFFLINE", "flavor": "Gizmo's light failed.", "win": false}
 	return {"title": "", "flavor": "", "win": false}
 
 

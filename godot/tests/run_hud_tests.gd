@@ -13,6 +13,7 @@ const Hud := preload("res://scripts/hud.gd")
 func _initialize() -> void:
 	print("Running HUD tests…")
 	_test_format_clock()
+	_test_rekindle_readout()
 	print("")
 	if _failed == 0 and _passed > 0:
 		print("PASS — %d checks" % _passed)
@@ -41,3 +42,11 @@ func _test_format_clock() -> void:
 	# Count-down rounding: fractional time left rounds UP, never down to 0:00.
 	_check_eq("0.1s left rounds up -> 0:01", Hud.format_clock(0.1), "0:01")
 	_check_eq("59.1s left rounds up -> 1:00", Hud.format_clock(59.1), "1:00")
+
+# rekindle_readout replaced the countdown (ADR 0005): the objective when Dormant, the
+# live channel % while Rekindling, the win line when Rekindled. No clock, no round count.
+func _test_rekindle_readout() -> void:
+	_check_eq("dormant -> objective prompt", Hud.rekindle_readout(Simulation.BEACON_DORMANT, 0.0), "REKINDLE BEACON")
+	_check_eq("rekindling shows live percent", Hud.rekindle_readout(Simulation.BEACON_REKINDLING, 0.6), "REKINDLING 60%")
+	_check_eq("rekindling rounds the percent", Hud.rekindle_readout(Simulation.BEACON_REKINDLING, 0.005), "REKINDLING 1%")
+	_check_eq("rekindled -> win line", Hud.rekindle_readout(Simulation.BEACON_REKINDLED, 1.0), "BEACON REKINDLED")
