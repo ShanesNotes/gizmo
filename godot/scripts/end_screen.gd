@@ -39,10 +39,10 @@ func show_outcome(sim: Simulation) -> void:
 	_title.text = copy["title"]
 	_flavor.text = copy["flavor"]
 	# Survived = whole seconds lasted: floor the partial second (you died at 2:17.6,
-	# not 2:18), and clamp a win's slight overshoot to the run length. Pre-flooring an
-	# integer into Hud.format_clock (which rounds up for the count-down clock) yields
-	# floor semantics here — one shared formatter, the caller picks the rounding.
-	_survived_value.text = Hud.format_clock(floorf(minf(sim.elapsed, sim.run_duration)))
+	# not 2:18). Reads raw `elapsed` (a debug/tuning value post-0020; ADR 0005) — no
+	# run_duration clamp, since the clock no longer bounds the run. Pre-flooring an
+	# integer into Hud.format_clock yields floor semantics — one shared formatter.
+	_survived_value.text = Hud.format_clock(floorf(maxf(0.0, sim.elapsed)))
 	_level_value.text = str(sim.level)
 	_sparks_value.text = str(sim.xp)
 	_root.visible = true

@@ -20,7 +20,7 @@ func _initialize() -> void:
 	_test_xp_progress()
 	_test_negative_ignored()
 	# Run clock & health (0007)
-	_test_run_clock()
+	_test_run_clock_is_retired_to_pressure_fuel()
 	_test_dt_is_clamped()
 	_test_timer_no_longer_wins()
 	_test_damage_and_iframes()
@@ -132,13 +132,17 @@ func _test_negative_ignored() -> void:
 
 # --- Run clock & health (0007) ---
 
-func _test_run_clock() -> void:
+# 0020 (ADR 0005): the run clock is retired as a player-facing countdown. It survives
+# only as `pressure_clock` — the horizon the director's pressure ramp eases over — and
+# the countdown getters (run_progress / time_remaining) are gone from the sim entirely.
+func _test_run_clock_is_retired_to_pressure_fuel() -> void:
 	var sim := Sim.new()
-	sim.run_duration = 1.0
+	_check("no player-facing run_progress getter", not sim.has_method("run_progress"))
+	_check("no player-facing time_remaining countdown", not sim.has_method("time_remaining"))
+	sim.pressure_clock = 1.0
 	for i in 5:
-		sim.tick(0.05)  # 5 * 0.05 = 0.25s elapsed
-	_check("run_progress ~ 0.25", absf(sim.run_progress() - 0.25) < 0.001)
-	_check("time_remaining ~ 0.75", absf(sim.time_remaining() - 0.75) < 0.001)
+		sim.tick(0.05)  # elapsed 0.25 of a 1.0 pressure horizon
+	_check("pressure_clock is the ramp horizon, not a countdown", sim.pressure() > 0.0 and sim.pressure() < 1.0)
 
 func _test_dt_is_clamped() -> void:
 	var sim := Sim.new()
@@ -146,13 +150,13 @@ func _test_dt_is_clamped() -> void:
 	_check("dt clamped to 0.05", absf(sim.elapsed - 0.05) < 0.0001)
 
 func _test_timer_no_longer_wins() -> void:
-	# Path A (ADR 0005): the clock no longer ends the run. Crossing run_duration
+	# Path A (ADR 0005): the clock no longer ends the run. Crossing pressure_clock
 	# keeps the run PLAYING — the Beacon channel (lesson 0018) becomes the win.
 	var sim := Sim.new()
-	sim.run_duration = 0.08
+	sim.pressure_clock = 0.08
 	sim.tick(0.05)
 	_check_eq("still playing mid-run", sim.phase, Sim.PHASE_PLAYING)
-	sim.tick(0.05)  # elapsed 0.10 >= run_duration — old deadline crossed
+	sim.tick(0.05)  # elapsed 0.10 >= pressure_clock — old deadline crossed
 	_check_eq("clock elapsing no longer completes the run", sim.phase, Sim.PHASE_PLAYING)
 	sim.tick(0.05)
 	_check("the run keeps ticking past the old deadline", sim.phase == Sim.PHASE_PLAYING)
@@ -165,7 +169,7 @@ func _test_damage_and_iframes() -> void:
 	_check_eq("hp drops by the damage", sim.hp, 5)
 	var blocked := sim.take_damage(2)
 	_check("i-frames block the next hit", not blocked and sim.hp == 5)
-	sim.run_duration = 999.0  # don't let the run complete while we wait out i-frames
+	sim.pressure_clock = 999.0  # keep pressure low while we wait out i-frames
 	for i in 40:
 		sim.tick(0.05)  # 2.0s > 1.58 i-frame window
 	sim.take_damage(2)
@@ -286,12 +290,12 @@ func _test_pressure_curve_ramps() -> void:
 	var sim := Sim.new()
 	sim.elapsed = 0.0
 	_check("pressure starts at zero", absf(sim.pressure()) < 0.001)
-	sim.elapsed = sim.run_duration * 0.25
+	sim.elapsed = sim.pressure_clock * 0.25
 	var quarter := sim.pressure()
-	sim.elapsed = sim.run_duration * 0.75
+	sim.elapsed = sim.pressure_clock * 0.75
 	var late := sim.pressure()
 	_check("pressure rises as the run progresses", late > quarter and quarter > 0.0)
-	sim.elapsed = sim.run_duration
+	sim.elapsed = sim.pressure_clock
 	_check("time-only pressure reaches 1.0 by the run's end", absf(sim.pressure() - 1.0) < 0.001)
 
 func _test_director_ramps_spawn_rate() -> void:

@@ -19,7 +19,7 @@ const PHASE_PLAYING := "playing"
 const PHASE_COMPLETE := "complete"
 const PHASE_GAMEOVER := "gameover"
 
-const RUN_DURATION := 240.0   # simulation.ts:202
+const PRESSURE_CLOCK := 240.0   # the director's pressure-ramp horizon (was the run timer; ADR 0005). simulation.ts:202
 const MAX_DT := 0.05          # safeDt clamp (simulation.ts:463)
 const HIT_INVULN := 1.58      # i-frames after a hit (simulation.ts:724)
 const CONTACT_GRACE := 7.0    # no contact damage before this (simulation.ts:722)
@@ -131,9 +131,12 @@ var level: int = 1     # simulation.ts:359
 var xp: int = 0
 var next_xp: int = 0
 
-# --- Run clock & health (0007) ---
+# --- Pressure clock & health (0007; clock retired to director fuel in 0020, ADR 0005) ---
+# `elapsed` accumulates sim time; `pressure_clock` is the horizon the pressure ramp eases
+# over. Neither ends the run (the Beacon does) and neither is shown to the player as a
+# countdown — they are director fuel + a debug/tuning value only.
 var elapsed: float = 0.0
-var run_duration: float = RUN_DURATION
+var pressure_clock: float = PRESSURE_CLOCK
 var hp: int = 7        # simulation.ts:349 (createGameState)
 var max_hp: int = 7
 var invulnerable: float = 0.0
@@ -247,22 +250,15 @@ func _update_beacon(dt: float, gizmo_position: Vector3) -> void:
 		beacon_state = BEACON_REKINDLED
 		phase = PHASE_COMPLETE   # 0018: Beacon Rekindled IS the win (ADR 0005)
 
-## 0..1 fraction of the run elapsed. Faithful to runProgress (simulation.ts:533).
-func run_progress() -> float:
-	if run_duration <= 0.0:
-		return 1.0
-	return clampf(elapsed / run_duration, 0.0, 1.0)
-
-## Seconds left in the run. Faithful to timeRemaining (simulation.ts:535).
-func time_remaining() -> float:
-	return maxf(0.0, run_duration - elapsed)
+# run_progress() / time_remaining() were retired in 0020 (ADR 0005): no player-facing
+# countdown survives. The clock lives on only as `pressure_clock`, consumed by pressure().
 
 ## Time-driven pressure scalar, 0..1 — "the clock is the boss" (balance §5.2).
 ## Mirrors the time term of source heatCurve (simulation.ts:1727-1730): an eased
-## ramp over the run. Deferred refinements let the source heat reach 1.42 via
-## + level*0.014 + kills*0.00135 once those systems exist.
+## ramp over the pressure_clock. Deferred refinements let the source heat reach 1.42
+## via + level*0.014 + kills*0.00135 once those systems exist.
 func pressure() -> float:
-	var t := (clampf(elapsed / run_duration, 0.0, 1.0)) if run_duration > 0.0 else 1.0
+	var t := (clampf(elapsed / pressure_clock, 0.0, 1.0)) if pressure_clock > 0.0 else 1.0
 	return clampf(1.0 - pow(1.0 - t, PRESSURE_EASE), 0.0, PRESSURE_MAX)
 
 ## Source-fidelity alias. The TypeScript implementation calls this concept heatCurve;

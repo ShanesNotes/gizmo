@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Gizmo · Lesson 0020 — Retire the timer symbols</title>
+  <link rel="stylesheet" href="assets/lesson.css">
+</head>
+<body>
+<main>
+
+  <header class="masthead">
+    <p class="eyebrow">Gizmo · Lesson 0020 · Path A refactor</p>
+    <h1>Retire the timer symbols — a concept-rename, driven by a failing test</h1>
+    <p class="subtitle">The Beacon is the win now, but the code still talks like a survival timer: <code>run_duration</code>, <code>time_remaining()</code>, <code>run_progress()</code>. Those names are a lie the next reader will believe. We rename the clock to what it actually is — <code>pressure_clock</code>, the director's fuel — and delete the countdown getters entirely. The trick: let a test demand the new world first.</p>
+  </header>
+
+  <div class="card why">
+    <span class="label">Why a rename is worth a whole lesson</span>
+    <p>Names are the cheapest documentation and the most expensive lie. After 0016–0019 the clock no longer ends the run — yet <code>run_duration</code> and <code>time_remaining()</code> still sit in the sim, whispering "this is a survival timer" to anyone who reads it. ADR 0005 is explicit: the clock <em>"is renamed in concept to the <strong>pressure_clock</strong> and survives only as the temporal fuel for the director… never shown to the player as a countdown."</em> Leaving the old names is how a refactor silently rots back toward the game you left.</p>
+  </div>
+
+  <h2>Part 1 — rename by failing test, not find-replace</h2>
+  <p>A blind <code>sed run_duration → pressure_clock</code> would work and teach nothing — and worse, it would happily keep the countdown getters alive. So we drive it the TDD way: rewrite the test to assert the world we <em>want</em>, watch it go red, then make it true.</p>
+<pre><code>func _test_run_clock_is_retired_to_pressure_fuel():
+    var sim = Sim.new()
+    _check("no player-facing run_progress getter",   not sim.has_method("run_progress"))
+    _check("no player-facing time_remaining countdown", not sim.has_method("time_remaining"))
+    sim.pressure_clock = 1.0
+    for i in 5: sim.tick(0.05)              // elapsed 0.25 of a 1.0 horizon
+    _check("pressure_clock is the ramp horizon", sim.pressure() &gt; 0 and sim.pressure() &lt; 1)</code></pre>
+  <p>Red on two counts: the getters still exist (<code>has_method</code> is true), and <code>pressure_clock</code> doesn't (assignment errors). The test now <em>describes the destination.</em></p>
+
+  <h2>Part 2 — make it true</h2>
+  <p>Then, and only then, the edits — and the failing test tells you when you're done:</p>
+<pre><code>const RUN_DURATION  -> const PRESSURE_CLOCK        // the pressure-ramp horizon
+var   run_duration  -> var   pressure_clock
+func run_progress() / func time_remaining()        // DELETED — countdown getters, gone
+func pressure(): elapsed / pressure_clock          // the one real consumer, renamed</code></pre>
+  <p><code>elapsed</code> <strong>stays</strong> — it's genuine fuel (accumulated sim time the pressure ramp reads), and ADR 0005 keeps it as "a debug/tuning value." We retire the <em>countdown</em>, not the clock's tick.</p>
+
+  <div class="card heads-up">
+    <span class="label">The last player-path reference — the end-screen stat</span>
+    <p>One countdown reference hid on a player path: the end-screen's "SURVIVED" stat clamped <code>elapsed</code> to <code>run_duration</code>. With the clock no longer bounding the run, that clamp is meaningless — so it now reads raw <code>elapsed</code>. The result is that <code>pressure_clock</code> is touched by <em>nothing</em> the player sees: it's pure director internals, exactly as ADR 0005 intends.</p>
+  </div>
+
+  <div class="card turn">
+    <span class="label">Done means…</span>
+    <p><strong>Done</strong> = no <code>run_duration</code> / <code>time_remaining</code> / <code>run_progress</code> anywhere but in comments that note they're gone; <code>pressure_clock</code> is the director's horizon and the player never sees a countdown. Verify: full gate <strong>166</strong> (sim 89 · balance 43 · controller 16 · hud 12 · end-screen 6), and a grep for the old names returns only "retired" comments. You can explain why a rename earns a lesson, why we drove it with <code>has_method</code> assertions instead of find-replace, and why <code>elapsed</code> stayed while the getters went.</p>
+  </div>
+
+  <div class="card heads-up">
+    <span class="label">Next — named, not built</span>
+    <p>With the clock honestly reframed as <em>pressure fuel</em>, the back half makes pressure place-aware. <strong>0021</strong>: pressure becomes <code>temporal_ramp × spatial_exposure(pos)</code> — the same eased clock, now multiplied by where you stand. <strong>0022</strong>: a walkable region. <strong>0023</strong>: the rekindle siege (Rekindling pins exposure to peak). Careful in 0021 — a test still asserts <code>pressure()==1.0</code> at the horizon with no zones, so the new spatial term must pass through to exactly 1.0 when no zones exist.</p>
+  </div>
+
+  <p class="source">Primary source · <code>docs/adr/0005-beacon-rekindle-replaces-timer-survival.md</code> ("renamed in concept to the pressure_clock… never shown to the player as a countdown"). Also <code>simulation.gd</code> <code>pressure()</code> (the one consumer), <code>tests/run_simulation_tests.gd</code> <code>_test_run_clock_is_retired_to_pressure_fuel</code>.</p>
+
+  <p class="ask">Want to see how a duck-typed <code>has_method</code> test guards a deletion in general, or move on to place-aware pressure (0021)? Ask your teacher.</p>
+
+  <nav class="lesson-nav">
+    <span>Prev · 0019 Wire the Beacon into the live run</span>
+    <span>Next · 0021 Place-aware pressure</span>
+  </nav>
+
+</main>
+</body>
+</html>
