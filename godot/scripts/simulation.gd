@@ -232,7 +232,9 @@ func tick(dt: float, gizmo_position := Vector3.ZERO) -> void:
 ## never reverts to Dormant. A full channel reaches Rekindled; turning that into the
 ## win (PHASE_COMPLETE) is lesson 0018, so this method never ends the run.
 func _update_beacon(dt: float, gizmo_position: Vector3) -> void:
-	if beacon_radius <= 0.0 or beacon_state == BEACON_REKINDLED:
+	# phase guard: if a death earlier THIS tick set GAMEOVER, loss wins the race —
+	# a same-tick channel completion must not overwrite it (ADR 0005: loss unchanged).
+	if beacon_radius <= 0.0 or beacon_state == BEACON_REKINDLED or phase != PHASE_PLAYING:
 		return
 	var to_beacon := gizmo_position - beacon_position
 	to_beacon.y = 0.0
@@ -243,6 +245,7 @@ func _update_beacon(dt: float, gizmo_position: Vector3) -> void:
 	beacon_channel_progress = minf(1.0, beacon_channel_progress + dt / BEACON_CHANNEL_SECONDS)
 	if beacon_channel_progress >= 1.0:
 		beacon_state = BEACON_REKINDLED
+		phase = PHASE_COMPLETE   # 0018: Beacon Rekindled IS the win (ADR 0005)
 
 ## 0..1 fraction of the run elapsed. Faithful to runProgress (simulation.ts:533).
 func run_progress() -> float:

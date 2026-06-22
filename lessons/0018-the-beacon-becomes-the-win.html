@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Gizmo · Lesson 0018 — The Beacon becomes the win</title>
+  <link rel="stylesheet" href="assets/lesson.css">
+</head>
+<body>
+<main>
+
+  <header class="masthead">
+    <p class="eyebrow">Gizmo · Lesson 0018 · Path A refactor</p>
+    <h1>The Beacon becomes the win — and a driver that can actually reach it</h1>
+    <p class="subtitle">0017 built the rekindle channel but left it un-winnable on purpose. Now we wire the last inch: a full channel sets <code>PHASE_COMPLETE</code>. The catch — our balance "kite" runs <em>away</em> from danger and would never approach a beacon, so we also author a <strong>seek-and-hold</strong> driver to prove a fair run can truly rekindle.</p>
+  </header>
+
+  <div class="card why">
+    <span class="label">Why this is two wins, not one</span>
+    <p>"Set <code>phase = COMPLETE</code> when the channel fills" is one line. But a green unit test only proves the <em>mechanism</em> fires when you hand-feed a perfect hold. It says nothing about whether a <em>player</em> can get there. Our existing balance proof — the "decent kite" — is built on pure <strong>evasion</strong>: every tick it steers <em>away</em> from the nearest enemies. A driver whose whole strategy is "flee" will never walk into a beacon and stand there. So the win needs <em>two</em> proofs: the sim-side wire (deterministic), and a driver that <strong>seeks and holds</strong> (reachability).</p>
+  </div>
+
+  <h2>Part 1 — the sim-side wire (red-first)</h2>
+  <p>0017's living test asserted "Rekindled but <em>not</em> a win." 0018 flips that exact assertion — the test file is the one living source of truth, so we rewrite it to the new reality and watch it go red, then green:</p>
+<pre><code>// the win wire, inside _update_beacon (Simulation owns the rule — ADR 0002)
+if beacon_channel_progress &gt;= 1.0:
+    beacon_state = BEACON_REKINDLED
+    phase = PHASE_COMPLETE         // 0018: Beacon Rekindled IS the win (ADR 0005)</code></pre>
+  <p>Two tests pin it: <em>a full channel reaches <code>PHASE_COMPLETE</code></em>, and — the one that protects the player — <em>death with a beacon present still loses.</em></p>
+
+  <div class="card heads-up">
+    <span class="label">Loss wins the race — the phase guard</span>
+    <p><code>_update_beacon</code> runs <em>after</em> enemies in the same tick. So on the tick where Gizmo's last HP drains <em>and</em> the channel would complete, two outcomes collide. Loss must win (ADR 0005: "loss is unchanged"). One line settles it — the method bails if the run already ended this tick:</p>
+<pre><code>if beacon_radius &lt;= 0.0 or beacon_state == BEACON_REKINDLED or phase != PHASE_PLAYING:
+    return        // a death earlier this tick already set GAMEOVER — don't overwrite it</code></pre>
+    <p>The test sits a heavy mob on the beacon: the channel is filling, but contact damage kills first → <code>GAMEOVER</code>, not a sneaky win.</p>
+  </div>
+
+  <h2>Part 2 — a driver that seeks and holds</h2>
+  <p>To prove the win is <em>reachable</em>, we author a new balance profile that does what the evasion kite can't: walk to the Beacon and stay in its radius while the auto-fire clears whatever wanders in.</p>
+<pre><code>const SEEK_BEACON := Vector3(0, 0, 5);  const SEEK_BEACON_RADIUS := 3.0
+// each tick: step toward the beacon centre at GIZMO_SPEED; once there (&lt;0.4 m), hold.
+var to_beacon = SEEK_BEACON - pos;  to_beacon.y = 0
+if to_beacon.length() &gt; 0.4:  pos += to_beacon.normalized() * GIZMO_SPEED * DT
+sim.tick(DT, pos)</code></pre>
+  <p>Result: it reaches the radius in ~0.6 s, holds 8 s, and rekindles at <strong>elapsed 8.6 s</strong> with HP to spare. The test pins all four facts — <code>PHASE_COMPLETE</code>, state <code>Rekindled</code>, channel actually full, and HP&nbsp;≥&nbsp;1 — plus that the finish lands on the <strong>channel timer</strong> (8–20 s), never instantly.</p>
+
+  <div class="card heads-up">
+    <span class="label">Honest scope — this is reachability, not the climax</span>
+    <p>The rekindle lands at 8.6 s, when pressure is near zero — so this test proves the win is <em>achievable by fair play</em>, <strong>not</strong> that it's a hard finale. Making the rekindle a real <em>siege</em> (the swarm at peak pressure <em>is</em> the boss) is lesson <strong>0023</strong>, where entering <code>Rekindling</code> overrides spatial exposure to peak. We say that out loud rather than dressing an easy hold up as a climax.</p>
+  </div>
+
+  <div class="card turn">
+    <span class="label">Done means…</span>
+    <p><strong>Done</strong> = a full channel ends the run as a win; a death with a beacon present still loses (loss wins the race); and a seek-and-hold driver proves a fair run can rekindle. Verify: <code>…/run_simulation_tests.gd</code> → <strong>88</strong>, <code>…/run_balance_tests.gd</code> → <strong>43</strong>, full gate <strong>158</strong>. You can explain why the win needed both a mechanism proof and a reachability proof, why the evasion kite couldn't supply the latter, and why loss must win a same-tick race.</p>
+  </div>
+
+  <div class="card heads-up">
+    <span class="label">Next — named, not built</span>
+    <p><strong>0019</strong>: the live wiring. The controller authors the real Beacon (at <code>NorthBeaconDaisZone</code>) into the sim; the HUD gains a rekindle indicator (no countdown); the end-screen reads <strong>"Beacon Rekindled."</strong> Only then can a <em>played</em> run win — today the mechanic is proven but no committed scene places a beacon. Then <strong>0020</strong> retires the timer <em>symbols</em>, and <strong>0021–0023</strong> bring spatial pressure, the walkable region, and the rekindle siege.</p>
+  </div>
+
+  <p class="source">Primary source · <code>docs/adr/0005-beacon-rekindle-replaces-timer-survival.md</code> (win = Rekindled, loss unchanged). Also <code>simulation.gd</code> <code>_update_beacon</code> (the wire + phase guard), <code>tests/run_balance_tests.gd</code> <code>_run_seek_and_hold_profile</code> (reachability).</p>
+
+  <p class="ask">Want to do the live wiring (0019) so you can actually win a run in the editor, or look at the siege design (0023) first? Ask your teacher.</p>
+
+  <nav class="lesson-nav">
+    <span>Prev · 0017 The rekindle channel</span>
+    <span>Next · 0019 Wire the Beacon into the live run</span>
+  </nav>
+
+</main>
+</body>
+</html>

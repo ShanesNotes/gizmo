@@ -42,6 +42,8 @@ func _initialize() -> void:
 	_test_stationary_profile_is_lethal_but_not_cheap()
 	_test_mistake_kite_can_still_lose_naturally()
 	_test_decent_kite_survives_the_clock()
+	# The Beacon is reachable by fair play (0018)
+	_test_seek_and_hold_can_rekindle()
 	print("")
 	if _failed == 0 and _passed > 0:
 		print("PASS — %d checks" % _passed)
@@ -124,6 +126,42 @@ func _run_decent_kite_profile() -> Dictionary:
 			break
 	return _summary(sim, first_damage, damage_events, max_hit_delta, max_alive)
 
+# 0018: a seek-and-hold driver. Unlike the decent kite (pure evasion — it steers AWAY
+# from enemies and so never approaches an objective), this walks to the Beacon and HOLDS
+# its radius to rekindle it. It proves the new win is reachable by fair play. The hold
+# lands early (low pressure), so this is a REACHABILITY proof, not a climax — making the
+# rekindle a real siege under peak pressure is 0023 (Rekindling overrides exposure).
+const SEEK_BEACON := Vector3(0.0, 0.0, 5.0)
+const SEEK_BEACON_RADIUS := 3.0
+
+func _run_seek_and_hold_profile() -> Dictionary:
+	var sim := Sim.new()
+	sim.attack_range = Sim.ATTACK_RANGE        # the draftable ranged Spark Chain (ADR 0004)
+	sim.beacon_position = SEEK_BEACON
+	sim.beacon_radius = SEEK_BEACON_RADIUS
+	var pos := Vector3.ZERO
+	var first_damage := -1.0
+	var damage_events := 0
+	var max_hit_delta := 0
+	var prev_hp := sim.hp
+	var max_alive := 0
+	for i in 6000:
+		var to_beacon := SEEK_BEACON - pos
+		to_beacon.y = 0.0
+		if to_beacon.length() > 0.4:           # seek the centre, then hold there
+			pos += to_beacon.normalized() * GIZMO_SPEED * DT
+		sim.tick(DT, pos)
+		if sim.hp < prev_hp:
+			damage_events += 1
+			max_hit_delta = maxi(max_hit_delta, prev_hp - sim.hp)
+			if first_damage < 0.0:
+				first_damage = sim.elapsed
+			prev_hp = sim.hp
+		max_alive = maxi(max_alive, sim.enemies.size())
+		if sim.phase != Sim.PHASE_PLAYING:
+			break
+	return _summary(sim, first_damage, damage_events, max_hit_delta, max_alive)
+
 func _choose_lagged_kite_direction(sim: Sim, pos: Vector3, sense_radius: float, fallback: Vector3) -> Vector3:
 	var danger := Vector3.ZERO
 	for e in sim.enemies:
@@ -179,6 +217,8 @@ func _summary(sim: Sim, first_damage: float, damage_events: int, max_hit_delta: 
 		"max_hit_delta": max_hit_delta,
 		"max_alive": max_alive,
 		"alive": sim.enemies.size(),
+		"beacon_state": sim.beacon_state,
+		"beacon_progress": sim.beacon_channel_progress,
 	}
 
 func _run_pressure_probe(until: float) -> Dictionary:
@@ -316,3 +356,11 @@ func _test_decent_kite_survives_the_clock() -> void:
 	_check("director unlocks dashers", int(by_kind.get(Sim.ENEMY_DASHER, 0)) > 0)
 	_check("director unlocks brutes", int(by_kind.get(Sim.ENEMY_BRUTE, 0)) > 0)
 	_check("director unlocks wardens", int(by_kind.get(Sim.ENEMY_WARDEN, 0)) > 0)
+
+func _test_seek_and_hold_can_rekindle() -> void:
+	var result := _run_seek_and_hold_profile()
+	_check("a seek-and-hold run rekindles the Beacon (win reachable by fair play)", result["phase"] == Sim.PHASE_COMPLETE)
+	_check("the Beacon reached Rekindled", result["beacon_state"] == Sim.BEACON_REKINDLED)
+	_check("the channel actually filled", result["beacon_progress"] >= 1.0)
+	_check("seek-and-hold survives the rekindle", result["hp"] >= 1)
+	_check_between("rekindle completes on the channel timer, not instantly", result["elapsed"], 8.0, 20.0)

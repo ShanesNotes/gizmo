@@ -61,7 +61,9 @@ func _initialize() -> void:
 	_test_beacon_fills_to_rekindled_while_held()
 	_test_beacon_pauses_outside_and_is_one_way()
 	_test_beacon_resumes_after_returning()
-	_test_rekindled_beacon_does_not_win_yet()
+	# The Beacon becomes the win (0018)
+	_test_rekindled_beacon_wins()
+	_test_beacon_present_death_still_loses()
 	print("")
 	if _failed == 0 and _passed > 0:
 		print("PASS — %d checks" % _passed)
@@ -560,9 +562,33 @@ func _test_beacon_resumes_after_returning() -> void:
 	_check("a paused channel resumes and completes", sim.beacon_channel_progress >= 1.0)
 	_check_eq("returning completes to Rekindled", sim.beacon_state, Sim.BEACON_REKINDLED)
 
-func _test_rekindled_beacon_does_not_win_yet() -> void:
+# 0018: a full channel IS the win (supersedes 0017's "no win yet"). ADR 0005:
+# Win = Beacon Rekindled. The 0017 lesson HTML is a historical snapshot; this
+# living test now pins the new truth.
+func _test_rekindled_beacon_wins() -> void:
 	var sim := Sim.new()
 	_place_beacon(sim)
+	_check_eq("playing while the channel fills", sim.phase, Sim.PHASE_PLAYING)
 	_tick_inside(sim, Sim.BEACON_CHANNEL_SECONDS + 0.5)
-	_check_eq("the channel reached Rekindled", sim.beacon_state, Sim.BEACON_REKINDLED)
-	_check_eq("but the run is still un-winnable in 0017", sim.phase, Sim.PHASE_PLAYING)
+	_check_eq("a full channel reaches Rekindled", sim.beacon_state, Sim.BEACON_REKINDLED)
+	_check_eq("Beacon Rekindled IS the win", sim.phase, Sim.PHASE_COMPLETE)
+
+# Loss is unchanged and wins the race: if HP hits 0 the run is a GAMEOVER even
+# with a beacon present (a same-tick channel-complete must not overwrite a death).
+func _test_beacon_present_death_still_loses() -> void:
+	var sim := Sim.new()
+	_place_beacon(sim)
+	sim.hp = 1
+	sim.invulnerable = 0.0
+	sim.spawn_enabled = false
+	var e := Sim.Enemy.new()       # a mob sitting on the beacon centre, in contact
+	e.position = Vector3.ZERO
+	e.hp = 99.0
+	e.radius = 1.0
+	e.damage = 9
+	sim.enemies.append(e)
+	for i in 200:                  # past CONTACT_GRACE so the hit lands
+		sim.tick(0.05, Vector3.ZERO)
+		if sim.phase != Sim.PHASE_PLAYING:
+			break
+	_check_eq("death with a beacon present still loses", sim.phase, Sim.PHASE_GAMEOVER)
