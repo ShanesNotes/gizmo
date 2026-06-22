@@ -84,10 +84,12 @@ not a v1 blocker. Don't expand scope past Path A until it ships.
 - **The Godot build** → `godot/` (snake_case files, PascalCase nodes)
 - **Learning path** → `lessons/` (one HTML win each, numbered from `0001`) +
   `learning-records/` (records are drafts until the learner can explain the slice).
-  Built so far: `0001`–`0009` — player + fixed Diablo camera, Sparks & leveling,
-  run clock & player health, enemies (spawn/chase/separate/contact), and combat
-  (auto-fire → death → Spark → XP → level: **the loop is closed**). Next: `0010`
-  director-driven enemy pressure (not discrete waves).
+  Built so far: `0001`–`0015` — player + fixed Diablo camera, Sparks & leveling,
+  run state & player health, enemies (spawn/chase/separate/contact), combat
+  (auto-fire → death → Spark → XP → level), director-driven pressure (`0010`), HUD
+  (`0011`), win/lose (`0012`), balance pass (`0013`), obstacle-aware enemies (`0014`),
+  and melee-start weapon progression (`0015`). Next: implement the Path A
+  beacon-rekindle loop in `simulation.gd`/HUD (ADRs 0005–0008).
 
 ## How it's built
 Co-development via the `/teach` skill — explain a concept, then build the slice

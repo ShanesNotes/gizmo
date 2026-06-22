@@ -36,8 +36,9 @@ The soundtrack `.md` is used as **mood grammar, not audio analysis** — cue ids
 
 ## Why
 - The existing baker (`tools/godot/generate_first_level_layout.py`) is useful
-  precedent but **unsafe as-is**: it hardcodes `load_steps = 19` (the scene is now
-  `21`); its whole-block rewrite **wipes curated edits** inside the markers; it has no
+  precedent but **unsafe as-is**: it hardcodes `load_steps = 19` (the committed scene
+  is now `load_steps=11`, and the live count keeps drifting); its whole-block rewrite
+  **wipes curated edits** inside the markers; it has no
   manifest / provenance / seed; it emits a 91-tile grid on old clockwork assumptions;
   and it encodes **neither exposure (ADR 0006) nor the walkable footprint**.
 - Canon: *"The baker is a disciplined stagehand: it assembles approved pieces, records

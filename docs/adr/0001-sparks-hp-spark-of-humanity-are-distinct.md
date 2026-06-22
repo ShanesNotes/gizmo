@@ -14,8 +14,9 @@ or HUD copy:
    (the upgrade draft). **Scrap** is the secondary currency. Shown as the
    Sparks/Scrap counters in the HUD.
 3. **Spark of Humanity meter** — a **separate objective / survival meter**, shown
-   bottom-right in the HUD ("Keep it safe. Keep it alive."), tied to objectives
-   like *Carry the Spark to the Beacon*. **Its mechanics are not yet designed.**
+   bottom-right in the HUD ("Keep it safe. Keep it alive."), tied to objectives such
+   as guarding the Spark through the run. (The concrete beacon objective is now the
+   rekindle channel of ADR 0005; the meter's fuel and mechanics remain TBD.)
 
 ## Why
 The design artifacts treat these as distinct:

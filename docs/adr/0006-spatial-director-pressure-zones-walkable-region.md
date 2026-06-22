@@ -63,4 +63,4 @@ headless simulation (ADR 0002).
 - ADR 0002 (sim owns rules); ADR 0003 (director pressure); ADR 0005 (rekindle climax,
   peak override); ADR 0007 (sanctuary is a relief-role zone).
 - `docs/path-a-shattered-meridian-spec.md`.
-- `simulation.gd:221`/`:256`/`:392`/`:445`; `main.tscn` `ArenaTiles/LevelZones`.
+- `simulation.gd:221`/`:256`/`:392`/`:445`; `main.tscn` `LevelZones`.

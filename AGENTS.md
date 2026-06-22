@@ -26,8 +26,9 @@ the user explicitly reactivates them. If old material conflicts with the current
 
 Do **not** treat "WAVE x/5", discrete wave rounds, or "waves → elites → bosses"
 from stale concept art / older docs as active design. The active v1 model is
-director-driven enemy pressure: spawning and intensity ramp over time without a
-player-facing wave-round structure. See `CONTEXT.md` and ADR 0003.
+director-driven enemy pressure: spawning and intensity ramp under a director (time
+plus place-aware exposure, per ADR 0006) without a player-facing wave-round
+structure. See `CONTEXT.md` and ADRs 0003/0006.
 
 ## Active source anchors
 

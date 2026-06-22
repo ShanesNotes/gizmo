@@ -25,7 +25,7 @@
   Canonical character reference (meshy.ai, 53-bone rig). Use for: Gizmo's model.
 - `reference/game-balance-reference.md` (repo)
   Game-agnostic design foundation — formulas, TTK bands, spawn/upgrade math. Use
-  for: tuning intent and rogue-lite (wave/elite/boss) balance principles.
+  for: tuning intent and enemy-escalation / pressure balance principles (theory).
 - `game-src-phaser/src/game/simulation.ts` (repo)
   Mechanics source of truth (pure logic). Use for: the exact rules to port.
 - Root web build (`index.html` + `assets/`, `npx serve .`)

@@ -17,8 +17,8 @@ Not canon — `CONTEXT.md` wins. The roadmap flexes to the learner's ZPD.
   not per file. Commit when the slice is built + verified.
 
 ## Lesson roadmap (v1 path — the spine, subject to change)
-The only target is a **playable v1**: move under a fixed Diablo camera, enemies
-spawn, fight, die, win/lose. Port logic before polish.
+The target is a **playable v1**: move under a fixed Diablo camera, enemies spawn and
+fight; then (Path A pivot) traverse to **rekindle a Beacon**. Port logic before polish.
 
 - **0001 — First 3D project + a scene you can see.**  Fresh Forward+ project (done),
   then a `Main` scene: `Node3D` root, `Camera3D`, `DirectionalLight3D`, a ground
@@ -40,10 +40,21 @@ spawn, fight, die, win/lose. Port logic before polish.
   mechanics TBD) — not this lesson. Win: red→green tests for the run state.
 - **0008 — Enemies spawn** and move toward Gizmo.
 - **0009 — Combat.**  Gizmo hits; enemies take damage and die.
-- **0010 — Waves.**  The wave/spawn budget loop (grounded in the balance reference).
+- **0010 — Director-driven pressure.**  Spawn-budget escalation via a pressure
+  director — no discrete waves (ADR 0003); grounded in the balance reference.
 - **0011 — HUD.**  Match `design-handoff/gizmo-hud.png` (HP bar, Sparks/Scrap, level,
-  wave counter, Spark of Humanity meter — all distinct, per ADR 0001).
+  Spark of Humanity meter — all distinct, per ADR 0001).
 - **0012 — Win/lose screens → playable v1 loop.**
+- **0013 — Balance pass.**  Natural lethality + enemy role variety, pinned by a
+  deterministic sim-profile regression guard.
+- **0014 — Enemies respect obstacles.**  Circular push-out so enemies don't clip props.
+- **0015 — Melee-start weapon progression.**  Gizmo starts melee; the ranged Spark
+  Chain becomes the first draftable upgrade (ADR 0004).
+
+### Next — the Path A loop refactor (ADRs 0005–0008)
+Replace survive-the-timer with **traverse-and-rekindle**: win = Beacon Rekindled,
+lose = HP 0; place-aware director pressure; guard-over-HP + sanctuary recharge.
+See `docs/path-a-shattered-meridian-spec.md`.
 
 ### Later (post-v1, do not pull forward)
 Animation clips (rig → walk/attack), elites/bosses depth, upgrades (Core Matrix /

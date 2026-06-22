@@ -14,7 +14,7 @@ the user explicitly reactivates them. When stale docs disagree with the clean-sl
 - `design-handoff/NARRATIVE.md` — premise/story canon: a **rogue-lite** where Gizmo the
   clanker preserves the **spark of humanity** in a gouache cosmos of lost tech. If it uses
   "waves" language, treat that as older escalation wording; `CONTEXT.md`'s no-wave correction wins.
-- `design-handoff/ART_DIRECTION.md` + `gizmo-hud.png` — the look (gouache cosmos, brass UI,
+- `design-handoff/ART_DIRECTION.md` + `design-handoff/gizmo-hud.png` — the look (gouache cosmos, brass UI,
   the HUD to match). `godot/assets/gizmo.glb` — the character (meshy.ai, 53-bone rig, no
   animation clips yet; v1 moves it with code, clips are a later lesson).
 - `reference/game-balance-reference.md` — game-agnostic balance foundation (TTK bands,
@@ -56,7 +56,7 @@ the API. Bootstrap with `godot-prompter:using-godot-prompter`, then pull the ski
 | Gizmo movement + input | `player-controller`, `input-handling` |
 | porting `simulation.ts` logic | `gdscript-patterns`, `gdscript-advanced`, `state-machine`, `resource-pattern` |
 | enemies / director-driven pressure escalation | `ai-navigation`, `state-machine` |
-| HUD (match `gizmo-hud.png`) | `hud-system`, `godot-ui`, `responsive-ui` |
+| HUD (match `design-handoff/gizmo-hud.png`) | `hud-system`, `godot-ui`, `responsive-ui` |
 | cross-system messaging | `event-bus`, `component-system`, `dependency-injection` |
 | headless tests & debugging | `godot-testing`, `godot-debugging` |
 | animation (rig → clips, later) | `animation-system`, `tween-animation` |

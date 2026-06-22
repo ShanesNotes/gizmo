@@ -15,10 +15,10 @@ scope discipline over ambition. Orientation: `CONTEXT.md`.
 - Comfortable in Godot 3D: creating a project, scenes, GDScript, a `Camera3D` rig
 - Gizmo (`godot/assets/gizmo.glb`) moving on screen under the Diablo camera
 - The core loop ported from `simulation.ts` into GDScript I understand and can explain
-  (movement, escalating enemy pressure, protecting the Spark of Humanity,
-  XP/level, the economies)
-- A **playable v1**: survive the run, protect the Spark, fight, die, win/lose screen —
-  finished, not perfect
+  (movement, escalating director-driven enemy pressure, combat, XP/level, the economies)
+- A **playable v1**: traverse the island under director-driven pressure, fight, and
+  rekindle the Beacon (win = Beacon Rekindled, lose = HP 0) — finished, not perfect
+  (see `docs/path-a-shattered-meridian-spec.md`)
 - A `lessons/` guide that reads cleanly from zero for someone else
 
 ## Constraints
