@@ -1,0 +1,100 @@
+current_folder: game
+schema: gizmo.clean_canvas.ecosystem.v1
+updated: '2026-06-22'
+rule: Route by specialty. Sibling clean canvases are sources of truth for their domains;
+  the game repo is the playable implementation.
+global_directive: Do not invent cross-domain canon in the wrong folder. If a task
+  crosses domains, read the owning folder first and create a reconciliation note before
+  promotion.
+folders:
+  game:
+    path: /home/ark/gizmo
+    role: playable Godot game and implementation authority
+    owns:
+    - Godot project
+    - active mechanics implementation
+    - tests
+    - implementation handoffs
+    read_first:
+    - AGENTS.md
+    - CONTEXT.md
+    - CLAUDE.md
+  lore:
+    path: /home/ark/gizmo-lore
+    role: lorekeeper / narrative continuity clean canvas
+    owns:
+    - backstory
+    - premise
+    - glossary
+    - fiction-to-mechanics language
+    - copy rules
+    read_first:
+    - AGENTS.md
+    - canon/LORE_CANON.md
+    - canon/glossary.yaml
+  visual_symbolic_design:
+    path: /home/ark/gizmo-design-system
+    role: visual-symbolic design canon clean canvas
+    owns:
+    - visual-symbolic canon
+    - motifs
+    - bindings
+    - design tokens
+    - UI/HUD witnesses
+    read_first:
+    - AGENTS.md
+    - canon/CANON.md
+    - canon/acceptance-gates.md
+  level_design:
+    path: /home/ark/gizmo-level-design
+    role: spatial-symbolic level/map design clean canvas
+    owns:
+    - route grammar
+    - landmark taxonomy
+    - pressure zones
+    - encounter beats
+    - level witnesses
+    read_first:
+    - AGENTS.md
+    - canon/LEVEL_CANON.md
+    - canon/acceptance-gates.md
+  audio_canon:
+    path: /home/ark/gizmo-audio-canon
+    role: audio engineer / sonic canon clean canvas
+    owns:
+    - soundtrack cue map
+    - ambience grammar
+    - SFX prompt grammar
+    - Godot audio handoff rules
+    read_first:
+    - AGENTS.md
+    - canon/AUDIO_CANON.md
+    - canon/acceptance-gates.md
+  asset_pipeline:
+    path: /home/ark/gizmo-asset-pipeline
+    role: asset technical director / canon-to-asset manufacturing lab
+    owns:
+    - asset briefs
+    - prompt provenance
+    - Meshy workflow
+    - Blender cleanup
+    - Godot import gates
+    - promotion reports
+    read_first:
+    - AGENTS.md
+    - canon/ASSET_PIPELINE_CANON.md
+    - canon/acceptance-gates.md
+routing:
+  story_backstory_terms_copy: lore
+  visual_symbols_palette_ui_hud: visual_symbolic_design
+  maps_routes_landmarks_pressure_zones: level_design
+  soundtrack_ambience_sfx_mix: audio_canon
+  prompts_image_generation_meshy_blender_godot_assets: asset_pipeline
+  godot_code_tests_scenes_runtime: game
+cross_domain_protocol:
+- Read this gizmo-ecosystem.yaml first.
+- Read the target folder AGENTS.md next.
+- Read the owning canon before editing derived artifacts.
+- If two folders disagree, create an extraction/reconciliation note; do not silently
+  pick one.
+- Generated outputs are draft witnesses until the owning canon promotes them.

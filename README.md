@@ -20,3 +20,8 @@ sprite-first attempts are inactive history and should not steer new work.
 - The Godot 3D rebuild is the active path; the Phaser source + web build are the reference (mechanics + feel).
 - The previous 2.5D sprite scaffolding was removed on 2026-06-20; use it only as archaeology if explicitly requested.
 - Do not use the stale concept-art "WAVE x/5" framing as active design; v1 uses director-driven pressure instead of discrete wave rounds.
+
+## Gizmo clean-canvas ecosystem
+
+This folder participates in the Gizmo clean-canvas ecosystem. Read `gizmo-ecosystem.yaml` to route work by specialty before editing cross-domain artifacts.
+

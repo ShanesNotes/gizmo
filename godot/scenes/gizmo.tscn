@@ -6,6 +6,148 @@
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_f1dwy"]
 radius = 0.4
 
+[sub_resource type="Animation" id="Animation_j7t22"]
+length = 1.2
+loop_mode = 1
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("VisualPivot/Model:position")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.6, 1.2),
+"transitions": PackedFloat32Array(1, 1, 1),
+"update": 0,
+"values": [Vector3(0, 0, 0), Vector3(0, 0.055, 0), Vector3(0, 0, 0)]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("VisualPivot/Model:rotation")
+tracks/1/interp = 1
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.6, 1.2),
+"transitions": PackedFloat32Array(1, 1, 1),
+"update": 0,
+"values": [Vector3(0, 0, -0.015), Vector3(0.012, 0, 0.015), Vector3(0, 0, -0.015)]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("VisualPivot/Model:scale")
+tracks/2/interp = 1
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0, 0.6, 1.2),
+"transitions": PackedFloat32Array(1, 1, 1),
+"update": 0,
+"values": [Vector3(1, 1, 1), Vector3(1.015, 0.985, 1.015), Vector3(1, 1, 1)]
+}
+tracks/3/type = "rotation_3d"
+tracks/3/imported = false
+tracks/3/enabled = true
+tracks/3/path = NodePath("VisualPivot/Model/UniRigArmature/Skeleton3D:Bone_023")
+tracks/3/interp = 1
+tracks/3/loop_wrap = true
+tracks/3/keys = PackedFloat32Array(0, 1, -0.24438025, 0.27671435, 0.7757362, 0.5118016, 0.6, 1, -0.2696285, 0.24192037, 0.7738396, 0.5195646, 1.2, 1, -0.24438025, 0.27671435, 0.7757362, 0.5118016)
+tracks/4/type = "rotation_3d"
+tracks/4/imported = false
+tracks/4/enabled = true
+tracks/4/path = NodePath("VisualPivot/Model/UniRigArmature/Skeleton3D:Bone_028")
+tracks/4/interp = 1
+tracks/4/loop_wrap = true
+tracks/4/keys = PackedFloat32Array(0, 1, -0.27051908, -0.251221, -0.53103316, 0.7626999, 0.6, 1, -0.24726428, -0.2647365, -0.50398505, 0.7840752, 1.2, 1, -0.27051908, -0.251221, -0.53103316, 0.7626999)
+
+[sub_resource type="Animation" id="Animation_lsxjg"]
+length = 0.72
+loop_mode = 1
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("VisualPivot/Model:position")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.12, 0.24, 0.36, 0.48, 0.6, 0.72),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0, 0, 0), Vector3(0.026, 0.105, 0.018), Vector3(0.014, 0.055, 0.038), Vector3(0, 0.145, 0), Vector3(-0.026, 0.105, -0.018), Vector3(-0.014, 0.055, -0.038), Vector3(0, 0, 0)]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("VisualPivot/Model:rotation")
+tracks/1/interp = 1
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.12, 0.24, 0.36, 0.48, 0.6, 0.72),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0.032, 0, -0.105), Vector3(-0.008, 0, 0.12), Vector3(0.022, 0, 0.055), Vector3(0.035, 0, 0.105), Vector3(-0.008, 0, -0.12), Vector3(0.022, 0, -0.055), Vector3(0.032, 0, -0.105)]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("VisualPivot/Model:scale")
+tracks/2/interp = 1
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0, 0.12, 0.24, 0.36, 0.48, 0.6, 0.72),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(1.018, 0.982, 1.018), Vector3(0.992, 1.04, 0.992), Vector3(1.008, 0.996, 1.008), Vector3(0.988, 1.055, 0.988), Vector3(0.992, 1.04, 0.992), Vector3(1.008, 0.996, 1.008), Vector3(1.018, 0.982, 1.018)]
+}
+tracks/3/type = "rotation_3d"
+tracks/3/imported = false
+tracks/3/enabled = true
+tracks/3/path = NodePath("VisualPivot/Model/UniRigArmature/Skeleton3D:Bone_010")
+tracks/3/interp = 1
+tracks/3/loop_wrap = true
+tracks/3/keys = PackedFloat32Array(0, 1, 0.9966906, -0.0160946, -0.0161488, 0.0780259, 0.12, 1, 0.993324, -0.0435163, -0.0142002, -0.105887, 0.24, 1, 0.999715, -0.0174105, -0.0147206, -0.0070725, 0.36, 1, 0.9887174, 0.0097232, -0.0204173, 0.1480758, 0.48, 1, 0.999715, -0.0174105, -0.0147206, -0.0070725, 0.6, 1, 0.993324, -0.0435163, -0.0142002, -0.105887, 0.72, 1, 0.9966906, -0.0160946, -0.0161488, 0.0780259)
+tracks/4/type = "rotation_3d"
+tracks/4/imported = false
+tracks/4/enabled = true
+tracks/4/path = NodePath("VisualPivot/Model/UniRigArmature/Skeleton3D:Bone_015")
+tracks/4/interp = 1
+tracks/4/loop_wrap = true
+tracks/4/keys = PackedFloat32Array(0, 1, 0.9997383, 0.0173337, 0.0148109, -0.0018739, 0.12, 1, 0.9824129, 0.0388827, 0.0145708, 0.1820458, 0.24, 1, 0.9962714, 0.0160104, 0.0162322, 0.0832076, 0.36, 1, 0.9972268, -0.0064619, 0.0122521, -0.0731217, 0.48, 1, 0.9962714, 0.0160104, 0.0162322, 0.0832076, 0.6, 1, 0.9824129, 0.0388827, 0.0145708, 0.1820458, 0.72, 1, 0.9997383, 0.0173337, 0.0148109, -0.0018739)
+tracks/5/type = "rotation_3d"
+tracks/5/imported = false
+tracks/5/enabled = true
+tracks/5/path = NodePath("VisualPivot/Model/UniRigArmature/Skeleton3D:Bone_009")
+tracks/5/interp = 1
+tracks/5/loop_wrap = true
+tracks/5/keys = PackedFloat32Array(0, 1, 0.112373, -0.0109478, 0.0073275, 0.9935788, 0.12, 1, 0.1630748, -0.0105584, 0.0078782, 0.9865258, 0.24, 1, 0.1250813, -0.0108531, 0.0074671, 0.992059, 0.36, 1, 0.0805264, -0.0111766, 0.0069735, 0.9966654, 0.48, 1, 0.1250813, -0.0108531, 0.0074671, 0.992059, 0.6, 1, 0.1630748, -0.0105584, 0.0078782, 0.9865258, 0.72, 1, 0.112373, -0.0109478, 0.0073275, 0.9935788)
+tracks/6/type = "rotation_3d"
+tracks/6/imported = false
+tracks/6/enabled = true
+tracks/6/path = NodePath("VisualPivot/Model/UniRigArmature/Skeleton3D:Bone_014")
+tracks/6/interp = 1
+tracks/6/loop_wrap = true
+tracks/6/keys = PackedFloat32Array(0, 1, 0.0988267, 0.011134, -0.0079509, 0.9950106, 0.12, 1, 0.0669412, 0.0113826, -0.0075906, 0.9976631, 0.24, 1, 0.1115544, 0.0110313, -0.0080928, 0.9936641, 0.36, 1, 0.1496195, 0.0107125, -0.0085103, 0.988649, 0.48, 1, 0.1115544, 0.0110313, -0.0080928, 0.9936641, 0.6, 1, 0.0669412, 0.0113826, -0.0075906, 0.9976631, 0.72, 1, 0.0988267, 0.011134, -0.0079509, 0.9950106)
+tracks/7/type = "rotation_3d"
+tracks/7/imported = false
+tracks/7/enabled = true
+tracks/7/path = NodePath("VisualPivot/Model/UniRigArmature/Skeleton3D:Bone_023")
+tracks/7/interp = 1
+tracks/7/loop_wrap = true
+tracks/7/keys = PackedFloat32Array(0, 1, -0.2253277, 0.3089516, 0.747917, 0.5425834, 0.12, 1, -0.3351162, 0.1310122, 0.8250286, 0.4357302, 0.24, 1, -0.2901135, 0.2069198, 0.7944001, 0.4918809, 0.36, 1, -0.2193709, 0.3194497, 0.7382877, 0.5520503, 0.48, 1, -0.2901135, 0.2069198, 0.7944001, 0.4918809, 0.6, 1, -0.3351162, 0.1310122, 0.8250286, 0.4357302, 0.72, 1, -0.2253277, 0.3089516, 0.747917, 0.5425834)
+tracks/8/type = "rotation_3d"
+tracks/8/imported = false
+tracks/8/enabled = true
+tracks/8/path = NodePath("VisualPivot/Model/UniRigArmature/Skeleton3D:Bone_028")
+tracks/8/interp = 1
+tracks/8/loop_wrap = true
+tracks/8/keys = PackedFloat32Array(0, 1, -0.3144877, -0.2175342, -0.5237179, 0.7612462, 0.12, 1, -0.1107468, -0.3509722, -0.4921173, 0.788907, 0.24, 1, -0.203485, -0.294949, -0.5035865, 0.7861295, 0.36, 1, -0.3282696, -0.2061016, -0.5211416, 0.7603767, 0.48, 1, -0.203485, -0.294949, -0.5035865, 0.7861295, 0.6, 1, -0.1107468, -0.3509722, -0.4921173, 0.788907, 0.72, 1, -0.3144877, -0.2175342, -0.5237179, 0.7612462)
+
+[sub_resource type="AnimationLibrary" id="AnimationLibrary_5aegi"]
+_data = {
+&"idle_bob": SubResource("Animation_j7t22"),
+&"walk_bob": SubResource("Animation_lsxjg")
+}
+
 [node name="Gizmo" type="CharacterBody3D" unique_id=2133146852]
 script = ExtResource("1_f1dwy")
 
@@ -13,4 +155,9 @@ script = ExtResource("1_f1dwy")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
 shape = SubResource("CapsuleShape3D_f1dwy")
 
-[node name="Model" parent="." unique_id=1534222268 instance=ExtResource("1_c2pv7")]
+[node name="VisualPivot" type="Node3D" parent="." unique_id=1959137334]
+
+[node name="Model" type="Node3D" parent="VisualPivot" unique_id=1534222268 instance=ExtResource("1_c2pv7")]
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="." unique_id=1317182787]
+libraries/ = SubResource("AnimationLibrary_5aegi")

@@ -24,6 +24,15 @@ desktop.ini
 .vscode/
 *.swp
 
+# --- quarantined pre-art-refactor assets (275MB; preserved locally, not in history) ---
+godot/_quarantine/
+
+# --- python tool caches ---
+**/__pycache__/
+
+# --- concept art binaries: live in the gizmo-design-system repo, not here ---
+design-handoff/concept art/
+
 # --- Godot project caches / exports ---
 godot/.godot/
 godot/export/
@@ -38,6 +47,8 @@ docs/godot/answer-key/.godot/
 # --- local AI/tool scratch (not source) ---
 .scratch/
 .claude/
+.env
+.env.*
 
 # --- generated key-art test iterations (storage path is a user decision; not source) ---
 art/generated/

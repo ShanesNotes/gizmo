@@ -53,7 +53,7 @@ The soundtrack `.md` is used as **mood grammar, not audio analysis** — cue ids
   never to re-author the spine, landmarks, anchors, or curated beats (Q2).
 - Baked scenes without a manifest, that overwrite curated nodes, or that bypass the
   validators.
-- Citing soundtrack cues or asset refs that do not exist on disk.
+- Citing soundtrack cues or asset refs that do not exist in `/home/ark/gizmo-audio-canon/sources/` or in Godot-ready imported derivatives.
 
 ## Consequences
 - The baker is rebuilt as a stagehand: fix the `load_steps` hardcode; stop wiping
@@ -67,4 +67,4 @@ The soundtrack `.md` is used as **mood grammar, not audio analysis** — cue ids
 - ADR 0002 (sim owns rules; scene renders); ADR 0006 (zones + footprint the baker emits).
 - `docs/path-a-shattered-meridian-spec.md`.
 - `tools/godot/generate_first_level_layout.py`;
-  `godot/audio/gizmo-soundtrack/game-soundtrack-composition.md`.
+  `/home/ark/gizmo-audio-canon/sources/soundtrack/game-soundtrack-composition.md`.

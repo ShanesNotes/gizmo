@@ -57,3 +57,8 @@ structure. See `CONTEXT.md` and ADRs 0003/0006.
 - Use snake_case files/folders and PascalCase node names / `class_name`s in Godot.
 - Verify before claiming completion: at minimum inspect diffs; run relevant Godot,
   test, lint, or static checks when code changes.
+
+## Gizmo clean-canvas ecosystem
+
+This folder participates in the Gizmo clean-canvas ecosystem. Read `gizmo-ecosystem.yaml` to route work by specialty before editing cross-domain artifacts.
+

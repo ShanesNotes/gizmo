@@ -22,7 +22,7 @@ moved, deleted, staged, or rewritten to produce this manifest.
 | `docs/meshy-connector-preflight.md` | Operational evidence for Meshy connector availability. | Credential/tool availability must be rechecked before credit-spending work. |
 | `docs/meshy-mcp-setup.md` | Useful local setup instructions for Meshy MCP. | Never commit `.env` or API keys; run from user shell when needed. |
 | `docs/meshy-world-kit-prompts.md` | Useful first-pass GLB prompt templates for floor/pylon kit. | Earlier cost gates still apply; generated assets may now live in quarantine/untracked paths. |
-| `godot/audio/Ambient-sound-design.md` | User-authored sonic identity; strong material language for brass/stone/blue energy. | Contains retired wave-counter/wave-layer language; use identity sections, not mechanics sections, until cleaned. |
+| `/home/ark/gizmo-audio-canon/sources/ambient/Ambient-sound-design.md` | User-authored sonic identity; strong material language for brass/stone/blue energy. | Contains retired wave-counter/wave-layer language; use identity sections, not mechanics sections, until cleaned. |
 | `tools/audio/generate_clockwork_sfx.py` | Reproducible local synthesis path for grounded SFX. | Only promote if matching audio assets/tests are promoted too. |
 | `tools/blender/gen_floating_islands.py` and `tools/blender/optimize_glb.py` | Useful author-time geometry/optimization tools. | ADR 0008 says baker/stagehand tooling must be rebuilt with manifests/provenance before active use. |
 | `tools/run-meshy-mcp.sh` | Useful MCP launcher wrapper. | Keep credentials local; confirm package/API state before use. |

@@ -122,3 +122,8 @@ black box the learner can't explain. How hands-on they are is their call, slice 
    `codebase-design`; if it's testable logic, `tdd` it.
 3. Co-develop the slice in `godot/` — small enough to absorb; capture it as HTML in `lessons/`.
 4. `review` the diff, verify, and write a `learning-records/` entry when understanding is shown.
+
+## Gizmo clean-canvas ecosystem
+
+This folder participates in the Gizmo clean-canvas ecosystem. Read `gizmo-ecosystem.yaml` to route work by specialty before editing cross-domain artifacts.
+

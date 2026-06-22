@@ -132,8 +132,8 @@ readability; did any mood choice harm clarity?
 
 ## 9. Soundtrack as mood grammar (real files)
 Use the composition `.md` as **mood grammar, not fake audio analysis**. The composer's
-12-segment arc already traces this spine. Cue ids map to **real files** under
-`godot/audio/gizmo-soundtrack/`:
+12-segment arc already traces this spine. Cue ids map to **real source files** under
+`/home/ark/gizmo-audio-canon/sources/soundtrack/`:
 
 | Spine beat | Mood cue (real file) |
 |---|---|
