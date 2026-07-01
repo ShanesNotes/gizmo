@@ -5,9 +5,11 @@ radius = 0.3
 height = 0.6
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_spark"]
-albedo_color = Color(0.66, 0.4, 0.95, 1)
+; canon: the Spark of Humanity == the HUD Sparks colour. albedo accent.enchant_lavender
+; #ab8fc6, emission hud.sparks #8a5bb0 (world pickup matches the HUD readout).
+albedo_color = Color(0.6706, 0.5608, 0.7765, 1)
 emission_enabled = true
-emission = Color(0.5, 0.25, 0.9, 1)
+emission = Color(0.5412, 0.3569, 0.6902, 1)
 emission_energy_multiplier = 2.0
 
 [node name="Spark" type="Node3D"]

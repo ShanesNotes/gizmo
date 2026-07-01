@@ -1,8 +1,16 @@
-# Art direction — canon
+# Art direction — game-side brief
 
-The canonical visual target for Gizmo's 3D rogue-lite. This is the lean
-"look & feel" owner: match these references, don't invent. Story lives in
-`design-handoff/NARRATIVE.md`; this file owns the look.
+> **Source of truth = the Gizmo design-system canon package** (`gizmo-design-system/canon`
+> meaning + `/tokens` values), not this file. As of 2026-06-22 this is a game-side art
+> *brief*: the references and HUD anatomy below are still accurate, but where this file and
+> the canon disagree, **the canon wins**. The first reconciliation already applied: HP reads
+> **warm/vermilion**, not teal — saturated teal-cyan is reserved for Gizmo's eye/core, the
+> guard layer, and an active Beacon's core-spark (gate **G6**). The in-game HUD Theme is now
+> **materialised from the canon tokens** at `godot/scenes/hud_theme.tres` (generator:
+> `gizmo-design-system/tools/gen_godot_theme.py`) — do not hand-edit it.
+
+The visual target for Gizmo's 3D rogue-lite. Story lives in
+`design-handoff/NARRATIVE.md`; this file owns the game-side look brief.
 
 ## References
 

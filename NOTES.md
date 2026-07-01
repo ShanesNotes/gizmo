@@ -51,10 +51,16 @@ fight; then (Path A pivot) traverse to **rekindle a Beacon**. Port logic before 
 - **0015 — Melee-start weapon progression.**  Gizmo starts melee; the ranged Spark
   Chain becomes the first draftable upgrade (ADR 0004).
 
-### Next — the Path A loop refactor (ADRs 0005–0008)
-Replace survive-the-timer with **traverse-and-rekindle**: win = Beacon Rekindled,
-lose = HP 0; place-aware director pressure; guard-over-HP + sanctuary recharge.
-See `docs/path-a-shattered-meridian-spec.md`.
+### Path A loop refactor (ADRs 0005–0008) — lessons 0016–0020 ✅
+Timer win retired; beacon rekindle is the win; HUD/live run wired; timer symbols
+renamed to `pressure_clock` (director fuel only). Full gate at lesson 0020: **166**
+(sim 89 · balance 43 · controller 16 · hud 12 · end-screen 6).
+
+### Next — 0021+ (place-aware pressure & spatial loop)
+- **0021** — place-aware director pressure (`spatial_exposure`, PressureZones).
+- **0022** — walkable region authoring.
+- **0023** — rekindle siege (Rekindling overrides exposure to peak).
+See `docs/path-a-shattered-meridian-spec.md` and `learning-records/0020-retire-the-timer-symbols.md`.
 
 ### Later (post-v1, do not pull forward)
 Animation clips (rig → walk/attack), elites/bosses depth, upgrades (Core Matrix /

@@ -84,12 +84,15 @@ not a v1 blocker. Don't expand scope past Path A until it ships.
 - **The Godot build** → `godot/` (snake_case files, PascalCase nodes)
 - **Learning path** → `lessons/` (one HTML win each, numbered from `0001`) +
   `learning-records/` (records are drafts until the learner can explain the slice).
-  Built so far: `0001`–`0015` — player + fixed Diablo camera, Sparks & leveling,
+  Built so far: `0001`–`0020` — player + fixed Diablo camera, Sparks & leveling,
   run state & player health, enemies (spawn/chase/separate/contact), combat
   (auto-fire → death → Spark → XP → level), director-driven pressure (`0010`), HUD
   (`0011`), win/lose (`0012`), balance pass (`0013`), obstacle-aware enemies (`0014`),
-  and melee-start weapon progression (`0015`). Next: implement the Path A
-  beacon-rekindle loop in `simulation.gd`/HUD (ADRs 0005–0008).
+  melee-start weapon progression (`0015`), and the Path A beacon-rekindle arc
+  (`0016`–`0020`: timer win retired, beacon becomes win, rekindle channel wired live,
+  timer symbols retired to `pressure_clock`). Next: **0021** — place-aware director
+  pressure (`pressure() = temporal_ramp × spatial_exposure(pos)`; PressureZones per
+  ADR 0006).
 
 ## How it's built
 Co-development via the `/teach` skill — explain a concept, then build the slice

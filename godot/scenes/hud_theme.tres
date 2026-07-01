@@ -1,59 +1,70 @@
-[gd_resource type="Theme" format=3 uid="uid://ben316v544clg"]
+[gd_resource type="Theme" load_steps=8 format=3 uid="uid://ben316v544clg"]
 
-; Brass / gouache HUD theme for Gizmo.
-; - Panel: dark translucent fill, beveled brass border (riveted-cartouche feel).
-; - ProgressBar: dark recessed track; fills are set per-instance in the scene
-;   (cyan for HP, violet for XP) so one theme drives the family.
+; derived from canon package; do not edit as source
+; DERIVED from the canon package (tokens/tokens.json) via tools/gen_godot_theme.py.
+; Do NOT hand-edit — edit tokens.json then re-run the generator.
+; Dark brass cartouche HUD: cool.void panels, brass frame, parchment ink, manuscript fonts.
+
+[ext_resource type="FontFile" uid="uid://bqanpi8n8thsr" path="res://assets/fonts/EBGaramond.ttf" id="f_body"]
+[ext_resource type="FontFile" uid="uid://cj0yf7ffhr23" path="res://assets/fonts/IMFellEnglishSC.ttf" id="f_title"]
+[ext_resource type="FontFile" uid="uid://byr1lxyxv5k14" path="res://assets/fonts/Cinzel.ttf" id="f_caps"]
+[ext_resource type="FontFile" uid="uid://mfm60u3mmpff" path="res://assets/fonts/Spectral-Regular.ttf" id="f_num"]
 
 [sub_resource type="StyleBoxFlat" id="sb_panel"]
-bg_color = Color(0.078, 0.067, 0.110, 0.78)
-border_width_left = 3
-border_width_top = 3
-border_width_right = 3
-border_width_bottom = 3
-border_color = Color(0.776, 0.561, 0.290, 1.0)
+bg_color = Color(0.1098, 0.1216, 0.1373, 0.82)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.7412, 0.5176, 0.4078, 1.0)
 corner_radius_top_left = 8
 corner_radius_top_right = 8
 corner_radius_bottom_right = 8
 corner_radius_bottom_left = 8
-shadow_color = Color(0.0, 0.0, 0.0, 0.45)
+shadow_color = Color(0, 0, 0, 0.45)
 shadow_size = 6
-
-[sub_resource type="StyleBoxFlat" id="sb_panel_inner"]
-bg_color = Color(0.043, 0.039, 0.071, 0.65)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.541, 0.380, 0.184, 1.0)
-corner_radius_top_left = 6
-corner_radius_top_right = 6
-corner_radius_bottom_right = 6
-corner_radius_bottom_left = 6
-
 [sub_resource type="StyleBoxFlat" id="sb_bar_bg"]
-bg_color = Color(0.039, 0.043, 0.067, 0.90)
+bg_color = Color(0.1098, 0.1216, 0.1373, 0.92)
 border_width_left = 2
 border_width_top = 2
 border_width_right = 2
 border_width_bottom = 2
-border_color = Color(0.451, 0.318, 0.157, 1.0)
+border_color = Color(0.5098, 0.4000, 0.3059, 1.0)
 corner_radius_top_left = 5
 corner_radius_top_right = 5
 corner_radius_bottom_right = 5
 corner_radius_bottom_left = 5
-
 [sub_resource type="StyleBoxFlat" id="sb_bar_fill"]
-bg_color = Color(0.196, 0.745, 0.745, 1.0)
+bg_color = Color(0.7882, 0.5647, 0.4196, 1.0)
+border_width_left = 0
+border_width_top = 0
+border_width_right = 0
+border_width_bottom = 0
 corner_radius_top_left = 4
 corner_radius_top_right = 4
 corner_radius_bottom_right = 4
 corner_radius_bottom_left = 4
 
 [resource]
-Label/colors/font_color = Color(0.945, 0.886, 0.745, 1.0)
-Label/colors/font_outline_color = Color(0.118, 0.082, 0.043, 0.85)
+default_font = ExtResource("f_body")
+default_font_size = 16
+Label/colors/font_color = Color(0.9922, 0.9373, 0.8706, 1.0)
+Label/colors/font_outline_color = Color(0.1098, 0.0902, 0.0980, 0.85)
 Label/constants/outline_size = 3
 PanelContainer/styles/panel = SubResource("sb_panel")
 ProgressBar/styles/background = SubResource("sb_bar_bg")
 ProgressBar/styles/fill = SubResource("sb_bar_fill")
+TitleLabel/base_type = &"Label"
+TitleLabel/fonts/font = ExtResource("f_title")
+TitleLabel/font_sizes/font_size = 48
+TitleLabel/colors/font_color = Color(0.8784, 0.7569, 0.4784, 1.0)
+TitleLabel/colors/font_outline_color = Color(0.1098, 0.0902, 0.0980, 0.9)
+TitleLabel/constants/outline_size = 4
+CapsLabel/base_type = &"Label"
+CapsLabel/fonts/font = ExtResource("f_caps")
+CapsLabel/font_sizes/font_size = 14
+CapsLabel/colors/font_color = Color(0.8784, 0.7569, 0.4784, 1.0)
+NumericLabel/base_type = &"Label"
+NumericLabel/fonts/font = ExtResource("f_num")
+NumericLabel/font_sizes/font_size = 20
+NumericLabel/colors/font_color = Color(0.9922, 0.9373, 0.8706, 1.0)

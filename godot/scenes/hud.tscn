@@ -4,33 +4,34 @@
 [ext_resource type="Theme" path="res://scenes/hud_theme.tres" id="2_theme"]
 
 [sub_resource type="StyleBoxFlat" id="sb_hp_fill"]
-bg_color = Color(0.196, 0.788, 0.776, 1.0)
+; canon hud.hp / accent.vermilion #c34f32 — HP is WARM (gate G6: teal stays reserved for guard/eye/beacon-spark)
+bg_color = Color(0.7647, 0.3098, 0.1961, 1.0)
 corner_radius_top_left = 4
 corner_radius_top_right = 4
 corner_radius_bottom_right = 4
 corner_radius_bottom_left = 4
 
 [sub_resource type="StyleBoxFlat" id="sb_xp_fill"]
-bg_color = Color(0.557, 0.376, 0.812, 1.0)
+bg_color = Color(0.5412, 0.3569, 0.6902, 1.0)
 corner_radius_top_left = 3
 corner_radius_top_right = 3
 corner_radius_bottom_right = 3
 corner_radius_bottom_left = 3
 
 [sub_resource type="StyleBoxFlat" id="sb_gem"]
-bg_color = Color(0.451, 0.282, 0.741, 1.0)
+bg_color = Color(0.5412, 0.3569, 0.6902, 1.0)
 border_width_left = 3
 border_width_top = 3
 border_width_right = 3
 border_width_bottom = 3
-border_color = Color(0.847, 0.620, 0.322, 1.0)
+border_color = Color(0.8784, 0.7569, 0.4784, 1.0)
 corner_radius_top_left = 6
 corner_radius_top_right = 6
 corner_radius_bottom_right = 6
 corner_radius_bottom_left = 6
 
 [sub_resource type="StyleBoxFlat" id="sb_spark_gem"]
-bg_color = Color(0.557, 0.376, 0.812, 1.0)
+bg_color = Color(0.5412, 0.3569, 0.6902, 1.0)
 corner_radius_top_left = 3
 corner_radius_top_right = 3
 corner_radius_bottom_right = 3
@@ -72,6 +73,7 @@ theme_override_constants/separation = 4
 
 [node name="NameLabel" type="Label" parent="Root/Nameplate/Margin/VBox"]
 layout_mode = 2
+theme_type_variation = &"CapsLabel"
 text = "GIZMO"
 theme_override_font_sizes/font_size = 20
 
@@ -91,6 +93,7 @@ show_percentage = false
 
 [node name="HpLabel" type="Label" parent="Root/Nameplate/Margin/VBox/HpRow"]
 unique_name_in_owner = true
+theme_type_variation = &"NumericLabel"
 layout_mode = 2
 size_flags_vertical = 4
 text = "7 / 7"
@@ -118,6 +121,7 @@ theme_override_styles/panel = SubResource("sb_gem")
 
 [node name="LevelLabel" type="Label" parent="Root/LevelCluster/GemBadge"]
 unique_name_in_owner = true
+theme_type_variation = &"NumericLabel"
 layout_mode = 2
 text = "1"
 horizontal_alignment = 1
@@ -165,14 +169,16 @@ theme_override_constants/separation = 0
 
 [node name="SparksLabel" type="Label" parent="Root/SparksReadout/Margin/Row/TextCol"]
 unique_name_in_owner = true
+theme_type_variation = &"NumericLabel"
 layout_mode = 2
 text = "0"
 theme_override_font_sizes/font_size = 20
 
 [node name="SparksCaption" type="Label" parent="Root/SparksReadout/Margin/Row/TextCol"]
 layout_mode = 2
+theme_type_variation = &"CapsLabel"
 text = "SPARKS"
-theme_override_colors/font_color = Color(0.722, 0.627, 0.886, 1.0)
+theme_override_colors/font_color = Color(0.6706, 0.5608, 0.7765, 1.0)
 theme_override_font_sizes/font_size = 11
 
 [node name="ObjectivePanel" type="PanelContainer" parent="Root"]
@@ -196,6 +202,7 @@ theme_override_constants/margin_bottom = 6
 
 [node name="ObjectiveLabel" type="Label" parent="Root/ObjectivePanel/Margin"]
 unique_name_in_owner = true
+theme_type_variation = &"CapsLabel"
 layout_mode = 2
 text = "REKINDLE BEACON"
 horizontal_alignment = 1
@@ -203,6 +210,7 @@ theme_override_font_sizes/font_size = 18
 
 [node name="LevelUpFlash" type="Label" parent="Root"]
 unique_name_in_owner = true
+theme_type_variation = &"TitleLabel"
 visible = false
 layout_mode = 1
 anchors_preset = 8
@@ -215,7 +223,7 @@ grow_vertical = 2
 text = "LEVEL UP"
 horizontal_alignment = 1
 vertical_alignment = 1
-theme_override_colors/font_color = Color(0.745, 0.561, 0.953, 1.0)
-theme_override_colors/font_outline_color = Color(0.157, 0.063, 0.227, 0.9)
+theme_override_colors/font_color = Color(0.6706, 0.5608, 0.7765, 1.0)
+theme_override_colors/font_outline_color = Color(0.3412, 0.2510, 0.4510, 0.9)
 theme_override_constants/outline_size = 8
 theme_override_font_sizes/font_size = 72

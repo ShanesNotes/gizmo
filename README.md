@@ -8,13 +8,13 @@ A **rogue-lite** in which **Gizmo**, a clanker, preserves the **spark of humanit
 sprite-first attempts are inactive history and should not steer new work.
 
 ## Repo layout
-- **`CONTEXT.md`** — orientation keystone. **`design-handoff/NARRATIVE.md`** — premise/story canon.
-- `godot/` — the **Godot build** (the active path). `godot/assets/gizmo.glb` is the 3D character (meshy.ai: 53-bone rig, no animation clips yet).
-- `game-src-phaser/` — the original **Phaser + TypeScript source**; `src/game/simulation.ts` is the mechanics source of truth to port. `node_modules` excluded.
-- `index.html`, `assets/` — the **playable web build** (feel reference). Serve the root and play it: `npx serve .`
+- `assets/` + `index.html` — the **playable web build** (feel reference). Serve the root and play it: `npx serve .`
+- `CONTEXT.md` — orientation keystone. `design-handoff/NARRATIVE.md` — premise/story canon.
 - `design-handoff/` — **art-direction references**: `NARRATIVE.md` (premise canon), `ART_DIRECTION.md` (the look), `gizmo-hud.png` (canonical UI & world visual target).
-- `reference/game-balance-reference.md` — balance knowledge (TTK bands, economy), dimension-agnostic.
+- `game-src-phaser/` — the original **Phaser + TypeScript source**; `src/game/simulation.ts` is the mechanics source of truth to port. `node_modules` excluded.
+- `godot/` — the **Godot build** (the active path). `godot/assets/gizmo.glb` is the 3D character (meshy.ai: 53-bone rig, no animation clips yet).
 - `lessons/`, `learning-records/` — the `/teach` co-development learning path and progress.
+- `reference/game-balance-reference.md` — balance knowledge (TTK bands, economy), dimension-agnostic.
 
 ## Notes
 - The Godot 3D rebuild is the active path; the Phaser source + web build are the reference (mechanics + feel).

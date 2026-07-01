@@ -107,7 +107,7 @@ black box the learner can't explain. How hands-on they are is their call, slice 
 - **Decisions** → `docs/adr/` (one ADR per locked choice; recorded via `domain-modeling`).
   **Domain language** grows into `CONTEXT.md` — add a term only once the learner can use it.
 - **Issues / PRDs** (only if/when work needs tracking) → `.scratch/` markdown.
-- **Git:** branch off `main`; commit/push only when asked. End commit messages with the
+- **Git:** branch off `gizmo-3d` (active branch for this game repo; not `main`); commit/push only when asked. End commit messages with the
   `Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>` line.
 
 ## Boundaries

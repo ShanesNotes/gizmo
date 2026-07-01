@@ -41,10 +41,13 @@ folders:
     - bindings
     - design tokens
     - UI/HUD witnesses
+    - shader/look-pipeline matrix (stylization stack -> motif/token/gate mapping)
+    - painterly render-target architecture decision (CompositorEffect vs per-material)
     read_first:
     - AGENTS.md
     - canon/CANON.md
     - canon/acceptance-gates.md
+    - canon/shader-matrix.yaml
   level_design:
     path: /home/ark/gizmo-level-design
     role: spatial-symbolic level/map design clean canvas
@@ -54,6 +57,9 @@ folders:
     - pressure zones
     - encounter beats
     - level witnesses
+    - acceptance gates (L1-L12)
+    - stdlib validators (make validate)
+    - handoff schemas (route_graph_schema.json)
     read_first:
     - AGENTS.md
     - canon/LEVEL_CANON.md
@@ -87,6 +93,7 @@ folders:
 routing:
   story_backstory_terms_copy: lore
   visual_symbols_palette_ui_hud: visual_symbolic_design
+  shaders_painterly_look_gouache_render_target: visual_symbolic_design
   maps_routes_landmarks_pressure_zones: level_design
   soundtrack_ambience_sfx_mix: audio_canon
   prompts_image_generation_meshy_blender_godot_assets: asset_pipeline
@@ -98,3 +105,24 @@ cross_domain_protocol:
 - If two folders disagree, create an extraction/reconciliation note; do not silently
   pick one.
 - Generated outputs are draft witnesses until the owning canon promotes them.
+cross_domain_artifacts:
+  # Shared registry so each specialty can find work that crosses folder boundaries: where it lives,
+  # who HOSTS it, who OWNS each facet, and its promotion status. Hosting != ownership; read the
+  # owner's canon before acting. A shader/asset becomes a look-rule only when its owner promotes it.
+  registry_rule: hosting folder stores the bytes; the owning folder adjudicates meaning and promotion.
+  artifacts:
+  - id: shader-look-matrix
+    title: shader / look-pipeline matrix (stylization stack -> motif/token/gate mapping)
+    location: /home/ark/gizmo-design-system/canon/shader-matrix.yaml
+    hosted_by: visual_symbolic_design
+    owner: visual_symbolic_design
+    consumers: [asset_pipeline, game, level_design]
+    status: canon-mapping; individual shader adoptions proposed/candidate (render-target is a TARGET, gate G12)
+  - id: gouache-storybook-shader-research
+    title: Godot art-style assets research (gouache/storybook stylization; 48 link-verified assets)
+    location: /home/ark/gizmo-level-design/extraction/godot-art-style-assets-research/
+    hosted_by: level_design
+    owners: [visual_symbolic_design, asset_pipeline]   # look-facets / manufacturing-facets
+    consumers: [visual_symbolic_design, asset_pipeline, game, level_design]
+    reconciliation: /home/ark/gizmo-design-system/extraction/shader-research-reconciliation.md
+    status: research-evidence (not canon; routed per-asset by owning_sibling)

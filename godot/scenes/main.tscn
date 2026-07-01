@@ -1,11 +1,37 @@
-[gd_scene load_steps=11 format=3 uid="uid://di7plimb8je4i"]
+[gd_scene load_steps=56 format=3 uid="uid://di7plimb8je4i"]
 
-; Intentional GREYBOX PLACEHOLDER (2026-06-21 art refactor). All painterly art
-; (clockwork world-kits, island/beacon GLBs, fx, sky shader, audio scenes) is
-; quarantined under godot/_quarantine/. This scene keeps the project runnable on
-; mock-up primitives while the art is rebuilt and Path A is developed.
-; The five LevelZones markers are the Path A spine (ADR 0006 / spec §4) — kept so
-; the stagehand baker can promote them to PressureZones. uid preserved for project.godot.
+; Intentional GREYBOX PLACEHOLDER. Painterly art is quarantined under godot/_quarantine/;
+; this scene keeps the project runnable on primitives while Path A is blocked out.
+;
+; EXPLORABLE-ROUTE BLOCKOUT (2026-06-22, promoted from gizmo-level-design lab with user
+; approval — canon/spawn-hearth.yaml + canon/route-exploration.yaml). The spine is a JOURNEY,
+; not a corridor (canon: "the route is pilgrimage, not hallway"). South→north (warm→cold):
+;   Hearth (spawn z+17, one road out) → discernment FORK → West/East approaches (+ a West
+;   cache spur) → Landmark gear-henge (z-12, both rejoin) → Trial arena (surroundable) → Sanctuary pocket
+;   (z-30, with a loopback) → cold Beacon dais far north (z-42, NOT visible from spawn) →
+;   horizon spire (the wider Meridian). LevelZones markers track these beats for the baker.
+;   `DesignProbe_ExposureRanks` = the non-shipping exposure-rank legend (delete before ship;
+;   canon: pressure is diegetic, no on-screen meter). Blockout meshes carry no
+;   `footprint_meters`, so game_controller ignores them as obstacles: visual read only, the
+;   sim still owns the walkable footprint (locked mechanic 6).
+;
+; COLLISION LAYER (2026-06-22, user granted collision-box rights): `LevelCollision`
+; (StaticBody3D) holds one CollisionShape3D per SOLID scenery piece — hearth/sanctuary walls,
+; henge monument + ring pillars, trial + east obstacles, west cache, brazier, sanct form,
+; beacon, the reachable spire. The PLAYER (Gizmo CharacterBody3D, move_and_slide, no gravity)
+; now physically collides: the hearth's single north egress is physically TRUE, and the henge
+; reads as a monument you path AROUND. Gold-path tiles / alcove platforms / dais carry NO
+; collider (walkable; Gizmo rides y=0). Meshes still carry no `footprint_meters`, so the
+; SIM/enemies still ignore them (locked mechanic 6 intact) — ADR-0014 sim-obstacle
+; registration (footprint_meters + placement_role + collision_shape_count) is the next
+; integration step, deferred so this stays a player-collision pass, not an enemy-nav change.
+;
+; DESIGN-SYSTEM HANDOFF (2026-06-22): each material's pole+register binding for gizmo-design-system
+; integration is the lab witness `witnesses/material-pole-handoff.md` (canon
+; handoff_declares_pole_per_exposure_order). Poles split at the TRIAL: LIVING (hearth / fork / henge /
+; west loop / sanctuary) vs HOLLOWED (trial cover / cold approach / Dormant Beacon / decayed scenery);
+; Sparks/caches = violet; the Beacon ships DORMANT (teal-drain, scarce-teal core-spark is the
+; DS-animated active state). DesignProbe_ExposureRanks = delete-before-ship (non-shipping legend).
 
 [ext_resource type="Script" uid="uid://b1rhbrmpcv6w0" path="res://scripts/camera_rig.gd" id="1_cam"]
 [ext_resource type="PackedScene" uid="uid://dmb5im2cxyxu8" path="res://scenes/gizmo.tscn" id="2_giz"]
@@ -27,22 +53,223 @@ ambient_light_source = 3
 tonemap_mode = 2
 
 [sub_resource type="BoxMesh" id="Floor_mesh"]
-size = Vector3(44, 0.4, 44)
+size = Vector3(70, 0.4, 80)
 
 [sub_resource type="StandardMaterial3D" id="Floor_mat"]
-albedo_color = Color(0.22, 0.2, 0.26, 1)
+albedo_color = Color(0.18, 0.17, 0.22, 1)
+roughness = 0.96
+
+[sub_resource type="BoxMesh" id="MainRoad_mesh"]
+size = Vector3(4, 0.16, 8)
+
+[sub_resource type="BoxMesh" id="PathTile_mesh"]
+size = Vector3(6, 0.16, 6)
+
+[sub_resource type="StandardMaterial3D" id="Path_mat"]
+albedo_color = Color(0.5, 0.46, 0.4, 1)
+roughness = 0.9
+
+[sub_resource type="StandardMaterial3D" id="Cool_mat"]
+albedo_color = Color(0.4, 0.48, 0.5, 1)
+roughness = 0.92
+
+[sub_resource type="StandardMaterial3D" id="Hot_mat"]
+albedo_color = Color(0.62, 0.34, 0.22, 1)
+emission_enabled = true
+emission = Color(0.5, 0.24, 0.12, 1)
+emission_energy_multiplier = 0.5
+
+[sub_resource type="StandardMaterial3D" id="Henge_mat"]
+albedo_color = Color(0.62, 0.46, 0.3, 1)
+emission_enabled = true
+emission = Color(0.52, 0.36, 0.18, 1)
+emission_energy_multiplier = 0.7
+
+[sub_resource type="CylinderMesh" id="Hearth_mesh"]
+top_radius = 6.0
+bottom_radius = 6.2
+height = 0.6
+
+[sub_resource type="StandardMaterial3D" id="Stone_mat"]
+albedo_color = Color(0.4, 0.31, 0.24, 1)
 roughness = 0.95
 
-[sub_resource type="CylinderMesh" id="Beacon_mesh"]
+[sub_resource type="BoxMesh" id="WallS_mesh"]
+size = Vector3(11, 1.4, 0.8)
+
+[sub_resource type="BoxMesh" id="WallSide_mesh"]
+size = Vector3(0.8, 1.4, 9)
+
+[sub_resource type="CylinderMesh" id="Brazier_mesh"]
+top_radius = 0.4
+bottom_radius = 0.7
+height = 1.8
+
+[sub_resource type="StandardMaterial3D" id="Brazier_mat"]
+albedo_color = Color(0.88, 0.4, 0.16, 1)
+emission_enabled = true
+emission = Color(0.95, 0.52, 0.2, 1)
+emission_energy_multiplier = 2.0
+
+[sub_resource type="CylinderMesh" id="HengePillar_mesh"]
 top_radius = 0.6
-bottom_radius = 0.9
-height = 4.0
+bottom_radius = 0.7
+height = 5.0
+
+[sub_resource type="CylinderMesh" id="HengeCenter_mesh"]
+top_radius = 1.2
+bottom_radius = 1.7
+height = 11.0
+
+[sub_resource type="CylinderMesh" id="HengePlaza_mesh"]
+top_radius = 6.5
+bottom_radius = 6.5
+height = 0.16
+
+[sub_resource type="BoxMesh" id="ThresholdPost_mesh"]
+size = Vector3(0.8, 4, 0.8)
+
+[sub_resource type="BoxMesh" id="ThresholdLintelX_mesh"]
+size = Vector3(7, 0.7, 0.7)
+
+[sub_resource type="BoxMesh" id="ThresholdLintelZ_mesh"]
+size = Vector3(0.7, 0.7, 5)
+
+[sub_resource type="BoxShape3D" id="col_threshold_post"]
+size = Vector3(0.8, 4, 0.8)
+
+[sub_resource type="CylinderMesh" id="AlcovePlatform_mesh"]
+top_radius = 4.0
+bottom_radius = 4.2
+height = 0.5
+
+[sub_resource type="BoxMesh" id="Cache_mesh"]
+size = Vector3(2.4, 1.0, 2.4)
+
+[sub_resource type="StandardMaterial3D" id="Spark_mat"]
+albedo_color = Color(0.5, 0.34, 0.8, 1)
+emission_enabled = true
+emission = Color(0.55, 0.36, 0.95, 1)
+emission_energy_multiplier = 1.4
+
+[sub_resource type="BoxMesh" id="Obstacle_mesh"]
+size = Vector3(1.6, 3.0, 1.6)
+
+[sub_resource type="CylinderMesh" id="ArenaFloor_mesh"]
+top_radius = 9.0
+bottom_radius = 9.0
+height = 0.16
+
+[sub_resource type="StandardMaterial3D" id="Scenery_mat"]
+albedo_color = Color(0.15, 0.17, 0.2, 1)
+roughness = 0.9
+
+[sub_resource type="CylinderMesh" id="SanctForm_mesh"]
+top_radius = 0.9
+bottom_radius = 1.1
+height = 2.6
+
+[sub_resource type="StandardMaterial3D" id="Calm_mat"]
+albedo_color = Color(0.54, 0.66, 0.6, 1)
+emission_enabled = true
+emission = Color(0.34, 0.52, 0.46, 1)
+emission_energy_multiplier = 0.95
+
+[sub_resource type="CylinderMesh" id="Dais_mesh"]
+top_radius = 7.0
+bottom_radius = 7.4
+height = 0.9
+
+[sub_resource type="CylinderMesh" id="ChannelRing_mesh"]
+top_radius = 3.2
+bottom_radius = 3.2
+height = 0.12
+
+[sub_resource type="CylinderMesh" id="Beacon_mesh"]
+top_radius = 1.0
+bottom_radius = 1.5
+height = 7.0
 
 [sub_resource type="StandardMaterial3D" id="Beacon_mat"]
-albedo_color = Color(0.2, 0.8, 0.85, 1)
+; GREYBOX PLACEHOLDER re-toned 2026-06-22 to the DORMANT/hollowed pole (drained cool slate, snuffed)
+; so the greybox does not pole-invert vs its declared pole (canon handoff_declares_pole_per_exposure_order;
+; witnesses/material-pole-handoff.md). Final painterly value + the Rekindling→living animation are the
+; design system's (B-beacon/B-light); this is only an honest stand-in, not authored visual canon.
+albedo_color = Color(0.34, 0.38, 0.4, 1)
 emission_enabled = true
-emission = Color(0.2, 0.8, 0.85, 1)
-emission_energy_multiplier = 1.5
+emission = Color(0.2, 0.27, 0.3, 1)
+emission_energy_multiplier = 0.35
+roughness = 0.95
+
+[sub_resource type="CylinderMesh" id="Spire_mesh"]
+top_radius = 0.4
+bottom_radius = 1.6
+height = 14.0
+
+[sub_resource type="BoxMesh" id="Pillar_mesh"]
+size = Vector3(1.2, 1, 1.2)
+
+[sub_resource type="StandardMaterial3D" id="Pill_min_mat"]
+albedo_color = Color(0.46, 0.5, 0.48, 1)
+roughness = 0.9
+
+[sub_resource type="StandardMaterial3D" id="Pill_mid_mat"]
+albedo_color = Color(0.72, 0.46, 0.26, 1)
+emission_enabled = true
+emission = Color(0.5, 0.3, 0.14, 1)
+emission_energy_multiplier = 0.6
+
+[sub_resource type="StandardMaterial3D" id="Pill_high_mat"]
+albedo_color = Color(0.85, 0.34, 0.18, 1)
+emission_enabled = true
+emission = Color(0.8, 0.3, 0.14, 1)
+emission_energy_multiplier = 1.1
+
+[sub_resource type="StandardMaterial3D" id="Pill_peak_mat"]
+albedo_color = Color(0.92, 0.2, 0.12, 1)
+emission_enabled = true
+emission = Color(0.95, 0.22, 0.12, 1)
+emission_energy_multiplier = 1.8
+
+[sub_resource type="BoxShape3D" id="col_wallS"]
+size = Vector3(11, 1.4, 0.8)
+
+[sub_resource type="BoxShape3D" id="col_wallSide"]
+size = Vector3(0.8, 1.4, 9)
+
+[sub_resource type="BoxShape3D" id="col_obstacle"]
+size = Vector3(1.6, 3, 1.6)
+
+[sub_resource type="BoxShape3D" id="col_cache"]
+size = Vector3(2.4, 1, 2.4)
+
+[sub_resource type="CylinderShape3D" id="col_pillar"]
+radius = 0.7
+height = 5.0
+
+[sub_resource type="CylinderShape3D" id="col_hengeCenter"]
+radius = 1.5
+height = 11.0
+
+[sub_resource type="CylinderShape3D" id="col_brazier"]
+radius = 0.7
+height = 1.8
+
+[sub_resource type="CylinderShape3D" id="col_sanctForm"]
+radius = 1.1
+height = 2.6
+
+[sub_resource type="CylinderShape3D" id="col_beacon"]
+radius = 1.5
+height = 7.0
+
+[sub_resource type="CylinderShape3D" id="col_spireMain"]
+radius = 1.6
+height = 14.0
+
+[sub_resource type="CylinderShape3D" id="col_omen"]
+radius = 0.8
+height = 6.3
 
 [node name="Main" type="Node3D"]
 
@@ -57,36 +284,606 @@ shadow_enabled = true
 sky_mode = 1
 
 [node name="GreyboxFloor" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.2, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.2, -15)
 mesh = SubResource("Floor_mesh")
 surface_material_override/0 = SubResource("Floor_mat")
+
+[node name="SpawnHearthBlockout" type="Node3D" parent="."]
+
+[node name="HearthDisc" type="MeshInstance3D" parent="SpawnHearthBlockout"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.25, 17)
+mesh = SubResource("Hearth_mesh")
+surface_material_override/0 = SubResource("Stone_mat")
+
+[node name="HearthWallS" type="MeshInstance3D" parent="SpawnHearthBlockout"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.7, 22.5)
+mesh = SubResource("WallS_mesh")
+surface_material_override/0 = SubResource("Stone_mat")
+
+[node name="HearthWallE" type="MeshInstance3D" parent="SpawnHearthBlockout"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 0.7, 18.5)
+mesh = SubResource("WallSide_mesh")
+surface_material_override/0 = SubResource("Stone_mat")
+
+[node name="HearthWallW" type="MeshInstance3D" parent="SpawnHearthBlockout"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 0.7, 18.5)
+mesh = SubResource("WallSide_mesh")
+surface_material_override/0 = SubResource("Stone_mat")
+
+[node name="HearthBrazier" type="MeshInstance3D" parent="SpawnHearthBlockout"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.95, 19.5)
+mesh = SubResource("Brazier_mesh")
+surface_material_override/0 = SubResource("Brazier_mat")
+
+[node name="MainRoad" type="MeshInstance3D" parent="SpawnHearthBlockout"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.08, 9)
+mesh = SubResource("MainRoad_mesh")
+surface_material_override/0 = SubResource("Path_mat")
+
+[node name="RouteBranch" type="Node3D" parent="."]
+
+[node name="ForkTileW" type="MeshInstance3D" parent="RouteBranch"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 0.05, 1)
+mesh = SubResource("PathTile_mesh")
+surface_material_override/0 = SubResource("Path_mat")
+
+[node name="ForkTileE" type="MeshInstance3D" parent="RouteBranch"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 0.05, 1)
+mesh = SubResource("PathTile_mesh")
+surface_material_override/0 = SubResource("Path_mat")
+
+[node name="WestPathTile1" type="MeshInstance3D" parent="RouteBranch"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -13, 0.05, -2)
+mesh = SubResource("PathTile_mesh")
+surface_material_override/0 = SubResource("Path_mat")
+
+[node name="WestAlcovePlatform" type="MeshInstance3D" parent="RouteBranch"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -20, 0, -4)
+mesh = SubResource("AlcovePlatform_mesh")
+surface_material_override/0 = SubResource("Cool_mat")
+
+[node name="WestPathTile2" type="MeshInstance3D" parent="RouteBranch"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -12, 0.05, -9)
+mesh = SubResource("PathTile_mesh")
+surface_material_override/0 = SubResource("Path_mat")
+
+[node name="EastPathTile1" type="MeshInstance3D" parent="RouteBranch"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12, 0.05, -2)
+mesh = SubResource("PathTile_mesh")
+surface_material_override/0 = SubResource("Path_mat")
+
+[node name="EastAlcovePlatform" type="MeshInstance3D" parent="RouteBranch"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 18, 0, -4)
+mesh = SubResource("AlcovePlatform_mesh")
+surface_material_override/0 = SubResource("Hot_mat")
+
+[node name="EastPathTile2" type="MeshInstance3D" parent="RouteBranch"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 11, 0.05, -9)
+mesh = SubResource("PathTile_mesh")
+surface_material_override/0 = SubResource("Path_mat")
+
+[node name="WestCacheSpurTile" type="MeshInstance3D" parent="RouteBranch"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -27, 0.05, -8)
+mesh = SubResource("PathTile_mesh")
+surface_material_override/0 = SubResource("Path_mat")
+
+[node name="WestCache" type="MeshInstance3D" parent="RouteBranch"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -31, 0.5, -11)
+mesh = SubResource("Cache_mesh")
+surface_material_override/0 = SubResource("Spark_mat")
+
+[node name="EastApproachObstacle" type="MeshInstance3D" parent="RouteBranch"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 15, 1.5, -1)
+mesh = SubResource("Obstacle_mesh")
+surface_material_override/0 = SubResource("Scenery_mat")
+
+[node name="EastApproachObstacle2" type="MeshInstance3D" parent="RouteBranch"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 21, 1.5, -8)
+mesh = SubResource("Obstacle_mesh")
+surface_material_override/0 = SubResource("Scenery_mat")
+
+[node name="EastPreviewOmen" type="MeshInstance3D" parent="RouteBranch"]
+transform = Transform3D(0.5, 0, 0, 0, 0.45, 0, 0, 0, 0.5, 25, 3.2, -7)
+mesh = SubResource("Spire_mesh")
+surface_material_override/0 = SubResource("Scenery_mat")
+
+[node name="LandmarkHenge" type="Node3D" parent="."]
+
+[node name="HengePlaza" type="MeshInstance3D" parent="LandmarkHenge"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.04, -11)
+mesh = SubResource("HengePlaza_mesh")
+surface_material_override/0 = SubResource("Stone_mat")
+
+[node name="HengeCenter" type="MeshInstance3D" parent="LandmarkHenge"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 5.5, -11)
+mesh = SubResource("HengeCenter_mesh")
+surface_material_override/0 = SubResource("Henge_mat")
+
+[node name="HengePillar0" type="MeshInstance3D" parent="LandmarkHenge"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 2.5, -11)
+mesh = SubResource("HengePillar_mesh")
+surface_material_override/0 = SubResource("Stone_mat")
+
+[node name="HengePillar1" type="MeshInstance3D" parent="LandmarkHenge"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3, 2.5, -5.8)
+mesh = SubResource("HengePillar_mesh")
+surface_material_override/0 = SubResource("Stone_mat")
+
+[node name="HengePillar2" type="MeshInstance3D" parent="LandmarkHenge"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3, 2.5, -5.8)
+mesh = SubResource("HengePillar_mesh")
+surface_material_override/0 = SubResource("Stone_mat")
+
+[node name="HengePillar3" type="MeshInstance3D" parent="LandmarkHenge"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 2.5, -11)
+mesh = SubResource("HengePillar_mesh")
+surface_material_override/0 = SubResource("Stone_mat")
+
+[node name="HengePillar4" type="MeshInstance3D" parent="LandmarkHenge"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3, 2.5, -16.2)
+mesh = SubResource("HengePillar_mesh")
+surface_material_override/0 = SubResource("Stone_mat")
+
+[node name="HengePillar5" type="MeshInstance3D" parent="LandmarkHenge"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3, 2.5, -16.2)
+mesh = SubResource("HengePillar_mesh")
+surface_material_override/0 = SubResource("Stone_mat")
+
+[node name="TrialGauntlet" type="Node3D" parent="."]
+
+[node name="ArenaFloor" type="MeshInstance3D" parent="TrialGauntlet"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.04, -23)
+mesh = SubResource("ArenaFloor_mesh")
+surface_material_override/0 = SubResource("Path_mat")
+
+[node name="Obstacle0" type="MeshInstance3D" parent="TrialGauntlet"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7, 1.5, -19)
+mesh = SubResource("Obstacle_mesh")
+surface_material_override/0 = SubResource("Scenery_mat")
+
+[node name="Obstacle1" type="MeshInstance3D" parent="TrialGauntlet"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7, 1.5, -19)
+mesh = SubResource("Obstacle_mesh")
+surface_material_override/0 = SubResource("Scenery_mat")
+
+[node name="Obstacle2" type="MeshInstance3D" parent="TrialGauntlet"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 1.5, -23)
+mesh = SubResource("Obstacle_mesh")
+surface_material_override/0 = SubResource("Scenery_mat")
+
+[node name="Obstacle3" type="MeshInstance3D" parent="TrialGauntlet"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 1.5, -23)
+mesh = SubResource("Obstacle_mesh")
+surface_material_override/0 = SubResource("Scenery_mat")
+
+[node name="Obstacle4" type="MeshInstance3D" parent="TrialGauntlet"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7, 1.5, -27)
+mesh = SubResource("Obstacle_mesh")
+surface_material_override/0 = SubResource("Scenery_mat")
+
+[node name="Obstacle5" type="MeshInstance3D" parent="TrialGauntlet"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7, 1.5, -27)
+mesh = SubResource("Obstacle_mesh")
+surface_material_override/0 = SubResource("Scenery_mat")
+
+[node name="SanctuaryBreath" type="Node3D" parent="."]
+
+[node name="SanctPlatform" type="MeshInstance3D" parent="SanctuaryBreath"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 15, 0, -31)
+mesh = SubResource("AlcovePlatform_mesh")
+surface_material_override/0 = SubResource("Path_mat")
+
+[node name="SanctWallN" type="MeshInstance3D" parent="SanctuaryBreath"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 15, 0.8, -34.5)
+mesh = SubResource("WallS_mesh")
+surface_material_override/0 = SubResource("Stone_mat")
+
+[node name="SanctForm" type="MeshInstance3D" parent="SanctuaryBreath"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 15, 1.3, -31)
+mesh = SubResource("SanctForm_mesh")
+surface_material_override/0 = SubResource("Calm_mat")
+
+[node name="LoopbackTile0" type="MeshInstance3D" parent="SanctuaryBreath"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 0.05, -25)
+mesh = SubResource("PathTile_mesh")
+surface_material_override/0 = SubResource("Path_mat")
+
+[node name="LoopbackTile1" type="MeshInstance3D" parent="SanctuaryBreath"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 0.05, -19)
+mesh = SubResource("PathTile_mesh")
+surface_material_override/0 = SubResource("Path_mat")
+
+[node name="LoopbackTile2" type="MeshInstance3D" parent="SanctuaryBreath"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3, 0.05, -14)
+mesh = SubResource("PathTile_mesh")
+surface_material_override/0 = SubResource("Path_mat")
+
+[node name="RetreatEdgeTile" type="MeshInstance3D" parent="SanctuaryBreath"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 0.05, -29)
+mesh = SubResource("PathTile_mesh")
+surface_material_override/0 = SubResource("Cool_mat")
+
+[node name="SanctWallE" type="MeshInstance3D" parent="SanctuaryBreath"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 18.5, 0.7, -31)
+mesh = SubResource("WallSide_mesh")
+surface_material_override/0 = SubResource("Stone_mat")
+
+[node name="BeaconApproach" type="Node3D" parent="."]
+
+[node name="ApproachTile" type="MeshInstance3D" parent="BeaconApproach"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.05, -35)
+mesh = SubResource("PathTile_mesh")
+surface_material_override/0 = SubResource("Path_mat")
+
+[node name="BeaconDais" type="MeshInstance3D" parent="BeaconApproach"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.2, -42)
+mesh = SubResource("Dais_mesh")
+surface_material_override/0 = SubResource("Path_mat")
+
+[node name="Beacon" type="MeshInstance3D" parent="BeaconApproach"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 4, -42)
+mesh = SubResource("Beacon_mesh")
+surface_material_override/0 = SubResource("Beacon_mat")
+
+[node name="ChannelRing" type="MeshInstance3D" parent="BeaconApproach"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.66, -42)
+mesh = SubResource("ChannelRing_mesh")
+surface_material_override/0 = SubResource("Hot_mat")
+
+[node name="ApproachE" type="MeshInstance3D" parent="BeaconApproach"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 9, 0.05, -42)
+mesh = SubResource("PathTile_mesh")
+surface_material_override/0 = SubResource("Path_mat")
+
+[node name="ApproachW" type="MeshInstance3D" parent="BeaconApproach"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -9, 0.05, -42)
+mesh = SubResource("PathTile_mesh")
+surface_material_override/0 = SubResource("Path_mat")
+
+[node name="ApproachN" type="MeshInstance3D" parent="BeaconApproach"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.05, -49)
+mesh = SubResource("PathTile_mesh")
+surface_material_override/0 = SubResource("Path_mat")
+
+[node name="HorizonOmen" type="Node3D" parent="."]
+
+[node name="SpireMain" type="MeshInstance3D" parent="HorizonOmen"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 7, -53)
+mesh = SubResource("Spire_mesh")
+surface_material_override/0 = SubResource("Scenery_mat")
+
+[node name="SpireW" type="MeshInstance3D" parent="HorizonOmen"]
+transform = Transform3D(0.7, 0, 0, 0, 0.6, 0, 0, 0, 0.7, -14, 4.2, -54)
+mesh = SubResource("Spire_mesh")
+surface_material_override/0 = SubResource("Scenery_mat")
+
+[node name="SpireE" type="MeshInstance3D" parent="HorizonOmen"]
+transform = Transform3D(0.6, 0, 0, 0, 0.5, 0, 0, 0, 0.6, 12, 3.5, -55)
+mesh = SubResource("Spire_mesh")
+surface_material_override/0 = SubResource("Scenery_mat")
+
+[node name="DesignProbe_ExposureRanks" type="Node3D" parent="."]
+
+[node name="PillarSpawn" type="MeshInstance3D" parent="DesignProbe_ExposureRanks"]
+transform = Transform3D(1.2, 0, 0, 0, 1.0, 0, 0, 0, 1.2, 31, 0.5, 17)
+mesh = SubResource("Pillar_mesh")
+surface_material_override/0 = SubResource("Pill_min_mat")
+
+[node name="PillarBranch" type="MeshInstance3D" parent="DesignProbe_ExposureRanks"]
+transform = Transform3D(1.2, 0, 0, 0, 2.0, 0, 0, 0, 1.2, 31, 1.0, 0)
+mesh = SubResource("Pillar_mesh")
+surface_material_override/0 = SubResource("Pill_mid_mat")
+
+[node name="PillarLandmark" type="MeshInstance3D" parent="DesignProbe_ExposureRanks"]
+transform = Transform3D(1.2, 0, 0, 0, 3.0, 0, 0, 0, 1.2, 31, 1.5, -12)
+mesh = SubResource("Pillar_mesh")
+surface_material_override/0 = SubResource("Pill_mid_mat")
+
+[node name="PillarTrial" type="MeshInstance3D" parent="DesignProbe_ExposureRanks"]
+transform = Transform3D(1.2, 0, 0, 0, 4.5, 0, 0, 0, 1.2, 31, 2.25, -26)
+mesh = SubResource("Pillar_mesh")
+surface_material_override/0 = SubResource("Pill_high_mat")
+
+[node name="PillarBeacon" type="MeshInstance3D" parent="DesignProbe_ExposureRanks"]
+transform = Transform3D(1.2, 0, 0, 0, 6.0, 0, 0, 0, 1.2, 31, 3.0, -42)
+mesh = SubResource("Pillar_mesh")
+surface_material_override/0 = SubResource("Pill_peak_mat")
+
+[node name="WestLoop" type="Node3D" parent="."]
+
+[node name="LoopEntry" type="MeshInstance3D" parent="WestLoop"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5, 0.05, -14)
+mesh = SubResource("PathTile_mesh")
+surface_material_override/0 = SubResource("Path_mat")
+
+[node name="LoopTile1" type="MeshInstance3D" parent="WestLoop"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -12, 0.05, -16)
+mesh = SubResource("PathTile_mesh")
+surface_material_override/0 = SubResource("Path_mat")
+
+[node name="LoopTile2" type="MeshInstance3D" parent="WestLoop"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -19, 0.05, -19)
+mesh = SubResource("PathTile_mesh")
+surface_material_override/0 = SubResource("Path_mat")
+
+[node name="WestPocketTile" type="MeshInstance3D" parent="WestLoop"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -25, 0.05, -22)
+mesh = SubResource("PathTile_mesh")
+surface_material_override/0 = SubResource("Path_mat")
+
+[node name="LoopTile3" type="MeshInstance3D" parent="WestLoop"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -18, 0.05, -25)
+mesh = SubResource("PathTile_mesh")
+surface_material_override/0 = SubResource("Path_mat")
+
+[node name="LoopTile4" type="MeshInstance3D" parent="WestLoop"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -11, 0.05, -25)
+mesh = SubResource("PathTile_mesh")
+surface_material_override/0 = SubResource("Path_mat")
+
+[node name="WestPocketCache" type="MeshInstance3D" parent="WestLoop"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -27, 0.5, -22)
+mesh = SubResource("Cache_mesh")
+surface_material_override/0 = SubResource("Spark_mat")
+
+[node name="WestPocketRuin" type="MeshInstance3D" parent="WestLoop"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -23, 1.5, -24)
+mesh = SubResource("Obstacle_mesh")
+surface_material_override/0 = SubResource("Scenery_mat")
+
+[node name="ThresholdGates" type="Node3D" parent="."]
+
+[node name="T1_PostW" type="MeshInstance3D" parent="ThresholdGates"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.8, 2, 13)
+mesh = SubResource("ThresholdPost_mesh")
+surface_material_override/0 = SubResource("Stone_mat")
+
+[node name="T1_PostE" type="MeshInstance3D" parent="ThresholdGates"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.8, 2, 13)
+mesh = SubResource("ThresholdPost_mesh")
+surface_material_override/0 = SubResource("Stone_mat")
+
+[node name="T1_Lintel" type="MeshInstance3D" parent="ThresholdGates"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 4, 13)
+mesh = SubResource("ThresholdLintelX_mesh")
+surface_material_override/0 = SubResource("Stone_mat")
+
+[node name="T2_PostW" type="MeshInstance3D" parent="ThresholdGates"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3, 2, -3)
+mesh = SubResource("ThresholdPost_mesh")
+surface_material_override/0 = SubResource("Stone_mat")
+
+[node name="T2_PostE" type="MeshInstance3D" parent="ThresholdGates"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3, 2, -3)
+mesh = SubResource("ThresholdPost_mesh")
+surface_material_override/0 = SubResource("Stone_mat")
+
+[node name="T2_Lintel" type="MeshInstance3D" parent="ThresholdGates"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 4, -3)
+mesh = SubResource("ThresholdLintelX_mesh")
+surface_material_override/0 = SubResource("Stone_mat")
+
+[node name="T3_PostW" type="MeshInstance3D" parent="ThresholdGates"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.5, 2, -18)
+mesh = SubResource("ThresholdPost_mesh")
+surface_material_override/0 = SubResource("Stone_mat")
+
+[node name="T3_PostE" type="MeshInstance3D" parent="ThresholdGates"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.5, 2, -18)
+mesh = SubResource("ThresholdPost_mesh")
+surface_material_override/0 = SubResource("Stone_mat")
+
+[node name="T3_Lintel" type="MeshInstance3D" parent="ThresholdGates"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 4, -18)
+mesh = SubResource("ThresholdLintelX_mesh")
+surface_material_override/0 = SubResource("Stone_mat")
+
+[node name="T4_PostW" type="MeshInstance3D" parent="ThresholdGates"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3, 2, -35)
+mesh = SubResource("ThresholdPost_mesh")
+surface_material_override/0 = SubResource("Stone_mat")
+
+[node name="T4_PostE" type="MeshInstance3D" parent="ThresholdGates"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3, 2, -35)
+mesh = SubResource("ThresholdPost_mesh")
+surface_material_override/0 = SubResource("Stone_mat")
+
+[node name="T4_Lintel" type="MeshInstance3D" parent="ThresholdGates"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 4, -35)
+mesh = SubResource("ThresholdLintelX_mesh")
+surface_material_override/0 = SubResource("Stone_mat")
+
+[node name="T5_PostN" type="MeshInstance3D" parent="ThresholdGates"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 11, 2, -28.5)
+mesh = SubResource("ThresholdPost_mesh")
+surface_material_override/0 = SubResource("Stone_mat")
+
+[node name="T5_PostS" type="MeshInstance3D" parent="ThresholdGates"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 11, 2, -33.5)
+mesh = SubResource("ThresholdPost_mesh")
+surface_material_override/0 = SubResource("Stone_mat")
+
+[node name="T5_Lintel" type="MeshInstance3D" parent="ThresholdGates"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 11, 4, -31)
+mesh = SubResource("ThresholdLintelZ_mesh")
+surface_material_override/0 = SubResource("Stone_mat")
+
+[node name="LevelCollision" type="StaticBody3D" parent="."]
+
+[node name="col_HearthWallS" type="CollisionShape3D" parent="LevelCollision"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.7, 22.5)
+shape = SubResource("col_wallS")
+
+[node name="col_HearthWallE" type="CollisionShape3D" parent="LevelCollision"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 0.7, 18.5)
+shape = SubResource("col_wallSide")
+
+[node name="col_HearthWallW" type="CollisionShape3D" parent="LevelCollision"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 0.7, 18.5)
+shape = SubResource("col_wallSide")
+
+[node name="col_HearthBrazier" type="CollisionShape3D" parent="LevelCollision"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.95, 19.5)
+shape = SubResource("col_brazier")
+
+[node name="col_HengeCenter" type="CollisionShape3D" parent="LevelCollision"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 5.5, -11)
+shape = SubResource("col_hengeCenter")
+
+[node name="col_HengePillar0" type="CollisionShape3D" parent="LevelCollision"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 2.5, -11)
+shape = SubResource("col_pillar")
+
+[node name="col_HengePillar1" type="CollisionShape3D" parent="LevelCollision"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3, 2.5, -5.8)
+shape = SubResource("col_pillar")
+
+[node name="col_HengePillar2" type="CollisionShape3D" parent="LevelCollision"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3, 2.5, -5.8)
+shape = SubResource("col_pillar")
+
+[node name="col_HengePillar3" type="CollisionShape3D" parent="LevelCollision"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 2.5, -11)
+shape = SubResource("col_pillar")
+
+[node name="col_HengePillar4" type="CollisionShape3D" parent="LevelCollision"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3, 2.5, -16.2)
+shape = SubResource("col_pillar")
+
+[node name="col_HengePillar5" type="CollisionShape3D" parent="LevelCollision"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3, 2.5, -16.2)
+shape = SubResource("col_pillar")
+
+[node name="col_WestCache" type="CollisionShape3D" parent="LevelCollision"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -31, 0.5, -11)
+shape = SubResource("col_cache")
+
+[node name="col_WestPocketCache" type="CollisionShape3D" parent="LevelCollision"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -27, 0.5, -22)
+shape = SubResource("col_cache")
+
+[node name="col_WestPocketRuin" type="CollisionShape3D" parent="LevelCollision"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -23, 1.5, -24)
+shape = SubResource("col_obstacle")
+
+[node name="col_EastApproachObstacle" type="CollisionShape3D" parent="LevelCollision"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 15, 1.5, -1)
+shape = SubResource("col_obstacle")
+
+[node name="col_EastApproachObstacle2" type="CollisionShape3D" parent="LevelCollision"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 21, 1.5, -8)
+shape = SubResource("col_obstacle")
+
+[node name="col_EastPreviewOmen" type="CollisionShape3D" parent="LevelCollision"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 25, 3.2, -7)
+shape = SubResource("col_omen")
+
+[node name="col_Obstacle0" type="CollisionShape3D" parent="LevelCollision"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7, 1.5, -19)
+shape = SubResource("col_obstacle")
+
+[node name="col_Obstacle1" type="CollisionShape3D" parent="LevelCollision"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7, 1.5, -19)
+shape = SubResource("col_obstacle")
+
+[node name="col_Obstacle2" type="CollisionShape3D" parent="LevelCollision"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 1.5, -23)
+shape = SubResource("col_obstacle")
+
+[node name="col_Obstacle3" type="CollisionShape3D" parent="LevelCollision"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 1.5, -23)
+shape = SubResource("col_obstacle")
+
+[node name="col_Obstacle4" type="CollisionShape3D" parent="LevelCollision"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7, 1.5, -27)
+shape = SubResource("col_obstacle")
+
+[node name="col_Obstacle5" type="CollisionShape3D" parent="LevelCollision"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7, 1.5, -27)
+shape = SubResource("col_obstacle")
+
+[node name="col_SanctWallN" type="CollisionShape3D" parent="LevelCollision"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 15, 0.8, -34.5)
+shape = SubResource("col_wallS")
+
+[node name="col_SanctWallE" type="CollisionShape3D" parent="LevelCollision"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 18.5, 0.7, -31)
+shape = SubResource("col_wallSide")
+
+[node name="col_SanctForm" type="CollisionShape3D" parent="LevelCollision"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 15, 1.3, -31)
+shape = SubResource("col_sanctForm")
+
+[node name="col_Beacon" type="CollisionShape3D" parent="LevelCollision"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 4, -42)
+shape = SubResource("col_beacon")
+
+[node name="col_SpireMain" type="CollisionShape3D" parent="LevelCollision"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 7, -53)
+shape = SubResource("col_spireMain")
+
+[node name="col_T1_PostW" type="CollisionShape3D" parent="LevelCollision"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.8, 2, 13)
+shape = SubResource("col_threshold_post")
+
+[node name="col_T1_PostE" type="CollisionShape3D" parent="LevelCollision"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.8, 2, 13)
+shape = SubResource("col_threshold_post")
+
+[node name="col_T2_PostW" type="CollisionShape3D" parent="LevelCollision"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3, 2, -3)
+shape = SubResource("col_threshold_post")
+
+[node name="col_T2_PostE" type="CollisionShape3D" parent="LevelCollision"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3, 2, -3)
+shape = SubResource("col_threshold_post")
+
+[node name="col_T3_PostW" type="CollisionShape3D" parent="LevelCollision"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.5, 2, -18)
+shape = SubResource("col_threshold_post")
+
+[node name="col_T3_PostE" type="CollisionShape3D" parent="LevelCollision"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.5, 2, -18)
+shape = SubResource("col_threshold_post")
+
+[node name="col_T4_PostW" type="CollisionShape3D" parent="LevelCollision"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3, 2, -35)
+shape = SubResource("col_threshold_post")
+
+[node name="col_T4_PostE" type="CollisionShape3D" parent="LevelCollision"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3, 2, -35)
+shape = SubResource("col_threshold_post")
+
+[node name="col_T5_PostN" type="CollisionShape3D" parent="LevelCollision"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 11, 2, -28.5)
+shape = SubResource("col_threshold_post")
+
+[node name="col_T5_PostS" type="CollisionShape3D" parent="LevelCollision"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 11, 2, -33.5)
+shape = SubResource("col_threshold_post")
 
 [node name="LevelZones" type="Node3D" parent="."]
 
 [node name="SouthLandingZone" type="Marker3D" parent="LevelZones"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 12)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 17)
 
 [node name="CentralGearPlazaZone" type="Marker3D" parent="LevelZones"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -12)
 
 [node name="NorthBeaconDaisZone" type="Marker3D" parent="LevelZones"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -13)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -42)
 
 [node name="WestScrapAlcoveZone" type="Marker3D" parent="LevelZones"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10, 0, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -20, 0, -4)
 
 [node name="EastGearAlcoveZone" type="Marker3D" parent="LevelZones"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 0, 0)
-
-[node name="BeaconPlaceholder" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, -13)
-mesh = SubResource("Beacon_mesh")
-surface_material_override/0 = SubResource("Beacon_mat")
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 18, 0, -4)
 
 [node name="Gizmo" parent="." instance=ExtResource("2_giz")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 17)
 
 [node name="Camera3D" type="Camera3D" parent="." node_paths=PackedStringArray("target")]
-transform = Transform3D(1, 0, 0, 0, 0.64278764, 0.76604444, 0, -0.76604444, 0.64278764, 0, 12, 10)
+transform = Transform3D(1, 0, 0, 0, 0.64278764, 0.76604444, 0, -0.76604444, 0.64278764, 0, 12, 27)
 current = true
 fov = 50.0
 script = ExtResource("1_cam")
