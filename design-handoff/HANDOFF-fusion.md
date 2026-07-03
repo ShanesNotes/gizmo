@@ -136,4 +136,6 @@ hearts are breath-flames. Desktop 16:9 + mobile/portrait. Keep it readable at sp
 3. **Payoffs → illuminations:** the Level-up Nova becomes a gold-ground aureole bloom; Cache-crack becomes a reliquary-seal break; score is "Illumination."
 4. **Covenants:** wire the four meters to the covenant emblems; state-words (woven/severed, open/constricted, lit/echoed, sealed/struck).
 5. **Material memory:** persist a small scar on Gizmo/enemies after hits (don't reset clean).
-6. **Pass order:** tokens → fonts → stipple/panel system �
+6. **Pass order:** tokens → fonts → stipple/panel system → Gizmo aureole → covenant emblems → reliquary/counterfeit → illumination VFX → menus → mobile → reduced-motion.
+
+**Done for this phase:** Gizmo states, four covenants, reliquary tiers, counterfeit enemy family + boss, illuminated rarity, logo + seal + key art, and four fused screens — all in "The Lumen Codex," honoring the fidelity rules above.
