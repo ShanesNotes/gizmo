@@ -34,7 +34,7 @@ Working notes for the teacher. The engine here is the `/teach` skill.
   (doc-ownership map). Premise canon: `design-handoff/NARRATIVE.md`.
 
 ## Environment
-- Godot verified: `4.6.2.stable.mono.official` at `~/.local/bin/godot`.
+- Godot target: **4.7.x stable** (upgraded 2026-07-03, ADR-017). Last verified run was `4.6.2.stable.mono.official` at `~/.local/bin/godot`; re-verify on 4.7.
 - Headless tests (answer-key): `godot --headless --path docs/godot/answer-key
   --script res://tests/run_simulation_tests.gd`.
 - The learner runs equivalents against the shared `godot/` build as it grows.

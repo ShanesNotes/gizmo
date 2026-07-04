@@ -2,7 +2,7 @@
 
 ## Knowledge
 
-- [Official Godot 4.6 documentation](https://docs.godotengine.org/en/stable/)
+- [Official Godot 4.7 documentation](https://docs.godotengine.org/en/stable/)
   Primary source for GDScript, scenes/nodes, `Camera3D`, `Control`/`Theme`,
   signals, headless runs. Use for: any Godot concept before teaching it.
 - `CONTEXT.md` (repo)

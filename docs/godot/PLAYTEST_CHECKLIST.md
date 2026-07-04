@@ -73,9 +73,10 @@ find godot -path godot/.godot -prune -o -name '*.gd' -print | sort | while read 
 done
 ${GODOT_BIN:-godot} --headless --path godot --quit-after 1
 ```
-Pass: Godot reports 4.6.x stable by default, imports the shell clean, parses every
-GDScript file the learner has built, and runtime smoke exits 0. Local setup
-verification used `4.6.2.stable.mono.official`; planning target remains 4.6.x stable.
+Pass: Godot reports 4.7.x stable by default, imports the shell clean, parses every
+GDScript file the learner has built, and runtime smoke exits 0. Engine target is
+4.7.x stable (ADR-017); the last recorded green setup verification used
+`4.6.2.stable.mono.official` — re-verify on 4.7 and record the patch.
 
 Run the test runners **only once the learner has built the matching files** in
 `godot/` (rebuilt from the answer-key during co-development — InputMap → Simulation

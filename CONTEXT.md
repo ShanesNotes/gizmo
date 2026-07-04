@@ -108,9 +108,10 @@ Point-in-time **snapshots** (read as history, not living spec):
 
 ## 6. Environment & engine
 
-- Godot **target 4.6.x stable**; planning target 4.6.3 (2026-06-14), **verified
-  locally on 4.6.2.stable.mono.official**. This statement is canonical — other
-  docs cite it rather than pinning a patch.
+- Godot **target 4.7.x stable** (upgraded 2026-07-03, ADR-017). Prior teaching
+  work was **verified locally on 4.6.2.stable.mono.official**; re-verification on
+  4.7 is pending on the host. This statement is canonical — other docs cite it
+  rather than pinning a patch.
 - Naming: snake_case files/folders, PascalCase nodes / `class_name`.
 - Gates (full list in `CLAUDE.md`): web build (`npm ci && npm run build`), feel
   check (`npx serve .`), Godot import / `--check-only` / headless tests.

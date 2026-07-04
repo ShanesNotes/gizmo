@@ -11,9 +11,10 @@
 - Rejected: direct full scene/UI port; high parity risk and weak learning value.
 
 ## ADR-003 — Target Godot 4.6.x stable by default
+- **Superseded by ADR-017 (2026-07-03): the engine target is now 4.7.x stable.** Retained for history.
 - Decision: teach against Godot 4.6.x stable. Planning identified 4.6.3 stable as the latest target on 2026-06-14; local verification used `4.6.2.stable.mono.official`.
 - Why: stable releases are better for learning than RC builds, and any 4.6.x stable should preserve this first teaching shell.
-- If `${GODOT_BIN:-godot}` reports a different stable 4.6.x version, record it here before continuing; do not switch to 4.7 RC without an explicit decision.
+- The clause "do not switch to 4.7 without an explicit decision" was satisfied by ADR-017.
 
 ## ADR-004 — Use Godot-native naming from lesson one
 - Decision: snake_case files/folders and PascalCase node/class names.
@@ -101,3 +102,9 @@
 - Why: orientation was a shallow interface restated 4–7 times (the grounding list in `NOTES` ≈ `RESOURCES`; the loop one-liner in 4 docs). Deleting any one copy didn't reduce complexity — it caused drift. One deep module with high leverage and real locality fixes that and is the input the architecture-review lens itself expects.
 - Consequence: the global "CONTEXT.md + docs/adr/" convention is satisfied by `CONTEXT.md` + the existing `docs/godot/DECISIONS.md` ADR log (no parallel empty `docs/adr/` is created).
 - Rejected: gutting the machine-loaded `CLAUDE.md` teaching contract (it stays inline — it is the always-loaded instruction); creating a second ADR directory.
+
+## ADR-017 — Upgrade the engine target to Godot 4.7.x stable
+- Decision: as of 2026-07-03 the engine target is **Godot 4.7.x stable**, superseding ADR-003's 4.6.x target. `godot/project.godot` `config/features` now declares `"4.7"`; canonical version statements (`CLAUDE.md`, `CONTEXT.md` §6, `MISSION.md`, `NAVIGATION.yaml`, `ECOSYSTEM-MAP.yaml`) point at 4.7.x.
+- Why: the learner upgraded the local Godot install to 4.7. This is the explicit decision ADR-003 asked for before leaving 4.6, and it resolves the standing engine-version contradiction with the design-system handoff pack (which already asserted 4.7 — see the ecosystem map's R5).
+- Verification status: prior work (answer-key import + four `run_*_tests.gd`, the empty `godot/` shell import) was verified on `4.6.2.stable.mono.official`. **Re-verification on 4.7 is pending on the host** — run `${GODOT_BIN:-godot} --version` and `--headless --path godot --import`, then record the exact 4.7 patch here. Do not claim 4.7 verification until that runs green.
+- History preserved: taught lessons (`lessons/*.html`), `learning-records/`, `LEARNING_AUDIT.md`, and the visual-smoke capture keep their "built/verified on 4.6.2" wording — they record what actually happened at the time and are not rewritten.

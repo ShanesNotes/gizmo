@@ -18,8 +18,9 @@ For orientation (domain language, architecture, doc map), see `CONTEXT.md`.
 - A `lessons/` guide that reads cleanly from zero for someone else
 
 ## Constraints
-- Engine: Godot **4.6.x stable** (verified locally on 4.6.2; see `CONTEXT.md` §6
-  rather than pinning a patch), **GDScript** (not C#)
+- Engine: Godot **4.7.x stable** (upgraded 2026-07-03, ADR-017; prior work
+  verified on 4.6.2, 4.7 re-verify pending — see `CONTEXT.md` §6 rather than
+  pinning a patch), **GDScript** (not C#)
 - **Co-development, paced for understanding.** The AI teaches and writes code
   alongside me; we go slow enough that I can explain every part. The point isn't
   who types — it's that nothing lands as a black box.
