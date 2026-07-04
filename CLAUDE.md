@@ -1,12 +1,15 @@
-# CLAUDE.md — Gizmo (3D rogue-lite) · Godot co-development teaching memory
+# CLAUDE.md — Gizmo (3D rogue-lite) · Godot agent-development memory
 
-## Current operating directive (2026-06-20)
+## Current operating directive (2026-07-04)
 You are supporting a **clean-slate 3D Godot rebuild** of Gizmo as a professional
-game developer / expert 3D Godot engineer. The learner will co-develop with Claude
-using `/teach`; preserve understanding over black-box completion. Prior 2.5D,
-sprite-first, or orthographic-presentation attempts are **inactive history** unless
-the user explicitly reactivates them. When stale docs disagree with the clean-slate
-3D direction, `CONTEXT.md` wins.
+game developer / expert 3D Godot engineer. The default path is now **AFK
+coding-agent-driven development**: bounded, verified agent slices with explicit
+success criteria and tracker/Daily handoff. The older `/teach` path remains
+available when the user explicitly asks to resume teaching.
+
+Prior 2.5D, sprite-first, or orthographic-presentation attempts are **inactive
+history** unless the user explicitly reactivates them. When stale docs disagree
+with the clean-slate 3D direction, `CONTEXT.md` wins.
 
 ## Read first (source anchors)
 - `CONTEXT.md` — orientation keystone: the game, the 3D direction, **the loop**, v1 scope,
@@ -21,16 +24,19 @@ the user explicitly reactivates them. When stale docs disagree with the clean-sl
   spawn pressure / upgrade math); the north star for tuning.
 - `game-src-phaser/src/game/simulation.ts` — mechanics source of truth; port it before scene polish.
 - Root web build (`npx serve .`, play `index.html`) — feel reference.
-- Direction: **3D, fixed Diablo-style camera** (decided 2026-06-20). Target **Godot 4.6.x stable**.
+- Direction: **3D, fixed Diablo-style camera** (decided 2026-06-20). Current local
+  baseline and project config target Godot 4.7 stable with the Godot 4.x Forward+
+  renderer.
 - `AGENTS.md` — Codex/agent operating directive; mirrors the clean-slate 3D rule for non-Claude agents.
 
 ## Engineering directive — lead with the skills
-This is a co-development *teaching* project; the available skills are the engineering method.
-Reach for the right one by situation rather than free-handing it:
+This is now an agent-driven build; the available skills are the engineering method.
+Reach for the right one by situation rather than free-handing it. Use `/teach` only
+when the user asks for a teaching session:
 
 | When you're… | Use |
 |---|---|
-| teaching the next slice / computing the next lesson | **`/teach`** — the engine (paced co-development) |
+| teaching the next slice / computing the next lesson | **`/teach`** — explicit teaching mode only |
 | deciding how a ported piece should be shaped (seams, deep modules, AI-navigable GDScript) | **`codebase-design`** |
 | porting/writing logic that can run headless (e.g. `simulation.gd`) | **`tdd`** — red→green→refactor |
 | chasing a bug, crash, or perf regression | **`diagnosing-bugs`** |
@@ -68,15 +74,18 @@ the API. Bootstrap with `godot-prompter:using-godot-prompter`, then pull the ski
 (rig → walk/attack clips), `godot-ui-designer` (the HUD Control tree), `godot-code-reviewer`
 (quality pass), `godot-performance-profiler` (stutter/frame drops), `godot-shader-author` (VFX).
 
-**`godot-runtime` MCP (connected) — use it freely, and explain what you do.** Two modes:
-*inspect/verify* (`validate`, `run_project` + `take_screenshot`, `get_scene_tree`,
-`get_debug_output`, `simulate_input`) to check work and show it running; and *build* when the
-learner asks (`create_scene`, `add_node`, `attach_script`, …) — after which you walk through
-what you created and why, so it's understood rather than a black box.
+**`godot-runtime` MCP (when connected) — use it for live inspection/verification, and
+explain what you do.** Two modes: *inspect/verify* (`validate`, `run_project` +
+`take_screenshot`, `get_scene_tree`, `get_debug_output`, `simulate_input`) to check work and
+show it running; and *build* when the learner asks (`create_scene`, `add_node`,
+`attach_script`, …) — after which you walk through what you created and why, so it's
+understood rather than a black box. In Codex sessions where the MCP is not exposed,
+use the documented headless commands instead.
 
-## Teaching contract (the `/teach` engine)
+## Teaching contract (explicit `/teach` mode)
 A slow-down-and-learn *co-development* effort. The bar is **understanding** — never a finished
-black box the learner can't explain. How hands-on they are is their call, slice by slice.
+black box the learner can't explain. This applies only when the user asks to work
+through teaching mode. How hands-on they are is their call, slice by slice.
 - Explain a concept, then build the slice *together*. The learner can drive it by hand in the
   editor, or hand it to the model — when the model builds it (authoring files or via the
   `godot-runtime` MCP), it walks through **what it did and why** so nothing stays a black box.
@@ -84,8 +93,8 @@ black box the learner can't explain. How hands-on they are is their call, slice 
   preference, not a rule. Switch to model-builds-and-explains whenever the learner prefers.
 - Keep the learner in the loop on every decision; they should be able to explain any slice
   before moving on.
-- Lessons = self-contained HTML in `lessons/` (numbered from `0001`), one win each. The build
-  starts fresh at `0001`; `learning-records/` is empty = from-zero.
+- Lessons = self-contained HTML in `lessons/` (numbered from `0001`), one win each.
+  Records currently run `0001`–`0020`; add more only when teaching resumes.
 - Verify (or name the command) after each slice; ask at most one scope question when it changes the next step.
 
 ## Godot rules
@@ -100,13 +109,21 @@ black box the learner can't explain. How hands-on they are is their call, slice 
 - Feel check: `npx serve .` from repo root.
 - Godot version: `${GODOT_BIN:-godot} --version`.
 - Import: `${GODOT_BIN:-godot} --headless --path godot --import`.
+- Full Godot gate: `tools/godot/run_all_checks.sh`.
 - Syntax check: `${GODOT_BIN:-godot} --headless --path godot --check-only --script res://scripts/simulation.gd`.
-- Tests: `${GODOT_BIN:-godot} --headless --path godot --script res://tests/run_simulation_tests.gd`.
+- Tests:
+  - `${GODOT_BIN:-godot} --headless --path godot --script res://tests/run_simulation_tests.gd`
+  - `${GODOT_BIN:-godot} --headless --path godot --script res://tests/run_balance_tests.gd`
+  - `${GODOT_BIN:-godot} --headless --path godot --script res://tests/run_game_controller_tests.gd`
+  - `${GODOT_BIN:-godot} --headless --path godot --script res://tests/run_hud_tests.gd`
+  - `${GODOT_BIN:-godot} --headless --path godot --script res://tests/run_end_screen_tests.gd`
 
 ## Project conventions ("set up like that")
 - **Decisions** → `docs/adr/` (one ADR per locked choice; recorded via `domain-modeling`).
   **Domain language** grows into `CONTEXT.md` — add a term only once the learner can use it.
-- **Issues / PRDs** (only if/when work needs tracking) → `.scratch/` markdown.
+- **Issues / PRDs** → GitHub issues (`ShanesNotes/gizmo`). Use `ready-for-agent`,
+  `ready-for-human`, and `needs-info` labels for handoff state. `.scratch/` is
+  ignored local scratch/backups, not durable tracker state.
 - **Git:** branch off `gizmo-3d` (active branch for this game repo; not `main`); commit/push only when asked. End commit messages with the
   `Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>` line.
 
@@ -126,4 +143,3 @@ black box the learner can't explain. How hands-on they are is their call, slice 
 ## Gizmo clean-canvas ecosystem
 
 This folder participates in the Gizmo clean-canvas ecosystem. Read `gizmo-ecosystem.yaml` to route work by specialty before editing cross-domain artifacts.
-

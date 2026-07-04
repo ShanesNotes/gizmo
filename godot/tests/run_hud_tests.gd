@@ -30,8 +30,8 @@ func _check_eq(desc: String, actual: Variant, expected: Variant) -> void:
 		_failed += 1
 		printerr("  FAIL - %s (got %s, expected %s)" % [desc, actual, expected])
 
-# format_clock is M:SS for a COUNT-DOWN clock: round up so any time left still
-# reads on the dial, and only the true end shows 0:00.
+# format_clock is M:SS for elapsed/survived time displays. It rounds up so a
+# partial second still reads; only true zero shows 0:00.
 func _test_format_clock() -> void:
 	_check_eq("zero -> 0:00", Hud.format_clock(0.0), "0:00")
 	_check_eq("5s -> 0:05 (zero-padded)", Hud.format_clock(5.0), "0:05")
@@ -39,7 +39,7 @@ func _test_format_clock() -> void:
 	_check_eq("125s -> 2:05", Hud.format_clock(125.0), "2:05")
 	_check_eq("full run 240s -> 4:00", Hud.format_clock(240.0), "4:00")
 	_check_eq("negative clamps to 0:00", Hud.format_clock(-5.0), "0:00")
-	# Count-down rounding: fractional time left rounds UP, never down to 0:00.
+	# Fractional seconds round UP, never down to 0:00.
 	_check_eq("0.1s left rounds up -> 0:01", Hud.format_clock(0.1), "0:01")
 	_check_eq("59.1s left rounds up -> 1:00", Hud.format_clock(59.1), "1:00")
 

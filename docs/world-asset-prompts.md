@@ -1,12 +1,25 @@
 # World-asset prompt backlog — first map (Clockwork Observatory)
 
+Status: forward backlog snapshot. Active asset manufacturing, prompt locking,
+Meshy spend logging, wrapper proof, and game-repo handoff now live in the sibling
+asset-pipeline lab:
+
+- queue: `/home/ark/gizmo-asset-pipeline/queue/QUEUE.yaml`
+- briefs: `/home/ark/gizmo-asset-pipeline/briefs/`
+- policy/runbook: `/home/ark/gizmo-asset-pipeline/docs/AFK_RUNBOOK.md`
+
+Use this file as source-reference prompt intent only. Do not paste it directly
+into production or assume its suggested `godot/assets/...` paths exist in the
+active game checkout.
+
 Pipeline: **image model (GPT Image / etc.) → Meshy image-to-3D → Godot**.
 This is where the gouache look comes from — painted reference, then reconstructed to 3D.
 (Blender procedural is reserved for greybox/collision/scatter only, not hero art.)
 
 Canon: gouache cosmos of lost tech — deep violet/indigo space, teal/cyan energy,
 warm nebula orange, brass/bronze clockwork. Matte, hand-made, "quiet light."
-Match `design-handoff/gizmo-hud.png` + `concept art/gizmo-world-concept-*`.
+Match `design-handoff/gizmo-hud.png` +
+`design-handoff/concept art/gizmo-world-concept-*`.
 
 ---
 
@@ -24,9 +37,9 @@ product shot, not a scene:
 - After reconstruction, use Meshy **retexture** if you want to push the gouache/brass
   paint further. Target format **GLB**. Keep ≤300k faces if you'll rig it.
 
-Every prompt below already ends with the clean-shot constraints. Paste as-is.
-Drop results in `godot/assets/world_kits/clockwork_observatory/` with the suggested name;
-I'll wire + scale them in Godot.
+Every prompt below already ends with the clean-shot constraints. Before use,
+reconcile it into the matching asset-pipeline brief and queue item; the promotion
+report chooses the final handoff path.
 
 **Shared style tag** (already baked into each prompt, here for reuse):
 > hand-painted gouache storybook steampunk; warm patinated **brass and bronze** + carved
@@ -83,7 +96,7 @@ warm brass with verdigris. Vertical readable silhouette. Single object only. No 
 no characters, no text. Clean 3D-asset reference.
 ```
 
-### A5 · The Beacon (objective prop — "carry the Spark to the Beacon")  → `beacon_01`
+### A5 · The Beacon (objective prop — cold Beacon rekindle landmark)  → `beacon_01`
 ```
 A single ornate brass beacon shrine, 3/4 view, centered on a plain pale-grey background,
 full object in frame, even lighting. A waist-high clockwork pedestal of brass filigree and
@@ -130,6 +143,6 @@ only. No scene, no characters, no text. Clean 3D-asset reference.
 A1 (island) and A2 (gear-ring) first — they define the map's silhouette. Then A4/A5
 (spire + Beacon) for verticality and objective, A3 for the larger map, A6–A8 for dressing.
 
-When you have images, hand them to me and I'll drive the Meshy image-to-3D conversion
-(I'll confirm the credit cost per asset before spending) and wire each into Godot at the
-right scale. Or generate the GLBs yourself and just point me at them.
+For current AFK work, claim the matching item in the asset-pipeline queue, record
+credit spend in the run ledger, prove readability at the fixed camera, then hand
+off only after the game gate stays green.

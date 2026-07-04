@@ -65,15 +65,22 @@ peak override. Exposure is authored as **`PressureZone` nodes** (promoted from
 is a **modifier, not a zero-floor** — time always matters; the island shapes how cruel it
 becomes.
 
-Initial zone mapping (existing markers → roles; exposure is the authored knob, tune live):
+Live coordinate authority: `godot/scenes/main.tscn` is the current blockout source for
+marker positions. The scene's header documents the promoted route blockout; the
+`LevelZones` nodes at the end of the scene carry the live marker coordinates. Values
+below are descriptive snapshots for implementation orientation, not a separate layout
+source.
+
+Initial zone mapping (live `LevelZones` markers → roles; exposure is the authored knob,
+tune live):
 
 | Marker (today) | Role | Spine beat | Exposure |
 |---|---|---|---|
-| `SouthLandingZone` (z ≈ +12) | `spawn` | warm origin | very low |
-| `EastGearAlcoveZone` / `WestScrapAlcoveZone` (x ≈ ±10) | `spur` / `branch` | discernment branch (Brasswind / Rustchain previews) | medium / medium-hot |
-| `CentralGearPlazaZone` (origin) | `landmark` | gear-henge memory | medium |
-| *(add)* `SanctuaryAnchor` | `sanctuary` | breath before the Beacon | relief (`relief_multiplier`) |
-| `NorthBeaconDaisZone` (z ≈ −13) | `beacon` | cold Beacon | high → peak during `Rekindling` |
+| `SouthLandingZone` (`Vector3(0, 0, 17)`) | `spawn` | warm origin / hearth | very low |
+| `EastGearAlcoveZone` (`Vector3(18, 0, -4)`) / `WestScrapAlcoveZone` (`Vector3(-20, 0, -4)`) | `spur` / `branch` | discernment branch (Brasswind / Rustchain previews) | medium / medium-hot |
+| `CentralGearPlazaZone` (`Vector3(0, 0, -12)`) | `landmark` | gear-henge memory | medium |
+| *(add)* `SanctuaryAnchor` near `SanctuaryBreath` (`x ≈ 15, z ≈ -31`) | `sanctuary` | breath before the Beacon | relief (`relief_multiplier`) |
+| `NorthBeaconDaisZone` (`Vector3(0, 0, -42)`) | `beacon` | cold Beacon | high → peak during `Rekindling` |
 
 **Anchor ↔ zone (one place, two readings).** The required *gameplay* anchors the baker
 emits (ADR 0008) sit **inside** these exposure zones — there is **one beacon node, not
@@ -83,6 +90,10 @@ two**: the **`ObjectiveBeaconAnchor`** (rekindle trigger) is co-located at / pro
 anchor is the interaction it sits in.
 
 Canon: *"The island tells the director how dangerous each place is."*
+
+Current scene note: `main.tscn` already contains a `LevelCollision` layer for player
+collision and a `DesignProbe_ExposureRanks` visual legend. The legend is explicitly
+non-shipping; do not convert it into player-facing UI or an exposure meter.
 
 ## 5. Survival: guard over HP (ADR 0007)
 Recoverable **guard / shield** over **fixed mortal HP**. Damage hits guard first; HP is

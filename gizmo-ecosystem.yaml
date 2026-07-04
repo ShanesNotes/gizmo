@@ -1,6 +1,6 @@
 current_folder: game
 schema: gizmo.clean_canvas.ecosystem.v1
-updated: '2026-06-22'
+updated: '2026-07-04'
 rule: Route by specialty. Sibling clean canvases are sources of truth for their domains;
   the game repo is the playable implementation.
 global_directive: Do not invent cross-domain canon in the wrong folder. If a task
@@ -9,6 +9,11 @@ global_directive: Do not invent cross-domain canon in the wrong folder. If a tas
 folders:
   game:
     path: /home/ark/gizmo
+    availability: >-
+      2026-07-04 note: this checkout is on the active game branch gizmo-3d. The
+      remote main branch currently carries older teaching-line material and must not
+      be treated as the Path A implementation authority without a human branch
+      decision.
     role: playable Godot game and implementation authority
     owns:
     - Godot project
@@ -118,9 +123,18 @@ cross_domain_artifacts:
     owner: visual_symbolic_design
     consumers: [asset_pipeline, game, level_design]
     status: canon-mapping; individual shader adoptions proposed/candidate (render-target is a TARGET, gate G12)
+  - id: meridian-concordance
+    title: the Meridian Concordance (visual canon -> exact sibling ids; lore/level/audio/asset bindings with falsifiable pass/reject)
+    location: /home/ark/gizmo-design-system/canon/concordance.yaml
+    hosted_by: visual_symbolic_design
+    owner: visual_symbolic_design   # owns the VISUAL half only; sibling ids are read-only citations (ADR 0003)
+    consumers: [lore, level_design, audio_canon, asset_pipeline, game]
+    evidence: /home/ark/gizmo-design-system/extraction/cross-domain-binding-ledger.md
+    reconciliation: /home/ark/gizmo-design-system/extraction/reconciliation-2026-07-03-concordance.md
+    status: canon-mapping; entries candidate until each sibling promotes its side (gates G13/G14)
   - id: gouache-storybook-shader-research
     title: Godot art-style assets research (gouache/storybook stylization; 48 link-verified assets)
-    location: /home/ark/gizmo-level-design/extraction/godot-art-style-assets-research/
+    location: /home/ark/gizmo-level-design/archive/extraction/godot-art-style-assets-research/  # digest: extraction/digests/godot-art-style-assets-digest.md
     hosted_by: level_design
     owners: [visual_symbolic_design, asset_pipeline]   # look-facets / manufacturing-facets
     consumers: [visual_symbolic_design, asset_pipeline, game, level_design]

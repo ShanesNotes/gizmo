@@ -51,10 +51,14 @@ docs/godot/answer-key/.godot/
 
 # --- temp greybox / staging probe scenes (local only, not shipping; see godot/scenes/_spawn_hearth_greybox.tscn) ---
 godot/scenes/_*.tscn
+!godot/scenes/_evidence_silhouette_probe.tscn
 
 # --- local AI/tool scratch (not source) ---
 .scratch/
 .claude/
+.omx/
+.agents/
+.codex/
 .env
 .env.*
 

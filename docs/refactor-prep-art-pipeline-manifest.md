@@ -3,6 +3,10 @@
 Status: read-only classification for the Path A refactor prep pass. No files were
 moved, deleted, staged, or rewritten to produce this manifest.
 
+2026-07-04 update: active Meshy/world-kit/asset manufacturing now belongs to the
+sibling asset-pipeline lab at `/home/ark/gizmo-asset-pipeline/`. This manifest is
+kept as historical classification and routing context, not as the active queue.
+
 ## Classification rule
 
 - **Keep:** forward-useful source/reference/backlog material that can inform later art
@@ -17,11 +21,11 @@ moved, deleted, staged, or rewritten to produce this manifest.
 | Path | Why keep | Caution |
 |---|---|---|
 | `design-handoff/concept art/` | Strong visual source material for Gizmo, enemies, world tone, beacon/tower/workshop/spark references. | Art reference only; concept-art wave/boss implications do not override ADR 0003. |
-| `docs/world-asset-prompts.md` | Best forward asset-prompt backlog for image-model → Meshy → Godot workflow. | Update the `beacon_01` label that says "carry the Spark to the Beacon" before using it as implementation copy. |
-| `docs/first-level-visual-asset-backlog.md` | Prioritizes top hero/environment assets and records generated reference/Meshy decisions. | Treat as backlog, not proof that assets are committed/active. |
-| `docs/meshy-connector-preflight.md` | Operational evidence for Meshy connector availability. | Credential/tool availability must be rechecked before credit-spending work. |
-| `docs/meshy-mcp-setup.md` | Useful local setup instructions for Meshy MCP. | Never commit `.env` or API keys; run from user shell when needed. |
-| `docs/meshy-world-kit-prompts.md` | Useful first-pass GLB prompt templates for floor/pylon kit. | Earlier cost gates still apply; generated assets may now live in quarantine/untracked paths. |
+| `docs/world-asset-prompts.md` | Forward asset-prompt backlog for image-model → Meshy → Godot workflow. | Snapshot only; reconcile into `/home/ark/gizmo-asset-pipeline/briefs/` before any run. |
+| `docs/first-level-visual-asset-backlog.md` | Prioritizes top hero/environment assets and records generated reference/Meshy decisions. | Backlog/history, not proof that assets are committed or active. |
+| `docs/_archive/meshy-connector-preflight.md` | Historical operational evidence for Meshy connector availability. | Credential/tool availability must be rechecked before credit-spending work. |
+| `docs/_archive/meshy-mcp-setup.md` | Historical local setup instructions for Meshy MCP. | Never commit `.env` or API keys; run from user shell when needed. |
+| `docs/meshy-world-kit-prompts.md` | First-pass GLB prompt templates for floor/pylon kit. | Snapshot only; current cost, prompt, wrapper, proof, and handoff gates live in the asset-pipeline lab. |
 | `/home/ark/gizmo-audio-canon/sources/ambient/Ambient-sound-design.md` | User-authored sonic identity; strong material language for brass/stone/blue energy. | Contains retired wave-counter/wave-layer language; use identity sections, not mechanics sections, until cleaned. |
 | `tools/audio/generate_clockwork_sfx.py` | Reproducible local synthesis path for grounded SFX. | Only promote if matching audio assets/tests are promoted too. |
 | `tools/blender/gen_floating_islands.py` and `tools/blender/optimize_glb.py` | Useful author-time geometry/optimization tools. | ADR 0008 says baker/stagehand tooling must be rebuilt with manifests/provenance before active use. |
@@ -57,4 +61,6 @@ for the Path A refactor:
 - Do not archive/move anything yet; this pass only classifies.
 - During the Path A loop refactor, read art-stream docs as optional design context, not as source of truth.
 - The active implementation authority remains `CONTEXT.md`, ADRs 0003/0005/0006/0008, and committed Godot code/tests.
-- Promote art/audio/world files only in small, test-backed slices after the loop refactor has a stable simulation/HUD seam.
+- Promote art/audio/world files only through the owning sibling lab and in small,
+  test-backed game-repo handoff slices after the loop refactor has a stable
+  simulation/HUD seam.

@@ -5,7 +5,28 @@ A **rogue-lite** in which **Gizmo**, a clanker, preserves the **spark of humanit
 **New here? Read `CONTEXT.md` first** — the orientation keystone (what the game is, the 3D direction, v1 scope, where each truth lives).
 
 **Current directive:** this is a clean-slate 3D Godot rebuild. Previous 2.5D /
-sprite-first attempts are inactive history and should not steer new work.
+sprite-first attempts are inactive history and should not steer new work. As of
+2026-07-04, the default development mode is AFK coding-agent-driven work: bounded,
+verified changes by agents. The older `/teach` path and numbered lessons remain
+project history and can resume when explicitly requested.
+
+## Verify
+
+From the repo root:
+
+```bash
+tools/godot/run_all_checks.sh
+```
+
+That imports the Godot project, syntax-checks the active scripts and all custom
+test runners, runs all five headless suites, then smoke-loads the main scene. Set
+`GODOT_BIN=/path/to/godot` to choose a different Godot binary.
+
+The root web build is only a feel reference:
+
+```bash
+npm --prefix game-src-phaser run build
+```
 
 ## Repo layout
 - `assets/` + `index.html` — the **playable web build** (feel reference). Serve the root and play it: `npx serve .`
@@ -13,15 +34,18 @@ sprite-first attempts are inactive history and should not steer new work.
 - `design-handoff/` — **art-direction references**: `NARRATIVE.md` (premise canon), `ART_DIRECTION.md` (the look), `gizmo-hud.png` (canonical UI & world visual target).
 - `game-src-phaser/` — the original **Phaser + TypeScript source**; `src/game/simulation.ts` is the mechanics source of truth to port. `node_modules` excluded.
 - `godot/` — the **Godot build** (the active path). `godot/assets/gizmo.glb` is the 3D character (meshy.ai: 53-bone rig, no animation clips yet).
-- `lessons/`, `learning-records/` — the `/teach` co-development learning path and progress.
+- `lessons/`, `learning-records/` — historical/resumable `/teach` learning path.
 - `reference/game-balance-reference.md` — balance knowledge (TTK bands, economy), dimension-agnostic.
+- `tools/godot/run_all_checks.sh` — one-command Godot verification gate.
 
 ## Notes
 - The Godot 3D rebuild is the active path; the Phaser source + web build are the reference (mechanics + feel).
 - The previous 2.5D sprite scaffolding was removed on 2026-06-20; use it only as archaeology if explicitly requested.
 - Do not use the stale concept-art "WAVE x/5" framing as active design; v1 uses director-driven pressure instead of discrete wave rounds.
+- GitHub issues are the durable tracker. Use `ready-for-agent` for bounded agent
+  work, `ready-for-human` for approval/decision items, and `needs-info` when a
+  load-bearing question blocks execution.
 
 ## Gizmo clean-canvas ecosystem
 
 This folder participates in the Gizmo clean-canvas ecosystem. Read `gizmo-ecosystem.yaml` to route work by specialty before editing cross-domain artifacts.
-

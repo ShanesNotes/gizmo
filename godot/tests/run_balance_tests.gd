@@ -341,11 +341,11 @@ func _test_mistake_kite_can_still_lose_naturally() -> void:
 	_check("mistake kite survives into brute pressure", int(by_kind.get(Sim.ENEMY_BRUTE, 0)) > 0)
 
 func _test_decent_kite_survives_the_clock() -> void:
-	# Path A (ADR 0005): the timer-win is gone; the Beacon channel win returns in
-	# lesson 0018. Until then a competent kite can no longer WIN — but the board
-	# pressure must stay fair, so it still SURVIVES the full pressure clock.
+	# Path A (ADR 0005): the timer-win is gone. A competent kite that never seeks
+	# the Beacon should not win, but board pressure must stay fair enough that it
+	# can survive the pressure clock.
 	var result := _run_decent_kite_profile()
-	_check("decent kite no longer wins (no Beacon yet)", result["phase"] == Sim.PHASE_PLAYING)
+	_check("decent kite does not win without seeking the Beacon", result["phase"] == Sim.PHASE_PLAYING)
 	_check("decent kite survives the full clock", result["hp"] >= 1)
 	_check_between("decent kite takes some but not lethal damage", result["damage_events"], 2.0, 6.0)
 	_check("decent kite reaches several level-ups", result["level"] >= 6)

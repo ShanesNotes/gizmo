@@ -8,6 +8,12 @@ or orthographic-presentation plans/docs are inactive history unless the user
 explicitly reactivates them. Use them only as archaeology; do not let them steer
 new work.
 
+## Operating mode pivot (2026-07-04)
+The default development mode is now **AFK coding-agent-driven** work: small,
+bounded, verified slices with tracker/Daily handoff. The `/teach` lesson path is
+preserved history and can resume only when explicitly requested; it no longer
+controls the default pace of implementation.
+
 ## What the game is
 A **rogue-lite** in which **Gizmo**, a clanker, preserves the **spark of humanity**
 through escalating **enemy pressure** across a **gouache cosmos of lost tech**.
@@ -80,9 +86,12 @@ not a v1 blocker. Don't expand scope past Path A until it ships.
   `design-handoff/gizmo-hud.png` (the canonical visual target); look governed by
   `design-handoff/ART_DIRECTION.md`. Art is generated fresh (meshy.ai / ludo) to
   match the HUD; do not hand-author.
+- **Asset manufacturing / Meshy world kits** →
+  `/home/ark/gizmo-asset-pipeline/queue/QUEUE.yaml` and that lab's `briefs/`,
+  `canon/`, and promotion reports. Root prompt docs are backlog/provenance only.
 - **3D character model** → `godot/assets/gizmo.glb` (meshy.ai: 53-bone rig, no clips yet)
 - **The Godot build** → `godot/` (snake_case files, PascalCase nodes)
-- **Learning path** → `lessons/` (one HTML win each, numbered from `0001`) +
+- **Learning path / historical teaching record** → `lessons/` (one HTML win each, numbered from `0001`) +
   `learning-records/` (records are drafts until the learner can explain the slice).
   Built so far: `0001`–`0020` — player + fixed Diablo camera, Sparks & leveling,
   run state & player health, enemies (spawn/chase/separate/contact), combat
@@ -95,5 +104,7 @@ not a v1 blocker. Don't expand scope past Path A until it ships.
   ADR 0006).
 
 ## How it's built
-Co-development via the `/teach` skill — explain a concept, then build the slice
-together in the Godot editor, small enough to absorb. See `CLAUDE.md`.
+Agent-driven by default: define executable success criteria, make surgical Godot
+changes under `godot/`, verify with `tools/godot/run_all_checks.sh`, and record
+durable outcomes in GitHub issues or the Daily ledger. Teaching sessions still use
+`/teach`; see `CLAUDE.md`.

@@ -2,7 +2,7 @@
 
 ## Knowledge
 
-- [Official Godot 4.6 documentation](https://docs.godotengine.org/en/stable/)
+- [Official Godot documentation](https://docs.godotengine.org/en/stable/)
   Primary source for GDScript, scenes/nodes, `Node3D`/`Camera3D`/`CharacterBody3D`,
   importing `.glb`, `AnimationPlayer`, signals, headless runs. Use for: any Godot
   concept before teaching it. Never trust parametric memory over the docs.
@@ -43,6 +43,6 @@
   add walk/idle/attack clips, then export with animations selected.
 - **ludo.ai** — environment/asset ideation. Use sparingly; environment art is a
   scope trap until v1's loop is fun.
-- **godot-runtime MCP** (connected) — drive/inspect the Godot project: `validate`,
+- **godot-runtime MCP** (when connected) — drive/inspect the Godot project: `validate`,
   `run_project`, `take_screenshot`, `get_scene_tree`, `simulate_input`. Use for:
   verifying the learner's editor work and showing it running — not for building it.

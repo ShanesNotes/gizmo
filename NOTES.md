@@ -1,7 +1,8 @@
 # Teaching notes — Gizmo (3D)
 
-Working scratchpad for the `/teach` engine. Preferences + the lesson roadmap.
-Not canon — `CONTEXT.md` wins. The roadmap flexes to the learner's ZPD.
+Working scratchpad for the preserved `/teach` path. Not canon — `CONTEXT.md` wins.
+As of 2026-07-04, default development is AFK coding-agent-driven; this roadmap is
+only active when the user explicitly resumes teaching mode.
 
 ## Learner & pace preferences
 - First-time game developer. Goal is to **finish and ship a small v1**, not to be

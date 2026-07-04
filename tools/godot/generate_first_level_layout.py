@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Rebuild the first playable arena block in godot/scenes/main.tscn.
+"""Historical arena-block generator for the old world-kit staging pass.
+
+Do not run this as current Path A tooling without first refreshing it against
+docs/path-a-shattered-meridian-spec.md and the asset-pipeline queue. It references
+world-kit wrapper paths that are not present in the active game checkout.
 
 This keeps the scene static for Godot, but makes the large first-level layout
 reproducible from a small set of procedural coordinates: central plaza, approach

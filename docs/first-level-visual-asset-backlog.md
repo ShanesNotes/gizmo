@@ -2,6 +2,11 @@
 
 Date: 2026-06-21
 Scope: OMX G006 — image-reference to Meshy asset pipeline for a hookier first level.
+Status: forward backlog / historical evidence. The active asset queue now lives
+in `/home/ark/gizmo-asset-pipeline/queue/QUEUE.yaml`; current production briefs
+live under `/home/ark/gizmo-asset-pipeline/briefs/`. Treat paths in this file as
+old intended handoff targets unless a promotion report installs them into the
+game repo.
 
 ## Meshy/Godot pipeline decision
 
@@ -17,7 +22,8 @@ Preferred quality path: `meshy-6/latest`, `should_texture: true`, `enable_pbr: t
 
 ## Generated reference images
 
-Saved project-bound image references:
+Historical/local reference records. These files are not present in the active
+game checkout unless supplied by a later asset-pipeline run:
 
 1. `godot/assets/reference/first_level/generated/north_beacon_reference.png`
    - Purpose: north destination hook / readable objective landmark.
@@ -41,6 +47,9 @@ Saved project-bound image references:
 | P3 | Small brass scrap clusters | Cheap edge dressing variants for repetition breakup. | existing debris refs okay | `godot/assets/world_kits/clockwork_observatory/scrap_cluster_*.glb` |
 
 ## Exact Meshy payloads for queued assets
+
+These payloads are retained as provenance. Current Meshy parameters belong in
+the asset-pipeline brief and run ledger before any credit-costing call.
 
 ### Orrery altar
 
