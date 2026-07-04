@@ -103,6 +103,45 @@ routing:
   soundtrack_ambience_sfx_mix: audio_canon
   prompts_image_generation_meshy_blender_godot_assets: asset_pipeline
   godot_code_tests_scenes_runtime: game
+seam_matrix:
+  # Directional data flows into and out of the game repo. current_state VERIFIED on the
+  # gizmo-3d working tree, 2026-07-04. Derived witness, not canon: each sibling's own canon
+  # adjudicates its half. game-repo targets are repo-relative; owner_files are relative to that
+  # sibling's folder (see folders.<key>.path).
+  visual_symbolic_design_to_game:
+    what: published HUD Theme witness
+    target: godot/scenes/hud_theme.tres
+    mechanism: explicit publish only (design-system ADR 0002 — make publish-godot-theme; never hand-edit the generated .tres)
+    owner_files: [canon/CANON.md, tools/gen_godot_theme.py]
+    current_state: target PRESENT on gizmo-3d
+  asset_pipeline_to_game:
+    what: proven asset installs (wrapper .tscn + GLB + metadata)
+    target: godot/assets/<category>/<asset_id>/
+    mechanism: auto-handoff behind a validating promotion report -> headless import + all five test suites green -> revert on red; additive-only
+    owner_files: [canon/policy.yaml, canon/godot-import.yaml]
+    current_state: only godot/assets/fonts/ + godot/assets/gizmo.glb present; no wrapper installs yet
+  audio_canon_to_game:
+    what: converted runtime audio (OGG music/ambience, WAV short SFX)
+    target: godot/audio/
+    mechanism: explicit scripted handoff (canon/godot-handoff.yaml); raw source media never lands in godot/audio/
+    owner_files: [canon/godot-handoff.yaml, canon/cue-map.yaml]
+    current_state: EMPTY BY DESIGN (.gitkeep + README only)
+  level_design_to_game:
+    what: data-only route graphs + region grammar (no standing landing dir; scenes baked in-repo after handoff)
+    target: docs/reference/shattered-meridian-region-graph.json (shared world-grammar source)
+    mechanism: lab returns data (graphs/schemas/validator reports) vs validators/route_graph_schema.json; never authors Godot scenes here (level-design ADR 0001, gate L12)
+    owner_files: [canon/LEVEL_CANON.md, validators/route_graph_schema.json]
+    current_state: region graph present as world-grammar source; no validated route-graph bundle landed yet
+  lore_to_game:
+    what: copy / terms / glossary rulings as text; premise alignment
+    target: design-handoff/NARRATIVE.md (premise); no code landing path
+    mechanism: lore returns text; never mutates this repo; conflicts return as reconciliation notes lab-side
+    owner_files: [canon/LORE_CANON.md, canon/glossary.yaml]
+    current_state: premise canon present; copy handoffs ad hoc
+  game_to_all:
+    what: read-only game truth (CONTEXT.md + godot/ runtime probes)
+    mechanism: siblings read this repo or hold dated snapshots; runtime evidence, never canon
+    current_state: authoritative on the gizmo-3d branch only (remote main is the stale teaching line)
 cross_domain_protocol:
 - Read this gizmo-ecosystem.yaml first.
 - Read the target folder AGENTS.md next.
