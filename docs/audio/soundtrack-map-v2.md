@@ -11,11 +11,13 @@ raw MP4s never ship — convert per audio-canon `godot-handoff.yaml`.**
 
 ## The one-paragraph contract
 
-The score exists twice: **ORCH** (Original Orchestral) is the world under pressure —
-roam-under-encroachment, trial, beacon approach, rekindle siege. **JAZZ** (Future
-Jazztronica) is the world at ease — menus, sanctuary, hubs, calm roam, afterglow.
-Which style is playing is itself world-state information. Silence is a third authored
-state. The simulation never knows any of this: it speaks only the six `AudioContract`
+The score exists twice: **JAZZ** (Future Jazztronica — 808 drops, trap-like drive) is
+the world under pressure — roam-under-encroachment, trial, beacon approach, rekindle
+siege. **ORCH** (Original Orchestral) is the world at ease — menus, sanctuary, hubs,
+calm roam, afterglow. (Polarity corrected to producer intent 2026-07-04; the steward
+flags it as not universally true, so every per-zone assignment is provisional until the
+audition pass.) Which style is playing is itself world-state information. Silence is a
+third authored state. The simulation never knows any of this: it speaks only the six `AudioContract`
 methods (`set_zone_state`, `set_pressure`, `set_beacon_state`, `notify_vitals`,
 `notify_event`, `describe`); variant choice, presence, bridges, buses, and files are
 all AudioDirector-internal (gate A13).
@@ -27,8 +29,9 @@ all AudioDirector-internal (gate A13).
    `AudioStreamSynchronized` for pressure stems, bus mix from
    `default_bus_layout.tres`). Set BPM/Bar-Beats at import or bar sync silently fails.
 2. **Variant selection**: `variant = f(zone_state, pressure_band, ui_context)` with
-   hysteresis (engage ≥ 0.25, relax < 0.15, 20 s min dwell). JAZZ is forbidden under
-   TRIAL / BEACON_APPROACH / REKINDLE_SIEGE. No `set_variant()` on the seam — reject.
+   hysteresis (engage ≥ 0.25, relax < 0.15, 20 s min dwell). Default polarity: JAZZ
+   under pressure, ORCH at ease — provisional per zone until auditioned. No
+   `set_variant()` on the seam — reject.
 3. **Presence grammar**: ORIGIN spawns into authored silence (music enters on first
    movement or ~15 s); idle lulls fade music out after 45 quiet seconds at low pressure
    (beds + locomotion keep breathing); `any → REKINDLE_SIEGE` is an immediate cut;
@@ -36,10 +39,11 @@ all AudioDirector-internal (gate A13).
 4. **Bridges**: the 12 BRG cues fire on the edges listed in the JSON (menu→run,
    ORIGIN→ROAM, calm↔engage bands, defeat→hub, …, afterglow→credits). Each has a JAZZ
    twin used when both endpoints resolve JAZZ.
-5. **Menus/UI are scene-layer**: main menu = SEG_01 JAZZ loop (the ORIGIN theme at
-   ease); upgrade UI = AMB_01 JAZZ; shop = AMB_04 JAZZ; defeat reflection = 2–4 s
-   silence then SEG_06 JAZZ once; victory = SEG_12 ORCH; credits = Brass_Cradle then
-   BRG_12 loopback. The diegetic zone enum is untouched.
+5. **Menus/UI are scene-layer**: main menu = SEG_01 ORCH loop (the ORIGIN theme at
+   ease; JAZZ alternate is an audition taste call); upgrade UI = AMB_01 ORCH; shop =
+   AMB_04 ORCH (JAZZ Merchant's_Pendulum alternate); defeat reflection = 2–4 s silence
+   then SEG_06 ORCH once; victory = SEG_12 ORCH; credits = Brass_Cradle then BRG_12
+   loopback. The diegetic zone enum is untouched.
 6. **Vitals overlay**: AMB_03 enters only on sim-declared critical vitals via
    `notify_vitals`; never a zone; resources stay sonically distinct (gate A4).
 
@@ -52,6 +56,7 @@ runtime asset (A10/A14).
 
 ## Open before ship
 
-Audition pass (cue fit, the SEG_01 JAZZ duplicate pick, JAZZ↔ORCH crossfade
-compatibility), loop-point authoring (file-end = loop-return, offset 0), loudness
-measurement to −18 LUFS / −1 dBTP.
+Audition pass — this finalizes the variant polarity per zone (steward: the JAZZ =
+pressure default is "not universally true"), cue fit, the SEG_01 JAZZ duplicate pick,
+and JAZZ↔ORCH crossfade compatibility — plus loop-point authoring (file-end =
+loop-return, offset 0) and loudness measurement to −18 LUFS / −1 dBTP.

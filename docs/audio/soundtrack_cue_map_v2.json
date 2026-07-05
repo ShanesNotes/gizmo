@@ -33,7 +33,7 @@
       "zone": "ORIGIN",
       "cue": "SEG_01",
       "variant_rule": "ORCH",
-      "note": "silence-first entry",
+      "note": "spawn at ease; silence-first entry",
       "files": {
         "ORCH": [
           {
@@ -54,13 +54,14 @@
             "sha256": "8136c271d3a1d71e36755e4e6470cc5bffbdcafabd33238be7d4dfcdda4fe854"
           }
         ]
-      }
+      },
+      "provisional_until_audition": true
     },
     {
       "zone": "ROAM",
       "cue": "SEG_02",
-      "variant_rule": "JAZZ<0.25 else ORCH",
-      "note": "calm roam off-duty",
+      "variant_rule": "ORCH<0.25 else JAZZ",
+      "note": "calm roam is orchestral; encroachment brings the 808 drive",
       "files": {
         "ORCH": [
           {
@@ -76,13 +77,14 @@
             "sha256": "a3c0db05cba159b1c511ff7437020e22ab70de22c27cb58f7666ddc943400e65"
           }
         ]
-      }
+      },
+      "provisional_until_audition": true
     },
     {
       "zone": "WONDER",
       "cue": "SEG_03",
       "variant_rule": "ORCH",
-      "note": "JAZZ allowed on repeat visits",
+      "note": "reveal clarity",
       "files": {
         "ORCH": [
           {
@@ -98,13 +100,14 @@
             "sha256": "6168105ee4a4eac0c28ba07060afe5041d03748146d47f7ce533202fa6e11af3"
           }
         ]
-      }
+      },
+      "provisional_until_audition": true
     },
     {
       "zone": "LANDMARK",
       "cue": "SEG_04",
-      "variant_rule": "JAZZ",
-      "note": "ORCH when pressure>=0.25",
+      "variant_rule": "ORCH",
+      "note": "JAZZ when pressure>=0.25",
       "files": {
         "ORCH": [
           {
@@ -120,13 +123,14 @@
             "sha256": "ea11ff091c61a1024de9b087ad0b94943f87e1645c846cd27746184bba8f9797"
           }
         ]
-      }
+      },
+      "provisional_until_audition": true
     },
     {
       "zone": "WALTZ",
       "cue": "SEG_05",
-      "variant_rule": "JAZZ",
-      "note": "ORCH alternate",
+      "variant_rule": "ORCH",
+      "note": "JAZZ audition alternate",
       "files": {
         "ORCH": [
           {
@@ -142,13 +146,14 @@
             "sha256": "222120a460d175388314099f70abbadcf8af277b53f0c56167f5afb405e81f63"
           }
         ]
-      }
+      },
+      "provisional_until_audition": true
     },
     {
       "zone": "RUINS",
       "cue": "SEG_06",
-      "variant_rule": "ORCH",
-      "note": "",
+      "variant_rule": "JAZZ",
+      "note": "trap pulse under broken footing",
       "files": {
         "ORCH": [
           {
@@ -164,13 +169,14 @@
             "sha256": "d3a1c7fb944042036021bba314e835ea3022c68207be39f5c0e1e7fa3be2790e"
           }
         ]
-      }
+      },
+      "provisional_until_audition": true
     },
     {
       "zone": "KEEPER",
       "cue": "SEG_07",
-      "variant_rule": "ORCH",
-      "note": "",
+      "variant_rule": "JAZZ",
+      "note": "guardian pressure",
       "files": {
         "ORCH": [
           {
@@ -186,13 +192,14 @@
             "sha256": "cb633dde3e88c0f7fb2bd818e3e25b0a49b86e77b9bcbfac4f90f08abb26e1d4"
           }
         ]
-      }
+      },
+      "provisional_until_audition": true
     },
     {
       "zone": "GILDED",
       "cue": "SEG_08",
-      "variant_rule": "ORCH; JAZZ<0.15",
-      "note": "",
+      "variant_rule": "JAZZ; ORCH<0.15",
+      "note": "driving ascent may relax",
       "files": {
         "ORCH": [
           {
@@ -208,13 +215,14 @@
             "sha256": "d147784ad9be23332076be99b67c552b37ef76e5de32b9c04296a143fc625e54"
           }
         ]
-      }
+      },
+      "provisional_until_audition": true
     },
     {
       "zone": "TRIAL",
       "cue": "SEG_09",
-      "variant_rule": "ORCH_ONLY",
-      "note": "",
+      "variant_rule": "JAZZ",
+      "note": "late pressure; provisional",
       "files": {
         "ORCH": [
           {
@@ -230,12 +238,13 @@
             "sha256": "76d88bd554af74cc65d7eecf77284fcf71bbf636fc0e23a14f93acbab3e8f0f2"
           }
         ]
-      }
+      },
+      "provisional_until_audition": true
     },
     {
       "zone": "SANCTUARY",
       "cue": "AMB_02",
-      "variant_rule": "JAZZ",
+      "variant_rule": "ORCH",
       "note": "gate A8",
       "files": {
         "ORCH": [
@@ -252,13 +261,14 @@
             "sha256": "2d40dd2b88fa90cc1155e8594b965d3bb8fe78b54d3d144e638b8170404973b5"
           }
         ]
-      }
+      },
+      "provisional_until_audition": true
     },
     {
       "zone": "BEACON_APPROACH",
       "cue": "SEG_10",
-      "variant_rule": "ORCH_ONLY",
-      "note": "",
+      "variant_rule": "JAZZ",
+      "note": "approach under exposure; provisional",
       "files": {
         "ORCH": [
           {
@@ -274,13 +284,14 @@
             "sha256": "8cc677823497dab1774427bf61a8997f1a683b2a516da6978027b6b58543b4bd"
           }
         ]
-      }
+      },
+      "provisional_until_audition": true
     },
     {
       "zone": "REKINDLE_SIEGE",
       "cue": "SEG_11",
-      "variant_rule": "ORCH_ONLY",
-      "note": "immediate cut",
+      "variant_rule": "JAZZ",
+      "note": "immediate cut; where the drops live; provisional",
       "files": {
         "ORCH": [
           {
@@ -296,13 +307,14 @@
             "sha256": "6e26166162241a6adb4c3352efb482d64a52d835562a2b2897615d90ee546631"
           }
         ]
-      }
+      },
+      "provisional_until_audition": true
     },
     {
       "zone": "AFTERGLOW",
       "cue": "SEG_12",
-      "variant_rule": "JAZZ",
-      "note": "ORCH for first win",
+      "variant_rule": "ORCH",
+      "note": "JAZZ swagger alternate for repeat wins",
       "files": {
         "ORCH": [
           {
@@ -318,13 +330,14 @@
             "sha256": "c9b07ebc632848ad42fdef518490ad80fee2ccfc6711325483bf0b8bf46eeb68"
           }
         ]
-      }
+      },
+      "provisional_until_audition": true
     },
     {
       "zone": "CALIBRATION",
       "cue": "AMB_01",
-      "variant_rule": "JAZZ",
-      "note": "",
+      "variant_rule": "ORCH",
+      "note": "JAZZ Gearmaker's Bench alternate",
       "files": {
         "ORCH": [
           {
@@ -340,13 +353,14 @@
             "sha256": "9a2f11725b63b2f3920d02a8afc9319fdc53fd4c16f4b73cc52139d7078edbdc"
           }
         ]
-      }
+      },
+      "provisional_until_audition": true
     },
     {
       "zone": "SCRAP_MERCHANT",
       "cue": "AMB_04",
-      "variant_rule": "JAZZ",
-      "note": "",
+      "variant_rule": "ORCH",
+      "note": "JAZZ Merchant's Pendulum alternate",
       "files": {
         "ORCH": [
           {
@@ -362,7 +376,8 @@
             "sha256": "155bf1ad3d39feb886f7be700c565ccba564c55d1ec7e8a48a057be26abc33c1"
           }
         ]
-      }
+      },
+      "provisional_until_audition": true
     }
   ],
   "bridges": [
@@ -611,27 +626,27 @@
     {
       "context": "main_menu",
       "cue": "SEG_01",
-      "variant": "JAZZ"
+      "variant": "ORCH"
     },
     {
       "context": "upgrade_ui",
       "cue": "AMB_01",
-      "variant": "JAZZ"
+      "variant": "ORCH"
     },
     {
       "context": "map_ui",
       "cue": "AMB_02",
-      "variant": "JAZZ"
+      "variant": "ORCH"
     },
     {
       "context": "shop_ui",
       "cue": "AMB_04",
-      "variant": "JAZZ"
+      "variant": "ORCH"
     },
     {
       "context": "defeat_reflection",
       "cue": "SEG_06",
-      "variant": "JAZZ"
+      "variant": "ORCH"
     },
     {
       "context": "victory_sequence",
@@ -668,5 +683,6 @@
     "audition pass (cue fit, SEG_01 JAZZ pick, crossfade compat)",
     "loop points",
     "loudness measurement"
-  ]
+  ],
+  "polarity_note": "CORRECTED 2026-07-04 (steward): JAZZ (808/trap drive) = pressure-led; ORCH = ease-led. Steward flags this as not universally true — every variant_rule is provisional_until_audition."
 }
