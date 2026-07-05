@@ -1,6 +1,6 @@
 current_folder: game
 schema: gizmo.clean_canvas.ecosystem.v1
-updated: '2026-07-04'
+updated: '2026-07-05'
 rule: Route by specialty. Sibling clean canvases are sources of truth for their domains;
   the game repo is the playable implementation.
 global_directive: Do not invent cross-domain canon in the wrong folder. If a task
@@ -81,6 +81,17 @@ folders:
     - AGENTS.md
     - canon/AUDIO_CANON.md
     - canon/acceptance-gates.md
+  soundtrack_source:
+    path: /home/ark/gizmo-soundtrack
+    role: raw soundtrack source pack and composition-source folder
+    owns:
+    - raw soundtrack MP4 sources
+    - soundtrack composition prompt/source docs
+    - machine-readable soundtrack source map drafts
+    read_first:
+    - AGENTS.md
+    - README.md
+    - NAVIGATION.yaml
   asset_pipeline:
     path: /home/ark/gizmo-asset-pipeline
     role: asset technical director / canon-to-asset manufacturing lab
@@ -101,6 +112,7 @@ routing:
   shaders_painterly_look_gouache_render_target: visual_symbolic_design
   maps_routes_landmarks_pressure_zones: level_design
   soundtrack_ambience_sfx_mix: audio_canon
+  raw_soundtrack_media_and_composition_sources: soundtrack_source
   prompts_image_generation_meshy_blender_godot_assets: asset_pipeline
   godot_code_tests_scenes_runtime: game
 seam_matrix:
@@ -125,7 +137,8 @@ seam_matrix:
     target: godot/audio/
     mechanism: explicit scripted handoff (canon/godot-handoff.yaml); raw source media never lands in godot/audio/
     owner_files: [canon/godot-handoff.yaml, canon/cue-map.yaml]
-    current_state: EMPTY BY DESIGN (.gitkeep + README only)
+    source_media_root: /home/ark/gizmo-soundtrack
+    current_state: EMPTY BY DESIGN (.gitkeep + README only); raw soundtrack source media lives outside the game repo at /home/ark/gizmo-soundtrack
   level_design_to_game:
     what: data-only route graphs + region grammar (no standing landing dir; scenes baked in-repo after handoff)
     target: docs/reference/shattered-meridian-region-graph.json (shared world-grammar source)
@@ -179,3 +192,11 @@ cross_domain_artifacts:
     consumers: [visual_symbolic_design, asset_pipeline, game, level_design]
     reconciliation: /home/ark/gizmo-design-system/extraction/shader-research-reconciliation.md
     status: research-evidence (not canon; routed per-asset by owning_sibling)
+  - id: soundtrack-v2-source-pack
+    title: raw Gizmo soundtrack v2 source pack (MP4 cues plus composition/map docs)
+    location: /home/ark/gizmo-soundtrack
+    hosted_by: soundtrack_source
+    owner: audio_canon
+    consumers: [audio_canon, game]
+    evidence: /home/ark/gizmo/docs/audio/soundtrack-map-v2.md
+    status: source-media; not auditioned or Godot-ready; convert through audio-canon handoff before runtime use

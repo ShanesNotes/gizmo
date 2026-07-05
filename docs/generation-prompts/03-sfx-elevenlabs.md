@@ -16,7 +16,7 @@ beeps, no giant industrial robot, no words or voices, no musical stinger.*
 
 ## Gizmo body & voice-SFX (wordless — TTS never voices Gizmo, gate A5)
 
-Canon prompts, verbatim (`reference/elevenlabs-character-voices.md`):
+Canon-family prompts for review generation:
 
 - **GIZ-effort** — "a small handcrafted brass automaton's soft chirp-whirr of effort — two warm
   gear clicks and a rising resonant hum from a glowing core, tiny bellows exhale, intimate

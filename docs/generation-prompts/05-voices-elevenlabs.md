@@ -2,11 +2,11 @@
 
 `derived from ecosystem canon; do not edit as source`
 
-Law (`gizmo-audio-canon/reference/elevenlabs-character-voices.md`): **Voice Design originals
-only — no voice cloning (IVC/PVC rejected), no living-person likeness.** Gizmo and the swarm
-are **wordless** — never TTS'd; their sounds live in `03-sfx-elevenlabs.md`. The Four Voices of
-the Hush are a **SFX lane**, not conversational TTS. Line copy obeys lore microcopy law:
-sentence case, warm/ceremonial/concise, max one exclamation per payoff.
+Law (audio-canon production standards plus this prompt pack): **Voice Design originals only —
+no voice cloning, no living-person likeness.** Gizmo and the swarm are **wordless** — never
+TTS'd; their sounds live in `03-sfx-elevenlabs.md`. The Four Voices of the Hush are a **SFX
+lane**, not conversational TTS. Line copy obeys lore microcopy law: sentence case,
+warm/ceremonial/concise, max one exclamation per payoff.
 
 ## Voice Design prompts (verbatim canon)
 

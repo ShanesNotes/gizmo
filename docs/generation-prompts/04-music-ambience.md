@@ -2,10 +2,12 @@
 
 `derived from ecosystem canon; do not edit as source`
 
-Tool law (`gizmo-audio-canon/reference/elevenlabs-production.md`): shippable music = **AIVA Pro**
-(MIDI export → owned sampled orchestra); Suno/Lyria = prototyping only, never ships; ambience =
-ElevenLabs SFX v2 loops. Prompt discipline (A11): descriptive, original, **instrumental**, no
-living-artist names, no accidental vocals, no copyrighted melody asks.
+Tool law (audio-canon `canon/production-standards.yaml`, `canon/godot-handoff.yaml`, and
+`reference/tools-matrix.md`): shippable music requires an approved production route with
+recorded license/provenance; hosted-generator outputs are source candidates until reviewed.
+Ambience = generated loop candidates finished through the same handoff gates. Prompt discipline
+(A11): descriptive, original, **instrumental**, no living-artist names, no accidental vocals,
+no copyrighted melody asks.
 
 **Variant polarity (corrected 2026-07-04, provisional per-zone until audition):**
 **ORCH = ease** (interiors, sanctuary, calm roam, afterglow, menus) · **JAZZ (Future

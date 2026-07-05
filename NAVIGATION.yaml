@@ -1,5 +1,5 @@
 # NAVIGATION.yaml — derived navigation index for AI agents working in the gizmo game repo.
-# Regenerated 2026-07-04 against the ACTIVE `gizmo-3d` branch (3D rogue-lite, Godot 4.7 Forward+).
+# Regenerated 2026-07-05 against the ACTIVE `gizmo-3d` branch (3D rogue-lite, Godot 4.7 Forward+).
 # NOT canon: on conflict AGENTS.md / CONTEXT.md / CLAUDE.md / docs/adr win. Paths are repo-relative
 # (sibling labs referenced as ../<lab>) so the index is machine-independent.
 #
@@ -21,7 +21,7 @@ authority:
     - Path A build target (docs/path-a-shattered-meridian-spec.md)
     - locked decisions (docs/adr/0001-0009)
     - acceptance of all sibling handoffs (theme, assets, audio, level data, copy)
-  defers: {narrative: gizmo-lore, visual: gizmo-design-system, spatial: gizmo-level-design, sonic: gizmo-audio-canon, asset_production: gizmo-asset-pipeline}
+  defers: {narrative: gizmo-lore, visual: gizmo-design-system, spatial: gizmo-level-design, sonic: gizmo-audio-canon, raw_soundtrack_sources: gizmo-soundtrack, asset_production: gizmo-asset-pipeline}
 read_order:
   tier0_always:
     - {path: AGENTS.md, why: governing operating directive - clean-slate 3D rule, AFK-agent default, no-wave rule, gizmo-3d branch authority, cost: S}
@@ -36,7 +36,10 @@ read_order:
     - {path: design-handoff/NARRATIVE.md, why: premise/story canon (clanker preserving the spark of humanity), cost: S, task: naming / fiction / copy}
     - {path: design-handoff/ART_DIRECTION.md, why: the look (gouache cosmos, brass UI); design-handoff/gizmo-hud.png is the canonical visual target, cost: S, task: visual / HUD work}
     - {path: godot/project.godot, why: project shell (Godot 4.7 Forward+, main.tscn wired via uid, WASD+pad input map, Jolt 3D physics, 1280x720), cost: S, task: any godot/ work}
+    - {path: docs/afk/queue/INDEX.md, why: current AFK queue frontier, dependencies, and model routing; local tracker until GitHub import/sync, cost: S, task: picking agent work}
     - {path: docs/reference/shattered-meridian-region-graph.json, why: world-grammar region graph (HEARTH / Hearthwake Basin) behind Path A, cost: S, task: level / spatial work}
+    - {path: ../gizmo-audio-canon/canon/godot-handoff.yaml, why: promoted audio conversion/import law before any runtime audio enters godot/audio, cost: S, task: audio handoff}
+    - {path: ../gizmo-soundtrack/README.md, why: raw soundtrack source pack orientation (MP4 sources, composition docs, not runtime imports), cost: S, task: soundtrack source lookup}
     - {path: tools/godot/run_all_checks.sh, why: the one-command verification gate, cost: S, task: verifying any godot/ change}
   tier2_rarely:
     - {path: MISSION.md, why: charter - why / success / scope, cost: S}
@@ -50,8 +53,10 @@ modules:
   - {path: godot/, purpose: active Godot 4.7 project - scripts/ (simulation, gizmo, camera_rig, game_controller, hud, end_screen), scenes/ (main, hud, enemy, gizmo, spark, end_screen + hud_theme.tres), tests/ (5 runners), assets/ (fonts + gizmo.glb), cost: M, when: every slice}
   - {path: game-src-phaser/, purpose: Phaser+TS seed - src/game/simulation.ts is the mechanics source of truth, cost: L, when: porting / parity}
   - {path: design-handoff/, purpose: art direction + premise - NARRATIVE.md, ART_DIRECTION.md, gizmo-hud.png, cost: L, when: look or premise questions}
-  - {path: docs/, purpose: adr/ (0001-0009), path-a-shattered-meridian-spec.md, reference/region-graph, _archive/ logs, cost: M, when: decisions / spec}
+  - {path: docs/, purpose: adr/ (0001-0009), path-a-shattered-meridian-spec.md, afk/queue current local tracker, reference/region-graph, _archive/ logs, cost: M, when: decisions / spec / ticket pickup}
   - {path: tools/, purpose: godot/run_all_checks.sh gate; blender/ island+glb tooling; audio/ sfx generation, cost: S, when: verify / asset gen}
+  - {path: ../gizmo-audio-canon/, purpose: sonic canon, AudioContract, cue maps, conversion/import handoff law; owns audio meaning and runtime-ready derivative rules, cost: M, when: soundtrack / ambience / SFX work}
+  - {path: ../gizmo-soundtrack/, purpose: raw soundtrack source pack (61 MP4 cue files plus composition/map docs); source material only, not Godot-ready runtime audio, cost: L, when: locating soundtrack media}
   - {path: reference/, purpose: game-balance-reference.md (dimension-agnostic balance), cost: M, when: tuning}
   - {path: lessons/ + learning-records/, purpose: /teach history (lessons 0001-0020, records 0001-0020), cost: M, when: teaching resumes}
   - {path: index.html, purpose: playable web feel reference (root assets/ Vite bundles), cost: S, when: feel check via npx serve .}
@@ -82,7 +87,7 @@ seams:
     consumes: ["converted runtime audio (OGG music/ambience, WAV short SFX) -> godot/audio/ (EMPTY BY DESIGN; .gitkeep + README only)"]
     produces: ["game-state driver seam for their AudioDirector concept (Simulation snapshot + events)"]
     mechanism: "explicit scripted handoff (their canon/godot-handoff.yaml); raw Lyria/source media never lands in godot/audio/"
-    key_files: ["godot/audio/", "../gizmo-audio-canon/canon/godot-handoff.yaml", "../gizmo-audio-canon/canon/cue-map.yaml"]
+    key_files: ["godot/audio/", "../gizmo-audio-canon/canon/godot-handoff.yaml", "../gizmo-audio-canon/canon/cue-map.yaml", "../gizmo-soundtrack/"]
   gizmo-level-design:
     consumes: ["data-only route graphs (vs their validators/route_graph_schema.json) + region grammar; no standing landing dir - scenes are baked in-repo after handoff"]
     produces: ["locked-mechanic + Path A spec ground truth (docs/path-a-shattered-meridian-spec.md, ADRs 0005-0008); docs/reference/shattered-meridian-region-graph.json is the shared world-grammar source"]
@@ -108,6 +113,8 @@ afk_entry: >-
   gizmo-3d (Path A, Godot 4.7 Forward+); do NOT treat remote main as the implementation line, and
   do not revive 2.5D/sprite scaffolding (AGENTS.md stale-history rule). Default mode is bounded AFK
   agent slices with executable success criteria and tracker/Daily handoff; enter /teach only when the
-  user asks. Next planned slice: 0021 place-aware director pressure (PressureZones, ADR 0006). Keep
-  scope inside Path A until it ships; write a reconciliation note before any cross-domain promotion.
+  user asks. Raw soundtrack sources are in ../gizmo-soundtrack, but audio meaning and runtime handoff
+  stay owned by ../gizmo-audio-canon. Current AFK frontier lives in docs/afk/queue/INDEX.md:
+  GZ-001, GZ-010, GZ-014, GZ-017, GZ-018, plus service lanes GZ-030/GZ-031. Keep scope
+  inside Path A until it ships; write a reconciliation note before any cross-domain promotion.
 ecosystem_map: gizmo-ecosystem.yaml

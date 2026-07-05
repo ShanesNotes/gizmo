@@ -7,7 +7,7 @@ owning lab must still apply its canon, validators, and promotion gates.
 
 ## Meshy MCP Lane
 
-- In `C:/Users/Shane/gizmo-asset-pipeline`, claim q01 through q03 first:
+- In `/home/ark/gizmo-asset-pipeline`, claim q01 through q03 first:
   `island_base_01`, `beacon_01`, `gear_ring_01`.
 - Use the clean single-object references, not the cinematic key art:
   - `images/island_base_01.png`

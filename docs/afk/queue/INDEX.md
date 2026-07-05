@@ -65,7 +65,7 @@ Rubric: Opus = seam-shaping/cross-system judgment; Sonnet = specified single-fil
 - game_controller.gd:164 `_apply_game_feel` is a no-op stub — became the GZ-021 seam; sim event channel (:132–139) confirmed live.
 - Coverage gap closed: GZ-003/004 produced events nothing rendered → GZ-021/022 added.
 
-## Deferred wave (pre-decomposed, status deferred:<epic> — activate post-v1)
+## Deferred batch (pre-decomposed, status deferred:<epic> — activate post-v1)
 - E1 audio: GZ-101 remaining cues [Haiku] ← 031 · GZ-103 bus layout [Haiku] ← 031 · GZ-102 AudioDirector [Opus] ← 101,103,032 · GZ-104 SFX pass [Sonnet] ← 103
 - E2 level pipeline: GZ-111 route-graph bundle [Sonnet, lab] ← 015 · GZ-112 baker v0 [Opus] ← 111,030,033 · GZ-113 scene validators [Sonnet] ← 112
 - E9 animation: GZ-121 idle/attack/hit clips [Opus, lab] ← 030 · GZ-122 AnimationTree wiring [Sonnet] ← 121,021

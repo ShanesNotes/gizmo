@@ -6,13 +6,13 @@ Prepared: 2026-07-05
 This is the launch checklist for the next Codex/imagegen art pass. It is based on a
 fresh scout of the active game repo plus the clean-canvas siblings:
 
-- `C:/Users/Shane/gizmo`
-- `C:/Users/Shane/gizmo-asset-pipeline`
-- `C:/Users/Shane/gizmo-design-system`
-- `C:/Users/Shane/gizmo-level-design`
-- `C:/Users/Shane/gizmo-lore`
-- `C:/Users/Shane/gizmo-audio-canon`
-- `C:/Users/Shane/gizmo-soundtrack`
+- `/home/ark/gizmo`
+- `/home/ark/gizmo-asset-pipeline`
+- `/home/ark/gizmo-design-system`
+- `/home/ark/gizmo-level-design`
+- `/home/ark/gizmo-lore`
+- `/home/ark/gizmo-audio-canon`
+- `/home/ark/gizmo-soundtrack`
 
 Previous run output:
 
@@ -344,4 +344,3 @@ Use this as the next `/goal` prompt:
 - Saved images under the new run's `images/` folder.
 - Final summary naming the strongest production candidates and the images that are only
   mood boards.
-

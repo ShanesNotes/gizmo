@@ -89,6 +89,10 @@ not a v1 blocker. Don't expand scope past Path A until it ships.
 - **Asset manufacturing / Meshy world kits** →
   `/home/ark/gizmo-asset-pipeline/queue/QUEUE.yaml` and that lab's `briefs/`,
   `canon/`, and promotion reports. Root prompt docs are backlog/provenance only.
+- **Audio canon / runtime handoff** → `/home/ark/gizmo-audio-canon/` owns cue maps,
+  ambience/SFX grammar, and the Godot handoff law. **Raw soundtrack source media** lives in
+  `/home/ark/gizmo-soundtrack/`; those MP4s are source material only and must be converted
+  through audio-canon rules before anything lands in `godot/audio/`.
 - **3D character model** → `godot/assets/gizmo.glb` (meshy.ai: 53-bone rig, no clips yet)
 - **The Godot build** → `godot/` (snake_case files, PascalCase nodes)
 - **Learning path / historical teaching record** → `lessons/` (one HTML win each, numbered from `0001`) +
@@ -99,9 +103,9 @@ not a v1 blocker. Don't expand scope past Path A until it ships.
   (`0011`), win/lose (`0012`), balance pass (`0013`), obstacle-aware enemies (`0014`),
   melee-start weapon progression (`0015`), and the Path A beacon-rekindle arc
   (`0016`–`0020`: timer win retired, beacon becomes win, rekindle channel wired live,
-  timer symbols retired to `pressure_clock`). Next: **0021** — place-aware director
-  pressure (`pressure() = temporal_ramp × spatial_exposure(pos)`; PressureZones per
-  ADR 0006).
+  timer symbols retired to `pressure_clock`). The active AFK implementation queue now
+  lives in `docs/afk/queue/INDEX.md`; use that frontier instead of lesson numbering unless
+  the user explicitly resumes `/teach`.
 
 ## How it's built
 Agent-driven by default: define executable success criteria, make surgical Godot

@@ -36,15 +36,20 @@ npm --prefix game-src-phaser run build
 - `godot/` — the **Godot build** (the active path). `godot/assets/gizmo.glb` is the 3D character (meshy.ai: 53-bone rig, no animation clips yet).
 - `lessons/`, `learning-records/` — historical/resumable `/teach` learning path.
 - `reference/game-balance-reference.md` — balance knowledge (TTK bands, economy), dimension-agnostic.
+- `docs/afk/queue/` — current local AFK queue, landing order, and ticket specs.
 - `tools/godot/run_all_checks.sh` — one-command Godot verification gate.
+
+## Sibling sources
+- `/home/ark/gizmo-audio-canon/` owns soundtrack cue maps, ambience/SFX grammar, and Godot audio handoff rules.
+- `/home/ark/gizmo-soundtrack/` is the local raw soundtrack source pack: MP4 cues plus composition/map docs. It is not a runtime import folder; convert through audio-canon before placing OGG/WAV derivatives in `godot/audio/`.
 
 ## Notes
 - The Godot 3D rebuild is the active path; the Phaser source + web build are the reference (mechanics + feel).
 - The previous 2.5D sprite scaffolding was removed on 2026-06-20; use it only as archaeology if explicitly requested.
 - Do not use the stale concept-art "WAVE x/5" framing as active design; v1 uses director-driven pressure instead of discrete wave rounds.
-- GitHub issues are the durable tracker. Use `ready-for-agent` for bounded agent
-  work, `ready-for-human` for approval/decision items, and `needs-info` when a
-  load-bearing question blocks execution.
+- `docs/afk/queue/` is the current local queue for AFK pickup. GitHub issues are the
+  durable external tracker once imported/synced; use `ready-for-agent`,
+  `ready-for-human`, and `needs-info` for handoff state.
 
 ## Gizmo clean-canvas ecosystem
 

@@ -1,6 +1,6 @@
 # GZ-031 — Service lane (audio-canon): convert and hand off 5 loop-critical cues
 
-intent: The minimum sonic dressing for the loop: five cues converted per the audio lab's promoted handoff law and installed into `godot/audio/`. Pointer ticket — work runs inside `C:/Users/Shane/gizmo-audio-canon` under its `AGENTS.md`.
+intent: The minimum sonic dressing for the loop: five cues converted per the audio lab's promoted handoff law and installed into `godot/audio/`. Pointer ticket — work runs inside `/home/ark/gizmo-audio-canon` under its `AGENTS.md`; raw source MP4s are discoverable at `/home/ark/gizmo-soundtrack`.
 
 files in scope: NONE in the game repo except the lab's own explicit scripted handoff into `godot/audio/` (converted OGG + provenance sidecars only; raw MP4s never land — ecosystem yaml `audio_canon_to_game` seam).
 

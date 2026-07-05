@@ -1,8 +1,8 @@
 {
   "artifact": "gizmo soundtrack v2 cue map (derived)",
   "stamp": "derived from audio canon; do not edit as source",
-  "canon_source": "C:/Users/Shane/gizmo-audio-canon/canon/style-variants.yaml + audio-contract.yaml + cue-map.yaml",
-  "media_root": "C:/Users/Shane/gizmo-soundtrack",
+  "canon_source": "/home/ark/gizmo-audio-canon/canon/audio-contract.yaml + cue-map.yaml + motifs.yaml + production-standards.yaml",
+  "media_root": "/home/ark/gizmo-soundtrack",
   "generated": "2026-07-04",
   "evidence": "documented+metadata; NOT auditioned; raw MP4s are sources, convert per godot-handoff.yaml before import",
   "seam_rule": "sim speaks only the six AudioContract methods; variant+presence logic is AudioDirector-internal (gate A13)",

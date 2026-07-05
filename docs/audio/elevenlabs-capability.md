@@ -2,11 +2,12 @@
 
 `derived from audio canon; do not edit as source`
 
-Written 2026-07-04. Canon and generation law live in `C:/Users/Shane/gizmo-audio-canon`
-(`reference/elevenlabs-production.md` — full API surface + spend directive;
-`reference/elevenlabs-character-voices.md` — per-character prompts). This doc is the
-game-repo map: what ElevenLabs-generated audio plugs into *here*, so agent slices wire the
-right seams instead of inventing new ones.
+Written 2026-07-04. Audio-canon production law lives in `/home/ark/gizmo-audio-canon`
+(`canon/production-standards.yaml`, `canon/godot-handoff.yaml`, and
+`reference/tools-matrix.md`). Prompt packs live in `docs/generation-prompts/03-sfx-elevenlabs.md`
+and `docs/generation-prompts/05-voices-elevenlabs.md`. This doc is the game-repo map:
+what ElevenLabs-generated audio plugs into *here*, so agent slices wire the right seams
+instead of inventing new ones.
 
 ## Directive
 

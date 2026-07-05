@@ -18,4 +18,11 @@ decisions made:
 
 executable success criteria:
 1. `${GODOT_BIN:-godot} --headless --path godot --script res://tests/run_end_screen_tests.gd` exits 0 with NEW tests: (a) win path renders exact string "Beacon Rekindled"; (b) lose path renders exact string "Gizmo's light failed"; (c) stats line shows the sim's level/kills/xp values; (d) absence assertion: no text matching /survived|time|[0-9]+:[0-9]{2}/ on either screen.
-2. `tools/godot/run_all_che
+2. `tools/godot/run_all_checks.sh` exits 0.
+
+acceptance / done: end screens carry Beacon/HP truth and no timer-survival framing; branch off `gizmo-3d`.
+dependencies / order: none — FRONTIER. Parallel-safe with sim and HUD lanes; touches only end-screen files.
+model routing: **Haiku** — copy/stat cleanup with explicit tests.
+cross-domain: lore tone only; no lore-canon edits.
+status: ready-for-agent
+format: one issue per file (gh import later).

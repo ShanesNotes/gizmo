@@ -87,9 +87,11 @@ ElevenLabs API/MCP (`ELEVENLABS_API_KEY` in git-ignored `.env`; official `eleven
 REST) with no per-call approval and no budget ceiling: SFX, ambient/environmental beds,
 music variants, character voice (Voice Design/TTS), dialogue, trailer/cinematic VO.
 Accounting stays strict — ledger-before-use, provenance sidecar, no-retry-spend on a gate
-reject. Capability map + seams: `docs/audio/elevenlabs-capability.md` (game side) and
-`C:/Users/Shane/gizmo-audio-canon/reference/elevenlabs-production.md` (canon + spend law;
-character prompts in `elevenlabs-character-voices.md`). Only converted, gate-passed OGG/WAV
+reject. Capability map + seams: `docs/audio/elevenlabs-capability.md` (game side),
+`docs/generation-prompts/03-sfx-elevenlabs.md`, `docs/generation-prompts/04-music-ambience.md`,
+and `docs/generation-prompts/05-voices-elevenlabs.md`. Audio-canon production law is in
+`/home/ark/gizmo-audio-canon/canon/production-standards.yaml` and
+`/home/ark/gizmo-audio-canon/canon/godot-handoff.yaml`. Only converted, gate-passed OGG/WAV
 land in `godot/audio/`; raw generations stay in the audio lab's sources.
 
 ## Teaching contract (explicit `/teach` mode)

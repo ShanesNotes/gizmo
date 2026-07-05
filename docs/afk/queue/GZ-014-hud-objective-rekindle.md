@@ -22,4 +22,8 @@ executable success criteria:
 2. `tools/godot/run_all_checks.sh` exits 0.
 
 acceptance / done: player always knows the goal, never sees a clock; branch off `gizmo-3d`.
-dependencies / order: none — FRONTIER (all sim state exists today). Shares hud files with GZ-013: if both are in fli
+dependencies / order: none — FRONTIER (all sim state exists today). Shares hud files with GZ-013: if both are in flight, land GZ-014 first per `LANDING-ORDER.md`, then rebase GZ-013.
+model routing: **Sonnet** — themed HUD work with clear absence assertions.
+cross-domain: design-system theme witness consumed only; no design-canon edits.
+status: ready-for-agent
+format: one issue per file (gh import later).

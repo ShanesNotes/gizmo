@@ -22,4 +22,7 @@ executable success criteria:
 
 acceptance / done: one command proves the fun loop exists as a system; this becomes v1's ship gate; branch off `gizmo-3d`.
 dependencies / order: blockedBy GZ-009 (full sim surface), GZ-012 (draft flow semantics), GZ-015 (authored zones — test may inline the table but must match it). Final ticket on the critical path.
-model routing: **Opus** — cross-system choreography; failure diagnosis needs judgment
+model routing: **Opus** — cross-system choreography; failure diagnosis needs judgment.
+cross-domain: none.
+status: blocked:GZ-009,GZ-012,GZ-015
+format: one issue per file (gh import later).

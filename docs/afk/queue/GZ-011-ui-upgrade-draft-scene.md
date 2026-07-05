@@ -24,4 +24,6 @@ executable success criteria:
 acceptance / done: draft scene instantiable standalone, themed, testable headless; branch off `gizmo-3d`.
 dependencies / order: blockedBy GZ-001 (payload contract). Parallel-safe vs sim lane (new files). Blocks GZ-012.
 model routing: **Sonnet** — Control-tree UI with a crisp contract.
-cross-domain: 
+cross-domain: design-system theme witness consumed only; no design-canon edits.
+status: blocked:GZ-001
+format: one issue per file (gh import later).

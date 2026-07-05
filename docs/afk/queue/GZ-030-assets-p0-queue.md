@@ -1,6 +1,6 @@
 # GZ-030 — Service lane (asset-pipeline): execute P0 queue q01–q04
 
-intent: The minimum dressing the loop needs from the asset lab: island base, beacon landmark, gear ring, Gizmo animation clips. This ticket is a POINTER — the work runs inside `C:/Users/Shane/gizmo-asset-pipeline` under that lab's own contract.
+intent: The minimum dressing the loop needs from the asset lab: island base, beacon landmark, gear ring, Gizmo animation clips. This ticket is a POINTER — the work runs inside `/home/ark/gizmo-asset-pipeline` under that lab's own contract.
 
 files in scope: NONE in the game repo. Work happens in `gizmo-asset-pipeline/` per its `AGENTS.md`, `canon/policy.yaml`, `docs/AFK_RUNBOOK.md`. Game-repo writes ONLY through that lab's validated auto-handoff (promotion report → install → headless import + five suites green → revert on red).
 
