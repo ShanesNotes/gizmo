@@ -1,0 +1,688 @@
+{
+  "artifact": "gizmo soundtrack v2 cue map (derived)",
+  "stamp": "derived from audio canon; do not edit as source",
+  "canon_source": "C:/Users/Shane/gizmo-audio-canon/canon/style-variants.yaml + audio-contract.yaml + cue-map.yaml",
+  "media_root": "C:/Users/Shane/gizmo-soundtrack",
+  "generated": "2026-07-04",
+  "evidence": "documented+metadata; NOT auditioned; raw MP4s are sources, convert per godot-handoff.yaml before import",
+  "seam_rule": "sim speaks only the six AudioContract methods; variant+presence logic is AudioDirector-internal (gate A13)",
+  "variant_hysteresis": {
+    "engage": 0.25,
+    "relax": 0.15,
+    "min_dwell_seconds": 20,
+    "crossfade": "next bar; REKINDLE_SIEGE immediate"
+  },
+  "presence": {
+    "SILENT": [
+      "ORIGIN entry until first movement or ~15s",
+      "idle lull: ROAM/RUINS/GILDED, pressure<0.15, 45s without events -> 8s fadeout (beds+locomotion stay)",
+      "defeat beat 2-4s"
+    ],
+    "AMBIENT_ENTER": [
+      "default: 2-4 bar fade-in on zone change or lull exit"
+    ],
+    "TRIGGERED": [
+      "any->REKINDLE_SIEGE immediate cut",
+      "BRG_04 on engage-band crossing",
+      "UI loops start immediately at low gain",
+      "victory sequence"
+    ]
+  },
+  "zones": [
+    {
+      "zone": "ORIGIN",
+      "cue": "SEG_01",
+      "variant_rule": "ORCH",
+      "note": "spawn at ease; silence-first entry",
+      "files": {
+        "ORCH": [
+          {
+            "filename": "SEG_01.1 ORCH Clockwork_Heartbeat.mp4",
+            "duration_seconds": 82.634,
+            "sha256": "6ea109078eb1af3c6cbde5cb0d8e1a3e2d45b4dc0d77b6dfdbe11c3170a3301b"
+          }
+        ],
+        "JAZZ": [
+          {
+            "filename": "SEG_01.2 JAZZ The_Clockmaker_s_First_Step.mp4",
+            "duration_seconds": 57.701,
+            "sha256": "cc293b49f82e6586645740c54d6f664ca4fbede12ab49f1f6b22dc9f3768b13b"
+          },
+          {
+            "filename": "SEG_01.2 JAZZ Ticking_in_the_Sunken_Hall.mp4",
+            "duration_seconds": 58.368,
+            "sha256": "8136c271d3a1d71e36755e4e6470cc5bffbdcafabd33238be7d4dfcdda4fe854"
+          }
+        ]
+      },
+      "provisional_until_audition": true
+    },
+    {
+      "zone": "ROAM",
+      "cue": "SEG_02",
+      "variant_rule": "ORCH<0.25 else JAZZ",
+      "note": "calm roam is orchestral; encroachment brings the 808 drive",
+      "files": {
+        "ORCH": [
+          {
+            "filename": "SEG_02.1 ORCH Clockwork_Wanderer.mp4",
+            "duration_seconds": 112.901,
+            "sha256": "25f324e456113adef9638a96ec1c2e9e8a7175e27fe52f1dae46b9be55b5df05"
+          }
+        ],
+        "JAZZ": [
+          {
+            "filename": "SEG_02.2 JAZZ The_Blue_Suspension.mp4",
+            "duration_seconds": 132.734,
+            "sha256": "a3c0db05cba159b1c511ff7437020e22ab70de22c27cb58f7666ddc943400e65"
+          }
+        ]
+      },
+      "provisional_until_audition": true
+    },
+    {
+      "zone": "WONDER",
+      "cue": "SEG_03",
+      "variant_rule": "ORCH",
+      "note": "reveal clarity",
+      "files": {
+        "ORCH": [
+          {
+            "filename": "SEG_03.1 ORCH The_Celestial_Clockwork.mp4",
+            "duration_seconds": 135.634,
+            "sha256": "fa6dfc3652c4e09da8fb394da10d7afe6f0d2800d12c78c3f086123f526f5a10"
+          }
+        ],
+        "JAZZ": [
+          {
+            "filename": "SEG_03.2 JAZZ Waltz_for_Lost_Gears.mp4",
+            "duration_seconds": 153.334,
+            "sha256": "6168105ee4a4eac0c28ba07060afe5041d03748146d47f7ce533202fa6e11af3"
+          }
+        ]
+      },
+      "provisional_until_audition": true
+    },
+    {
+      "zone": "LANDMARK",
+      "cue": "SEG_04",
+      "variant_rule": "ORCH",
+      "note": "JAZZ when pressure>=0.25",
+      "files": {
+        "ORCH": [
+          {
+            "filename": "SEG_04.1 ORCH Brass_Pendulum.mp4",
+            "duration_seconds": 158.768,
+            "sha256": "c2dc635dbac2564ac918ecdfe80920d98deee032135348b6d0d0bb07d372d0ab"
+          }
+        ],
+        "JAZZ": [
+          {
+            "filename": "SEG_04.2 JAZZ Grand_Complication.mp4",
+            "duration_seconds": 153.101,
+            "sha256": "ea11ff091c61a1024de9b087ad0b94943f87e1645c846cd27746184bba8f9797"
+          }
+        ]
+      },
+      "provisional_until_audition": true
+    },
+    {
+      "zone": "WALTZ",
+      "cue": "SEG_05",
+      "variant_rule": "ORCH",
+      "note": "JAZZ audition alternate",
+      "files": {
+        "ORCH": [
+          {
+            "filename": "SEG_05.1 ORCH Waltz_for_a_Lost_Machine.mp4",
+            "duration_seconds": 179.268,
+            "sha256": "3d3cef8b3ab730b60400a92c388924297834537dd36fef5ece369eb03e2f5790"
+          }
+        ],
+        "JAZZ": [
+          {
+            "filename": "SEG_05.2 JAZZ Against_the_Iron_Gears.mp4",
+            "duration_seconds": 154.234,
+            "sha256": "222120a460d175388314099f70abbadcf8af277b53f0c56167f5afb405e81f63"
+          }
+        ]
+      },
+      "provisional_until_audition": true
+    },
+    {
+      "zone": "RUINS",
+      "cue": "SEG_06",
+      "variant_rule": "JAZZ",
+      "note": "trap pulse under broken footing",
+      "files": {
+        "ORCH": [
+          {
+            "filename": "SEG_06.1 ORCH Beneath_the_Ruined_Platforms.mp4",
+            "duration_seconds": 147.268,
+            "sha256": "03db3b1f8e7cf77496445fefac8cdefb95fce7a71f3720d28af45431fe65483c"
+          }
+        ],
+        "JAZZ": [
+          {
+            "filename": "SEG_06.2 JAZZ A_Slow_Unwinding.mp4",
+            "duration_seconds": 153.401,
+            "sha256": "d3a1c7fb944042036021bba314e835ea3022c68207be39f5c0e1e7fa3be2790e"
+          }
+        ]
+      },
+      "provisional_until_audition": true
+    },
+    {
+      "zone": "KEEPER",
+      "cue": "SEG_07",
+      "variant_rule": "JAZZ",
+      "note": "guardian pressure",
+      "files": {
+        "ORCH": [
+          {
+            "filename": "SEG_07.1 ORCH The_Brass_Wanderer_s_Waltz.mp4",
+            "duration_seconds": 180.568,
+            "sha256": "ce2ae44f7e126cc88cd3bcf55c46eca0f5d34b7c5c221aa9c1058fe51db27fe5"
+          }
+        ],
+        "JAZZ": [
+          {
+            "filename": "SEG_07.2 JAZZ The_Mechanical_Ballet.mp4",
+            "duration_seconds": 143.201,
+            "sha256": "cb633dde3e88c0f7fb2bd818e3e25b0a49b86e77b9bcbfac4f90f08abb26e1d4"
+          }
+        ]
+      },
+      "provisional_until_audition": true
+    },
+    {
+      "zone": "GILDED",
+      "cue": "SEG_08",
+      "variant_rule": "JAZZ; ORCH<0.15",
+      "note": "driving ascent may relax",
+      "files": {
+        "ORCH": [
+          {
+            "filename": "SEG_08.1 ORCH Ascending_the_Gilded_Path.mp4",
+            "duration_seconds": 97.134,
+            "sha256": "5993584fdb9ddeab96c3982c83d2cbae917a7f73195344ca04db95095d9f1c9a"
+          }
+        ],
+        "JAZZ": [
+          {
+            "filename": "SEG_08.2 JAZZ Small_Machine_Broken_Bridge.mp4",
+            "duration_seconds": 144.201,
+            "sha256": "d147784ad9be23332076be99b67c552b37ef76e5de32b9c04296a143fc625e54"
+          }
+        ]
+      },
+      "provisional_until_audition": true
+    },
+    {
+      "zone": "TRIAL",
+      "cue": "SEG_09",
+      "variant_rule": "JAZZ",
+      "note": "late pressure; provisional",
+      "files": {
+        "ORCH": [
+          {
+            "filename": "SEG_09.1 ORCH Before_the_Beacon_Falls.mp4",
+            "duration_seconds": 177.701,
+            "sha256": "54f3231d296a25e4924dce5dc729246629b7f6c235d258c7b7ef2628dd880d3b"
+          }
+        ],
+        "JAZZ": [
+          {
+            "filename": "SEG_09.2 JAZZThe_Iron_Threshold.mp4",
+            "duration_seconds": 153.501,
+            "sha256": "76d88bd554af74cc65d7eecf77284fcf71bbf636fc0e23a14f93acbab3e8f0f2"
+          }
+        ]
+      },
+      "provisional_until_audition": true
+    },
+    {
+      "zone": "SANCTUARY",
+      "cue": "AMB_02",
+      "variant_rule": "ORCH",
+      "note": "gate A8",
+      "files": {
+        "ORCH": [
+          {
+            "filename": "AMB_02.1 ORCH Sanctuary_of_Fallen_Stars.mp4",
+            "duration_seconds": 59.334,
+            "sha256": "30a1d385d245f3a1165295835cd2f5d95125bb64f579af88e00e35c412610b52"
+          }
+        ],
+        "JAZZ": [
+          {
+            "filename": "AMB_02.2 JAZZ Passing_Floating_Islands.mp4",
+            "duration_seconds": 154.201,
+            "sha256": "2d40dd2b88fa90cc1155e8594b965d3bb8fe78b54d3d144e638b8170404973b5"
+          }
+        ]
+      },
+      "provisional_until_audition": true
+    },
+    {
+      "zone": "BEACON_APPROACH",
+      "cue": "SEG_10",
+      "variant_rule": "JAZZ",
+      "note": "approach under exposure; provisional",
+      "files": {
+        "ORCH": [
+          {
+            "filename": "SEG_10.1 ORCH The_Final_Ascent.mp4",
+            "duration_seconds": 136.401,
+            "sha256": "fadce0f2250db9c6358529bdcde03e5ebb1d208136e1e3b62711ea0b02eaef49"
+          }
+        ],
+        "JAZZ": [
+          {
+            "filename": "SEG_10.2 JAZZArrival_At_The_Gate.mp4",
+            "duration_seconds": 143.634,
+            "sha256": "8cc677823497dab1774427bf61a8997f1a683b2a516da6978027b6b58543b4bd"
+          }
+        ]
+      },
+      "provisional_until_audition": true
+    },
+    {
+      "zone": "REKINDLE_SIEGE",
+      "cue": "SEG_11",
+      "variant_rule": "JAZZ",
+      "note": "immediate cut; where the drops live; provisional",
+      "files": {
+        "ORCH": [
+          {
+            "filename": "SEG_11.1 ORCH The_Iron_Threshold.mp4",
+            "duration_seconds": 178.101,
+            "sha256": "53706489c24f9a1666d9d61baf89904a56407a80d47385f358ec5a20a33e20a0"
+          }
+        ],
+        "JAZZ": [
+          {
+            "filename": "SEG_11.2 JAZZIron_Bloom_at_Last.mp4",
+            "duration_seconds": 142.568,
+            "sha256": "6e26166162241a6adb4c3352efb482d64a52d835562a2b2897615d90ee546631"
+          }
+        ]
+      },
+      "provisional_until_audition": true
+    },
+    {
+      "zone": "AFTERGLOW",
+      "cue": "SEG_12",
+      "variant_rule": "ORCH",
+      "note": "JAZZ swagger alternate for repeat wins",
+      "files": {
+        "ORCH": [
+          {
+            "filename": "SEG_12.1 ORCH -The_Clockmaker_s_Vow.mp4",
+            "duration_seconds": 151.601,
+            "sha256": "dffb56841d2fa7ad1ccd9f972458963714671d11c6201c7283dfe630bafbd605"
+          }
+        ],
+        "JAZZ": [
+          {
+            "filename": "SEG_12.2 JAZZMorning_in_the_Iron_Garden.mp4",
+            "duration_seconds": 147.601,
+            "sha256": "c9b07ebc632848ad42fdef518490ad80fee2ccfc6711325483bf0b8bf46eeb68"
+          }
+        ]
+      },
+      "provisional_until_audition": true
+    },
+    {
+      "zone": "CALIBRATION",
+      "cue": "AMB_01",
+      "variant_rule": "ORCH",
+      "note": "JAZZ Gearmaker's Bench alternate",
+      "files": {
+        "ORCH": [
+          {
+            "filename": "AMB_01.1 ORCH Calibrating_the_Mainspring.mp4",
+            "duration_seconds": 59.934,
+            "sha256": "c06f00d7338c618e48fe3a2769a8e4bc3e780ebe76eea312cbd07e4de1cb578c"
+          }
+        ],
+        "JAZZ": [
+          {
+            "filename": "AMB_01.2 JAZZ The_Gearmaker’s_Bench.mp4",
+            "duration_seconds": 119.468,
+            "sha256": "9a2f11725b63b2f3920d02a8afc9319fdc53fd4c16f4b73cc52139d7078edbdc"
+          }
+        ]
+      },
+      "provisional_until_audition": true
+    },
+    {
+      "zone": "SCRAP_MERCHANT",
+      "cue": "AMB_04",
+      "variant_rule": "ORCH",
+      "note": "JAZZ Merchant's Pendulum alternate",
+      "files": {
+        "ORCH": [
+          {
+            "filename": "AMB_04.1 ORCH The_Automaton_s_Ledger.mp4",
+            "duration_seconds": 57.734,
+            "sha256": "969e89be389730d780a34fdd4d09ed33b2ed9ff87597a13894def229f49cf1f4"
+          }
+        ],
+        "JAZZ": [
+          {
+            "filename": "AMB_04.2 JAZZ The_Merchant_s_Pendulum.mp4",
+            "duration_seconds": 114.401,
+            "sha256": "155bf1ad3d39feb886f7be700c565ccba564c55d1ec7e8a48a057be26abc33c1"
+          }
+        ]
+      },
+      "provisional_until_audition": true
+    }
+  ],
+  "bridges": [
+    {
+      "id": "BRG_01",
+      "edge": "main_menu->ORIGIN",
+      "files": {
+        "ORCH": [
+          {
+            "filename": "BRG_01 ORCH Sunlight_on_Brass.mp4",
+            "duration_seconds": 64.768,
+            "sha256": "657ed9e39ed32c40dbe0f9fb17a7fb302c9905e4837228d83259b86bd22fe913"
+          }
+        ],
+        "JAZZ": [
+          {
+            "filename": "BRG_01.2 JAZZ Stroll_on_Floating_Stone.mp4",
+            "duration_seconds": 151.568,
+            "sha256": "102972f023c9c6eb70b4edd440dcf0cd06af4b0acf5a642b679bd725ad6de9d8"
+          }
+        ]
+      }
+    },
+    {
+      "id": "BRG_02",
+      "edge": "ORIGIN->ROAM",
+      "files": {
+        "ORCH": [
+          {
+            "filename": "BRG_02 ORCH The_Brass_Sentinel.mp4",
+            "duration_seconds": 79.801,
+            "sha256": "53c4bedc942c855795d50b6d4bf384e50764c0fad76f3597678c49909882687a"
+          }
+        ],
+        "JAZZ": [
+          {
+            "filename": "BRG_02.2 JAZZ Clockwork_Steps_on_Stone.mp4",
+            "duration_seconds": 151.868,
+            "sha256": "f2f8fb6a4c4693227353299903fd43f9b97492b336658745f592fe7f53474ea6"
+          }
+        ]
+      }
+    },
+    {
+      "id": "BRG_03",
+      "edge": "WONDER->ROAM",
+      "files": {
+        "ORCH": [
+          {
+            "filename": "BRG_03.1 ORCH -Turning_the_Key.mp4",
+            "duration_seconds": 85.334,
+            "sha256": "7ca5edabde0908c40eb389d8d71f5299830231443111b988fd7258bfe2f635f5"
+          }
+        ],
+        "JAZZ": [
+          {
+            "filename": "BRG_03.2 JAZZ Twelve_Ticks_of_Grace.mp4",
+            "duration_seconds": 142.468,
+            "sha256": "e8e469d69d34986454a7ed5ad11ffb7ee6952d44ca0a5f62f22cde44de2c4d44"
+          }
+        ]
+      }
+    },
+    {
+      "id": "BRG_04",
+      "edge": "calm->engage band",
+      "files": {
+        "ORCH": [
+          {
+            "filename": "BRG_04.1 ORCH-The_Gearbox_Prayer.mp4",
+            "duration_seconds": 86.301,
+            "sha256": "749b9648a0273123542222f41146437e4d745309c0070cfa319fac86245f9474"
+          }
+        ],
+        "JAZZ": [
+          {
+            "filename": "BRG_04.2 JAZZBetween_the_Gears_of_Ruin.mp4",
+            "duration_seconds": 177.834,
+            "sha256": "9b3d40ea7a0696ec572898292e77efc0ea46752c90f7416eea1f66e1ae6878b7"
+          }
+        ]
+      }
+    },
+    {
+      "id": "BRG_05",
+      "edge": "engage->calm band",
+      "files": {
+        "ORCH": [
+          {
+            "filename": "BRG_05.1 ORCH -The_Brass_Ballet.mp4",
+            "duration_seconds": 87.934,
+            "sha256": "f31591b3a73754eacbedbb222999941d97ea8751807dc781e86d52c07417dbb5"
+          }
+        ],
+        "JAZZ": [
+          {
+            "filename": "BRG_05.2 JAZZ Clockwork_Ascent.mp4",
+            "duration_seconds": 154.101,
+            "sha256": "f6e2abd0a7727b5a33ce659d07b181205246fc8099345a3ecbf0ba0e775389ae"
+          }
+        ]
+      }
+    },
+    {
+      "id": "BRG_06",
+      "edge": "defeat_reflection->CALIBRATION",
+      "files": {
+        "ORCH": [
+          {
+            "filename": "BRG_06.1 ORCH-A_Turn_of_the_Cog.mp4",
+            "duration_seconds": 89.701,
+            "sha256": "92010ef0d3cf2c98b3811f7ba0fc206d2f94c7cc6e97aee975441b76d522345b"
+          }
+        ],
+        "JAZZ": [
+          {
+            "filename": "BRG_06.2 JAZZ The_Gearbox_Nocturne.mp4",
+            "duration_seconds": 160.434,
+            "sha256": "718bb8bd465fa81108af775d54e89551f7f60663d9dbfd1f0b789b9cbf8a4d08"
+          }
+        ]
+      }
+    },
+    {
+      "id": "BRG_07",
+      "edge": "hub->RUINS/next region",
+      "files": {
+        "ORCH": [
+          {
+            "filename": "BRG_07.1 ORCH The_Iron_Keeper.mp4",
+            "duration_seconds": 178.234,
+            "sha256": "9248c5590ee568b6e1865ad29c0c0db23d52fa25a8f6400754e5947e9a868302"
+          }
+        ],
+        "JAZZ": [
+          {
+            "filename": "BRG_07.2 JAZZ The_Brass_Ballet_Adagio.mp4",
+            "duration_seconds": 100.934,
+            "sha256": "657eb2af968bd9646f3382b9104d515acb382bfa581c2717800161008664c76c"
+          }
+        ]
+      }
+    },
+    {
+      "id": "BRG_08",
+      "edge": "engage->high band",
+      "files": {
+        "ORCH": [
+          {
+            "filename": "BRG_08.1 ORCH-Awakening_in_Brass.mp4",
+            "duration_seconds": 90.401,
+            "sha256": "999be5579d0f986bfcc62150fc61e278b068ed56091398ba02e5d849c391fafc"
+          }
+        ],
+        "JAZZ": [
+          {
+            "filename": "BRG_08.2 JAZZBrass_in_the_Gears.mp4",
+            "duration_seconds": 97.968,
+            "sha256": "d313402ffb39414af9654f718241cbbd76d7567212f92d440bc188e055b2ad11"
+          }
+        ]
+      }
+    },
+    {
+      "id": "BRG_09",
+      "edge": "high-band evasion lull (self-edge)",
+      "files": {
+        "ORCH": [
+          {
+            "filename": "BRG_09.1 ORCH -Turning_the_Clockwork_Key.mp4",
+            "duration_seconds": 89.634,
+            "sha256": "494be018739584c3b72c1b61a6f2ed6dbe2f162acc93cf114bb3c4938a0e3b1a"
+          }
+        ],
+        "JAZZ": [
+          {
+            "filename": "BRG_09.2 JAZZThe_Clockwork_Evasion.mp4",
+            "duration_seconds": 91.801,
+            "sha256": "d64496139ae62f5ebdf2e8c973befdefa8dbd9945eeb585d3da7155b7ee47608"
+          }
+        ]
+      }
+    },
+    {
+      "id": "BRG_10",
+      "edge": "high band->BEACON_APPROACH",
+      "files": {
+        "ORCH": [
+          {
+            "filename": "BRG_10.1 ORCH -Steps_Toward_The_Beacon.mp4",
+            "duration_seconds": 174.334,
+            "sha256": "0706249076de987ebd433ddad6afc07b376713eb5e418d14d28c9075213a243d"
+          }
+        ],
+        "JAZZ": [
+          {
+            "filename": "BRG_10.2 JAZZBlue_Light_Over_the_Basin.mp4",
+            "duration_seconds": 116.568,
+            "sha256": "567cfc49e140785663afe298aff13f51e7d16e2e51bc1f7c0031389ff13d5b4e"
+          }
+        ]
+      }
+    },
+    {
+      "id": "BRG_11",
+      "edge": "BEACON_APPROACH->siege threshold (pre-cut)",
+      "files": {
+        "ORCH": [
+          {
+            "filename": "BRG_11.1 ORCH-Clockwork_at_the_Gate.mp4",
+            "duration_seconds": 100.101,
+            "sha256": "dd51b50befc825d060e78ea7f4b84dfb1a424717e8acbe7c96791814cd4023b3"
+          }
+        ],
+        "JAZZ": [
+          {
+            "filename": "BRG_11.2 JAZZPendulum_Under_Pressure.mp4",
+            "duration_seconds": 116.934,
+            "sha256": "971764a3c8063ea136735a459c7f6a459a064b8deee4d985ea43bc4729b33bec"
+          }
+        ]
+      }
+    },
+    {
+      "id": "BRG_12",
+      "edge": "AFTERGLOW->credits/menu",
+      "files": {
+        "ORCH": [
+          {
+            "filename": "BRG_12.1 ORCH-Before_the_Clock_Winds_Again.mp4",
+            "duration_seconds": 113.534,
+            "sha256": "52146547b91ca50070f9b4281a392a214c21e5ec4dc96a5185a7b46b1d4e3cc2"
+          }
+        ],
+        "JAZZ": [
+          {
+            "filename": "BRG_12.2 JAZZ The_Clockmaker_s_Garden.mp4",
+            "duration_seconds": 156.034,
+            "sha256": "2f6105155598d2f55b72fe17dcfa6973fc2108fb97738f0f77030ceff3a9fbc7"
+          }
+        ]
+      }
+    }
+  ],
+  "ui_contexts": [
+    {
+      "context": "main_menu",
+      "cue": "SEG_01",
+      "variant": "ORCH"
+    },
+    {
+      "context": "upgrade_ui",
+      "cue": "AMB_01",
+      "variant": "ORCH"
+    },
+    {
+      "context": "map_ui",
+      "cue": "AMB_02",
+      "variant": "ORCH"
+    },
+    {
+      "context": "shop_ui",
+      "cue": "AMB_04",
+      "variant": "ORCH"
+    },
+    {
+      "context": "defeat_reflection",
+      "cue": "SEG_06",
+      "variant": "ORCH"
+    },
+    {
+      "context": "victory_sequence",
+      "cue": "SEG_12",
+      "variant": "ORCH"
+    },
+    {
+      "context": "credits",
+      "cue": "BONUS CREDITS Brass_Cradle",
+      "variant": "ORCH"
+    }
+  ],
+  "vitals_overlay": {
+    "cue": "AMB_03",
+    "rule": "notify_vitals-driven critical overlay; never a zone; follows active zone variant",
+    "files": {
+      "ORCH": [
+        {
+          "filename": "AMB_03.1 ORCH The_Mechanical_Breath.mp4",
+          "duration_seconds": 58.268,
+          "sha256": "c544360f5f1b95e0b753e56baa16b087a11ac8a0443bdd60b5ecf29189eef0d8"
+        }
+      ],
+      "JAZZ": [
+        {
+          "filename": "AMB_03.2 JAZZ Gears_In_The_Cold_Field.mp4",
+          "duration_seconds": 175.268,
+          "sha256": "975bbdf1c82de5beeff01811bafbfaf7c1c1e4495bb06b09f84da2593b5382c6"
+        }
+      ]
+    }
+  },
+  "open_items": [
+    "audition pass (cue fit, SEG_01 JAZZ pick, crossfade compat)",
+    "loop points",
+    "loudness measurement"
+  ],
+  "polarity_note": "CORRECTED 2026-07-04 (steward): JAZZ (808/trap drive) = pressure-led; ORCH = ease-led. Steward flags this as not universally true — every variant_rule is provisional_until_audition."
+}

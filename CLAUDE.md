@@ -82,6 +82,16 @@ show it running; and *build* when the learner asks (`create_scene`, `add_node`,
 understood rather than a black box. In Codex sessions where the MCP is not exposed,
 use the documented headless commands instead.
 
+**ElevenLabs audio generation (2026-07-04) — full autonomous access.** Agents may drive the
+ElevenLabs API/MCP (`ELEVENLABS_API_KEY` in git-ignored `.env`; official `elevenlabs-mcp` or
+REST) with no per-call approval and no budget ceiling: SFX, ambient/environmental beds,
+music variants, character voice (Voice Design/TTS), dialogue, trailer/cinematic VO.
+Accounting stays strict — ledger-before-use, provenance sidecar, no-retry-spend on a gate
+reject. Capability map + seams: `docs/audio/elevenlabs-capability.md` (game side) and
+`C:/Users/Shane/gizmo-audio-canon/reference/elevenlabs-production.md` (canon + spend law;
+character prompts in `elevenlabs-character-voices.md`). Only converted, gate-passed OGG/WAV
+land in `godot/audio/`; raw generations stay in the audio lab's sources.
+
 ## Teaching contract (explicit `/teach` mode)
 A slow-down-and-learn *co-development* effort. The bar is **understanding** — never a finished
 black box the learner can't explain. This applies only when the user asks to work
