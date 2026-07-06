@@ -129,6 +129,10 @@ Rubric: Opus = seam-shaping/cross-system judgment; Sonnet = specified single-fil
 | HZ-060 | greybox `RoomTemplate` pool (combat + boss scenes) | Sonnet | HP-15 | done | 005 |
 | HZ-061 | full-run integration gate | Opus | HP-15 | done | 032,042,051,052,060 |
 | HZ-062 | end-screen hub-return copy + stats | Haiku | HP-13 | done | 042 |
+| HZ-070 | combat feel & survivability pass (spawn distance, telegraph, TTK) | Codex | feel | done | 061 |
+| HZ-102 | REST/REWARD room types (generation side) | Codex | rooms | in-progress | 061 |
+| HZ-104 | AudioDirector runtime seam (room-state music) | Codex | audio | in-progress | 061 |
+| HZ-106 | pause menu + export pipeline | Codex | ship | in-progress | 061 |
 
 ## Salvage notes (old queue → this queue)
 - **Do not reopen GZ-001…GZ-041** as frontier tickets. Reuse only documented numbers/formulas.
@@ -155,3 +159,5 @@ Rubric: Opus = seam-shaping/cross-system judgment; Sonnet = specified single-fil
   integration; HZ-051 and HZ-061 should treat 016 as a prerequisite. Hub door entry is tested via
   simulated body_entered signals, not real physics overlap — accepted; the HZ-061 live gate covers it.
 - No ready-for-human labels emitted; open calls are decided in design anchors above.
+- HZ-070 audit (2026-07-06): confirmed — vacuous retreat-probe cadence (HIGH, reworked to player-DPS model), 3D-vs-XZ spawn distance (MED), silent containment no-op + wave index reuse (LOW). Refuted/accepted — HUD pip layout asymmetry (container-managed), probe double-tick risk (no current trigger; revisit if a test interleaves harness ticks with real frames).
+- Strategic-gate flag (2026-07-06): melee kit damage [18,20,26] one-shots all archetypes (HP 1/4) — ability-kit port scale vs enemy HP band scale mismatch. Bruiser/elite TTK bands (1-3s/3-10s) unreachable. Rebalance ticket due at the post-batch Fable gate (HZ-071 candidate).

@@ -20,6 +20,7 @@ func _initialize() -> void:
 	await _test_windup_survives_contact_jitter_but_resets_on_escape()
 	await _test_take_damage_emits_died_once()
 	await _test_scene_instantiates_headless()
+	await _test_spawn_windup_blocks_movement_and_contact_until_elapsed()
 	await _test_scene_chase_emits_damage_event_data_without_player_wiring()
 	await _test_physics_process_is_inert_after_exit()
 	print("")
@@ -189,6 +190,8 @@ func _test_scene_instantiates_headless() -> void:
 	_check("placeholder Capsule mesh exists", enemy.get_node_or_null("VisualPivot/Capsule") is MeshInstance3D)
 	_check_eq("default scene config is chaff", enemy.archetype, "chaff")
 	_check_almost("default scene hp is chaff hp", enemy.hp, 1.0)
+	if _object_has_property(enemy, "spawn_windup"):
+		_check_almost("default scene spawn windup is near Hades emergence timing", float(enemy.get("spawn_windup")), 0.8, 0.05)
 
 	enemy.configure("bruiser", "spawn-42")
 	_check_eq("configure stores spawn id", enemy.spawn_id, "spawn-42")
@@ -198,8 +201,42 @@ func _test_scene_instantiates_headless() -> void:
 
 	await _cleanup(enemy)
 
+func _test_spawn_windup_blocks_movement_and_contact_until_elapsed() -> void:
+	var enemy = await _new_enemy()
+	var has_spawn_windup := _object_has_property(enemy, "spawn_windup")
+	_check("scene exposes exported spawn_windup", has_spawn_windup)
+	if has_spawn_windup:
+		enemy.set("spawn_windup", 0.8)
+	enemy.configure("chaff", "spawn-windup")
+	var events: Array[Dictionary] = []
+	enemy.damage_event.connect(func(event: Dictionary) -> void:
+		events.append(event)
+	)
+
+	var first: Dictionary = enemy.tick_chase(Vector3(8.0, 0.0, 0.0), 0.40)
+	_check_vec3_almost("fresh enemy does not move during spawn windup", Vector3(first["velocity"]), Vector3.ZERO)
+	_check_eq("fresh enemy emits no damage while spawning", Dictionary(first["damage_event"]).is_empty(), true)
+
+	var contact_before_ready: Dictionary = enemy.tick_chase(Vector3(0.5, 0.0, 0.0), 0.39)
+	_check_vec3_almost("contact does not move during remaining spawn windup", Vector3(contact_before_ready["velocity"]), Vector3.ZERO)
+	_check_eq("contact does not deal damage during remaining spawn windup", events.size(), 0)
+
+	enemy.tick_chase(Vector3(0.5, 0.0, 0.0), 0.01)
+	var after_ready: Dictionary = enemy.tick_chase(Vector3(8.0, 0.0, 0.0), 0.10)
+	_check("enemy starts moving after spawn windup elapses", Vector3(after_ready["velocity"]).length() > 0.0)
+
+	enemy.tick_chase(Vector3(0.5, 0.0, 0.0), 0.34)
+	_check_eq("enemy still respects attack windup after spawn windup", events.size(), 0)
+	var contact_after_ready: Dictionary = enemy.tick_chase(Vector3(0.5, 0.0, 0.0), 0.01)
+	_check_eq("enemy can deal contact damage after spawn and attack windups", int(Dictionary(contact_after_ready["damage_event"]).get("damage", 0)), 1)
+	_check_eq("post-windup damage event is emitted once", events.size(), 1)
+
+	await _cleanup(enemy)
+
 func _test_scene_chase_emits_damage_event_data_without_player_wiring() -> void:
 	var enemy = await _new_enemy()
+	if _object_has_property(enemy, "spawn_windup"):
+		enemy.set("spawn_windup", 0.0)
 	enemy.configure("chaff", "w0:chaff:3")
 	var events: Array[Dictionary] = []
 	enemy.damage_event.connect(func(event: Dictionary) -> void:
@@ -242,3 +279,9 @@ func _test_physics_process_is_inert_after_exit() -> void:
 	enemy.free()
 	target.queue_free()
 	await process_frame
+
+func _object_has_property(object: Object, property_name: String) -> bool:
+	for property in object.get_property_list():
+		if str(property.get("name", "")) == property_name:
+			return true
+	return false

@@ -9,6 +9,7 @@ const EnemyBrainScript := preload("res://scripts/enemies/enemy_brain.gd")
 
 @export var archetype: String = EnemyArchetypesScript.ARCHETYPE_CHAFF
 @export var spawn_id: String = ""
+@export_range(0.0, 5.0, 0.05) var spawn_windup: float = 0.8
 @export var turn_speed: float = 14.0
 
 @onready var visual_pivot: Node3D = $VisualPivot
@@ -27,6 +28,7 @@ var brain = EnemyBrainScript.new()
 var _configured := false
 var _dead := false
 var _current_stats: Dictionary = {}
+var _spawn_windup_remaining: float = 0.0
 
 func _enter_tree() -> void:
 	set_physics_process(true)
@@ -46,6 +48,11 @@ func _physics_process(delta: float) -> void:
 		set_physics_process(false)
 		return
 	if _dead:
+		velocity = Vector3.ZERO
+		move_and_slide()
+		return
+	if _is_spawning():
+		_tick_spawn_windup(delta)
 		velocity = Vector3.ZERO
 		move_and_slide()
 		return
@@ -72,6 +79,7 @@ func configure(p_archetype: String, p_spawn_id: String) -> void:
 	attack_recovery = float(_current_stats["attack_recovery"])
 	brain.configure(_current_stats)
 	velocity = Vector3.ZERO
+	_spawn_windup_remaining = maxf(spawn_windup, 0.0)
 	_dead = false
 	_configured = true
 	_apply_visuals()
@@ -92,6 +100,19 @@ func tick_chase(target_position: Vector3, delta: float) -> Dictionary:
 			"direction": Vector3.ZERO,
 			"distance": 0.0,
 			"in_contact": false,
+			"attack_state": brain.attack_state(),
+			"damage_event": {},
+		}
+	if _is_spawning():
+		_tick_spawn_windup(delta)
+		velocity = Vector3.ZERO
+		brain.reset_attack()
+		var steering := EnemyBrainScript.chase_steering(global_position, target_position, 0.0, contact_radius, 0.0)
+		return {
+			"velocity": velocity,
+			"direction": steering["direction"],
+			"distance": steering["distance"],
+			"in_contact": steering["in_contact"],
 			"attack_state": brain.attack_state(),
 			"damage_event": {},
 		}
@@ -122,6 +143,12 @@ func take_damage(amount: float) -> float:
 func is_dead() -> bool:
 	return _dead
 
+func is_spawning() -> bool:
+	return _is_spawning()
+
+func spawn_windup_remaining() -> float:
+	return _spawn_windup_remaining
+
 func _apply_visuals() -> void:
 	if visual_pivot == null or _current_stats.is_empty():
 		return
@@ -138,3 +165,11 @@ func _face_direction(direction: Vector3, delta: float) -> void:
 	var target_yaw := atan2(flat_direction.x, flat_direction.z)
 	var turn_weight := 1.0 - exp(-turn_speed * maxf(delta, 0.0))
 	visual_pivot.rotation.y = lerp_angle(visual_pivot.rotation.y, target_yaw, turn_weight)
+
+func _is_spawning() -> bool:
+	return not _dead and _spawn_windup_remaining > 0.0
+
+func _tick_spawn_windup(delta: float) -> void:
+	_spawn_windup_remaining = maxf(0.0, _spawn_windup_remaining - maxf(delta, 0.0))
+	if _spawn_windup_remaining <= 0.00001:
+		_spawn_windup_remaining = 0.0

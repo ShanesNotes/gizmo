@@ -19,6 +19,7 @@ func _initialize() -> void:
 	await _test_dash_burst_arguments_do_not_stick_to_defaults()
 	await _test_player_scene_instantiates_with_stable_nodes()
 	_test_player_vitals_guard_recharges_after_damage_delay()
+	_test_player_vitals_damage_lockout_limits_burst_contact()
 	await _test_scene_router_press_reaches_ability_component()
 	await _test_scene_dash_uses_held_movement_direction()
 	await _test_scene_dash_press_during_dash_is_blocked_by_current_kit()
@@ -176,6 +177,26 @@ func _test_player_vitals_guard_recharges_after_damage_delay() -> void:
 	_check_eq("new damage resets guard recharge timer", vitals.guard, 3)
 	vitals.call("tick_guard_recharge", 0.99)
 	_check_eq("guard still waits full delay after reset damage", vitals.guard, 3)
+	vitals.free()
+
+func _test_player_vitals_damage_lockout_limits_burst_contact() -> void:
+	var vitals: PlayerVitals = PlayerVitalsScript.new()
+	vitals.max_hp = 3
+	vitals.max_guard = 4
+	vitals.guard_recharge_delay = 99.0
+	vitals.damage_lockout = 0.5
+	vitals.reset()
+
+	vitals.apply_damage(1)
+	_check_eq("first burst hit removes one guard", vitals.guard, 3)
+	vitals.apply_damage(1)
+	_check_eq("same-burst hit is blocked by damage lockout", vitals.guard, 3)
+	vitals.tick_guard_recharge(0.49)
+	vitals.apply_damage(1)
+	_check_eq("damage lockout holds until its full duration", vitals.guard, 3)
+	vitals.tick_guard_recharge(0.02)
+	vitals.apply_damage(1)
+	_check_eq("damage can land again after lockout elapses", vitals.guard, 2)
 	vitals.free()
 
 func _object_has_property(object: Object, property_name: String) -> bool:
