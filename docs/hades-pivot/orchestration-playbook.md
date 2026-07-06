@@ -65,6 +65,15 @@ governs **design**.
 ### Harness mechanics
 - nohup-inside-background-Bash double-detaches: the harness reports "completed" when
   the *launcher* exits. Poll logs; use ScheduleWakeup (≥1200s for long jobs).
+- **Liveness checks lie:** `pgrep -f "codex exec"` matches the polling shell's own
+  command string — a permanent false ALIVE. Use `pgrep -x codex` / `pgrep -x grok`
+  plus **log mtime** as the real signal.
+- Grok (attempt-2 lesson): may finish its edits but exit silently before the
+  feature-ship ship phase (no commit, no status flip) and its `--output-format plain`
+  log is near-empty. Treat uncommitted-but-green work as recoverable: audit the
+  diff, then the orchestrator commits on the worker's behalf with attribution.
+- Codex sandbox addendum: some headless runs also need `--log-file /tmp/...` on top
+  of `--user-data-dir` (Codex discovered this itself during HZ-002).
 - Verification gate before any status flip: three suites
   (`run_room_graph_tests`, `run_ability_kit_tests`, `run_boon_meta_tests`) +
   `--check-only` on touched scripts, all with the user-data-dir redirect.
