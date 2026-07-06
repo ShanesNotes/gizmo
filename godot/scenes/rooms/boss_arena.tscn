@@ -1,4 +1,12 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene load_steps=6 format=3]
+
+[sub_resource type="Environment" id="Env_res"]
+background_mode = 1
+background_color = Color(0.025, 0.018, 0.035, 1)
+ambient_light_source = 2
+ambient_light_color = Color(0.22, 0.16, 0.22, 1)
+ambient_light_energy = 0.34
+tonemap_mode = 2
 
 [sub_resource type="StandardMaterial3D" id="Mat_floor"]
 albedo_color = Color(0.24, 0.23, 0.28, 1)
@@ -19,6 +27,16 @@ roughness = 0.82
 size = Vector3(4.2, 2.4, 1.4)
 
 [node name="BossArena" type="Node3D"]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Env_res")
+
+[node name="KeyLight" type="DirectionalLight3D" parent="."]
+rotation_degrees = Vector3(-64, -50, 0)
+light_color = Color(1, 0.72, 0.42, 1)
+light_energy = 1.75
+shadow_enabled = true
+sky_mode = 1
 
 [node name="Geometry" type="Node3D" parent="."]
 

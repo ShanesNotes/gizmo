@@ -1,4 +1,12 @@
-[gd_scene load_steps=6 format=3]
+[gd_scene load_steps=7 format=3]
+
+[sub_resource type="Environment" id="Env_res"]
+background_mode = 1
+background_color = Color(0.045, 0.052, 0.075, 1)
+ambient_light_source = 2
+ambient_light_color = Color(0.62, 0.68, 0.78, 1)
+ambient_light_energy = 0.78
+tonemap_mode = 2
 
 [sub_resource type="StandardMaterial3D" id="Mat_floor"]
 albedo_color = Color(0.24, 0.24, 0.26, 1)
@@ -22,6 +30,16 @@ size = Vector3(3, 2.2, 1.2)
 size = Vector3(1.2, 2.2, 3)
 
 [node name="CombatSmall" type="Node3D"]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Env_res")
+
+[node name="KeyLight" type="DirectionalLight3D" parent="."]
+rotation_degrees = Vector3(-52, -35, 0)
+light_color = Color(0.78, 0.86, 1, 1)
+light_energy = 1.05
+shadow_enabled = true
+sky_mode = 1
 
 [node name="Geometry" type="Node3D" parent="."]
 
