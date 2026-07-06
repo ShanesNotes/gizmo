@@ -13,6 +13,8 @@ const SCRAP_REWARD_VALUE := 10
 const SPARKS_REWARD_VALUE := 5
 const SPAWN_GOLDEN_ANGLE := 2.399963
 const SPAWN_CANDIDATE_COUNT := 48
+const ZONE_STATE_COMBAT: StringName = &"COMBAT"
+const ZONE_STATE_CLEARED: StringName = &"CLEARED"
 
 @export var auto_start: bool = true
 @export var biome_id: String = "hearth"
@@ -37,6 +39,7 @@ const SPAWN_CANDIDATE_COUNT := 48
 @onready var flow_bridge: RunFlowBridge = get_node("RunFlowBridge") as RunFlowBridge
 @onready var hud: Hud = get_node("Hud") as Hud
 @onready var boon_draft_ui: BoonDraftUI = get_node("BoonDraft") as BoonDraftUI
+@onready var audio_director: Node = get_node_or_null("/root/AudioDirector")
 
 var boon_draft: BoonDraft = BoonDraft.new()
 var player_vitals: PlayerVitals
@@ -300,6 +303,7 @@ func _start_room_director(room: RoomNode) -> void:
 	current_director = RoomDirector.new(room.difficulty_tier, _rng)
 	current_director.wave_requested.connect(_on_director_wave_requested)
 	current_director.room_cleared.connect(_on_director_room_cleared)
+	_set_audio_zone_state(ZONE_STATE_COMBAT)
 	current_director.start()
 
 func _on_director_wave_requested(_wave_index: int, requests: Array[Dictionary]) -> void:
@@ -412,6 +416,7 @@ func _on_director_room_cleared() -> void:
 	if not _run_active or _death_teardown_complete:
 		return
 	_clear_spawned_enemies()
+	_set_audio_zone_state(ZONE_STATE_CLEARED)
 	if run_controller != null:
 		run_controller.notify_room_cleared()
 
@@ -540,6 +545,14 @@ func _apply_exit_reward(connection: RoomConnection) -> void:
 		_:
 			pass
 	_rewarded_exit_keys[key] = true
+
+func _set_audio_zone_state(state: StringName) -> void:
+	if audio_director == null or not is_instance_valid(audio_director):
+		audio_director = get_node_or_null("/root/AudioDirector")
+	if audio_director == null:
+		return
+	if audio_director.has_method(&"set_zone_state"):
+		audio_director.call(&"set_zone_state", state)
 
 func _clear_spawned_enemies() -> void:
 	for enemy in spawned_enemies.values():

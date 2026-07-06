@@ -2,13 +2,15 @@ extends SceneTree
 
 # Headless tests for HZ-042 AppShell death -> hub -> new run wiring.
 # Run with:
-#   godot --headless --user-data-dir /tmp/codex-godot-userdata --path godot --script res://tests/run_app_shell_tests.gd
+#   godot --headless --user-data-dir /tmp/codex-godot-userdata-104 --log-file /tmp/codex-godot-userdata-104/logs/godot.log --path godot --script res://tests/run_app_shell_tests.gd
 
 const AppShellScript := preload("res://scripts/app_shell.gd")
 const AppScene := preload("res://scenes/app.tscn")
 const HubControllerScript := preload("res://scripts/hub_controller.gd")
 const MetaState := preload("res://scripts/meta/meta_state.gd")
 const RunLifecycle := preload("res://scripts/meta/run_lifecycle.gd")
+
+const TEST_SAVE_ROOT := "/tmp/codex-godot-userdata-104/saves"
 
 class StubRunSurface:
 	extends Node
@@ -30,6 +32,14 @@ class MissingRunSignalsSurface:
 
 	func start_run(_run_bonuses: Dictionary) -> void:
 		start_call_count += 1
+
+class StubAudioDirector:
+	extends Node
+
+	var states: Array[String] = []
+
+	func set_zone_state(state: StringName) -> void:
+		states.append(String(state))
 
 class PhysicsHandlerProbe:
 	extends Node
@@ -77,6 +87,7 @@ func _initialize() -> void:
 
 func _run_tests() -> void:
 	await _test_boots_into_hub_with_loaded_meta_state()
+	await _test_audio_director_receives_hub_combat_hub_handoffs()
 	await _test_hub_run_request_swaps_to_run_surface_with_bonuses()
 	await _test_physics_frame_run_request_defers_content_swap()
 	await _test_running_phase_ignores_reentrant_run_request()
@@ -122,12 +133,12 @@ func _make_missing_signal_surface() -> Node:
 	return surface
 
 func _new_save_path(test_name: String) -> String:
-	return "user://saves/app_shell_%s.cfg" % test_name
+	return "%s/app_shell_%s.cfg" % [TEST_SAVE_ROOT, test_name]
 
 func _remove_save(path: String) -> void:
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
 
-func _new_app(save_path: String) -> Node:
+func _new_app(save_path: String, injected_audio_director: Node = null) -> Node:
 	var app: Node = AppScene.instantiate()
 	if app == null:
 		_check("app scene instantiates", false)
@@ -138,6 +149,8 @@ func _new_app(save_path: String) -> Node:
 		return null
 	app.meta_save_path = save_path
 	app.run_surface_factory = Callable(self, "_make_stub_run_surface")
+	if injected_audio_director != null:
+		app.audio_director = injected_audio_director
 	root.add_child(app)
 	await process_frame
 	return app
@@ -188,6 +201,26 @@ func _test_boots_into_hub_with_loaded_meta_state() -> void:
 	_check_eq("hub scrap label reflects loaded meta on boot", scrap_label.text, "SCRAP 19")
 
 	await _cleanup_app(app, save_path)
+
+func _test_audio_director_receives_hub_combat_hub_handoffs() -> void:
+	var save_path := _new_save_path("audio_handoffs")
+	_remove_save(save_path)
+	var audio := StubAudioDirector.new()
+	var app := await _new_app(save_path, audio)
+	if app == null:
+		audio.free()
+		return
+
+	_check_eq("hub show requests HUB music", audio.states, ["HUB"])
+	_current_hub(app).run_requested.emit()
+	await _flush_free_queue()
+	_check_eq("run surface swap requests COMBAT music", audio.states, ["HUB", "COMBAT"])
+	_current_surface(app).player_died.emit()
+	await _flush_free_queue()
+	_check_eq("hub return requests HUB music", audio.states, ["HUB", "COMBAT", "HUB"])
+
+	await _cleanup_app(app, save_path)
+	audio.free()
 
 func _test_hub_run_request_swaps_to_run_surface_with_bonuses() -> void:
 	var save_path := _new_save_path("start_run")

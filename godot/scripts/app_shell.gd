@@ -7,6 +7,9 @@ const EndScreenSceneDefault := preload("res://scenes/end_screen.tscn")
 const MetaState := preload("res://scripts/meta/meta_state.gd")
 const RunLifecycle := preload("res://scripts/meta/run_lifecycle.gd")
 
+const MUSIC_STATE_HUB: StringName = &"HUB"
+const MUSIC_STATE_COMBAT: StringName = &"COMBAT"
+
 const START_RUN_METHODS: Array[StringName] = [
 	&"start_new_run",
 	&"begin_run",
@@ -35,6 +38,7 @@ var meta_state: MetaState
 var lifecycle: RunLifecycle
 var last_return_was_victory := false
 var last_run_summary: Dictionary = {}
+var audio_director: Node = null
 
 var _summary_overlay: EndScreen = null
 
@@ -42,6 +46,7 @@ var _summary_overlay: EndScreen = null
 
 func _ready() -> void:
 	_ensure_content_slot()
+	_resolve_audio_director()
 	_load_meta_state()
 	lifecycle = RunLifecycle.new(meta_state)
 	_show_hub()
@@ -60,6 +65,7 @@ func _show_hub() -> void:
 	_inject_meta_state(hub)
 	_connect_hub(hub)
 	_swap_content(hub)
+	_set_audio_zone_state(MUSIC_STATE_HUB)
 
 func _on_hub_run_requested() -> void:
 	if _defer_from_physics_frame(&"_on_hub_run_requested"):
@@ -84,6 +90,7 @@ func _on_hub_run_requested() -> void:
 
 	lifecycle.start_new_run(entry_room_id)
 	_swap_content(run_surface)
+	_set_audio_zone_state(MUSIC_STATE_COMBAT)
 	_call_start_run_entry(run_surface, lifecycle.run_bonuses)
 
 func _instantiate_run_surface() -> Node:
@@ -274,6 +281,19 @@ func _ensure_content_slot() -> void:
 	content_slot = Node.new()
 	content_slot.name = "ContentSlot"
 	add_child(content_slot)
+
+func _resolve_audio_director() -> void:
+	if audio_director != null:
+		return
+	audio_director = get_node_or_null("/root/AudioDirector")
+
+func _set_audio_zone_state(state: StringName) -> void:
+	if audio_director == null or not is_instance_valid(audio_director):
+		return
+	if audio_director.has_method(&"set_zone_state"):
+		audio_director.call(&"set_zone_state", state)
+	elif audio_director.has_method(&"set_music_state"):
+		audio_director.call(&"set_music_state", state)
 
 func _active_content() -> Node:
 	_ensure_content_slot()
