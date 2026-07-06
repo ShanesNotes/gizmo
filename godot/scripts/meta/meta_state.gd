@@ -44,6 +44,12 @@ func purchase_grade(stat: String) -> bool:
 	var cap := int(STAT_GRADE_CAPS[stat])
 	if current_rank >= cap:
 		return false
+	if current_rank >= STAT_GRADE_PRICES.size():
+		push_error(
+			"MetaState purchase_grade rank %d exceeds price table size %d for stat %s"
+			% [current_rank, STAT_GRADE_PRICES.size(), stat]
+		)
+		return false
 	var cost := STAT_GRADE_PRICES[current_rank]
 	if scrap_banked < cost:
 		return false

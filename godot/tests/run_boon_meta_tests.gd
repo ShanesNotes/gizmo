@@ -24,6 +24,8 @@ func _initialize() -> void:
 	_test_rarity_weighted_draft_offers_unique_between_rooms()
 	await _test_boon_modifiers_apply_to_target_ability_kit()
 	_test_meta_state_round_trips_through_config_file()
+	_test_meta_state_migrates_old_schema_without_stat_grades()
+	_test_stat_grade_caps_fit_price_table()
 	_test_purchase_grade_deducts_scrap_and_persists()
 	_test_purchase_grade_rejects_invalid_requests()
 	_test_run_bonuses_from_meta_maps_grades()
@@ -232,6 +234,50 @@ func _test_meta_state_round_trips_through_config_file() -> void:
 	_check("loaded unlocked boon id is present", loaded.is_boon_unlocked(&"spark_special_boost"))
 	_check("duplicate boon unlocks are stored once", loaded.unlocked_boon_ids.size() == 2)
 	DirAccess.remove_absolute(path)
+
+func _test_meta_state_migrates_old_schema_without_stat_grades() -> void:
+	var path := "/tmp/gizmo_hades_meta_state_v1_migration_test.cfg"
+	DirAccess.remove_absolute(path)
+
+	var old_cfg := (
+		"[meta]\n"
+		+ "schema_version=1\n"
+		+ "\n"
+		+ "[currency]\n"
+		+ "scrap_banked=42\n"
+		+ "sparks_banked=3\n"
+	)
+	var write_error := FileAccess.open(path, FileAccess.WRITE)
+	_check("old-schema cfg can be written to temp path", write_error != null)
+	if write_error != null:
+		write_error.store_string(old_cfg)
+		write_error.close()
+
+	var loaded: MetaState = MetaState.load_from_path(path)
+	_check_eq("v1 migration defaults dash_charges grade to zero", loaded.get_stat_grade("dash_charges"), 0)
+	_check_eq("v1 migration defaults guard_max grade to zero", loaded.get_stat_grade("guard_max"), 0)
+	_check_eq("v1 migration defaults draft_rerolls grade to zero", loaded.get_stat_grade("draft_rerolls"), 0)
+	_check_eq("v1 migration preserves scrap_banked", loaded.scrap_banked, 42)
+	_check_eq("v1 migration preserves sparks_banked", loaded.sparks_banked, 3)
+
+	var save_error: Error = loaded.save_to_path(path)
+	var reloaded: MetaState = MetaState.load_from_path(path)
+	_check_eq("v1 migration save returns OK", save_error, OK)
+	_check_eq(
+		"v1 migration re-save writes current schema version",
+		reloaded.schema_version,
+		MetaState.CURRENT_SCHEMA_VERSION
+	)
+	DirAccess.remove_absolute(path)
+
+func _test_stat_grade_caps_fit_price_table() -> void:
+	for stat in MetaState.STAT_GRADE_CAPS.keys():
+		var cap := int(MetaState.STAT_GRADE_CAPS[stat])
+		_check(
+			"stat grade cap for %s fits price table (cap=%d, prices=%d)"
+			% [stat, cap, MetaState.STAT_GRADE_PRICES.size()],
+			cap <= MetaState.STAT_GRADE_PRICES.size()
+		)
 
 func _test_purchase_grade_deducts_scrap_and_persists() -> void:
 	var path := "/tmp/gizmo_hades_meta_grade_test.cfg"
