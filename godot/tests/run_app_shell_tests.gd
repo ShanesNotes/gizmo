@@ -2,7 +2,7 @@ extends SceneTree
 
 # Headless tests for HZ-042 AppShell death -> hub -> new run wiring.
 # Run with:
-#   godot --headless --user-data-dir /tmp/codex-godot-userdata-104 --log-file /tmp/codex-godot-userdata-104/logs/godot.log --path godot --script res://tests/run_app_shell_tests.gd
+#   godot --headless --user-data-dir /tmp/codex-godot-userdata-082 --log-file /tmp/codex-godot-userdata-082/logs/godot.log --path godot --script res://tests/run_app_shell_tests.gd
 
 const AppShellScript := preload("res://scripts/app_shell.gd")
 const AppScene := preload("res://scenes/app.tscn")
@@ -10,7 +10,8 @@ const HubControllerScript := preload("res://scripts/hub_controller.gd")
 const MetaState := preload("res://scripts/meta/meta_state.gd")
 const RunLifecycle := preload("res://scripts/meta/run_lifecycle.gd")
 
-const TEST_SAVE_ROOT := "/tmp/codex-godot-userdata-104/saves"
+const TEST_SAVE_ROOT := "/tmp/codex-godot-userdata-082/saves"
+const RUN_SURFACE_FAILURE_COPY := "Run surface failed to load - run the import step (see docs/hades-pivot/export.md)."
 
 class StubRunSurface:
 	extends Node
@@ -315,6 +316,16 @@ func _test_malformed_run_surface_is_rejected_without_leaving_hub() -> void:
 	_check("malformed run surface keeps the original hub active", is_instance_valid(hub) and _current_content(app) == hub)
 	_check_eq("malformed run surface leaves lifecycle in HUB phase", app.lifecycle.phase, RunLifecycle.Phase.HUB)
 	_check_eq("malformed run surface keeps one content child", app.get_node("ContentSlot").get_child_count(), 1)
+	var failure_label := hub.get_node_or_null("HubUi/Root/RunSurfaceFailureLabel") as Label
+	_check("malformed run surface shows a hub failure label", failure_label != null and failure_label.visible)
+	if failure_label != null:
+		_check_eq("hub failure label explains the import step", failure_label.text, RUN_SURFACE_FAILURE_COPY)
+
+	app.run_surface_factory = Callable(self, "_make_stub_run_surface")
+	hub.run_requested.emit()
+	_check("successful retry clears the hub failure label before swap", failure_label != null and not failure_label.visible)
+	await _flush_free_queue()
+	_check("successful retry still starts a valid run surface", _current_surface(app) is StubRunSurface)
 
 	await _cleanup_app(app, save_path)
 

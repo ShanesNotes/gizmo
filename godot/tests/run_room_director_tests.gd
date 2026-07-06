@@ -121,13 +121,23 @@ func _test_high_tier_elite_room_ends_with_double_elite_seed_sweep() -> void:
 
 func _test_tier_zero_opening_pressure_is_capped_across_seed_sweep() -> void:
 	const OPENING_PRESSURE_CAP := 3
+	const OPENING_TOTAL_FLOOR := 4
+	const OPENING_TOTAL_CEILING := 6
+	const OPENING_WAVE_CEILING := 2
 	var over_cap_seeds: Array[int] = []
+	var over_wave_count_seeds: Array[int] = []
+	var outside_total_band: Array[String] = []
 	var lowest_first_wave := 999
 	var highest_first_wave := 0
 
 	for seed in range(1, 101):
 		var director := _make_director(0.0, seed)
 		var waves := director.planned_waves()
+		var total_count := _total_request_count(waves)
+		if director.wave_count > OPENING_WAVE_CEILING:
+			over_wave_count_seeds.append(seed)
+		if total_count < OPENING_TOTAL_FLOOR or total_count > OPENING_TOTAL_CEILING:
+			outside_total_band.append("seed %d total %d" % [seed, total_count])
 		var first_wave_count := _wave_request_count(waves[0]) if not waves.is_empty() else 0
 		lowest_first_wave = mini(lowest_first_wave, first_wave_count)
 		highest_first_wave = maxi(highest_first_wave, first_wave_count)
@@ -137,15 +147,18 @@ func _test_tier_zero_opening_pressure_is_capped_across_seed_sweep() -> void:
 				break
 
 	_check_eq("tier-0 seed sweep has no wave over the opening pressure cap", over_cap_seeds.size(), 0)
+	_check_eq("tier-0 seed sweep caps total waves at two", over_wave_count_seeds.size(), 0)
+	_check_eq("tier-0 seed sweep keeps total enemies in the warm-up band", outside_total_band.size(), 0)
 	_check_between("tier-0 first wave keeps the Hades chamber pressure floor", float(lowest_first_wave), 2.0, 4.0)
 	_check_between("tier-0 first wave keeps the Hades chamber pressure ceiling", float(highest_first_wave), 2.0, 4.0)
 
 func _test_wave_count_is_bounded_and_deterministic() -> void:
 	for seed in range(1, 12):
-		for tier in [0.0, 0.25, 0.5, 0.75, 1.0]:
+		for tier in [0.0, 0.15, 0.25, 0.5, 0.75, 1.0]:
 			var first := _make_director(tier, seed)
 			var second := _make_director(tier, seed)
-			_check("seed %d tier %.2f wave count is 1-3" % [seed, tier], first.wave_count >= 1 and first.wave_count <= 3)
+			var max_waves := 2 if tier <= 0.15 else 3
+			_check("seed %d tier %.2f wave count respects tier ceiling" % [seed, tier], first.wave_count >= 1 and first.wave_count <= max_waves)
 			_check_eq("seed %d tier %.2f wave count is deterministic" % [seed, tier], first.wave_count, second.wave_count)
 			_check_eq("seed %d tier %.2f wave plan is deterministic" % [seed, tier], first.planned_waves(), second.planned_waves())
 

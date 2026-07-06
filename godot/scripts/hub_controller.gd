@@ -5,6 +5,8 @@ const MetaState := preload("res://scripts/meta/meta_state.gd")
 
 signal run_requested()
 
+const RUN_SURFACE_LOAD_FAILURE_COPY := "Run surface failed to load - run the import step (see docs/hades-pivot/export.md)."
+
 @export var movement_speed: float = 4.0
 @export var acceleration: float = 32.0
 @export var friction: float = 40.0
@@ -17,6 +19,7 @@ var meta_state: MetaState:
 		_render_meta_state()
 
 @onready var _scrap_label: Label = %ScrapLabel
+@onready var _run_surface_failure_label: Label = %RunSurfaceFailureLabel
 @onready var _run_door: Area3D = %RunDoor
 @onready var _player_body: CharacterBody3D = %GizmoPlaceholder
 
@@ -28,6 +31,7 @@ func _ready() -> void:
 		_meta_state = MetaState.new()
 	_run_door.body_entered.connect(_on_run_door_body_entered)
 	_run_door.body_exited.connect(_on_run_door_body_exited)
+	clear_run_surface_load_failure()
 	_render_meta_state()
 
 func _physics_process(delta: float) -> void:
@@ -55,6 +59,18 @@ func _render_meta_state() -> void:
 		_scrap_label.text = "SCRAP 0"
 		return
 	_scrap_label.text = "SCRAP %d" % _meta_state.scrap_banked
+
+func show_run_surface_load_failure(message: String = RUN_SURFACE_LOAD_FAILURE_COPY) -> void:
+	if _run_surface_failure_label == null:
+		return
+	_run_surface_failure_label.text = message
+	_run_surface_failure_label.visible = true
+
+func clear_run_surface_load_failure() -> void:
+	if _run_surface_failure_label == null:
+		return
+	_run_surface_failure_label.text = RUN_SURFACE_LOAD_FAILURE_COPY
+	_run_surface_failure_label.visible = false
 
 func _on_run_door_body_entered(body: Node3D) -> void:
 	if not body is CharacterBody3D:

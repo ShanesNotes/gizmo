@@ -2,6 +2,21 @@
 
 The Godot project root is `godot/`; export presets live at `godot/export_presets.cfg`.
 
+## Fresh Checkout / After Every Pull
+
+Run the Godot import step before launching or exporting from a newly pulled tree:
+
+```bash
+godot --headless --path godot --import
+```
+
+This refreshes Godot's generated import and `class_name` registration state. Without
+it, a stale local cache can leave run-scene scripts unregistered and make the hub
+door fail to enter a run.
+
+`tools/godot/run_all_checks.sh` runs this import step before its script checks and
+test suites, so use that gate when you want the full verification pass after a pull.
+
 ## Presets
 
 - `Linux/X11` -> `godot/exports/linux/gizmo.x86_64`

@@ -89,6 +89,7 @@ func _initialize() -> void:
 func _run_tests() -> void:
 	await _test_run_scene_auto_starts_with_default_pool()
 	await _test_run_scene_instantiates_and_enters_room()
+	await _test_inter_wave_delay_defers_next_spawn_requests()
 	await _test_real_room_load_spawns_enemies_inside_camera_bounds_after_physics()
 	await _test_exact_overlapping_enemies_reproduce_depenetration_blowout()
 	await _test_spawn_positions_respect_current_player_distance()
@@ -162,6 +163,8 @@ func _empty_template_pool() -> Array[RoomTemplate]:
 func _new_run():
 	var run = RunScene.instantiate()
 	run.auto_start = false
+	if _object_has_property(run, "inter_wave_delay"):
+		run.set("inter_wave_delay", 0.0)
 	root.add_child(run)
 	await process_frame
 	return run
@@ -178,6 +181,9 @@ func _flush_process_frames(count: int = 1) -> void:
 func _step_physics_frames(count: int = 1) -> void:
 	for _i in range(count):
 		await physics_frame
+
+func _wait_seconds(seconds: float) -> void:
+	await create_timer(maxf(seconds, 0.0)).timeout
 
 func _test_run_scene_auto_starts_with_default_pool() -> void:
 	var run = RunScene.instantiate()
@@ -213,6 +219,47 @@ func _test_run_scene_instantiates_and_enters_room() -> void:
 	_check("director starts for the entered room", run.current_director != null)
 	_check("director spawned at least one greybox enemy", run.spawned_enemy_count() > 0)
 	_check("room doors are bound to RoomDoor behavior", _all_bound_doors_are_room_doors(run))
+	await _cleanup_run(run)
+
+func _test_inter_wave_delay_defers_next_spawn_requests() -> void:
+	const TEST_DELAY := 0.2
+	var run = RunScene.instantiate()
+	run.auto_start = false
+	root.add_child(run)
+	await process_frame
+
+	var has_delay := _object_has_property(run, "inter_wave_delay")
+	_check("orchestrator exposes exported inter_wave_delay", has_delay)
+	if not has_delay:
+		await _cleanup_run(run)
+		return
+	_check_almost("orchestrator default inter-wave beat is 0.9s", float(run.get("inter_wave_delay")), 0.9)
+	run.set("inter_wave_delay", TEST_DELAY)
+	run.start_run("hearth", _empty_template_pool(), 2, _seeded_rng(1))
+	await process_frame
+
+	var director: RoomDirector = run.current_director
+	_check("inter-wave delay test starts a director", director != null)
+	if director == null:
+		await _cleanup_run(run)
+		return
+	_check_eq("tier-0 real room starts with two planned waves", director.wave_count, 2)
+	_check("first wave spawned immediately", run.spawned_enemy_count() > 0)
+
+	for enemy in _live_spawned_enemies(run):
+		enemy.take_damage(maxf(enemy.hp, enemy.max_hp))
+	await process_frame
+
+	_check_eq("clearing wave 0 removes active enemies before the beat", run.spawned_enemy_count(), 0)
+	_check_eq("director advances to wave 1 before delayed spawn", director.current_wave_index, 1)
+	_check_eq("next wave does not spawn in the clear frame", run.spawned_enemy_count(), 0)
+
+	await _wait_seconds(TEST_DELAY * 0.5)
+	_check_eq("next wave still waits before inter_wave_delay elapses", run.spawned_enemy_count(), 0)
+
+	await _wait_seconds(TEST_DELAY * 0.75)
+	_check("next wave spawns after inter_wave_delay elapses", run.spawned_enemy_count() > 0)
+	_check_eq("delayed spawn count matches director ledger", run.spawned_enemy_count(), director.remaining_in_wave())
 	await _cleanup_run(run)
 
 func _test_real_room_load_spawns_enemies_inside_camera_bounds_after_physics() -> void:
@@ -1334,8 +1381,8 @@ func _test_real_orchestrator_survivability_bands() -> void:
 	_check("retreating real-run clears at least three rooms", int(retreating["rooms_cleared"]) >= 3)
 	_check("retreating real-run damage stays telegraphed", int(retreating["max_hit_delta"]) <= 2)
 
-	var half_dps := await _run_survivability_probe(&"retreat", 40.0, 3, 0.5, 1.0)
-	_check("halved-DPS mutation fails to clear three rooms inside the probe band", int(half_dps["rooms_cleared"]) < 3)
+	var half_dps := await _run_survivability_probe(&"retreat", 40.0, 4, 0.5, 1.0)
+	_check("halved-DPS mutation fails to clear four rooms inside the probe band", int(half_dps["rooms_cleared"]) < 4)
 
 	var doubled_damage := await _run_survivability_probe(&"stationary", 90.0, 1, 1.0, 2.0)
 	_check(

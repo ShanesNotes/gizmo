@@ -2,7 +2,7 @@ extends SceneTree
 
 # Headless tests for HZ-041 Brass Sphere hub scene.
 # Run with:
-#   godot --headless --user-data-dir /tmp/codex-godot-userdata --path godot --script res://tests/run_hub_tests.gd
+#   godot --headless --user-data-dir /tmp/codex-godot-userdata-082 --path godot --script res://tests/run_hub_tests.gd
 
 const HubControllerScript := preload("res://scripts/hub_controller.gd")
 const HubScene := preload("res://scenes/hub.tscn")
@@ -15,6 +15,7 @@ func _initialize() -> void:
 	print("Running hub tests...")
 	await _test_hub_scene_instantiates_with_required_nodes()
 	await _test_hub_identity_visual_nameplates_and_blocker()
+	await _test_run_surface_failure_label_api()
 	await _test_scrap_label_reflects_injected_meta_state()
 	await _test_run_requested_emits_once_per_door_entry()
 	print("")
@@ -70,6 +71,10 @@ func _test_hub_scene_instantiates_with_required_nodes() -> void:
 	_check("CodexAnchor marker exists", hub.get_node_or_null("CodexAnchor") is Marker3D)
 	_check("placeholder Gizmo body is a CharacterBody3D", hub.get_node_or_null("GizmoPlaceholder") is CharacterBody3D)
 	_check("scrap display label exists", hub.get_node_or_null("HubUi/Root/ScrapLabel") is Label)
+	var failure_label := hub.get_node_or_null("HubUi/Root/RunSurfaceFailureLabel") as Label
+	_check("run surface failure label exists", failure_label != null)
+	if failure_label != null:
+		_check("run surface failure label starts hidden", not failure_label.visible)
 
 	await _cleanup(hub)
 
@@ -111,6 +116,19 @@ func _test_hub_identity_visual_nameplates_and_blocker() -> void:
 			_check_vec3_almost("run-door void blocker shape covers the doorway", blocker_box.size, Vector3(3.0, 2.4, 0.35))
 	if run_door != null and blocker != null:
 		_check("run-door void blocker sits behind the trigger volume", blocker.global_position.z < run_door.global_position.z - 0.5)
+
+	await _cleanup(hub)
+
+func _test_run_surface_failure_label_api() -> void:
+	var hub := await _instantiate_hub()
+	var failure_label := hub.get_node_or_null("HubUi/Root/RunSurfaceFailureLabel") as Label
+	_check("hub exposes run-surface failure API", hub.has_method(&"show_run_surface_load_failure") and hub.has_method(&"clear_run_surface_load_failure"))
+	if failure_label != null and hub.has_method(&"show_run_surface_load_failure") and hub.has_method(&"clear_run_surface_load_failure"):
+		hub.call(&"show_run_surface_load_failure", "Run surface failed to load - run the import step (see docs/hades-pivot/export.md).")
+		_check("failure API shows the label", failure_label.visible)
+		_check_eq("failure API writes the visible copy", failure_label.text, "Run surface failed to load - run the import step (see docs/hades-pivot/export.md).")
+		hub.call(&"clear_run_surface_load_failure")
+		_check("failure API hides the label", not failure_label.visible)
 
 	await _cleanup(hub)
 

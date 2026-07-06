@@ -15,6 +15,7 @@ const START_RUN_METHODS: Array[StringName] = [
 	&"begin_run",
 	&"start_run",
 ]
+const RUN_SURFACE_LOAD_FAILURE_COPY := "Run surface failed to load - run the import step (see docs/hades-pivot/export.md)."
 
 class PlaceholderRunSurface:
 	extends Node
@@ -79,6 +80,7 @@ func _on_hub_run_requested() -> void:
 	# Defensive: a lingering end-screen overlay must not stack over live gameplay.
 	_dismiss_run_summary()
 
+	var hub := _active_content()
 	var run_surface: Node = _instantiate_run_surface()
 	if run_surface == null:
 		push_error("AppShell could not create a run surface.")
@@ -86,7 +88,9 @@ func _on_hub_run_requested() -> void:
 	_configure_run_surface_for_shell(run_surface)
 	if not _connect_run_surface(run_surface):
 		run_surface.free()
+		_show_run_surface_load_failure(hub)
 		return
+	_clear_run_surface_load_failure(hub)
 
 	lifecycle.start_new_run(entry_room_id)
 	_swap_content(run_surface)
@@ -255,6 +259,14 @@ func _dismiss_run_summary() -> void:
 	if _summary_overlay != null and is_instance_valid(_summary_overlay):
 		_summary_overlay.queue_free()
 	_summary_overlay = null
+
+func _show_run_surface_load_failure(hub: Node) -> void:
+	if hub != null and hub.has_method(&"show_run_surface_load_failure"):
+		hub.call(&"show_run_surface_load_failure", RUN_SURFACE_LOAD_FAILURE_COPY)
+
+func _clear_run_surface_load_failure(hub: Node) -> void:
+	if hub != null and hub.has_method(&"clear_run_surface_load_failure"):
+		hub.call(&"clear_run_surface_load_failure")
 
 func _swap_content(next_content: Node) -> void:
 	_ensure_content_slot()
