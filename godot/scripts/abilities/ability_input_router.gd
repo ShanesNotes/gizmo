@@ -17,6 +17,7 @@ const DEFAULT_BUFFER_SECONDS: float = 0.15
 var _buffered_action: StringName = &""
 var _buffered_direction: Vector3 = Vector3.ZERO
 var _buffer_time_remaining: float = 0.0
+var _is_replaying_buffer := false
 
 func _ready() -> void:
 	if ability_component == null and get_parent() is AbilityComponent:
@@ -50,9 +51,11 @@ func handle_action_pressed(action: StringName, direction: Vector3 = Vector3.ZERO
 		return true
 
 	if _should_buffer(action):
+		# Latest press wins: the newest non-dash action owns the buffer window.
 		_buffered_action = action
 		_buffered_direction = direction
-		_buffer_time_remaining = buffer_seconds
+		if not _is_replaying_buffer:
+			_buffer_time_remaining = buffer_seconds
 	return false
 
 func tick(delta: float) -> bool:
@@ -72,13 +75,16 @@ func tick(delta: float) -> bool:
 
 	var action := _buffered_action
 	var direction := _buffered_direction
-	clear_buffer()
-	return handle_action_pressed(action, direction)
+	_is_replaying_buffer = true
+	var activated := handle_action_pressed(action, direction)
+	_is_replaying_buffer = false
+	return activated
 
 func clear_buffer() -> void:
 	_buffered_action = &""
 	_buffered_direction = Vector3.ZERO
 	_buffer_time_remaining = 0.0
+	_is_replaying_buffer = false
 
 func has_buffered_action() -> bool:
 	return _buffered_action != &"" and _buffer_time_remaining > 0.0

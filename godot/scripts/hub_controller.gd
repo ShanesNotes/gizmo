@@ -49,7 +49,10 @@ func _physics_process(delta: float) -> void:
 	_player_body.move_and_slide()
 
 func _render_meta_state() -> void:
-	if _scrap_label == null or _meta_state == null:
+	if _scrap_label == null:
+		return
+	if _meta_state == null:
+		_scrap_label.text = "SCRAP 0"
 		return
 	_scrap_label.text = "SCRAP %d" % _meta_state.scrap_banked
 

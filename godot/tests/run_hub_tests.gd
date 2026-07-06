@@ -76,6 +76,9 @@ func _test_scrap_label_reflects_injected_meta_state() -> void:
 	hub.meta_state = next_meta_state
 	_check_eq("scrap label refreshes when meta state is reinjected", scrap_label.text, "SCRAP 7")
 
+	hub.meta_state = null
+	_check_eq("scrap label clears when meta state is explicitly nulled", scrap_label.text, "SCRAP 0")
+
 	await _cleanup(hub)
 
 func _test_run_requested_emits_once_per_door_entry() -> void:

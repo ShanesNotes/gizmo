@@ -13,6 +13,8 @@ var _failed := 0
 func _initialize() -> void:
 	print("Running boon draft UI tests...")
 	await _test_present_renders_three_offer_cards()
+	await _test_present_with_two_offers_hides_third_card()
+	await _test_present_with_zero_offers_hides_all_cards()
 	await _test_button_selection_emits_nth_boon_once()
 	await _test_keyboard_selection_emits_nth_boon_once()
 	await _test_present_twice_reuses_card_nodes()
@@ -125,6 +127,55 @@ func _test_present_renders_three_offer_cards() -> void:
 		_check_eq("card %d metadata tracks slot label" % (i + 1), card.get_meta("slot_label"), boon.slot_label())
 		_check_eq("card %d metadata tracks rarity label" % (i + 1), card.get_meta("rarity_label"), boon.rarity_label())
 
+	await _cleanup(ui)
+
+func _test_present_with_two_offers_hides_third_card() -> void:
+	var ui = await _new_ui()
+	var offers := _make_offer_set()
+	offers.resize(2)
+
+	ui.present(offers)
+	await process_frame
+
+	_check("two-offer present keeps the overlay visible", ui.visible)
+	_check_eq("two-offer present keeps exactly 3 card nodes", _row(ui).get_child_count(), 3)
+	for i in range(2):
+		var boon := offers[i]
+		var card := _card(ui, i)
+		_check("two-offer card %d is visible" % (i + 1), card.visible)
+		_check("two-offer card %d is selectable" % (i + 1), not card.disabled)
+		_check_eq("two-offer card %d name label" % (i + 1), _label(card, "NameLabel").text, boon.display_name)
+		_check_eq("two-offer card %d metadata tracks boon id" % (i + 1), card.get_meta("boon_id"), boon.boon_id)
+
+	var hidden_card := _card(ui, 2)
+	_check("two-offer card 3 is hidden", not hidden_card.visible)
+	_check("two-offer card 3 is disabled", hidden_card.disabled)
+	_check("two-offer card 3 has no stale boon metadata", not hidden_card.has_meta("boon_id"))
+	_check_eq("two-offer card 3 name clears", _label(hidden_card, "NameLabel").text, "")
+
+	await _cleanup(ui)
+
+func _test_present_with_zero_offers_hides_all_cards() -> void:
+	var ui = await _new_ui()
+	var offers: Array[BoonDef] = []
+	var chosen: Array[BoonDef] = []
+	ui.boon_chosen.connect(func(boon: BoonDef) -> void:
+		chosen.append(boon)
+	)
+
+	ui.present(offers)
+	await process_frame
+
+	_check("zero-offer present keeps the overlay visible without crashing", ui.visible)
+	for i in range(3):
+		var card := _card(ui, i)
+		_check("zero-offer card %d is hidden" % (i + 1), not card.visible)
+		_check("zero-offer card %d is disabled" % (i + 1), card.disabled)
+		_check("zero-offer card %d has no stale boon metadata" % (i + 1), not card.has_meta("boon_id"))
+		_check_eq("zero-offer card %d name clears" % (i + 1), _label(card, "NameLabel").text, "")
+
+	_check("zero-offer choose_offer returns false", not ui.choose_offer(0))
+	_check_eq("zero-offer selection emits nothing", chosen.size(), 0)
 	await _cleanup(ui)
 
 func _test_button_selection_emits_nth_boon_once() -> void:

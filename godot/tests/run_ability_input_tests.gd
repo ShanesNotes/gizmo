@@ -11,6 +11,21 @@ const ACTION_ATTACK: StringName = &"gizmo_attack"
 const ACTION_SPECIAL: StringName = &"gizmo_special"
 const ACTION_CAST: StringName = &"gizmo_cast"
 
+class RetryFailingAbilityComponent:
+	extends AbilityComponent
+
+	var reported_state: PlayerActionStateMachine.ActionState = PlayerActionStateMachine.ActionState.ATTACK
+	var activation_attempts: Array[StringName] = []
+
+	func try_activate(ability_id: StringName, _direction: Vector3 = Vector3.ZERO) -> bool:
+		activation_attempts.append(ability_id)
+		if activation_attempts.size() > 1:
+			reported_state = PlayerActionStateMachine.ActionState.ATTACK
+		return false
+
+	func current_action_state() -> PlayerActionStateMachine.ActionState:
+		return reported_state
+
 var _passed := 0
 var _failed := 0
 
@@ -19,6 +34,8 @@ func _initialize() -> void:
 	await _test_input_map_entries_exist_with_expected_bindings()
 	await _test_actions_route_to_matching_abilities()
 	await _test_dash_cancels_immediately_and_attack_buffers_until_allowed()
+	await _test_latest_buffered_press_wins_without_firing_replaced_action()
+	await _test_tick_retry_preserves_original_buffer_expiry()
 	await _test_buffer_expires_before_state_allows()
 	print("")
 	if _failed == 0 and _passed > 0:
@@ -131,6 +148,60 @@ func _test_dash_cancels_immediately_and_attack_buffers_until_allowed() -> void:
 	router.tick(0.02)
 	_check_eq("buffered attack fires once the state allows it", activated_ids, [&"attack", &"dash", &"attack"])
 	_check("buffer clears after firing", not router.has_buffered_action())
+	await _cleanup(body)
+
+func _test_latest_buffered_press_wins_without_firing_replaced_action() -> void:
+	var harness := await _new_harness()
+	var body: Node = harness["body"]
+	var kit: AbilityComponent = harness["kit"]
+	var router = harness["router"]
+	var attack := kit.get_ability(&"attack") as AttackAbility
+	attack.step_recovery = [0.10, 0.10, 0.10]
+	router.buffer_seconds = 0.20
+	var activated_ids: Array[StringName] = []
+	kit.ability_activated.connect(func(ability: Ability) -> void:
+		activated_ids.append(ability.ability_id)
+	)
+
+	_check("first attack starts before overwrite test", router.handle_action_pressed(ACTION_ATTACK))
+	_check("attack press during recovery buffers first candidate", not router.handle_action_pressed(ACTION_ATTACK))
+	_check_eq("first candidate is attack", router.buffered_action(), ACTION_ATTACK)
+	_check("cast press during same recovery replaces buffered action", not router.handle_action_pressed(ACTION_CAST))
+	_check_eq("latest buffered candidate is cast", router.buffered_action(), ACTION_CAST)
+
+	kit.tick(0.11)
+	router.tick(0.11)
+
+	_check_eq("window open fires latest buffered cast only", activated_ids, [&"attack", &"cast"])
+	_check("buffer clears after latest buffered cast fires", not router.has_buffered_action())
+	await _cleanup(body)
+
+func _test_tick_retry_preserves_original_buffer_expiry() -> void:
+	var body := Node.new()
+	body.name = "RetryFailingInputHarness"
+	root.add_child(body)
+	var kit := RetryFailingAbilityComponent.new()
+	body.add_child(kit)
+	var router = AbilityInputRouterScript.new()
+	router.buffer_seconds = 0.15
+	router.bind_component(kit)
+	body.add_child(router)
+	await process_frame
+
+	_check("busy fake component buffers the initial attack press", not router.handle_action_pressed(ACTION_ATTACK))
+	_check_eq("retry test starts with one activation attempt", kit.activation_attempts.size(), 1)
+	_check("retry test has a live buffer", router.has_buffered_action())
+
+	kit.reported_state = PlayerActionStateMachine.ActionState.IDLE
+	router.tick(0.05)
+	_check_eq("tick retry attempted the buffered attack once", kit.activation_attempts.size(), 2)
+	_check("failed retry keeps the original buffer live", router.has_buffered_action())
+	_check("failed retry does not refresh the buffer window", router.buffer_time_remaining() <= 0.101)
+
+	kit.reported_state = PlayerActionStateMachine.ActionState.IDLE
+	router.tick(0.11)
+	_check("original buffer expires after its first input window", not router.has_buffered_action())
+	_check_eq("expired retry does not attempt again", kit.activation_attempts.size(), 2)
 	await _cleanup(body)
 
 func _test_buffer_expires_before_state_allows() -> void:
