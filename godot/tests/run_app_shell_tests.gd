@@ -45,6 +45,7 @@ func _run_tests() -> void:
 	await _test_running_phase_ignores_reentrant_run_request()
 	await _test_malformed_run_surface_is_rejected_without_leaving_hub()
 	await _test_player_death_banks_saves_and_returns_to_hub()
+	await _test_new_run_dismisses_lingering_summary_overlay()
 	await _test_victory_returns_to_hub_and_persists_outcome_flag()
 	await _test_double_death_same_frame_banks_once()
 	await _test_double_victory_same_frame_banks_once()
@@ -247,6 +248,27 @@ func _test_player_death_banks_saves_and_returns_to_hub() -> void:
 		"scrap_banked": 27,
 		"last_return_was_victory": false,
 	})
+
+	await _cleanup_app(app, save_path)
+
+func _test_new_run_dismisses_lingering_summary_overlay() -> void:
+	var save_path := _new_save_path("overlay")
+	_remove_save(save_path)
+	var app := await _new_app(save_path)
+	if app == null:
+		return
+	_current_hub(app).run_requested.emit()
+	await _flush_free_queue()
+	_current_surface(app).player_died.emit()
+	await _flush_free_queue()
+	_check("death shows a run-summary overlay", is_instance_valid(app._summary_overlay))
+
+	var overlay: Node = app._summary_overlay
+	_current_hub(app).run_requested.emit()
+	await _flush_free_queue()
+
+	_check("starting a new run frees the lingering summary overlay", not is_instance_valid(overlay))
+	_check("new run swaps to a run surface despite prior overlay", _current_surface(app) != null)
 
 	await _cleanup_app(app, save_path)
 

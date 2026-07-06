@@ -127,7 +127,7 @@ Rubric: Opus = seam-shaping/cross-system judgment; Sonnet = specified single-fil
 | HZ-052 | HUD boon loadout display | Sonnet | HP-14 | done | 021 |
 | HZ-053 | HUD guard-over-HP carry-forward | Sonnet | HP-14 | done | — |
 | HZ-060 | greybox `RoomTemplate` pool (combat + boss scenes) | Sonnet | HP-15 | done | 005 |
-| HZ-061 | full-run integration gate | Opus | HP-15 | ready-for-agent | 032,042,051,052,060 |
+| HZ-061 | full-run integration gate | Opus | HP-15 | done | 032,042,051,052,060 |
 | HZ-062 | end-screen hub-return copy + stats | Haiku | HP-13 | done | 042 |
 
 ## Salvage notes (old queue → this queue)
