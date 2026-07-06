@@ -6,6 +6,7 @@ signal damage_taken(spawn_id: String, amount: float, charges_spark: bool)
 signal died(spawn_id: String)
 
 const EnemyArchetypesScript := preload("res://scripts/enemies/enemy_archetypes.gd")
+const CombatEffectsScript := preload("res://scripts/room_graph/combat_effects.gd")
 const EnemyBrainScript := preload("res://scripts/enemies/enemy_brain.gd")
 
 @export var archetype: String = EnemyArchetypesScript.ARCHETYPE_CHAFF
@@ -97,6 +98,12 @@ func clear_chase_target() -> void:
 func stagger(duration: float) -> void:
 	brain.stagger(duration)
 	velocity = Vector3.ZERO
+	CombatEffectsScript.apply_stagger_read(self, visual_pivot, duration)
+
+## Cosmetic corpse removal (HZ-084): all gameplay bookkeeping must be done
+## before calling; this only replaces an instant queue_free with a pop.
+func play_death_pop_then_free() -> void:
+	CombatEffectsScript.death_pop(self)
 
 func is_staggered() -> bool:
 	return brain.is_staggered()
@@ -148,6 +155,7 @@ func take_damage(amount: float, charges_spark: bool = true) -> float:
 	var applied := before - hp
 	if applied > 0.0:
 		damage_taken.emit(spawn_id, applied, charges_spark)
+		CombatEffectsScript.flash_hit(visual_pivot)
 	if hp <= 0.0 and not _dead:
 		_dead = true
 		velocity = Vector3.ZERO

@@ -633,7 +633,10 @@ func _on_enemy_died(spawn_id: String) -> void:
 		combat_resolvers.reclaim_cast_shards_for_spawn_id(spawn_id)
 	var enemy := spawned_enemies.get(spawn_id) as Node
 	if enemy != null and is_instance_valid(enemy):
-		enemy.queue_free()
+		if enemy.has_method(&"play_death_pop_then_free"):
+			enemy.call(&"play_death_pop_then_free")
+		else:
+			enemy.queue_free()
 	spawned_enemies.erase(spawn_id)
 	if current_director == null:
 		# Boss-room adds are pressure only: without a RoomDirector, add deaths
@@ -649,7 +652,10 @@ func _on_boss_died(spawn_id: String) -> void:
 	var boss := spawned_enemies.get(spawn_id) as Node
 	if boss != null and is_instance_valid(boss):
 		_clear_boss_telegraphs(boss)
-		boss.queue_free()
+		if boss.has_method(&"play_death_pop_then_free"):
+			boss.call(&"play_death_pop_then_free")
+		else:
+			boss.queue_free()
 	spawned_enemies.erase(spawn_id)
 	current_boss = null
 	_boss_intro_hold_remaining = 0.0

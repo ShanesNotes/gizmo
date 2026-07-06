@@ -1,6 +1,8 @@
 [gd_scene format=3]
 
 [ext_resource type="Script" path="res://scripts/hub_controller.gd" id="1_ctrl"]
+[ext_resource type="Script" path="res://scripts/player/gizmo_visual.gd" id="2_visual"]
+[ext_resource type="PackedScene" uid="uid://qa2ralfsy66q" path="res://assets/gizmo.glb" id="3_gizmo_glb"]
 
 [sub_resource type="ProceduralSkyMaterial" id="Sky_mat"]
 sky_top_color = Color(0.09, 0.07, 0.16, 1)
@@ -100,6 +102,9 @@ rings = 8
 [sub_resource type="BoxShape3D" id="RunDoor_shape"]
 size = Vector3(2.8, 2.2, 1.2)
 
+[sub_resource type="BoxShape3D" id="RunDoorBlocker_shape"]
+size = Vector3(3, 2.4, 0.35)
+
 [sub_resource type="CapsuleShape3D" id="Gizmo_capsule_shape"]
 radius = 0.35
 height = 1.1
@@ -185,15 +190,51 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 3.2)
 [node name="MirrorAnchor" type="Marker3D" parent="."]
 transform = Transform3D(0.707107, 0, -0.707107, 0, 1, 0, 0.707107, 0, 0.707107, -4.3, 0.65, -1.5)
 
+[node name="MirrorNameplate" type="Label3D" parent="MirrorAnchor"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1, 0)
+modulate = Color(0.48, 0.9, 0.58, 1)
+outline_modulate = Color(0.11, 0.07, 0.03, 1)
+billboard = 1
+no_depth_test = true
+text = "MIRROR"
+font_size = 36
+outline_size = 8
+
 [node name="CodexAnchor" type="Marker3D" parent="."]
 transform = Transform3D(0.707107, 0, 0.707107, 0, 1, 0, -0.707107, 0, 0.707107, 4.3, 0.65, -1.5)
+
+[node name="CodexNameplate" type="Label3D" parent="CodexAnchor"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1, 0)
+modulate = Color(0.72, 0.52, 1, 1)
+outline_modulate = Color(0.11, 0.07, 0.03, 1)
+billboard = 1
+no_depth_test = true
+text = "CODEX"
+font_size = 36
+outline_size = 8
 
 [node name="RunDoor" type="Area3D" parent="."]
 unique_name_in_owner = true
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.05, -5.35)
 
+[node name="RunDoorNameplate" type="Label3D" parent="RunDoor"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.45, 0.35)
+modulate = Color(0.96, 0.68, 0.28, 1)
+outline_modulate = Color(0.11, 0.07, 0.03, 1)
+billboard = 1
+no_depth_test = true
+text = "THE RUN"
+font_size = 38
+outline_size = 8
+
 [node name="CollisionShape3D" type="CollisionShape3D" parent="RunDoor"]
 shape = SubResource("RunDoor_shape")
+
+[node name="RunDoorVoidBlocker" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.2, -6.2)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="RunDoorVoidBlocker"]
+shape = SubResource("RunDoorBlocker_shape")
 
 [node name="GizmoPlaceholder" type="CharacterBody3D" parent="."]
 unique_name_in_owner = true
@@ -203,10 +244,11 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 3.2)
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.85, 0)
 shape = SubResource("Gizmo_capsule_shape")
 
-[node name="Capsule" type="MeshInstance3D" parent="GizmoPlaceholder"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.85, 0)
-mesh = SubResource("Gizmo_capsule_mesh")
-surface_material_override/0 = SubResource("Mat_gizmo_placeholder")
+[node name="VisualPivot" type="Node3D" parent="GizmoPlaceholder"]
+script = ExtResource("2_visual")
+
+[node name="Model" type="Node3D" parent="GizmoPlaceholder/VisualPivot" instance=ExtResource("3_gizmo_glb")]
+transform = Transform3D(-0.875, 0, 0, 0, 0.875, 0, 0, 0, -0.875, 0, 0, 0)
 
 [node name="Camera3D" type="Camera3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 0.642788, 0.766044, 0, -0.766044, 0.642788, 0, 9, 8)

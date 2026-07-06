@@ -8,6 +8,7 @@ extends Node
 ## lifecycle and only forwards room cleanup, enemy-death reclaim, and pickup
 ## reclaim calls across this seam.
 
+const CombatEffectsScript := preload("res://scripts/room_graph/combat_effects.gd")
 const CastShardPickupScript := preload("res://scripts/abilities/cast_shard_pickup.gd")
 
 var melee_range: float = 2.0
@@ -94,11 +95,13 @@ func _disconnect_ability_signal(ability_signal: Signal, callback: Callable) -> v
 func _on_player_attack_started(_step: int, damage: float) -> void:
 	if not _combat_input_allowed():
 		return
+	_spawn_swing_read(melee_range)
 	_resolve_player_arc_damage(damage, melee_range, melee_arc_degrees)
 
 func _on_player_special_started(potency: float) -> void:
 	if not _combat_input_allowed():
 		return
+	_spawn_swing_read(special_range)
 	_resolve_player_arc_damage(potency, special_range, special_arc_degrees)
 
 func _on_player_cast_started(potency: float) -> void:
@@ -119,6 +122,7 @@ func _on_player_surge_started(damage: float, radius: float, stagger_seconds: flo
 	if active_player == null:
 		return
 	var center := active_player.global_position
+	CombatEffectsScript.spawn_burst_ring(_shard_parent(), center, radius)
 	var snapshot: Array = _enemy_snapshot()
 	for candidate in snapshot:
 		if not (candidate is GreyboxEnemy) or not is_instance_valid(candidate):
@@ -129,6 +133,17 @@ func _on_player_surge_started(damage: float, radius: float, stagger_seconds: flo
 		enemy.stagger(stagger_seconds)
 		enemy.take_damage(damage, false)
 	_render_hud()
+
+func _spawn_swing_read(swing_range: float) -> void:
+	var active_player := _player()
+	if active_player == null:
+		return
+	CombatEffectsScript.spawn_swing_wedge(
+		_shard_parent(),
+		active_player.global_position,
+		_player_facing_direction(active_player),
+		swing_range
+	)
 
 func _resolve_player_arc_damage(damage: float, attack_range: float, arc_degrees: float) -> int:
 	var active_player := _player()
