@@ -1,4 +1,4 @@
-[gd_scene load_steps=9 format=3]
+[gd_scene load_steps=10 format=3]
 
 [ext_resource type="Script" path="res://scripts/room_graph/run_orchestrator.gd" id="1_orchestrator"]
 [ext_resource type="PackedScene" path="res://scenes/gizmo_player.tscn" id="2_player"]
@@ -7,6 +7,7 @@
 [ext_resource type="Script" path="res://scripts/room_graph/run_flow_bridge.gd" id="5_bridge"]
 [ext_resource type="PackedScene" path="res://scenes/hud.tscn" id="6_hud"]
 [ext_resource type="PackedScene" path="res://scenes/boon_draft.tscn" id="7_boon_draft"]
+[ext_resource type="PackedScene" path="res://scenes/pause_menu.tscn" id="8_pause_menu"]
 
 [sub_resource type="Environment" id="Environment_run"]
 background_mode = 1
@@ -15,7 +16,7 @@ ambient_light_source = 2
 ambient_light_color = Color(0.78, 0.72, 0.66, 1)
 ambient_light_energy = 0.8
 
-[node name="Run" type="Node3D"]
+[node name="Run" type="Node3D" groups=["run_surface"]]
 script = ExtResource("1_orchestrator")
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="."]
@@ -48,3 +49,5 @@ script = ExtResource("5_bridge")
 [node name="Hud" parent="." unique_name_in_owner=true instance=ExtResource("6_hud")]
 
 [node name="BoonDraft" parent="." unique_name_in_owner=true instance=ExtResource("7_boon_draft")]
+
+[node name="PauseMenu" parent="." unique_name_in_owner=true instance=ExtResource("8_pause_menu")]

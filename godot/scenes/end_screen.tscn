@@ -51,7 +51,7 @@ content_margin_top = 8.0
 content_margin_right = 18.0
 content_margin_bottom = 8.0
 
-[node name="EndScreen" type="CanvasLayer"]
+[node name="EndScreen" type="CanvasLayer" groups=["blocking_overlay"]]
 layer = 3
 script = ExtResource("1_es")
 

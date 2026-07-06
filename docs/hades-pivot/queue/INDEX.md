@@ -132,7 +132,7 @@ Rubric: Opus = seam-shaping/cross-system judgment; Sonnet = specified single-fil
 | HZ-070 | combat feel & survivability pass (spawn distance, telegraph, TTK) | Codex | feel | done | 061 |
 | HZ-102 | REST/REWARD room types (generation side) | Codex | rooms | done | 061 |
 | HZ-104 | AudioDirector runtime seam (room-state music) | Codex | audio | done | 061 |
-| HZ-106 | pause menu + export pipeline | Codex | ship | in-progress | 061 |
+| HZ-106 | pause menu + export pipeline | Codex | ship | done | 061 |
 
 ## Salvage notes (old queue → this queue)
 - **Do not reopen GZ-001…GZ-041** as frontier tickets. Reuse only documented numbers/formulas.
