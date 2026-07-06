@@ -98,6 +98,14 @@ func flare_spark_surge_charge() -> bool:
 	empty_spark_surge_charge()
 	return true
 
+## Sanctuary-style full guard restore (ADR 0007). Clamps, resets recharge
+## bookkeeping, and emits — the one sanctioned external refill entry point.
+func refill_guard() -> void:
+	guard = maxi(max_guard, 0)
+	_guard_recharge_elapsed = guard_recharge_delay
+	_guard_recharge_progress = 0.0
+	_emit_vitals_changed()
+
 func tick_guard_recharge(delta: float) -> void:
 	var step := maxf(delta, 0.0)
 	if step <= 0.0:

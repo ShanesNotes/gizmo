@@ -104,6 +104,7 @@ func _run_tests() -> void:
 	await _test_real_combat_fills_gauge_and_spends_on_surge()
 	await _test_spark_charge_persists_across_room_transition()
 	await _test_rest_room_does_not_refill_spark_surge_charge()
+	await _test_fixture_grants_are_one_shot_and_rest_guard_only()
 	await _test_player_death_disconnects_director_and_ignores_posthumous_enemy_deaths()
 	await _test_real_orchestrator_survivability_bands()
 	print("")
@@ -835,6 +836,43 @@ func _test_rest_room_does_not_refill_spark_surge_charge() -> void:
 	await process_frame
 
 	_check_almost("REST room auto-clear does not refill Spark Surge charge", float(run.player_vitals.get("spark_surge_charge")), 37.0)
+	await _cleanup_run(run)
+
+func _test_fixture_grants_are_one_shot_and_rest_guard_only() -> void:
+	var run = await _new_run()
+	run.start_run("hearth", _empty_template_pool(), 2, _seeded_rng(5))
+	await process_frame
+
+	var has_scrap_method := run.has_method("grant_fixture_scrap_once")
+	var has_guard_method := run.has_method("refill_fixture_guard_once")
+	_check("orchestrator exposes one-shot Scrap Cache fixture seam", has_scrap_method)
+	_check("orchestrator exposes one-shot Ember Alcove guard seam", has_guard_method)
+	if not has_scrap_method or not has_guard_method:
+		await _cleanup_run(run)
+		return
+
+	var scrap_before: int = run.scrap_earned
+	_check("Scrap Cache fixture grants on first claim", bool(run.call("grant_fixture_scrap_once", "scrap_probe", 10)))
+	_check_eq("Scrap Cache first claim adds promised scrap", run.scrap_earned, scrap_before + 10)
+	_check("Scrap Cache duplicate claim is rejected", not bool(run.call("grant_fixture_scrap_once", "scrap_probe", 10)))
+	_check_eq("Scrap Cache duplicate claim does not add scrap", run.scrap_earned, scrap_before + 10)
+
+	run.player_vitals.hp = 2
+	run.player_vitals.guard = 3
+	run.player_vitals.set("spark_surge_charge_max", 100.0)
+	run.player_vitals.call("set_spark_surge_charge", 37.0)
+	var hp_before: int = run.player_vitals.hp
+	var spark_before := float(run.player_vitals.get("spark_surge_charge"))
+
+	_check("Ember Alcove fixture refills guard on first claim", bool(run.call("refill_fixture_guard_once", "rest_probe")))
+	_check_eq("Ember Alcove refills guard to max", run.player_vitals.guard, run.player_vitals.max_guard)
+	_check_eq("Ember Alcove does not heal HP", run.player_vitals.hp, hp_before)
+	_check_almost("Ember Alcove does not refill Spark Surge", float(run.player_vitals.get("spark_surge_charge")), spark_before)
+
+	run.player_vitals.guard = 1
+	_check("Ember Alcove duplicate claim is rejected", not bool(run.call("refill_fixture_guard_once", "rest_probe")))
+	_check_eq("Ember Alcove duplicate claim does not refill guard", run.player_vitals.guard, 1)
+	_check_almost("Ember Alcove duplicate claim still leaves Spark Surge unchanged", float(run.player_vitals.get("spark_surge_charge")), spark_before)
 	await _cleanup_run(run)
 
 func _test_player_death_disconnects_director_and_ignores_posthumous_enemy_deaths() -> void:
