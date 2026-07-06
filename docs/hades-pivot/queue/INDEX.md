@@ -134,7 +134,7 @@ Rubric: Opus = seam-shaping/cross-system judgment; Sonnet = specified single-fil
 | HZ-104 | AudioDirector runtime seam (room-state music) | Codex | audio | done | 061 |
 | HZ-106 | pause menu + export pipeline | Codex | ship | done | 061 |
 | HZ-103 | Spark Surge (Call-gauge analog, ADR 0012) | Codex | meter | done | 070,104 |
-| HZ-071 | combat scale rebalance (TTK bands unreachable) | Codex | feel | ready-for-agent | 103 |
+| HZ-071 | combat scale rebalance (TTK bands unreachable) | Codex | feel | done | 103 |
 | HZ-072 | REST/REWARD runtime behavior + traversal coverage | Codex | rooms | ready-for-agent | 103 |
 
 ## Salvage notes (old queue → this queue)
