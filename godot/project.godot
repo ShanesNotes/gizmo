@@ -16,6 +16,10 @@ run/main_scene="res://scenes/app.tscn"
 config/features=PackedStringArray("4.7", "Forward Plus")
 config/icon="res://icon.svg"
 
+[autoload]
+
+AudioDirector="*res://scripts/audio/audio_director.gd"
+
 [display]
 
 window/size/viewport_width=1280
