@@ -13,6 +13,7 @@ var reward_type: RoomNode.RewardType = RoomNode.RewardType.BOON
 var door_name: String = ""
 
 var _exit_requested: bool = false
+var _overlap_check_generation: int = 0
 
 func _init() -> void:
 	monitoring = false
@@ -33,6 +34,8 @@ func open_for(connection: RoomConnection, next_reward_type: RoomNode.RewardType)
 	state = State.OPEN
 	_exit_requested = false
 	monitoring = true
+	_overlap_check_generation += 1
+	call_deferred("_check_for_already_overlapping_player", _overlap_check_generation)
 
 func seal() -> void:
 	state = State.SEALED
@@ -41,6 +44,7 @@ func seal() -> void:
 	reward_type = RoomNode.RewardType.BOON
 	door_name = ""
 	_exit_requested = false
+	_overlap_check_generation += 1
 
 func telegraph_data() -> Dictionary:
 	return {
@@ -49,21 +53,35 @@ func telegraph_data() -> Dictionary:
 	}
 
 func _on_body_entered(body: Node3D) -> void:
+	_request_exit_from_body(body)
+
+func _check_for_already_overlapping_player(generation: int) -> void:
+	if not is_inside_tree():
+		return
+	await get_tree().physics_frame
+	if generation != _overlap_check_generation:
+		return
+	if state != State.OPEN or _exit_requested or bound_connection == null:
+		return
+	for body in get_overlapping_bodies():
+		if _request_exit_from_body(body):
+			return
+
+func _request_exit_from_body(body: Node3D) -> bool:
 	if state != State.OPEN:
-		return
+		return false
 	if _exit_requested:
-		return
+		return false
 	if bound_connection == null:
-		return
+		return false
 	if not _is_player_body(body):
-		return
+		return false
 
 	_exit_requested = true
 	exit_requested.emit(bound_connection)
+	return true
 
 func _is_player_body(body: Node3D) -> bool:
 	if body == null:
 		return false
-	if body is GizmoPlayer:
-		return true
 	return body is CharacterBody3D and body.is_in_group(player_group)

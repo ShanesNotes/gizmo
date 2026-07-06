@@ -141,6 +141,7 @@ func _test_player_scene_instantiates_with_stable_nodes() -> void:
 	_check("AbilityInputRouter node exists", player.get_node_or_null("AbilityInputRouter") is AbilityInputRouter)
 	_check("router is bound to the scene AbilityComponent", player.ability_input_router.ability_component == player.ability_component)
 	_check_almost("scene dash duration is Hades-spec ~0.25s", player.motor.dash_duration, 0.25)
+	_check("scene root is tagged for player-only trigger filters", player.is_in_group(&"player"))
 
 	await _cleanup(player)
 

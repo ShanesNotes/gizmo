@@ -17,6 +17,7 @@ var max_hp: float = 0.0
 var hp: float = 0.0
 var move_speed: float = 0.0
 var contact_radius: float = 1.0
+var attack_release_radius: float = 1.25
 var melee_damage: int = 1
 var attack_windup: float = 0.35
 var attack_recovery: float = 0.65
@@ -54,6 +55,7 @@ func configure(p_archetype: String, p_spawn_id: String) -> void:
 	hp = max_hp
 	move_speed = float(_current_stats["move_speed"])
 	contact_radius = float(_current_stats["contact_radius"])
+	attack_release_radius = float(_current_stats["attack_release_radius"])
 	melee_damage = int(_current_stats["damage"])
 	attack_windup = float(_current_stats["attack_windup"])
 	attack_recovery = float(_current_stats["attack_recovery"])

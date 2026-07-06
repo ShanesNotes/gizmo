@@ -14,8 +14,10 @@ var _failed := 0
 func _initialize() -> void:
 	print("Running enemy tests...")
 	await _test_archetype_stats_match_balance_bands()
+	await _test_unknown_archetype_falls_back_to_chaff()
 	await _test_steering_direction_and_contact_stop()
 	await _test_windup_timing_is_deterministic()
+	await _test_windup_survives_contact_jitter_but_resets_on_escape()
 	await _test_take_damage_emits_died_once()
 	await _test_scene_instantiates_headless()
 	await _test_scene_chase_emits_damage_event_data_without_player_wiring()
@@ -77,6 +79,20 @@ func _test_archetype_stats_match_balance_bands() -> void:
 	_check("bruiser has more hp than chaff", float(bruiser["max_hp"]) > float(chaff["max_hp"]))
 	_check("chaff is faster than bruiser", float(chaff["move_speed"]) > float(bruiser["move_speed"]))
 
+func _test_unknown_archetype_falls_back_to_chaff() -> void:
+	var fallback := EnemyArchetypesScript.stats_for("unknown")
+
+	_check_eq("unknown archetype stats fall back to chaff", String(fallback["archetype"]), "chaff")
+	_check_eq("unknown archetype fallback keeps chaff hp", float(fallback["max_hp"]), 1.0)
+
+	var enemy = await _new_enemy()
+	enemy.configure("unknown", "spawn-unknown")
+	_check_eq("scene configure unknown stores chaff fallback archetype", enemy.archetype, "chaff")
+	_check_eq("scene configure unknown keeps spawn id", enemy.spawn_id, "spawn-unknown")
+	_check_almost("scene configure unknown applies chaff hp", enemy.hp, 1.0)
+
+	await _cleanup(enemy)
+
 func _test_steering_direction_and_contact_stop() -> void:
 	var far := EnemyBrainScript.chase_steering(Vector3.ZERO, Vector3(3.0, 9.0, 4.0), 2.1, 1.0, 0.1)
 	_check_vec3_almost("seek direction is flat XZ normalized", Vector3(far["direction"]), Vector3(0.6, 0.0, 0.8))
@@ -117,6 +133,31 @@ func _test_windup_timing_is_deterministic() -> void:
 
 	var fourth: Dictionary = brain.step(Vector3.ZERO, Vector3(0.5, 0.0, 0.0), 0.20)
 	_check_eq("recovery suppresses immediate repeat damage", Dictionary(fourth["damage_event"]).is_empty(), true)
+
+func _test_windup_survives_contact_jitter_but_resets_on_escape() -> void:
+	var brain = EnemyBrainScript.new()
+	brain.configure({
+		"move_speed": 2.0,
+		"contact_radius": 1.0,
+		"damage": 3,
+		"attack_windup": 0.30,
+		"attack_recovery": 0.50,
+	})
+
+	brain.step(Vector3.ZERO, Vector3(0.5, 0.0, 0.0), 0.10)
+	var jitter: Dictionary = brain.step(Vector3.ZERO, Vector3(1.05, 0.0, 0.0), 0.10)
+	_check_eq("one-tick nudge outside contact radius does not cancel windup", String(jitter["attack_state"]), EnemyBrainScript.ATTACK_WINDUP)
+	_check_eq("jitter frame itself does not deal damage early", Dictionary(jitter["damage_event"]).is_empty(), true)
+
+	var landed: Dictionary = brain.step(Vector3.ZERO, Vector3(0.5, 0.0, 0.0), 0.10)
+	_check_eq("windup still lands after contact jitter", int(Dictionary(landed["damage_event"]).get("damage", 0)), 3)
+	_check_eq("landed attack transitions to recovery after jitter", String(landed["attack_state"]), EnemyBrainScript.ATTACK_RECOVERY)
+
+	brain.reset_attack()
+	brain.step(Vector3.ZERO, Vector3(0.5, 0.0, 0.0), 0.10)
+	var escaped: Dictionary = brain.step(Vector3.ZERO, Vector3(1.30, 0.0, 0.0), 0.01)
+	_check_eq("escape past release radius resets windup", String(escaped["attack_state"]), EnemyBrainScript.ATTACK_READY)
+	_check_almost("escape past release radius clears windup timer", brain.attack_timer_remaining(), 0.0)
 
 func _test_take_damage_emits_died_once() -> void:
 	var enemy = await _new_enemy()

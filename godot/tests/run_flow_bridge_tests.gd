@@ -45,6 +45,7 @@ func _run_tests() -> void:
 	await _test_boon_exit_presents_draft_before_advance_and_advances_after_pick()
 	await _test_non_boon_rewards_emit_payload_and_advance_immediately()
 	await _test_non_boon_rejected_exit_does_not_open_draft()
+	await _test_boon_exit_rejected_before_draft_when_destination_locked()
 	await _test_reentrant_boon_exit_request_is_rejected_until_choice()
 	await _test_boon_exit_rejection_clears_draft_state()
 	await _test_real_boon_draft_ui_satisfies_bridge_contract_headless()
@@ -191,6 +192,26 @@ func _test_non_boon_rejected_exit_does_not_open_draft() -> void:
 	_check_eq("non-BOON retry enters destination", destination.state, RoomNode.State.ENTERED)
 	await _cleanup_harness(harness)
 
+func _test_boon_exit_rejected_before_draft_when_destination_locked() -> void:
+	var harness := _make_harness(RoomNode.RewardType.BOON, RoomNode.State.LOCKED)
+	var bridge = harness["bridge"]
+	var ui: StubBoonDraftUI = harness["ui"]
+	var draft: BoonDraft = harness["draft"]
+	var connection: RoomConnection = harness["connection"]
+	var completions: Array[bool] = []
+	bridge.exit_completed.connect(func(_connection, accepted: bool) -> void:
+		completions.append(accepted)
+	)
+
+	bridge.request_exit(connection)
+	await process_frame
+
+	_check_eq("locked BOON destination reports false completion", completions, [false])
+	_check_eq("locked BOON destination never presents a draft", ui.present_count, 0)
+	_check_eq("locked BOON destination grants no picked boon", draft.picked_boon_ids.size(), 0)
+	_check("locked BOON rejection leaves no open draft", not bridge.is_draft_open())
+	await _cleanup_harness(harness)
+
 func _test_reentrant_boon_exit_request_is_rejected_until_choice() -> void:
 	var harness := _make_harness(RoomNode.RewardType.BOON)
 	var bridge = harness["bridge"]
@@ -217,9 +238,10 @@ func _test_reentrant_boon_exit_request_is_rejected_until_choice() -> void:
 	await _cleanup_harness(harness)
 
 func _test_boon_exit_rejection_clears_draft_state() -> void:
-	var harness := _make_harness(RoomNode.RewardType.BOON, RoomNode.State.LOCKED)
+	var harness := _make_harness(RoomNode.RewardType.BOON, RoomNode.State.AVAILABLE)
 	var bridge = harness["bridge"]
 	var controller = harness["controller"]
+	var draft: BoonDraft = harness["draft"]
 	var ui: StubBoonDraftUI = harness["ui"]
 	var graph: RoomGraph = harness["graph"]
 	var connection: RoomConnection = harness["connection"]
@@ -232,6 +254,8 @@ func _test_boon_exit_rejection_clears_draft_state() -> void:
 
 	bridge.request_exit(connection)
 	await process_frame
+	_check_eq("BOON post-pick rejection starts with one presented draft", ui.present_count, 1)
+	destination.state = RoomNode.State.LOCKED
 	ui.choose(0)
 	await process_frame
 
@@ -240,14 +264,14 @@ func _test_boon_exit_rejection_clears_draft_state() -> void:
 	_check_eq("BOON rejected exit leaves destination LOCKED", destination.state, RoomNode.State.LOCKED)
 	_check_eq("BOON rejected exit keeps current room id", controller.current_room_id, current.room_id)
 	_check("BOON rejected exit clears draft state", not bridge.is_draft_open())
+	_check_eq("BOON rejected exit still consumes exactly one picked boon", draft.picked_boon_ids.size(), 1)
 
 	destination.state = RoomNode.State.AVAILABLE
 	bridge.request_exit(connection)
 	await process_frame
-	_check_eq("BOON retry presents a second draft", ui.present_count, 2)
-	ui.choose(0)
-	await process_frame
 
+	_check_eq("BOON consumed-draft retry does not present a second draft", ui.present_count, 1)
+	_check_eq("BOON consumed-draft retry keeps picked-boon count at one", draft.picked_boon_ids.size(), 1)
 	_check_eq("BOON retry reports success", completions, [false, true])
 	_check_eq("BOON retry marks current REWARDED", current.state, RoomNode.State.REWARDED)
 	_check_eq("BOON retry enters destination", destination.state, RoomNode.State.ENTERED)

@@ -7,6 +7,7 @@ const ATTACK_RECOVERY := "recovery"
 
 var move_speed: float = 0.0
 var contact_radius: float = 1.0
+var attack_release_radius: float = 1.25
 var melee_damage: int = 1
 var attack_windup: float = 0.35
 var attack_recovery: float = 0.65
@@ -17,6 +18,7 @@ var _attack_timer := 0.0
 func configure(stats: Dictionary) -> void:
 	move_speed = float(stats.get("move_speed", move_speed))
 	contact_radius = float(stats.get("contact_radius", contact_radius))
+	attack_release_radius = maxf(float(stats.get("attack_release_radius", contact_radius * 1.25)), contact_radius)
 	melee_damage = int(stats.get("damage", melee_damage))
 	attack_windup = float(stats.get("attack_windup", attack_windup))
 	attack_recovery = float(stats.get("attack_recovery", attack_recovery))
@@ -36,10 +38,13 @@ func step(current_position: Vector3, target_position: Vector3, delta: float) -> 
 	var safe_delta: float = maxf(delta, 0.0)
 	var steering := chase_steering(current_position, target_position, move_speed, contact_radius, safe_delta)
 	var damage_payload: Dictionary = {}
+	var distance := float(steering["distance"])
+	var in_contact := bool(steering["in_contact"])
+	var attack_active := _attack_state != ATTACK_READY
 
-	if bool(steering["in_contact"]):
+	if in_contact or (attack_active and distance <= attack_release_radius):
 		damage_payload = _tick_contact_attack(safe_delta, target_position)
-	else:
+	elif attack_active:
 		reset_attack()
 
 	return {
