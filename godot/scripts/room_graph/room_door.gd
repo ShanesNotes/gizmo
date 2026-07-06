@@ -118,6 +118,10 @@ func _reward_telegraph_text(next_reward_type: RoomNode.RewardType) -> String:
 			return "HEAL"
 		RoomNode.RewardType.SHOP:
 			return "SHOP"
+		RoomNode.RewardType.REST:
+			return "REST"
+		RoomNode.RewardType.REWARD:
+			return "REWARD"
 		_:
 			return "UNKNOWN"
 
@@ -135,6 +139,10 @@ func _reward_telegraph_color(next_reward_type: RoomNode.RewardType) -> Color:
 			return Color(0.298, 0.686, 0.314)
 		RoomNode.RewardType.SHOP:
 			return Color(0.612, 0.153, 0.690)
+		RoomNode.RewardType.REST:
+			return Color(0.42, 0.82, 0.72)
+		RoomNode.RewardType.REWARD:
+			return Color(0.78, 0.86, 0.92)
 		_:
 			return Color.WHITE
 

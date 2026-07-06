@@ -16,6 +16,8 @@ var _failed := 0
 func _initialize() -> void:
 	print("Running room-graph tests...")
 	_test_generator_produces_branching_graphs_with_honest_rewards()
+	_test_room_node_reward_type_vocabulary_includes_rest_reward()
+	_test_rest_reward_seed_sweep_invariants()
 	_test_room_node_state_transitions_to_cleared()
 	_test_room_connection_links_two_nodes_one_way()
 	_test_room_graph_lookups()
@@ -57,7 +59,9 @@ func _make_template_pool() -> Array[RoomTemplate]:
 	pool.append(_make_template("combat_a", RoomTemplate.RoomType.COMBAT, ["arena"]))
 	pool.append(_make_template("combat_b", RoomTemplate.RoomType.COMBAT, ["narrow"]))
 	pool.append(_make_template("elite_a", RoomTemplate.RoomType.ELITE, ["elite"]))
+	pool.append(_make_template("reward_cache", RoomTemplate.RoomType.REWARD, ["cache"]))
 	pool.append(_make_template("shop_a", RoomTemplate.RoomType.SHOP, ["shop"]))
+	pool.append(_make_template("rest_alcove", RoomTemplate.RoomType.REST, ["rest"]))
 	pool.append(_make_template("boss_finale", RoomTemplate.RoomType.BOSS, ["boss"]))
 	return pool
 
@@ -110,6 +114,110 @@ func _assert_generated_graph_contract(pool: Array[RoomTemplate], room_count: int
 
 	_check("seed %d: generated graph has at least one branch node" % seed, branch_nodes >= 1)
 	_check_eq("seed %d: terminal room has no outgoing connections" % seed, graph.get_connections_from("room_%02d" % (room_count - 1)).size(), 0)
+
+func _test_room_node_reward_type_vocabulary_includes_rest_reward() -> void:
+	_check("RewardType exposes REST for Ember Alcove door telegraphs", RoomNode.RewardType.has("REST"))
+	_check("RewardType exposes REWARD for Scrap Cache door telegraphs", RoomNode.RewardType.has("REWARD"))
+
+func _test_rest_reward_seed_sweep_invariants() -> void:
+	var pool := _make_template_pool()
+	var saw_rest := false
+	var saw_reward := false
+	var reward_room_count := 0
+	var combat_room_count := 0
+	var room_counts := [2, 5, 7, 8, 11, 16]
+	# Pre-fix repro found by this sweep: room_count 7 seed 51 placed a
+	# REWARD at room_02, with SHOP at room_04 over branch edge room_02->room_04.
+	for room_count in room_counts:
+		for seed in range(1, 61):
+			var graph: RoomGraph = RoomGraphGenerator.generate("test_biome", pool, room_count, _seeded_rng(seed))
+			var result := _assert_rest_reward_rules(graph, seed, room_count)
+			saw_rest = saw_rest or bool(result["saw_rest"])
+			saw_reward = saw_reward or bool(result["saw_reward"])
+			reward_room_count += int(result["reward_count"])
+			combat_room_count += int(result["combat_count"])
+
+	_check("seed sweep generates at least one REST room when a REST template is available", saw_rest)
+	_check("seed sweep generates at least one REWARD room when a REWARD template is available", saw_reward)
+	_check("REWARD rooms stay lower-frequency than combat rooms", reward_room_count > 0 and reward_room_count < combat_room_count)
+
+func _assert_rest_reward_rules(graph: RoomGraph, seed: int, room_count: int) -> Dictionary:
+	var rest_indices: Array[int] = []
+	var reward_indices: Array[int] = []
+	var shop_indices: Array[int] = []
+	var elite_indices: Array[int] = []
+	var combat_count := 0
+	for i in range(graph.rooms.size()):
+		var room := graph.rooms[i]
+		if room.template == null:
+			continue
+		match room.template.room_type:
+			RoomTemplate.RoomType.REST:
+				rest_indices.append(i)
+			RoomTemplate.RoomType.REWARD:
+				reward_indices.append(i)
+			RoomTemplate.RoomType.SHOP:
+				shop_indices.append(i)
+			RoomTemplate.RoomType.ELITE:
+				elite_indices.append(i)
+			RoomTemplate.RoomType.COMBAT:
+				combat_count += 1
+
+	_check_eq("room_count %d seed %d: at most one REST room per biome" % [room_count, seed], rest_indices.size() <= 1, true)
+	for rest_index in rest_indices:
+		_assert_non_combat_index_rule(graph, seed, room_count, rest_index, "REST", shop_indices, elite_indices)
+		_check_eq("room_count %d seed %d: REST is placed in the back half" % [room_count, seed], rest_index >= graph.rooms.size() / 2, true)
+		if RoomNode.RewardType.has("REST"):
+			_check_eq("room_count %d seed %d: REST room telegraphs REST" % [room_count, seed], graph.rooms[rest_index].reward_type, _reward_type_value("REST", -1))
+
+	for reward_index in reward_indices:
+		_assert_non_combat_index_rule(graph, seed, room_count, reward_index, "REWARD", shop_indices, elite_indices)
+		if RoomNode.RewardType.has("REWARD"):
+			_check_eq("room_count %d seed %d: REWARD room telegraphs REWARD" % [room_count, seed], graph.rooms[reward_index].reward_type, _reward_type_value("REWARD", -1))
+
+	return {
+		"saw_rest": not rest_indices.is_empty(),
+		"saw_reward": not reward_indices.is_empty(),
+		"reward_count": reward_indices.size(),
+		"combat_count": combat_count,
+	}
+
+func _assert_non_combat_index_rule(
+	graph: RoomGraph,
+	seed: int,
+	room_count: int,
+	index: int,
+	label: String,
+	shop_indices: Array[int],
+	elite_indices: Array[int],
+) -> void:
+	_check("%s room_count %d seed %d: never first room" % [label, room_count, seed], index > 0)
+	_check("%s room_count %d seed %d: never boss-adjacent" % [label, room_count, seed], index < graph.rooms.size() - 2)
+	_check("%s room_count %d seed %d: does not replace an ELITE fixture" % [label, room_count, seed], not elite_indices.has(index))
+	for shop_index in shop_indices:
+		_check(
+			"%s room_count %d seed %d: room_%02d never door-adjacent to SHOP room_%02d" % [label, room_count, seed, index, shop_index],
+			not _rooms_share_direct_connection(graph, index, shop_index)
+		)
+
+func _rooms_share_direct_connection(graph: RoomGraph, first_index: int, second_index: int) -> bool:
+	if first_index < 0 or second_index < 0:
+		return false
+	if first_index >= graph.rooms.size() or second_index >= graph.rooms.size():
+		return false
+	var first_room_id := graph.rooms[first_index].room_id
+	var second_room_id := graph.rooms[second_index].room_id
+	for connection in graph.connections:
+		if connection.from_room_id == first_room_id and connection.to_room_id == second_room_id:
+			return true
+		if connection.from_room_id == second_room_id and connection.to_room_id == first_room_id:
+			return true
+	return false
+
+func _reward_type_value(name: String, fallback: int) -> int:
+	if RoomNode.RewardType.has(name):
+		return int(RoomNode.RewardType[name])
+	return fallback
 
 func _reachable_room_count(graph: RoomGraph) -> int:
 	var seen: Dictionary = {}

@@ -14,6 +14,8 @@ const EXPECTED_TYPES := {
 	"combat_large": RoomTemplate.RoomType.COMBAT,
 	"elite_arena": RoomTemplate.RoomType.ELITE,
 	"boss_arena": RoomTemplate.RoomType.BOSS,
+	"rest_alcove": RoomTemplate.RoomType.REST,
+	"reward_cache": RoomTemplate.RoomType.REWARD,
 	"shop_small": RoomTemplate.RoomType.SHOP,
 }
 
@@ -22,6 +24,8 @@ const EXPECTED_EXIT_RANGES := {
 	"combat_large": Vector2i(1, 2),
 	"elite_arena": Vector2i(1, 1),
 	"boss_arena": Vector2i(1, 1),
+	"rest_alcove": Vector2i(1, 1),
+	"reward_cache": Vector2i(1, 1),
 	"shop_small": Vector2i(1, 1),
 }
 
@@ -30,7 +34,14 @@ const EXPECTED_DOORS := {
 	"combat_large": ["RoomExitA", "RoomExitB"],
 	"elite_arena": ["RoomExit"],
 	"boss_arena": ["RoomExit"],
+	"rest_alcove": ["RoomExit"],
+	"reward_cache": ["RoomExit"],
 	"shop_small": ["RoomExit"],
+}
+
+const EXPECTED_FIXTURES := {
+	"rest_alcove": "RestFixture",
+	"reward_cache": "RewardFixture",
 }
 
 var _passed := 0
@@ -131,6 +142,12 @@ func _assert_scene_authoring_contract(template_id: String, root_node: Node) -> v
 
 	var expected_doors: Array = EXPECTED_DOORS[template_id]
 	_assert_exact_door_set(template_id, root_node, expected_doors)
+
+	if EXPECTED_FIXTURES.has(template_id):
+		var fixture_name: String = EXPECTED_FIXTURES[template_id]
+		_check("%s has authored fixture %s" % [template_id, fixture_name], root_node.find_child(fixture_name, true, false) != null)
+		_check_eq("%s has no authored enemy nodes" % template_id, _count_named_prefix(root_node, "Enemy"), 0)
+		_check_eq("%s has no authored enemy spawn nodes" % template_id, _count_named_prefix(root_node, "EnemySpawn"), 0)
 
 func _assert_exact_door_set(template_id: String, root_node: Node, expected_doors: Array) -> void:
 	for door_name in ["RoomExit", "RoomExitA", "RoomExitB"]:

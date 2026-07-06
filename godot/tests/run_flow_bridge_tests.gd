@@ -44,6 +44,8 @@ func _initialize() -> void:
 func _run_tests() -> void:
 	await _test_boon_exit_presents_draft_before_advance_and_advances_after_pick()
 	await _test_non_boon_rewards_emit_payload_and_advance_immediately()
+	_test_reward_type_vocabulary_includes_rest_reward()
+	await _test_rest_reward_exits_emit_reward_without_draft()
 	await _test_non_boon_rejected_exit_does_not_open_draft()
 	await _test_boon_exit_rejected_before_draft_when_destination_locked()
 	await _test_reentrant_boon_exit_request_is_rejected_until_choice()
@@ -160,6 +162,44 @@ func _test_non_boon_rewards_emit_payload_and_advance_immediately() -> void:
 		_check_eq("%s reward enters destination" % _reward_name(reward_type), destination.state, RoomNode.State.ENTERED)
 		_check_eq("%s reward advances current_room_id" % _reward_name(reward_type), controller.current_room_id, destination.room_id)
 		_check("%s reward leaves no open draft" % _reward_name(reward_type), not bridge.is_draft_open())
+		await _cleanup_harness(harness)
+
+func _test_reward_type_vocabulary_includes_rest_reward() -> void:
+	_check("RewardType exposes REST for draft suppression", RoomNode.RewardType.has("REST"))
+	_check("RewardType exposes REWARD for draft suppression", RoomNode.RewardType.has("REWARD"))
+
+func _test_rest_reward_exits_emit_reward_without_draft() -> void:
+	for reward_type in [
+		RoomNode.RewardType.REST,
+		RoomNode.RewardType.REWARD,
+	]:
+		var harness := _make_harness(reward_type)
+		var bridge = harness["bridge"]
+		var controller = harness["controller"]
+		var ui: StubBoonDraftUI = harness["ui"]
+		var graph: RoomGraph = harness["graph"]
+		var connection: RoomConnection = harness["connection"]
+		var current := graph.get_room("room_00")
+		var destination := graph.get_room("room_01")
+		var granted_types: Array[int] = []
+		var completions: Array[bool] = []
+		bridge.reward_granted.connect(func(granted_type: RoomNode.RewardType, _connection: RoomConnection) -> void:
+			granted_types.append(granted_type)
+		)
+		bridge.exit_completed.connect(func(_connection: RoomConnection, accepted: bool) -> void:
+			completions.append(accepted)
+		)
+
+		var accepted: bool = bridge.request_exit(connection)
+
+		_check("%s exit advances without a boon draft" % _reward_name(reward_type), accepted)
+		_check_eq("%s emits reward payload" % _reward_name(reward_type), granted_types, [reward_type])
+		_check_eq("%s emits one completion" % _reward_name(reward_type), completions, [true])
+		_check_eq("%s never presents a draft" % _reward_name(reward_type), ui.present_count, 0)
+		_check_eq("%s marks current REWARDED" % _reward_name(reward_type), current.state, RoomNode.State.REWARDED)
+		_check_eq("%s enters destination" % _reward_name(reward_type), destination.state, RoomNode.State.ENTERED)
+		_check_eq("%s advances current_room_id" % _reward_name(reward_type), controller.current_room_id, destination.room_id)
+		_check("%s leaves no open draft" % _reward_name(reward_type), not bridge.is_draft_open())
 		await _cleanup_harness(harness)
 
 func _test_non_boon_rejected_exit_does_not_open_draft() -> void:
@@ -433,6 +473,10 @@ func _reward_name(reward_type: RoomNode.RewardType) -> String:
 			return "HEAL"
 		RoomNode.RewardType.SHOP:
 			return "SHOP"
+		RoomNode.RewardType.REST:
+			return "REST"
+		RoomNode.RewardType.REWARD:
+			return "REWARD"
 		_:
 			return "UNKNOWN"
 

@@ -25,6 +25,8 @@ const ZONE_STATE_CLEARED: StringName = &"CLEARED"
 	"res://resources/room_templates/combat_small.tres",
 	"res://resources/room_templates/combat_large.tres",
 	"res://resources/room_templates/elite_arena.tres",
+	"res://resources/room_templates/rest_alcove.tres",
+	"res://resources/room_templates/reward_cache.tres",
 	"res://resources/room_templates/shop_small.tres",
 	"res://resources/room_templates/boss_arena.tres",
 ]
@@ -300,6 +302,12 @@ func _replace_with_room_door(area: Area3D) -> RoomDoor:
 
 func _start_room_director(room: RoomNode) -> void:
 	_disconnect_current_director()
+	if _room_clears_without_director(room):
+		current_director = null
+		_set_audio_zone_state(ZONE_STATE_CLEARED)
+		if run_controller != null:
+			run_controller.notify_room_cleared()
+		return
 	current_director = RoomDirector.new(room.difficulty_tier, _rng)
 	current_director.wave_requested.connect(_on_director_wave_requested)
 	current_director.room_cleared.connect(_on_director_room_cleared)
@@ -545,6 +553,14 @@ func _apply_exit_reward(connection: RoomConnection) -> void:
 		_:
 			pass
 	_rewarded_exit_keys[key] = true
+
+func _room_clears_without_director(room: RoomNode) -> bool:
+	if room == null or room.template == null:
+		return false
+	return [
+		RoomTemplate.RoomType.REST,
+		RoomTemplate.RoomType.REWARD,
+	].has(room.template.room_type)
 
 func _set_audio_zone_state(state: StringName) -> void:
 	if audio_director == null or not is_instance_valid(audio_director):
