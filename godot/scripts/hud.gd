@@ -15,6 +15,7 @@ const GUARD_PIP_EMPTY_ALPHA := 0.25
 @onready var _hp_bar: ProgressBar = %HpBar
 @onready var _hp_label: Label = %HpLabel
 @onready var _sparks_label: Label = %SparksLabel
+@onready var _boon_loadout: VBoxContainer = %BoonLoadout
 
 
 ## Push one frame of Simulation state into every widget. Typed because this is
@@ -43,6 +44,61 @@ func render_guard(guard: int, guard_max: int) -> void:
 		if pip.visible:
 			var alpha := 1.0 if i < filled else GUARD_PIP_EMPTY_ALPHA
 			pip.color = Color(GUARD_PIP_BRASS.r, GUARD_PIP_BRASS.g, GUARD_PIP_BRASS.b, alpha)
+
+
+## Payload-driven boon loadout rows (HZ-052). Controller passes picked boons when the
+## run has kit slots filled; clears and repopulates on each call.
+func render_boons(picked: Array[BoonDef]) -> void:
+	if picked.is_empty():
+		_boon_loadout.visible = false
+		return
+
+	_boon_loadout.visible = true
+	for child in _boon_loadout.get_children():
+		child.free()
+
+	for boon in picked:
+		if boon == null:
+			continue
+		_boon_loadout.add_child(_make_boon_row(boon))
+
+
+func _make_boon_row(boon: BoonDef) -> HBoxContainer:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+
+	var slot_label := Label.new()
+	slot_label.theme_type_variation = &"CapsLabel"
+	slot_label.text = boon.slot_label()
+	slot_label.add_theme_font_size_override("font_size", 11)
+
+	var name_label := Label.new()
+	name_label.text = _display_name_for_boon(boon)
+	name_label.add_theme_color_override("font_color", _rarity_tint(boon.rarity))
+
+	row.add_child(slot_label)
+	row.add_child(name_label)
+	return row
+
+
+func _display_name_for_boon(boon: BoonDef) -> String:
+	if not boon.display_name.is_empty():
+		return boon.display_name
+	return String(boon.boon_id).capitalize()
+
+
+func _rarity_tint(rarity: BoonDef.Rarity) -> Color:
+	match rarity:
+		BoonDef.Rarity.COMMON:
+			return Color(0.7412, 0.6431, 0.4980, 1.0)
+		BoonDef.Rarity.RARE:
+			return Color(0.4078, 0.7608, 0.8000, 1.0)
+		BoonDef.Rarity.EPIC:
+			return Color(0.6078, 0.4353, 0.8118, 1.0)
+		BoonDef.Rarity.LEGENDARY:
+			return Color(0.9059, 0.7176, 0.2824, 1.0)
+		_:
+			return Color(0.7412, 0.5176, 0.4078, 1.0)
 
 
 ## Whole-minute:zero-padded-seconds clock, kept as a pure formatter for the end

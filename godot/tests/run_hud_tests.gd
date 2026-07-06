@@ -7,6 +7,7 @@ extends SceneTree
 var _passed := 0
 var _failed := 0
 
+const BoonDef := preload("res://scripts/boons/boon_def.gd")
 const Hud := preload("res://scripts/hud.gd")
 const HudScene := preload("res://scenes/hud.tscn")
 
@@ -38,6 +39,7 @@ func _initialize() -> void:
 	_test_retired_nodes_absent()
 	_test_retired_source_tokens_absent()
 	await _test_guard_pips()
+	await _test_boon_loadout()
 	print("")
 	if _failed == 0 and _passed > 0:
 		print("PASS — %d checks" % _passed)
@@ -154,5 +156,100 @@ func _test_guard_pips() -> void:
 	counts = _guard_pip_counts(hud)
 	_check_eq("guard_max > cap shows at most 4 pips", counts["visible"], 4)
 	_check_eq("guard_max > cap clamps fill", counts["filled"], 3)
+
+	await _cleanup_hud(hud)
+
+
+func _make_boon(
+	display_name: String,
+	rarity: BoonDef.Rarity,
+	slot: BoonDef.Slot,
+) -> BoonDef:
+	var boon: BoonDef = BoonDef.new()
+	boon.boon_id = StringName(display_name.to_lower().replace(" ", "_"))
+	boon.display_name = display_name
+	boon.rarity = rarity
+	boon.slot = slot
+	return boon
+
+
+func _boon_loadout_row(hud: Hud, index: int) -> HBoxContainer:
+	var loadout: VBoxContainer = hud.get_node("%BoonLoadout") as VBoxContainer
+	return loadout.get_child(index) as HBoxContainer
+
+
+func _row_slot_label(row: HBoxContainer) -> Label:
+	return row.get_child(0) as Label
+
+
+func _row_name_label(row: HBoxContainer) -> Label:
+	return row.get_child(1) as Label
+
+
+func _rarity_tint(rarity: BoonDef.Rarity) -> Color:
+	match rarity:
+		BoonDef.Rarity.COMMON:
+			return Color(0.7412, 0.6431, 0.4980, 1.0)
+		BoonDef.Rarity.RARE:
+			return Color(0.4078, 0.7608, 0.8000, 1.0)
+		BoonDef.Rarity.EPIC:
+			return Color(0.6078, 0.4353, 0.8118, 1.0)
+		BoonDef.Rarity.LEGENDARY:
+			return Color(0.9059, 0.7176, 0.2824, 1.0)
+		_:
+			return Color(0.7412, 0.5176, 0.4078, 1.0)
+
+
+func _test_boon_loadout() -> void:
+	var hud := await _instantiate_hud()
+	var loadout: VBoxContainer = hud.get_node("%BoonLoadout") as VBoxContainer
+	_check_eq("boon loadout hidden by default", loadout.visible, false)
+	_check_eq("boon loadout empty by default", loadout.get_child_count(), 0)
+
+	hud.render_boons([])
+	_check_eq("render_boons([]) hides BoonLoadout", loadout.visible, false)
+	_check_eq("render_boons([]) clears rows", loadout.get_child_count(), 0)
+
+	var first_pick: Array[BoonDef] = [
+		_make_boon("Spark-Cut", BoonDef.Rarity.COMMON, BoonDef.Slot.ATTACK),
+		_make_boon("Gyre Step", BoonDef.Rarity.RARE, BoonDef.Slot.DASH),
+	]
+	hud.render_boons(first_pick)
+	_check_eq("render_boons(2) shows BoonLoadout", loadout.visible, true)
+	_check_eq("render_boons(2) creates 2 rows", loadout.get_child_count(), 2)
+
+	var row0 := _boon_loadout_row(hud, 0)
+	var row1 := _boon_loadout_row(hud, 1)
+	_check_eq("row 0 slot label", _row_slot_label(row0).text, "Attack")
+	_check_eq("row 0 boon name", _row_name_label(row0).text, "Spark-Cut")
+	_check_eq(
+		"row 0 rarity tint",
+		_row_name_label(row0).get_theme_color("font_color"),
+		_rarity_tint(BoonDef.Rarity.COMMON),
+	)
+	_check_eq("row 1 slot label", _row_slot_label(row1).text, "Dash")
+	_check_eq("row 1 boon name", _row_name_label(row1).text, "Gyre Step")
+	_check_eq(
+		"row 1 rarity tint",
+		_row_name_label(row1).get_theme_color("font_color"),
+		_rarity_tint(BoonDef.Rarity.RARE),
+	)
+
+	var second_pick: Array[BoonDef] = [
+		_make_boon("Brass Wake", BoonDef.Rarity.EPIC, BoonDef.Slot.PASSIVE),
+	]
+	hud.render_boons(second_pick)
+	_check_eq("re-render replaces rows (count)", loadout.get_child_count(), 1)
+	_check_eq("re-render row 0 slot label", _row_slot_label(_boon_loadout_row(hud, 0)).text, "Passive")
+	_check_eq(
+		"re-render row 0 boon name",
+		_row_name_label(_boon_loadout_row(hud, 0)).text,
+		"Brass Wake",
+	)
+	_check_eq(
+		"re-render row 0 rarity tint",
+		_row_name_label(_boon_loadout_row(hud, 0)).get_theme_color("font_color"),
+		_rarity_tint(BoonDef.Rarity.EPIC),
+	)
 
 	await _cleanup_hud(hud)
