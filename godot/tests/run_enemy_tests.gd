@@ -6,6 +6,8 @@ extends SceneTree
 
 const EnemyArchetypesScript := preload("res://scripts/enemies/enemy_archetypes.gd")
 const EnemyBrainScript := preload("res://scripts/enemies/enemy_brain.gd")
+const AttackAbilityScript := preload("res://scripts/abilities/attack_ability.gd")
+const PlayerVitalsScript := preload("res://scripts/player/player_vitals.gd")
 const GreyboxEnemyScene := preload("res://scenes/enemies/greybox_enemy.tscn")
 
 var _passed := 0
@@ -14,6 +16,9 @@ var _failed := 0
 func _initialize() -> void:
 	print("Running enemy tests...")
 	await _test_archetype_stats_match_balance_bands()
+	await _test_archetype_ttk_bands_use_real_melee_kit()
+	await _test_contact_cadence_does_not_melt_guard()
+	await _test_multi_chaff_contact_respects_guard_pacing()
 	await _test_unknown_archetype_falls_back_to_chaff()
 	await _test_steering_direction_and_contact_stop()
 	await _test_windup_timing_is_deterministic()
@@ -50,6 +55,9 @@ func _check_eq(desc: String, actual: Variant, expected: Variant) -> void:
 func _check_almost(desc: String, actual: float, expected: float, margin: float = 0.001) -> void:
 	_check("%s (got %.4f, expected %.4f +/- %.4f)" % [desc, actual, expected, margin], absf(actual - expected) <= margin)
 
+func _check_between(desc: String, value: float, low: float, high: float) -> void:
+	_check("%s (%.2f in [%.2f, %.2f])" % [desc, value, low, high], value >= low and value <= high)
+
 func _check_vec3_almost(desc: String, actual: Vector3, expected: Vector3, margin: float = 0.001) -> void:
 	_check(
 		"%s (got %s, expected %s +/- %.4f)" % [desc, actual, expected, margin],
@@ -69,31 +77,75 @@ func _cleanup(node: Node) -> void:
 func _test_archetype_stats_match_balance_bands() -> void:
 	var chaff := EnemyArchetypesScript.stats_for("chaff")
 	var bruiser := EnemyArchetypesScript.stats_for("bruiser")
+	var elite := EnemyArchetypesScript.stats_for("elite")
 
 	_check("chaff archetype exists", EnemyArchetypesScript.has_archetype("chaff"))
 	_check("bruiser archetype exists", EnemyArchetypesScript.has_archetype("bruiser"))
-	_check_eq("chaff hp salvages nibbler/trash one-hit value", float(chaff["max_hp"]), 1.0)
+	_check("elite archetype exists", EnemyArchetypesScript.has_archetype("elite"))
+	_check_eq("chaff hp is rebased to a two-hit trash value", float(chaff["max_hp"]), 30.0)
 	_check_eq("chaff damage is chip contact pressure", int(chaff["damage"]), 1)
 	_check_almost("chaff speed salvages nibbler chase band", float(chaff["move_speed"]), 2.1)
-	_check_almost("chaff budget cost matches director chaff cost", float(chaff["budget_cost"]), 1.1)
-	_check_eq("bruiser hp salvages brute 1-3s TTK value", float(bruiser["max_hp"]), 4.0)
+	_check_almost("chaff contact radius is tight trash pressure", float(chaff["contact_radius"]), 0.9)
+	_check_almost("chaff contact cadence is slower than one pip per second", float(chaff["attack_windup"]) + float(chaff["attack_recovery"]), 2.1)
+	_check_almost("chaff budget cost matches director chaff cost", float(chaff["budget_cost"]), 1.0)
+	_check_eq("bruiser hp is rebased to a seven-hit priority target", float(bruiser["max_hp"]), 140.0)
 	_check_eq("bruiser damage stays chip, not burst", int(bruiser["damage"]), 1)
 	_check_almost("bruiser speed salvages slower priority-target band", float(bruiser["move_speed"]), 1.65)
-	_check_almost("bruiser budget cost matches director bruiser cost", float(bruiser["budget_cost"]), 3.4)
+	_check_almost("bruiser budget cost matches director bruiser cost", float(bruiser["budget_cost"]), 2.4)
+	_check_eq("elite hp sits in the 3-10s punctuation band", float(elite["max_hp"]), 640.0)
+	_check_eq("elite contact damage is heavier than chip enemies", int(elite["damage"]), 2)
+	_check_almost("elite is slower than bruiser", float(elite["move_speed"]), 1.25)
+	_check_almost("elite has a larger contact radius", float(elite["contact_radius"]), 1.75)
+	_check_almost("elite budget cost matches director elite cost", float(elite["budget_cost"]), 9.0)
 	_check("bruiser has more hp than chaff", float(bruiser["max_hp"]) > float(chaff["max_hp"]))
+	_check("elite has more hp than bruiser", float(elite["max_hp"]) > float(bruiser["max_hp"]))
 	_check("chaff is faster than bruiser", float(chaff["move_speed"]) > float(bruiser["move_speed"]))
+	_check("bruiser is faster than elite", float(bruiser["move_speed"]) > float(elite["move_speed"]))
+
+func _test_archetype_ttk_bands_use_real_melee_kit() -> void:
+	var attack := AttackAbilityScript.new()
+	_check_eq("HZ-071 uses real melee damage [18,20,26]", attack.step_damage, [18.0, 20.0, 26.0])
+	_check_eq("HZ-071 uses real melee recoveries [0.16,0.18,0.24]", attack.step_recovery, [0.16, 0.18, 0.24])
+	_check_almost("HZ-071 uses real combo window from AttackAbility", attack.combo_window, 0.45)
+
+	var chaff_ttk := _melee_ttk_for_hp(float(EnemyArchetypesScript.stats_for("chaff")["max_hp"]), attack)
+	var bruiser_ttk := _melee_ttk_for_hp(float(EnemyArchetypesScript.stats_for("bruiser")["max_hp"]), attack)
+	var elite_ttk := _melee_ttk_for_hp(float(EnemyArchetypesScript.stats_for("elite")["max_hp"]), attack)
+
+	_check_between("chaff TTK is in trash band <=0.5s", float(chaff_ttk["seconds"]), 0.0, 0.5)
+	_check_between("chaff takes one to two real melee hits", float(chaff_ttk["hits"]), 1.0, 2.0)
+	_check_between("bruiser TTK is in 1-3s band", float(bruiser_ttk["seconds"]), 1.0, 3.0)
+	_check_between("bruiser takes the ticket's 4-7 real melee hits", float(bruiser_ttk["hits"]), 4.0, 7.0)
+	_check_between("elite TTK is in 3-10s band", float(elite_ttk["seconds"]), 3.0, 10.0)
+	_check("elite requires meaningfully more hits than bruiser", int(elite_ttk["hits"]) > int(bruiser_ttk["hits"]))
+
+func _test_contact_cadence_does_not_melt_guard() -> void:
+	var chaff_events := _contact_damage_events_in_seconds(EnemyArchetypesScript.stats_for("chaff"), 5.0)
+	var bruiser_events := _contact_damage_events_in_seconds(EnemyArchetypesScript.stats_for("bruiser"), 5.0)
+	var elite_events := _contact_damage_events_in_seconds(EnemyArchetypesScript.stats_for("elite"), 5.0)
+
+	_check("one chaff in contact lands at most three guard pips in five seconds", chaff_events <= 3)
+	_check("one bruiser in contact lands at most two guard pips in five seconds", bruiser_events <= 2)
+	_check("one elite in contact lands at most two heavier hits in five seconds", elite_events <= 2)
+
+func _test_multi_chaff_contact_respects_guard_pacing() -> void:
+	var result := _multi_contact_survival(EnemyArchetypesScript.stats_for("chaff"), [0.0, 0.35, 0.70, 1.05], 30.0)
+
+	_check("four desynced chaff create sustained contact attempts", int(result["damage_attempts"]) >= 12)
+	_check_between("four desynced chaff do not empty guard in the old 2-3s melt window", float(result["guard_empty_seconds"]), 15.0, 24.0)
+	_check_between("four desynced chaff lethal contact remains above the three-room lower pacing bound", float(result["death_seconds"]), 21.0, 30.0)
 
 func _test_unknown_archetype_falls_back_to_chaff() -> void:
 	var fallback := EnemyArchetypesScript.stats_for("unknown")
 
 	_check_eq("unknown archetype stats fall back to chaff", String(fallback["archetype"]), "chaff")
-	_check_eq("unknown archetype fallback keeps chaff hp", float(fallback["max_hp"]), 1.0)
+	_check_eq("unknown archetype fallback keeps chaff hp", float(fallback["max_hp"]), 30.0)
 
 	var enemy = await _new_enemy()
 	enemy.configure("unknown", "spawn-unknown")
 	_check_eq("scene configure unknown stores chaff fallback archetype", enemy.archetype, "chaff")
 	_check_eq("scene configure unknown keeps spawn id", enemy.spawn_id, "spawn-unknown")
-	_check_almost("scene configure unknown applies chaff hp", enemy.hp, 1.0)
+	_check_almost("scene configure unknown applies chaff hp", enemy.hp, 30.0)
 
 	await _cleanup(enemy)
 
@@ -200,10 +252,10 @@ func _test_take_damage_emits_died_once() -> void:
 		death_ids.append(dead_spawn_id)
 	)
 
-	_check_almost("configured bruiser starts at bruiser hp", enemy.hp, 4.0)
-	_check_almost("partial damage returns remaining hp", enemy.take_damage(1.5), 2.5)
+	_check_almost("configured bruiser starts at bruiser hp", enemy.hp, 140.0)
+	_check_almost("partial damage returns remaining hp", enemy.take_damage(40.0), 100.0)
 	_check_eq("partial damage does not emit died", death_ids.size(), 0)
-	_check_almost("lethal damage floors hp at zero", enemy.take_damage(99.0), 0.0)
+	_check_almost("lethal damage floors hp at zero", enemy.take_damage(999.0), 0.0)
 	_check_eq("lethal damage emits died once", death_ids, ["w0:bruiser:7"])
 	_check_eq("enemy reports dead after lethal damage", enemy.is_dead(), true)
 	_check_almost("repeated damage after death keeps hp zero", enemy.take_damage(99.0), 0.0)
@@ -220,14 +272,14 @@ func _test_scene_instantiates_headless() -> void:
 	_check("VisualPivot node exists", enemy.get_node_or_null("VisualPivot") is Node3D)
 	_check("placeholder Capsule mesh exists", enemy.get_node_or_null("VisualPivot/Capsule") is MeshInstance3D)
 	_check_eq("default scene config is chaff", enemy.archetype, "chaff")
-	_check_almost("default scene hp is chaff hp", enemy.hp, 1.0)
+	_check_almost("default scene hp is chaff hp", enemy.hp, 30.0)
 	if _object_has_property(enemy, "spawn_windup"):
 		_check_almost("default scene spawn windup is near Hades emergence timing", float(enemy.get("spawn_windup")), 0.8, 0.05)
 
 	enemy.configure("bruiser", "spawn-42")
 	_check_eq("configure stores spawn id", enemy.spawn_id, "spawn-42")
 	_check_eq("configure stores archetype", enemy.archetype, "bruiser")
-	_check_almost("configure applies bruiser hp", enemy.hp, 4.0)
+	_check_almost("configure applies bruiser hp", enemy.hp, 140.0)
 	_check_almost("configure applies bruiser speed", enemy.move_speed, 1.65)
 
 	await _cleanup(enemy)
@@ -256,9 +308,9 @@ func _test_spawn_windup_blocks_movement_and_contact_until_elapsed() -> void:
 	var after_ready: Dictionary = enemy.tick_chase(Vector3(8.0, 0.0, 0.0), 0.10)
 	_check("enemy starts moving after spawn windup elapses", Vector3(after_ready["velocity"]).length() > 0.0)
 
-	enemy.tick_chase(Vector3(0.5, 0.0, 0.0), 0.34)
+	enemy.tick_chase(Vector3(0.5, 0.0, 0.0), 0.63)
 	_check_eq("enemy still respects attack windup after spawn windup", events.size(), 0)
-	var contact_after_ready: Dictionary = enemy.tick_chase(Vector3(0.5, 0.0, 0.0), 0.01)
+	var contact_after_ready: Dictionary = enemy.tick_chase(Vector3(0.5, 0.0, 0.0), 0.03)
 	_check_eq("enemy can deal contact damage after spawn and attack windups", int(Dictionary(contact_after_ready["damage_event"]).get("damage", 0)), 1)
 	_check_eq("post-windup damage event is emitted once", events.size(), 1)
 
@@ -276,7 +328,7 @@ func _test_scene_stagger_ticks_down_during_spawn_windup() -> void:
 	_check("enemy remains in spawn windup after stagger expires", enemy.is_spawning())
 
 	enemy.tick_chase(Vector3(0.5, 0.0, 0.0), 0.70)
-	var contact_after_spawn: Dictionary = enemy.tick_chase(Vector3(0.5, 0.0, 0.0), 0.35)
+	var contact_after_spawn: Dictionary = enemy.tick_chase(Vector3(0.5, 0.0, 0.0), 0.65)
 	_check_eq(
 		"stagger does not bank through spawn windup into the first live contact",
 		int(Dictionary(contact_after_spawn["damage_event"]).get("damage", 0)),
@@ -299,9 +351,9 @@ func _test_scene_chase_emits_damage_event_data_without_player_wiring() -> void:
 	_check_vec3_almost("scene tick_chase writes seek velocity", enemy.velocity, Vector3(2.1, 0.0, 0.0))
 	_check_eq("far chase does not emit damage", Dictionary(first["damage_event"]).is_empty(), true)
 
-	enemy.tick_chase(Vector3(0.5, 0.0, 0.0), 0.34)
+	enemy.tick_chase(Vector3(0.5, 0.0, 0.0), 0.63)
 	_check_eq("contact before windup emits no damage event", events.size(), 0)
-	var contact: Dictionary = enemy.tick_chase(Vector3(0.5, 0.0, 0.0), 0.01)
+	var contact: Dictionary = enemy.tick_chase(Vector3(0.5, 0.0, 0.0), 0.03)
 	_check_eq("scene emits one telegraphed damage event", events.size(), 1)
 	if events.size() == 1:
 		_check_eq("damage event carries spawn id", String(events[0]["spawn_id"]), "w0:chaff:3")
@@ -331,6 +383,86 @@ func _test_physics_process_is_inert_after_exit() -> void:
 	enemy.free()
 	target.queue_free()
 	await process_frame
+
+func _melee_ttk_for_hp(hp: float, attack: AttackAbility) -> Dictionary:
+	var remaining := hp
+	var elapsed := 0.0
+	var step := 1
+	for hit in range(1, 200):
+		remaining -= attack.damage_for_step(step)
+		if remaining <= 0.0:
+			return {
+				"seconds": elapsed,
+				"hits": hit,
+			}
+		elapsed += attack.recovery_for_step(step)
+		step = (step % maxi(attack.combo_steps, 1)) + 1
+	return {
+		"seconds": INF,
+		"hits": 200,
+	}
+
+func _contact_damage_events_in_seconds(stats: Dictionary, seconds: float) -> int:
+	var brain = EnemyBrainScript.new()
+	brain.configure(stats)
+	var elapsed := 0.0
+	var events := 0
+	var dt := 0.05
+	while elapsed < seconds:
+		var step_delta := minf(dt, seconds - elapsed)
+		var result: Dictionary = brain.step(Vector3.ZERO, Vector3(0.5, 0.0, 0.0), step_delta)
+		if not Dictionary(result["damage_event"]).is_empty():
+			events += 1
+		elapsed += step_delta
+	return events
+
+func _multi_contact_survival(stats: Dictionary, desync_offsets: Array[float], seconds: float) -> Dictionary:
+	var vitals := PlayerVitalsScript.new() as PlayerVitals
+	vitals.reset()
+	var brains: Array[EnemyBrain] = []
+	for offset in desync_offsets:
+		var brain := EnemyBrainScript.new()
+		brain.configure(stats)
+		brain.stagger(float(offset))
+		brains.append(brain)
+
+	var elapsed := 0.0
+	var damage_attempts := 0
+	var applied_hits := 0
+	var guard_empty_seconds := -1.0
+	var death_seconds := -1.0
+	var dt := 0.05
+	while elapsed < seconds and not vitals.is_dead():
+		var step_delta := minf(dt, seconds - elapsed)
+		vitals.tick_guard_recharge(step_delta)
+		for brain in brains:
+			var before_total := vitals.guard + vitals.hp
+			var result: Dictionary = brain.step(Vector3.ZERO, Vector3(0.5, 0.0, 0.0), step_delta)
+			var event: Dictionary = result["damage_event"]
+			if event.is_empty():
+				continue
+			damage_attempts += 1
+			vitals.apply_damage(int(event.get("damage", 0)))
+			var after_total := vitals.guard + vitals.hp
+			if after_total < before_total:
+				applied_hits += 1
+				if vitals.guard <= 0 and guard_empty_seconds < 0.0:
+					guard_empty_seconds = elapsed + step_delta
+				if vitals.is_dead() and death_seconds < 0.0:
+					death_seconds = elapsed + step_delta
+		elapsed += step_delta
+
+	if guard_empty_seconds < 0.0:
+		guard_empty_seconds = INF
+	if death_seconds < 0.0:
+		death_seconds = INF
+	vitals.free()
+	return {
+		"damage_attempts": damage_attempts,
+		"applied_hits": applied_hits,
+		"guard_empty_seconds": guard_empty_seconds,
+		"death_seconds": death_seconds,
+	}
 
 func _object_has_property(object: Object, property_name: String) -> bool:
 	for property in object.get_property_list():

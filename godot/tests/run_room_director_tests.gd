@@ -5,6 +5,8 @@ extends SceneTree
 #   godot --headless --user-data-dir /tmp/codex-godot-userdata --path godot --script res://tests/run_room_director_tests.gd
 
 const RoomDirector := preload("res://scripts/room_graph/room_director.gd")
+const EnemyArchetypesScript := preload("res://scripts/enemies/enemy_archetypes.gd")
+const AttackAbilityScript := preload("res://scripts/abilities/attack_ability.gd")
 
 var _passed := 0
 var _failed := 0
@@ -12,6 +14,10 @@ var _failed := 0
 func _initialize() -> void:
 	print("Running room director tests...")
 	_test_tier_one_has_more_and_harder_budget_than_tier_zero()
+	_test_combat_room_budget_estimates_scale_by_tier()
+	_test_elite_room_budget_requests_punctuation_enemy()
+	_test_high_tier_elite_room_ends_with_double_elite_seed_sweep()
+	_test_tier_zero_opening_pressure_is_capped_across_seed_sweep()
 	_test_wave_count_is_bounded_and_deterministic()
 	_test_planned_waves_never_empty_across_seed_sweep()
 	_test_start_exposes_spawn_requests_as_plain_data()
@@ -41,6 +47,9 @@ func _check(desc: String, condition: bool) -> void:
 func _check_eq(desc: String, actual: Variant, expected: Variant) -> void:
 	_check("%s (got %s, expected %s)" % [desc, actual, expected], actual == expected)
 
+func _check_between(desc: String, value: float, low: float, high: float) -> void:
+	_check("%s (%.2f in [%.2f, %.2f])" % [desc, value, low, high], value >= low and value <= high)
+
 func _seeded_rng(seed: int) -> RandomNumberGenerator:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed
@@ -48,6 +57,9 @@ func _seeded_rng(seed: int) -> RandomNumberGenerator:
 
 func _make_director(tier: float, seed: int) -> RoomDirector:
 	return RoomDirector.new(tier, _seeded_rng(seed))
+
+func _make_director_for_kind(tier: float, seed: int, room_kind: String) -> RoomDirector:
+	return RoomDirector.new(tier, _seeded_rng(seed), room_kind)
 
 func _test_tier_one_has_more_and_harder_budget_than_tier_zero() -> void:
 	var low := _make_director(0.0, 90210)
@@ -64,6 +76,70 @@ func _test_tier_one_has_more_and_harder_budget_than_tier_zero() -> void:
 		_total_request_count(high.planned_waves()) >= _total_request_count(low.planned_waves())
 	)
 
+func _test_combat_room_budget_estimates_scale_by_tier() -> void:
+	var low := _make_director(0.0, 90210)
+	var mid := _make_director(0.5, 90210)
+	var high := _make_director(1.0, 90210)
+
+	var low_seconds := _estimated_room_clear_seconds(low.planned_waves())
+	var mid_seconds := _estimated_room_clear_seconds(mid.planned_waves())
+	var high_seconds := _estimated_room_clear_seconds(high.planned_waves())
+
+	_check_between("tier 0.0 combat estimate is an opening-room bite", low_seconds, 1.5, 5.0)
+	_check_between("tier 0.5 combat estimate is a real room", mid_seconds, 6.0, 14.0)
+	_check_between("tier 1.0 combat estimate approaches Hades room pacing before movement tax", high_seconds, 12.0, 24.0)
+	_check("combat estimates scale upward by tier", low_seconds < mid_seconds and mid_seconds < high_seconds)
+	_check_eq("combat directors do not spend elite budget", _total_archetype_count(high.planned_waves(), "elite"), 0)
+
+func _test_elite_room_budget_requests_punctuation_enemy() -> void:
+	var combat := _make_director(0.65, 17)
+	var elite := _make_director_for_kind(0.65, 17, RoomDirector.ROOM_KIND_ELITE)
+
+	_check("elite room computes a larger budget than same-tier combat", elite.room_budget > combat.room_budget)
+	_check("elite room spends more budget than same-tier combat", elite.spent_budget > combat.spent_budget)
+	_check_eq("same-tier combat room requests no elites", _total_archetype_count(combat.planned_waves(), RoomDirector.ARCHETYPE_ELITE), 0)
+	_check("elite room requests at least one elite", _total_archetype_count(elite.planned_waves(), RoomDirector.ARCHETYPE_ELITE) >= 1)
+	_check(
+		"elite room estimated clear time is noticeably harder than combat",
+		_estimated_room_clear_seconds(elite.planned_waves()) >= _estimated_room_clear_seconds(combat.planned_waves()) * 1.35
+	)
+
+func _test_high_tier_elite_room_ends_with_double_elite_seed_sweep() -> void:
+	var misses: Array[String] = []
+	for seed in range(1, 51):
+		for tier in [RoomDirector.ELITE_DOUBLE_TIER, 1.0]:
+			var director := _make_director_for_kind(tier, seed, RoomDirector.ROOM_KIND_ELITE)
+			var waves := director.planned_waves()
+			var final_wave: Array = []
+			if not waves.is_empty():
+				final_wave = waves[waves.size() - 1]
+			var final_elites := _wave_archetype_count(final_wave, RoomDirector.ARCHETYPE_ELITE)
+			if final_elites != 2:
+				misses.append("seed %d tier %.2f final_elites %d" % [seed, tier, final_elites])
+
+	_check_eq("high-tier elite seed sweep ends on a double-elite final wave", misses.size(), 0)
+
+func _test_tier_zero_opening_pressure_is_capped_across_seed_sweep() -> void:
+	const OPENING_PRESSURE_CAP := 3
+	var over_cap_seeds: Array[int] = []
+	var lowest_first_wave := 999
+	var highest_first_wave := 0
+
+	for seed in range(1, 101):
+		var director := _make_director(0.0, seed)
+		var waves := director.planned_waves()
+		var first_wave_count := _wave_request_count(waves[0]) if not waves.is_empty() else 0
+		lowest_first_wave = mini(lowest_first_wave, first_wave_count)
+		highest_first_wave = maxi(highest_first_wave, first_wave_count)
+		for wave in waves:
+			if _wave_request_count(wave) > OPENING_PRESSURE_CAP:
+				over_cap_seeds.append(seed)
+				break
+
+	_check_eq("tier-0 seed sweep has no wave over the opening pressure cap", over_cap_seeds.size(), 0)
+	_check_between("tier-0 first wave keeps the Hades chamber pressure floor", float(lowest_first_wave), 2.0, 4.0)
+	_check_between("tier-0 first wave keeps the Hades chamber pressure ceiling", float(highest_first_wave), 2.0, 4.0)
+
 func _test_wave_count_is_bounded_and_deterministic() -> void:
 	for seed in range(1, 12):
 		for tier in [0.0, 0.25, 0.5, 0.75, 1.0]:
@@ -76,15 +152,16 @@ func _test_wave_count_is_bounded_and_deterministic() -> void:
 func _test_planned_waves_never_empty_across_seed_sweep() -> void:
 	for seed in range(1, 101):
 		for tier in [0.0, 0.5, 1.0]:
-			var director := _make_director(tier, seed)
-			var waves := director.planned_waves()
-			for wave_index in range(waves.size()):
-				var wave: Array = waves[wave_index]
-				_check(
-					"seed %d tier %.1f wave %d has at least one planned spawn"
-					% [seed, tier, wave_index],
-					_wave_request_count(wave) > 0
-				)
+			for room_kind in [RoomDirector.ROOM_KIND_COMBAT, RoomDirector.ROOM_KIND_ELITE]:
+				var director := _make_director_for_kind(tier, seed, room_kind)
+				var waves := director.planned_waves()
+				for wave_index in range(waves.size()):
+					var wave: Array = waves[wave_index]
+					_check(
+						"seed %d tier %.1f %s wave %d has at least one planned spawn"
+						% [seed, tier, room_kind, wave_index],
+						_wave_request_count(wave) > 0
+					)
 
 func _test_start_exposes_spawn_requests_as_plain_data() -> void:
 	var director := _make_director(0.65, 17)
@@ -104,7 +181,11 @@ func _test_start_exposes_spawn_requests_as_plain_data() -> void:
 		_check("spawn request has archetype", request.has("archetype"))
 		_check("spawn request has count", request.has("count"))
 		_check("spawn request has spawn_ids", request.has("spawn_ids"))
-		_check("spawn request archetype stays abstract", [RoomDirector.ARCHETYPE_CHAFF, RoomDirector.ARCHETYPE_BRUISER].has(String(request["archetype"])))
+		_check("spawn request archetype stays abstract", [
+			RoomDirector.ARCHETYPE_CHAFF,
+			RoomDirector.ARCHETYPE_BRUISER,
+			"elite",
+		].has(String(request["archetype"])))
 		_check("spawn request count is positive", int(request["count"]) > 0)
 		var spawn_ids: Array = request.get("spawn_ids", [])
 		_check_eq("spawn request ids match count", spawn_ids.size(), int(request["count"]))
@@ -224,10 +305,37 @@ func _total_archetype_count(waves: Array[Array], archetype: String) -> int:
 				total += int(request.get("count", 0))
 	return total
 
+func _estimated_room_clear_seconds(waves: Array[Array]) -> float:
+	var hp_total := 0.0
+	for wave: Array in waves:
+		for request: Dictionary in wave:
+			var archetype := String(request.get("archetype", ""))
+			if not EnemyArchetypesScript.has_archetype(archetype):
+				continue
+			var stats := EnemyArchetypesScript.stats_for(archetype)
+			hp_total += float(stats["max_hp"]) * float(int(request.get("count", 0)))
+	return hp_total / _sustained_melee_dps()
+
+func _sustained_melee_dps() -> float:
+	var attack := AttackAbilityScript.new()
+	var damage := 0.0
+	var recovery := 0.0
+	for step in range(1, attack.combo_steps + 1):
+		damage += attack.damage_for_step(step)
+		recovery += attack.recovery_for_step(step)
+	return damage / maxf(recovery, 0.001)
+
 func _wave_request_count(wave: Array) -> int:
 	var total := 0
 	for request: Dictionary in wave:
 		total += int(request.get("count", 0))
+	return total
+
+func _wave_archetype_count(wave: Array, archetype: String) -> int:
+	var total := 0
+	for request: Dictionary in wave:
+		if String(request.get("archetype", "")) == archetype:
+			total += int(request.get("count", 0))
 	return total
 
 func _first_live_spawn_id(director: RoomDirector) -> String:

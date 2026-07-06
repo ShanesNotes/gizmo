@@ -839,19 +839,18 @@ func _test_rest_room_does_not_refill_spark_surge_charge() -> void:
 
 func _test_player_death_disconnects_director_and_ignores_posthumous_enemy_deaths() -> void:
 	var run = await _new_run()
-	var graph: RoomGraph = null
-	for seed in range(1, 120):
-		graph = run.start_run("hearth", _empty_template_pool(), 2, _seeded_rng(seed))
-		await process_frame
-		if run.current_director != null and run.current_director.wave_count == 1 and run.spawned_enemy_count() > 0:
-			break
+	var graph: RoomGraph = run.start_run("hearth", _empty_template_pool(), 2, _seeded_rng(1))
+	await process_frame
 
 	var director: RoomDirector = run.current_director
-	_check("posthumous death test found a one-wave director", director != null and director.wave_count == 1)
+	_check("posthumous death test found an active director", director != null and director.wave_count >= 1)
 	_check("posthumous death test has spawned enemies", run.spawned_enemy_count() > 0)
-	if director == null or director.wave_count != 1 or run.spawned_enemy_count() == 0:
+	if director == null or run.spawned_enemy_count() == 0:
 		await _cleanup_run(run)
 		return
+	var initial_wave_index: int = director.current_wave_index
+	var initial_remaining: int = director.remaining_in_wave()
+	var initial_spawn_count: int = run.spawned_enemy_count()
 
 	var director_clears: Array[bool] = []
 	var controller_clears: Array[RoomNode] = []
@@ -873,6 +872,9 @@ func _test_player_death_disconnects_director_and_ignores_posthumous_enemy_deaths
 
 	_check_eq("posthumous enemy deaths do not clear the stale director", director_clears.size(), 0)
 	_check("stale director remains uncleared after ignored posthumous deaths", not director.is_room_cleared())
+	_check_eq("posthumous enemy deaths leave stale director wave unchanged", director.current_wave_index, initial_wave_index)
+	_check_eq("posthumous enemy deaths leave stale director remaining count unchanged", director.remaining_in_wave(), initial_remaining)
+	_check_eq("posthumous enemy deaths leave stale spawned-enemy bookkeeping unchanged", run.spawned_enemy_count(), initial_spawn_count)
 	_check_eq("posthumous enemy deaths do not notify run controller room_cleared", controller_clears.size(), 0)
 	_check("posthumous enemy deaths do not crash the run", is_instance_valid(run))
 	_check("posthumous death test kept graph alive for inspection", graph != null)
@@ -881,15 +883,24 @@ func _test_player_death_disconnects_director_and_ignores_posthumous_enemy_deaths
 func _test_real_orchestrator_survivability_bands() -> void:
 	var stationary := await _run_survivability_probe(&"stationary", 90.0, 1)
 	_check("motionless real-run probe eventually dies", bool(stationary["died"]))
-	_check_between("motionless real-run death is not an instant spawn melt", float(stationary["survived_seconds"]), 20.0, 75.0)
-	_check("motionless real-run damage stays chip-sized", int(stationary["max_hit_delta"]) <= 1)
+	_check_between("motionless real-run death is not an instant spawn melt", float(stationary["survived_seconds"]), 30.0, 90.0)
+	_check("motionless real-run damage stays telegraphed", int(stationary["max_hit_delta"]) <= 2)
 
-	var retreating := await _run_survivability_probe(&"retreat", 12.0, 3)
+	var retreating := await _run_survivability_probe(&"retreat", 40.0, 3)
 	_check("retreating real-run DPS probe avoids death while clearing three rooms", not bool(retreating["died"]))
-	_check_between("retreating real-run DPS clear time", float(retreating["survived_seconds"]), 2.0, 3.5)
+	_check_between("retreating real-run DPS clear time", float(retreating["survived_seconds"]), 18.0, 40.0)
 	_check("retreating real-run enters at least three rooms", int(retreating["rooms_entered"]) >= 3)
 	_check("retreating real-run clears at least three rooms", int(retreating["rooms_cleared"]) >= 3)
-	_check("retreating real-run damage stays chip-sized", int(retreating["max_hit_delta"]) <= 1)
+	_check("retreating real-run damage stays telegraphed", int(retreating["max_hit_delta"]) <= 2)
+
+	var half_dps := await _run_survivability_probe(&"retreat", 40.0, 3, 0.5, 1.0)
+	_check("halved-DPS mutation fails to clear three rooms inside the probe band", int(half_dps["rooms_cleared"]) < 3)
+
+	var doubled_damage := await _run_survivability_probe(&"stationary", 90.0, 1, 1.0, 2.0)
+	_check(
+		"doubled-contact-damage mutation fails the no-melt stationary band",
+		bool(doubled_damage["died"]) and float(doubled_damage["survived_seconds"]) < 30.0
+	)
 
 func _start_run_with_first_boon_exit(run) -> RoomGraph:
 	for seed in range(1, 80):
@@ -910,7 +921,13 @@ func _start_run_with_two_entry_exits(run) -> RoomGraph:
 	_check("found a seed whose entry room has two exits", false)
 	return run.run_controller.graph
 
-func _run_survivability_probe(profile: StringName, max_seconds: float, target_rooms: int) -> Dictionary:
+func _run_survivability_probe(
+	profile: StringName,
+	max_seconds: float,
+	target_rooms: int,
+	player_dps_scale: float = 1.0,
+	enemy_damage_multiplier: float = 1.0
+) -> Dictionary:
 	var run = await _new_run()
 	var entered_room_ids: Array[String] = []
 	run.room_loaded.connect(func(room: RoomNode, _room_root: Node3D) -> void:
@@ -926,7 +943,7 @@ func _run_survivability_probe(profile: StringName, max_seconds: float, target_ro
 	var max_hit_delta := 0
 	var first_damage := -1.0
 	var elapsed := 0.0
-	var melee_model := _survival_melee_model(run)
+	var melee_model := _survival_melee_model(run, player_dps_scale)
 
 	while elapsed < max_seconds and run._run_active:
 		if profile == &"retreat":
@@ -936,7 +953,7 @@ func _run_survivability_probe(profile: StringName, max_seconds: float, target_ro
 		run._process(SURVIVAL_DT)
 		if run.player_vitals != null:
 			run.player_vitals.tick_guard_recharge(SURVIVAL_DT)
-		_step_live_enemies(run, SURVIVAL_DT)
+		_step_live_enemies(run, SURVIVAL_DT, enemy_damage_multiplier)
 
 		elapsed += SURVIVAL_DT
 		var total := _vital_total(run)
@@ -967,7 +984,7 @@ func _run_survivability_probe(profile: StringName, max_seconds: float, target_ro
 	await _cleanup_run(run)
 	return result
 
-func _survival_melee_model(run) -> Dictionary:
+func _survival_melee_model(run, player_dps_scale: float) -> Dictionary:
 	var kit: AbilityComponent = run._player_ability_kit()
 	var attack := kit.get_ability(&"attack") as AttackAbility if kit != null else null
 	if attack == null:
@@ -978,6 +995,7 @@ func _survival_melee_model(run) -> Dictionary:
 		"combo_step": 0,
 		"combo_remaining": 0.0,
 		"swings": 0,
+		"player_dps_scale": maxf(player_dps_scale, 0.001),
 	}
 
 func _tick_survival_melee(run, model: Dictionary, delta: float) -> void:
@@ -993,6 +1011,10 @@ func _tick_survival_melee(run, model: Dictionary, delta: float) -> void:
 	var target := _nearest_live_enemy(run)
 	if target == null:
 		return
+	# The probe uses synthetic player timing, but keeps the live melee range gate so
+	# survival DPS cannot hit enemies outside the real resolver's reach.
+	if _xz_distance(target.global_position, run.player.global_position) > run.melee_range:
+		return
 
 	# DPS model uses the real default melee kit from godot/scripts/abilities/attack_ability.gd:
 	# step_damage [18, 20, 26], step_recovery [0.16, 0.18, 0.24], combo_window 0.45.
@@ -1005,7 +1027,7 @@ func _tick_survival_melee(run, model: Dictionary, delta: float) -> void:
 
 	model["combo_step"] = next_step
 	model["combo_remaining"] = attack.combo_window
-	model["cooldown"] = maxf(attack.recovery_for_step(next_step) / maxf(SURVIVAL_PLAYER_DPS_SCALE, 0.001), SURVIVAL_DT)
+	model["cooldown"] = maxf(attack.recovery_for_step(next_step) / float(model["player_dps_scale"]), SURVIVAL_DT)
 	model["swings"] = int(model["swings"]) + 1
 
 func _clear_current_room_by_real_attacks(run) -> bool:
@@ -1065,19 +1087,34 @@ func _nearest_live_enemy(run) -> GreyboxEnemy:
 			nearest = enemy
 	return nearest
 
-func _step_live_enemies(run, delta: float) -> void:
+func _step_live_enemies(run, delta: float, enemy_damage_multiplier: float = 1.0) -> void:
 	for enemy in _live_spawned_enemies(run):
 		if enemy.is_dead():
 			continue
+		var original_brain_damage: int = enemy.brain.melee_damage
+		if enemy_damage_multiplier > 0.0 and not is_equal_approx(enemy_damage_multiplier, 1.0):
+			enemy.brain.melee_damage = maxi(1, int(round(float(enemy.melee_damage) * enemy_damage_multiplier)))
 		var result: Dictionary = enemy.tick_chase(run.player.global_position, delta)
+		enemy.brain.melee_damage = original_brain_damage
 		var velocity := Vector3(result["velocity"])
 		enemy.global_position += velocity * delta
 
 func _drive_retreating_player(run, delta: float) -> void:
-	var direction := _retreat_direction(run)
+	var direction := _survival_movement_direction(run)
 	var next_position: Vector3 = run.player.global_position + direction * SURVIVAL_RETREAT_SPEED * delta
 	run.player.global_position = _clamp_to_current_room(run, next_position)
 	run.player.velocity = Vector3.ZERO
+
+func _survival_movement_direction(run) -> Vector3:
+	var target := _nearest_live_enemy(run)
+	if target != null:
+		var to_target: Vector3 = target.global_position - run.player.global_position
+		to_target.y = 0.0
+		var distance := to_target.length()
+		var desired_attack_range := maxf(run.melee_range * 0.85, target.contact_radius + 0.2)
+		if distance > desired_attack_range and to_target.length_squared() > 0.0001:
+			return to_target.normalized()
+	return _retreat_direction(run)
 
 func _retreat_direction(run) -> Vector3:
 	var position: Vector3 = run.player.global_position

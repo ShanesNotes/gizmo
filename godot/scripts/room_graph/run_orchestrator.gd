@@ -323,7 +323,10 @@ func _start_room_director(room: RoomNode) -> void:
 		if run_controller != null:
 			run_controller.notify_room_cleared()
 		return
-	current_director = RoomDirector.new(room.difficulty_tier, _rng)
+	var room_kind := RoomDirector.ROOM_KIND_COMBAT
+	if room.template != null and room.template.room_type == RoomTemplate.RoomType.ELITE:
+		room_kind = RoomDirector.ROOM_KIND_ELITE
+	current_director = RoomDirector.new(room.difficulty_tier, _rng, room_kind)
 	current_director.wave_requested.connect(_on_director_wave_requested)
 	current_director.room_cleared.connect(_on_director_room_cleared)
 	_set_audio_zone_state(ZONE_STATE_COMBAT)

@@ -8,6 +8,8 @@ const AppScene := preload("res://scenes/app.tscn")
 const AppShellScript := preload("res://scripts/app_shell.gd")
 const HubControllerScript := preload("res://scripts/hub_controller.gd")
 const RunOrchestratorScript := preload("res://scripts/room_graph/run_orchestrator.gd")
+const AttackAbilityScript := preload("res://scripts/abilities/attack_ability.gd")
+const RoomDirectorScript := preload("res://scripts/room_graph/room_director.gd")
 const BoonDef := preload("res://scripts/boons/boon_def.gd")
 const MetaState := preload("res://scripts/meta/meta_state.gd")
 const RoomNode := preload("res://scripts/room_graph/room_node.gd")
@@ -30,6 +32,8 @@ func _initialize() -> void:
 func _run_tests() -> void:
 	_test_save_root_is_user_scoped()
 	await _test_empty_boon_pool_replacement_reward_in_real_run()
+	await _test_live_enemy_ttk_texture_uses_real_attack_scale()
+	await _test_real_elite_room_clears_through_live_attack_dps()
 	await _test_victory_run_returns_to_hub_with_summary_and_persisted_scrap()
 	await _test_death_run_returns_to_hub_with_summary_and_persisted_scrap()
 	print("")
@@ -53,6 +57,9 @@ func _check(desc: String, condition: bool) -> void:
 
 func _check_eq(desc: String, actual: Variant, expected: Variant) -> void:
 	_check("%s (got %s, expected %s)" % [desc, actual, expected], actual == expected)
+
+func _check_between(desc: String, value: float, low: float, high: float) -> void:
+	_check("%s (%.2f in [%.2f, %.2f])" % [desc, value, low, high], value >= low and value <= high)
 
 func _test_save_root_is_user_scoped() -> void:
 	_ensure_test_save_root()
@@ -145,6 +152,67 @@ func _test_empty_boon_pool_replacement_reward_in_real_run() -> void:
 	_check("empty-pool BOON exit skips the draft overlay", not run.flow_bridge.is_draft_open() and not run.boon_draft_ui.visible)
 	_check_eq("empty-pool BOON exit grants Scrap replacement", run.scrap_earned, previous_scrap + SCRAP_REWARD_VALUE)
 	_check_eq("empty-pool BOON exit advances to its destination", run.run_controller.current_room_id, destination_id)
+	await _cleanup_app(app, save_path)
+
+func _test_live_enemy_ttk_texture_uses_real_attack_scale() -> void:
+	var save_path := _new_save_path("live_ttk_texture")
+	_remove_save(save_path)
+	var app := await _new_app(save_path)
+	if app == null:
+		return
+
+	var run: Variant = await _start_real_run_from_hub(app)
+	if run == null:
+		await _cleanup_app(app, save_path)
+		return
+
+	var attack := AttackAbilityScript.new()
+	var enemy := _first_spawned_enemy(run)
+	_check("live TTK texture test has a real spawned enemy", enemy != null)
+	if enemy != null:
+		var ttk := _melee_ttk_for_hp(enemy.max_hp, attack)
+		_check_eq("first live enemy is entry-room chaff", enemy.archetype, "chaff")
+		_check("first live chaff survives the opening melee hit", enemy.max_hp > attack.damage_for_step(1))
+		_check_between("first live chaff remains in trash TTK band", float(ttk["seconds"]), 0.0, 0.5)
+		_check_eq("first live chaff takes two real melee hits", int(ttk["hits"]), 2)
+	_assert_spawned_enemies_inside_current_room_bounds(run, "integration live TTK texture")
+	await _cleanup_app(app, save_path)
+
+func _test_real_elite_room_clears_through_live_attack_dps() -> void:
+	var save_path := _new_save_path("elite_room_live_dps")
+	_remove_save(save_path)
+	var app := await _new_app(save_path)
+	if app == null:
+		return
+
+	var run: Variant = await _start_real_run_from_hub(app)
+	if run == null:
+		await _cleanup_app(app, save_path)
+		return
+
+	var graph: RoomGraph = run.run_controller.graph
+	var elite_room_id := _first_room_id_by_type(graph, RoomTemplate.RoomType.ELITE)
+	_check("elite integration graph includes a real ELITE room", elite_room_id != "")
+	if elite_room_id == "":
+		await _cleanup_app(app, save_path)
+		return
+
+	var gate := _new_gate_state(run)
+	var reached_elite := await _drive_to_room(run, elite_room_id, gate)
+	_check("elite integration drive reaches the ELITE room", reached_elite)
+	if not reached_elite:
+		await _cleanup_app(app, save_path)
+		return
+
+	var elite_room := graph.get_room(elite_room_id)
+	_check("current room is the generated ELITE template", elite_room != null and elite_room.template != null and elite_room.template.room_type == RoomTemplate.RoomType.ELITE)
+	_check("ELITE template starts an elite director", run.current_director != null and run.current_director.room_kind == RoomDirectorScript.ROOM_KIND_ELITE)
+
+	var clear_result := await _clear_current_room_by_real_attack_dps(run)
+	_check("real attack DPS killed at least one live elite", int(clear_result["elite_kills"]) >= 1)
+	_check_between("real attack DPS elite TTK lands in the 3-10s band", float(clear_result["first_elite_ttk"]), 3.0, 10.0)
+	_check("real attack DPS clears the elite room", run.current_director != null and run.current_director.is_room_cleared())
+	_check("RunController marks the elite room cleared", elite_room != null and elite_room.state == RoomNode.State.CLEARED)
 	await _cleanup_app(app, save_path)
 
 func _test_death_run_returns_to_hub_with_summary_and_persisted_scrap() -> void:
@@ -344,6 +412,51 @@ func _select_progress_connection(run, need_boon: bool, need_scrap: bool) -> Room
 			return connection
 	return connections[0]
 
+func _drive_to_room(run, target_room_id: String, gate: Dictionary) -> bool:
+	var graph: RoomGraph = run.run_controller.graph
+	var safety := 0
+	while is_instance_valid(run) and run._run_active and run.run_controller.current_room_id != target_room_id and safety < graph.rooms.size() + 4:
+		await _clear_current_room_by_enemy_deaths(run, gate)
+		var connections: Array[RoomConnection] = graph.get_connections_from(run.run_controller.current_room_id)
+		var connection := _select_connection_toward_room(graph, connections, target_room_id)
+		_check("elite integration found an exit path toward %s" % target_room_id, connection != null)
+		if connection == null:
+			return false
+		await _take_exit(run, connection, gate)
+		safety += 1
+	return is_instance_valid(run) and run.run_controller.current_room_id == target_room_id
+
+func _select_connection_toward_room(
+	graph: RoomGraph,
+	connections: Array[RoomConnection],
+	target_room_id: String
+) -> RoomConnection:
+	for connection in connections:
+		if _connection_leads_to_room(graph, connection, target_room_id, {}):
+			return connection
+	return null
+
+func _connection_leads_to_room(
+	graph: RoomGraph,
+	connection: RoomConnection,
+	target_room_id: String,
+	visited: Dictionary
+) -> bool:
+	if connection == null:
+		return false
+	var destination := graph.get_room(connection.to_room_id)
+	if destination == null:
+		return false
+	if destination.room_id == target_room_id:
+		return true
+	if visited.has(destination.room_id):
+		return false
+	visited[destination.room_id] = true
+	for next_connection in graph.get_connections_from(destination.room_id):
+		if _connection_leads_to_room(graph, next_connection, target_room_id, visited):
+			return true
+	return false
+
 func _first_step_toward_reward(
 	graph: RoomGraph,
 	connections: Array[RoomConnection],
@@ -466,12 +579,109 @@ func _first_spawned_enemy(run) -> GreyboxEnemy:
 			return enemy as GreyboxEnemy
 	return null
 
+func _first_room_id_by_type(graph: RoomGraph, room_type: RoomTemplate.RoomType) -> String:
+	if graph == null:
+		return ""
+	for room in graph.rooms:
+		if room != null and room.template != null and room.template.room_type == room_type:
+			return room.room_id
+	return ""
+
 func _live_spawned_enemies(run) -> Array[GreyboxEnemy]:
 	var enemies: Array[GreyboxEnemy] = []
 	for enemy in run.spawned_enemies.values():
 		if enemy is GreyboxEnemy and is_instance_valid(enemy):
 			enemies.append(enemy as GreyboxEnemy)
 	return enemies
+
+func _clear_current_room_by_real_attack_dps(run) -> Dictionary:
+	var kit: AbilityComponent = run._player_ability_kit()
+	var attack := kit.get_ability(&"attack") as AttackAbility if kit != null else null
+	_check("elite DPS test has the real player attack kit", kit != null and attack != null)
+	if kit == null or attack == null:
+		return {
+			"elite_kills": 0,
+			"first_elite_ttk": INF,
+			"swings": 0,
+		}
+
+	var elite_elapsed_by_spawn_id: Dictionary = {}
+	var first_elite_ttk := -1.0
+	var elite_kills := 0
+	var swings := 0
+	var safety := 0
+	while is_instance_valid(run) and run.current_director != null and not run.current_director.is_room_cleared() and safety < 260:
+		var target := _preferred_live_enemy(run)
+		if target == null:
+			await process_frame
+			safety += 1
+			continue
+
+		_ready_enemy_for_player_attack(run, target, _player_forward(run) * 1.1)
+		var was_elite := target.archetype == RoomDirectorScript.ARCHETYPE_ELITE
+		var target_spawn_id := target.spawn_id
+		if was_elite and not elite_elapsed_by_spawn_id.has(target_spawn_id):
+			elite_elapsed_by_spawn_id[target_spawn_id] = 0.0
+
+		if not kit.try_activate(&"attack"):
+			kit.tick(0.05)
+			await process_frame
+			safety += 1
+			continue
+
+		swings += 1
+		var step := kit.combo_step()
+		var recovery := maxf(attack.recovery_for_step(step), 0.01)
+		var target_died := target.is_dead()
+		if was_elite:
+			if target_died:
+				elite_kills += 1
+				if first_elite_ttk < 0.0:
+					first_elite_ttk = float(elite_elapsed_by_spawn_id[target_spawn_id])
+			else:
+				elite_elapsed_by_spawn_id[target_spawn_id] = float(elite_elapsed_by_spawn_id[target_spawn_id]) + recovery
+		kit.tick(recovery)
+		await process_frame
+		safety += 1
+
+	return {
+		"elite_kills": elite_kills,
+		"first_elite_ttk": first_elite_ttk if first_elite_ttk >= 0.0 else INF,
+		"swings": swings,
+	}
+
+func _preferred_live_enemy(run) -> GreyboxEnemy:
+	var fallback: GreyboxEnemy = null
+	for enemy in _live_spawned_enemies(run):
+		if enemy.is_dead():
+			continue
+		if enemy.archetype == RoomDirectorScript.ARCHETYPE_ELITE:
+			return enemy
+		if fallback == null:
+			fallback = enemy
+	return fallback
+
+func _ready_enemy_for_player_attack(run, enemy: GreyboxEnemy, offset: Vector3) -> void:
+	if enemy == null:
+		return
+	var motor = run.player.get("motor") if run.player != null else null
+	if motor != null:
+		motor.set("facing_direction", _player_forward(run))
+	while enemy.is_spawning():
+		enemy.tick_chase(run.player.global_position, maxf(enemy.spawn_windup_remaining(), 0.1))
+	enemy.global_position = run.player.global_position + offset
+	enemy.velocity = Vector3.ZERO
+
+func _player_forward(run) -> Vector3:
+	var default_forward := Vector3(0.0, 0.0, -1.0)
+	if run == null or run.player == null:
+		return default_forward
+	var motor = run.player.get("motor")
+	if motor != null:
+		var facing := Vector3(motor.get("facing_direction"))
+		if facing.length_squared() > 0.000001:
+			return facing.normalized()
+	return default_forward
 
 func _assert_spawned_enemies_inside_current_room_bounds(run, prefix: String) -> void:
 	if run.current_director == null:
@@ -531,6 +741,24 @@ func _room_can_satisfy_spawn_separation(half_x: float, half_z: float, enemy_coun
 
 func _xz_distance(a: Vector3, b: Vector3) -> float:
 	return Vector2(a.x, a.z).distance_to(Vector2(b.x, b.z))
+
+func _melee_ttk_for_hp(hp: float, attack: AttackAbility) -> Dictionary:
+	var remaining := hp
+	var elapsed := 0.0
+	var step := 1
+	for hit in range(1, 200):
+		remaining -= attack.damage_for_step(step)
+		if remaining <= 0.0:
+			return {
+				"seconds": elapsed,
+				"hits": hit,
+			}
+		elapsed += attack.recovery_for_step(step)
+		step = (step % maxi(attack.combo_steps, 1)) + 1
+	return {
+		"seconds": INF,
+		"hits": 200,
+	}
 
 func _new_save_path(test_name: String) -> String:
 	_ensure_test_save_root()

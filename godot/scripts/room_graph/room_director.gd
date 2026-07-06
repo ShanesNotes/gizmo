@@ -6,17 +6,27 @@ signal room_cleared()
 
 const ARCHETYPE_CHAFF := "chaff"
 const ARCHETYPE_BRUISER := "bruiser"
+const ARCHETYPE_ELITE := "elite"
+const ROOM_KIND_COMBAT := "combat"
+const ROOM_KIND_ELITE := "elite"
 
 const MIN_WAVES := 1
 const MAX_WAVES := 3
-const BASE_ROOM_BUDGET := 3.3
-const TIER_BUDGET_GAIN := 8.5
-const BUDGET_JITTER := 0.7
-const CHAFF_COST := 1.1
-const BRUISER_COST := 3.4
-const BRUISER_UNLOCK_TIER := 0.45
+const BASE_ROOM_BUDGET := 8.0
+const TIER_BUDGET_GAIN := 32.0
+const BUDGET_JITTER := 1.0
+const CHAFF_COST := 1.0
+const BRUISER_COST := 2.4
+const ELITE_COST := 9.0
+const BRUISER_UNLOCK_TIER := 0.25
+const ELITE_ROOM_BUDGET_MULTIPLIER := 1.25
+const ELITE_ROOM_BUDGET_BONUS := 6.0
+const ELITE_DOUBLE_TIER := 0.85
+const TIER_ZERO_CONCURRENT_BUDGET_CAP := 3.0
+const TIER_ONE_CONCURRENT_BUDGET_CAP := 6.0
 
 var difficulty_tier: float = 0.0
+var room_kind: String = ROOM_KIND_COMBAT
 var room_budget: float = 0.0
 var spent_budget: float = 0.0
 var wave_count: int = 0
@@ -30,11 +40,20 @@ var _reported_kill_spawn_ids: Dictionary = {}
 var _started := false
 var _cleared := false
 
-func _init(p_difficulty_tier: float = 0.0, p_rng: RandomNumberGenerator = null) -> void:
-	configure(p_difficulty_tier, p_rng)
+func _init(
+	p_difficulty_tier: float = 0.0,
+	p_rng: RandomNumberGenerator = null,
+	p_room_kind: String = ROOM_KIND_COMBAT
+) -> void:
+	configure(p_difficulty_tier, p_rng, p_room_kind)
 
-func configure(p_difficulty_tier: float, p_rng: RandomNumberGenerator = null) -> void:
+func configure(
+	p_difficulty_tier: float,
+	p_rng: RandomNumberGenerator = null,
+	p_room_kind: String = ROOM_KIND_COMBAT
+) -> void:
 	difficulty_tier = clampf(p_difficulty_tier, 0.0, 1.0)
+	room_kind = _normalize_room_kind(p_room_kind)
 	_rng = p_rng
 	if _rng == null:
 		_rng = RandomNumberGenerator.new()
@@ -120,8 +139,11 @@ func notify_kill(spawn_id: String) -> bool:
 func _rebuild_plan() -> void:
 	_waves.clear()
 	spent_budget = 0.0
-	wave_count = _calculate_wave_count()
-	room_budget = _round_budget(BASE_ROOM_BUDGET + difficulty_tier * TIER_BUDGET_GAIN + _rng.randf_range(0.0, BUDGET_JITTER))
+	var base_budget := BASE_ROOM_BUDGET + difficulty_tier * TIER_BUDGET_GAIN + _rng.randf_range(0.0, BUDGET_JITTER)
+	if room_kind == ROOM_KIND_ELITE:
+		base_budget = base_budget * ELITE_ROOM_BUDGET_MULTIPLIER + ELITE_ROOM_BUDGET_BONUS
+	room_budget = _round_budget(base_budget)
+	wave_count = _calculate_wave_count(room_budget)
 
 	var budget_remaining := room_budget
 	var carry_budget := 0.0
@@ -129,7 +151,9 @@ func _rebuild_plan() -> void:
 		var waves_left := wave_count - wave_index
 		var nominal_budget := budget_remaining / float(waves_left)
 		if wave_count > 1 and wave_index < wave_count - 1:
-			var late_weight := lerpf(0.88, 1.12, float(wave_index) / float(wave_count - 1))
+			var early_weight := lerpf(1.0, 0.88, difficulty_tier)
+			var final_weight := lerpf(1.0, 1.12, difficulty_tier)
+			var late_weight := lerpf(early_weight, final_weight, float(wave_index) / float(wave_count - 1))
 			nominal_budget = minf(budget_remaining, nominal_budget * late_weight)
 		budget_remaining -= nominal_budget
 
@@ -140,13 +164,25 @@ func _rebuild_plan() -> void:
 		spent_budget += wave_spend
 		_waves.append(wave_requests)
 
-func _calculate_wave_count() -> int:
-	var scaled := difficulty_tier * float(MAX_WAVES - MIN_WAVES) + _rng.randf()
-	return clampi(MIN_WAVES + int(floor(scaled)), MIN_WAVES, MAX_WAVES)
+func _calculate_wave_count(planned_budget: float) -> int:
+	var tier_wave_count := MIN_WAVES + int(ceil(difficulty_tier * float(MAX_WAVES - MIN_WAVES)))
+	var budget_wave_count := int(ceil(maxf(planned_budget, 0.0) / _concurrent_budget_cap()))
+	return clampi(maxi(tier_wave_count, budget_wave_count), MIN_WAVES, MAX_WAVES)
+
+func _concurrent_budget_cap() -> float:
+	return maxf(
+		CHAFF_COST,
+		lerpf(TIER_ZERO_CONCURRENT_BUDGET_CAP, TIER_ONE_CONCURRENT_BUDGET_CAP, difficulty_tier)
+	)
 
 func _requests_for_budget(budget: float, wave_index: int) -> Array[Dictionary]:
 	var requests: Array[Dictionary] = []
 	var budget_left := budget
+
+	var elite_count := _elite_count_for_budget(budget_left, wave_index)
+	if elite_count > 0:
+		requests.append(_spawn_request(ARCHETYPE_ELITE, elite_count, wave_index))
+		budget_left -= float(elite_count) * ELITE_COST
 
 	var bruiser_count := _bruiser_count_for_budget(budget_left, wave_index)
 	if bruiser_count > 0:
@@ -159,6 +195,26 @@ func _requests_for_budget(budget: float, wave_index: int) -> Array[Dictionary]:
 
 	return requests
 
+func _elite_count_for_budget(budget: float, wave_index: int) -> int:
+	if room_kind != ROOM_KIND_ELITE:
+		return 0
+
+	var final_wave := wave_index >= wave_count - 1
+	var penultimate_wave := wave_index == wave_count - 2
+	if not final_wave and not (difficulty_tier >= ELITE_DOUBLE_TIER and penultimate_wave):
+		return 0
+
+	var max_elites := int(floor((budget + 0.001) / ELITE_COST))
+	if max_elites <= 0:
+		return 0
+
+	var desired := 1
+	if difficulty_tier >= ELITE_DOUBLE_TIER and final_wave:
+		if budget + CHAFF_COST >= ELITE_COST * 2.0:
+			max_elites = maxi(max_elites, 2)
+		desired = 2
+	return clampi(desired, 0, max_elites)
+
 func _bruiser_count_for_budget(budget: float, wave_index: int) -> int:
 	if difficulty_tier < BRUISER_UNLOCK_TIER:
 		return 0
@@ -168,8 +224,8 @@ func _bruiser_count_for_budget(budget: float, wave_index: int) -> int:
 		return 0
 
 	var tier_alpha := (difficulty_tier - BRUISER_UNLOCK_TIER) / (1.0 - BRUISER_UNLOCK_TIER)
-	var bruiser_budget_share := lerpf(0.15, 0.55, tier_alpha)
-	var desired := int(floor((budget * bruiser_budget_share + _rng.randf() * 0.6) / BRUISER_COST))
+	var bruiser_budget_share := lerpf(0.20, 0.58, tier_alpha)
+	var desired := int(floor((budget * bruiser_budget_share + _rng.randf() * 0.8) / BRUISER_COST))
 	if difficulty_tier >= 0.85 and wave_index > 0:
 		desired = maxi(desired, 1)
 	return clampi(desired, 0, max_bruisers)
@@ -233,9 +289,16 @@ func _requests_cost(requests: Array[Dictionary]) -> float:
 				total += float(count) * BRUISER_COST
 			ARCHETYPE_CHAFF:
 				total += float(count) * CHAFF_COST
+			ARCHETYPE_ELITE:
+				total += float(count) * ELITE_COST
 			_:
 				pass
 	return total
+
+func _normalize_room_kind(value: String) -> String:
+	if value == ROOM_KIND_ELITE:
+		return ROOM_KIND_ELITE
+	return ROOM_KIND_COMBAT
 
 func _round_budget(value: float) -> float:
 	return floor(value * 100.0 + 0.5) / 100.0
