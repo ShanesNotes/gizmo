@@ -15,6 +15,7 @@ const CARD_BACKGROUND_HOVER := Color(0.1451, 0.1451, 0.1647, 0.97)
 const CARD_BACKGROUND_PRESSED := Color(0.0824, 0.0784, 0.0902, 0.98)
 const DISABLED_BORDER := Color(0.35, 0.29, 0.22, 0.45)
 const FOCUS_BORDER := Color(0.9922, 0.9373, 0.8706, 1.0)
+const BENEFACTOR_LABEL_COLOR := Color(0.7412, 0.6431, 0.498, 1.0)
 
 var _cards: Array[Button] = []
 var _offers: Array[BoonDef] = []
@@ -106,6 +107,7 @@ func _cache_cards() -> void:
 		if card == null:
 			push_error("BoonDraftUI missing card node at %s." % path)
 			continue
+		_ensure_benefactor_label(card)
 		_cards.append(card)
 
 func _connect_card_buttons() -> void:
@@ -138,9 +140,12 @@ func _populate_card(card: Button, boon: BoonDef) -> void:
 	card.set_meta("rarity_label", boon.rarity_label())
 	card.set_meta("slot_label", boon.slot_label())
 	card.set_meta("domain", boon.domain)
+	card.set_meta("benefactor", boon.benefactor)
+	card.set_meta("benefactor_display_name", _benefactor_display_name_for(boon))
 	_apply_card_style(card, _rarity_tint(boon.rarity))
 
 	var rarity_label := _label_for(card, "RarityLabel")
+	var benefactor_label := _label_for(card, "BenefactorLabel")
 	var name_label := _label_for(card, "NameLabel")
 	var domain_label := _label_for(card, "DomainLabel")
 	var slot_label := _label_for(card, "SlotLabel")
@@ -148,6 +153,7 @@ func _populate_card(card: Button, boon: BoonDef) -> void:
 
 	rarity_label.text = boon.rarity_label()
 	rarity_label.add_theme_color_override("font_color", _rarity_tint(boon.rarity))
+	benefactor_label.text = _benefactor_display_name_for(boon)
 	name_label.text = _display_name_for(boon)
 	domain_label.text = boon.domain if not boon.domain.is_empty() else "Unknown Domain"
 	slot_label.text = "%s Slot" % boon.slot_label()
@@ -162,19 +168,47 @@ func _clear_card(card: Button) -> void:
 	card.remove_theme_stylebox_override("pressed")
 	card.remove_theme_stylebox_override("focus")
 	_apply_card_style(card, DISABLED_BORDER)
-	for key in ["boon_id", "rarity_label", "slot_label", "domain"]:
+	for key in ["boon_id", "rarity_label", "slot_label", "domain", "benefactor", "benefactor_display_name"]:
 		if card.has_meta(key):
 			card.remove_meta(key)
-	for label_name in ["RarityLabel", "NameLabel", "DomainLabel", "SlotLabel", "DescriptionLabel"]:
+	for label_name in ["RarityLabel", "BenefactorLabel", "NameLabel", "DomainLabel", "SlotLabel", "DescriptionLabel"]:
 		_label_for(card, label_name).text = ""
 
 func _label_for(card: Button, label_name: String) -> Label:
+	if label_name == "BenefactorLabel":
+		_ensure_benefactor_label(card)
 	return card.get_node("Margin/VBox/%s" % label_name) as Label
+
+func _ensure_benefactor_label(card: Button) -> void:
+	var vbox := card.get_node_or_null("Margin/VBox") as VBoxContainer
+	if vbox == null or vbox.has_node("BenefactorLabel"):
+		return
+
+	var label := Label.new()
+	label.name = "BenefactorLabel"
+	label.theme_type_variation = &"CapsLabel"
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.add_theme_color_override("font_color", BENEFACTOR_LABEL_COLOR)
+	label.add_theme_font_size_override("font_size", 14)
+	vbox.add_child(label)
+
+	var name_label := vbox.get_node_or_null("NameLabel") as Label
+	if name_label != null:
+		vbox.move_child(label, name_label.get_index())
 
 func _display_name_for(boon: BoonDef) -> String:
 	if not boon.display_name.is_empty():
 		return boon.display_name
 	return String(boon.boon_id).capitalize()
+
+func _benefactor_display_name_for(boon: BoonDef) -> String:
+	var warning := boon.benefactor_warning()
+	if not warning.is_empty():
+		push_warning("BoonDraftUI rendering invalid benefactor: %s" % warning)
+	if not boon.benefactor_display_name.is_empty():
+		return boon.benefactor_display_name
+	var placeholder := boon.benefactor_placeholder_display_name()
+	return placeholder if not placeholder.is_empty() else "Unknown Benefactor"
 
 func _rarity_tint(rarity: BoonDef.Rarity) -> Color:
 	match rarity:

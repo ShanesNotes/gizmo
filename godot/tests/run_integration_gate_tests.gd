@@ -10,6 +10,7 @@ const HubControllerScript := preload("res://scripts/hub_controller.gd")
 const RunOrchestratorScript := preload("res://scripts/room_graph/run_orchestrator.gd")
 const AttackAbilityScript := preload("res://scripts/abilities/attack_ability.gd")
 const RoomDirectorScript := preload("res://scripts/room_graph/room_director.gd")
+const RoomDoorScript := preload("res://scripts/room_graph/room_door.gd")
 const BoonDef := preload("res://scripts/boons/boon_def.gd")
 const MetaState := preload("res://scripts/meta/meta_state.gd")
 const RoomNode := preload("res://scripts/room_graph/room_node.gd")
@@ -34,6 +35,7 @@ func _run_tests() -> void:
 	await _test_empty_boon_pool_replacement_reward_in_real_run()
 	await _test_live_enemy_ttk_texture_uses_real_attack_scale()
 	await _test_real_elite_room_clears_through_live_attack_dps()
+	await _test_rest_reward_runtime_fixture_traversal()
 	await _test_victory_run_returns_to_hub_with_summary_and_persisted_scrap()
 	await _test_death_run_returns_to_hub_with_summary_and_persisted_scrap()
 	print("")
@@ -60,6 +62,9 @@ func _check_eq(desc: String, actual: Variant, expected: Variant) -> void:
 
 func _check_between(desc: String, value: float, low: float, high: float) -> void:
 	_check("%s (%.2f in [%.2f, %.2f])" % [desc, value, low, high], value >= low and value <= high)
+
+func _check_almost(desc: String, actual: float, expected: float, margin: float = 0.001) -> void:
+	_check("%s (got %.4f, expected %.4f +/- %.4f)" % [desc, actual, expected, margin], absf(actual - expected) <= margin)
 
 func _test_save_root_is_user_scoped() -> void:
 	_ensure_test_save_root()
@@ -213,6 +218,88 @@ func _test_real_elite_room_clears_through_live_attack_dps() -> void:
 	_check_between("real attack DPS elite TTK lands in the 3-10s band", float(clear_result["first_elite_ttk"]), 3.0, 10.0)
 	_check("real attack DPS clears the elite room", run.current_director != null and run.current_director.is_room_cleared())
 	_check("RunController marks the elite room cleared", elite_room != null and elite_room.state == RoomNode.State.CLEARED)
+	await _cleanup_app(app, save_path)
+
+func _test_rest_reward_runtime_fixture_traversal() -> void:
+	var save_path := _new_save_path("rest_reward_runtime")
+	_remove_save(save_path)
+	var app := await _new_app(save_path)
+	if app == null:
+		return
+
+	var run: Variant = await _start_real_run_from_hub(app)
+	if run == null:
+		await _cleanup_app(app, save_path)
+		return
+
+	var gate := _new_gate_state(run)
+	var fixture_path := _force_reward_then_rest_path(run)
+	_check("integration forced graph contains REWARD then REST rooms", not fixture_path.is_empty())
+	if fixture_path.is_empty():
+		await _cleanup_app(app, save_path)
+		return
+
+	var entry_to_reward: RoomConnection = fixture_path["entry_to_reward"]
+	var reward_to_rest: RoomConnection = fixture_path["reward_to_rest"]
+	var rest_exit: RoomConnection = fixture_path["rest_exit"]
+	var reward_room_id := String(fixture_path["reward_room_id"])
+	var rest_room_id := String(fixture_path["rest_room_id"])
+
+	var entry_door := _bound_door_for(run, entry_to_reward)
+	_check("entry door toward Scrap Cache is bound before clear", entry_door != null)
+	if entry_door != null:
+		_move_player_to_area_xz(run, entry_door)
+	await _clear_current_room_by_enemy_deaths(run, gate)
+	await _flush_physics_frames(2)
+	await _flush_frames(2)
+
+	_check_eq("already-overlapping REWARD door advances to Scrap Cache", run.run_controller.current_room_id, reward_room_id)
+	if run.run_controller.current_room_id != reward_room_id:
+		await _cleanup_app(app, save_path)
+		return
+
+	_assert_noncombat_room_ready(run, reward_room_id, RoomTemplate.RoomType.REWARD, reward_to_rest, "REWARD")
+	_check_eq("REWARD entry does not grant Scrap before pickup", run.scrap_earned, int(gate["scrap_earned"]))
+
+	var reward_fixture := _room_fixture_area(run, "RewardFixture")
+	_check("Scrap Cache fixture is a physical Area3D pickup", reward_fixture != null)
+	if reward_fixture != null:
+		var scrap_before: int = run.scrap_earned
+		await _walk_player_into_area(run, reward_fixture)
+		_check_eq("Scrap Cache grants promised Scrap exactly once", run.scrap_earned, scrap_before + SCRAP_REWARD_VALUE)
+		if run.scrap_earned == scrap_before + SCRAP_REWARD_VALUE:
+			gate["scrap_earned"] = run.scrap_earned
+		await _walk_player_out_of_fixture(run)
+		await _walk_player_into_area(run, reward_fixture)
+		_check_eq("Scrap Cache re-entry does not re-grant", run.scrap_earned, scrap_before + SCRAP_REWARD_VALUE)
+
+	await _walk_through_open_door(run, reward_to_rest, "Scrap Cache exit")
+	if run.run_controller.current_room_id != rest_room_id:
+		await _cleanup_app(app, save_path)
+		return
+
+	_assert_noncombat_room_ready(run, rest_room_id, RoomTemplate.RoomType.REST, rest_exit, "REST")
+	var rest_fixture := _room_fixture_area(run, "RestFixture")
+	_check("Ember Alcove fixture is a physical Area3D pickup", rest_fixture != null)
+	if rest_fixture != null:
+		run.player_vitals.hp = 2
+		run.player_vitals.guard = 3
+		run.player_vitals.set("spark_surge_charge_max", 100.0)
+		run.player_vitals.call("set_spark_surge_charge", 37.0)
+		var hp_before: int = run.player_vitals.hp
+		var spark_before := float(run.player_vitals.get("spark_surge_charge"))
+
+		await _walk_player_into_area(run, rest_fixture)
+		_check_eq("Ember Alcove refills guard to max once", run.player_vitals.guard, run.player_vitals.max_guard)
+		_check_eq("Ember Alcove does not heal HP", run.player_vitals.hp, hp_before)
+		_check_almost("Ember Alcove never refills Spark Surge", float(run.player_vitals.get("spark_surge_charge")), spark_before)
+
+		run.player_vitals.guard = 1
+		await _walk_player_out_of_fixture(run)
+		await _walk_player_into_area(run, rest_fixture)
+		_check_eq("Ember Alcove re-entry does not refill guard again", run.player_vitals.guard, 1)
+		_check_almost("Ember Alcove re-entry still leaves Spark Surge unchanged", float(run.player_vitals.get("spark_surge_charge")), spark_before)
+
 	await _cleanup_app(app, save_path)
 
 func _test_death_run_returns_to_hub_with_summary_and_persisted_scrap() -> void:
@@ -425,6 +512,127 @@ func _drive_to_room(run, target_room_id: String, gate: Dictionary) -> bool:
 		await _take_exit(run, connection, gate)
 		safety += 1
 	return is_instance_valid(run) and run.run_controller.current_room_id == target_room_id
+
+func _force_reward_then_rest_path(run) -> Dictionary:
+	var graph: RoomGraph = run.run_controller.graph
+	if graph == null:
+		return {}
+
+	var reward_template := _load_template_resource("res://resources/room_templates/reward_cache.tres")
+	var rest_template := _load_template_resource("res://resources/room_templates/rest_alcove.tres")
+	if reward_template == null or rest_template == null:
+		return {}
+
+	var entry_room_id := String(run.run_controller.current_room_id)
+	for entry_to_reward in graph.get_connections_from(entry_room_id):
+		var reward_room := graph.get_room(entry_to_reward.to_room_id)
+		if reward_room == null:
+			continue
+		for reward_to_rest in graph.get_connections_from(reward_room.room_id):
+			var rest_room := graph.get_room(reward_to_rest.to_room_id)
+			if rest_room == null:
+				continue
+			var rest_exits := graph.get_connections_from(rest_room.room_id)
+			if rest_exits.is_empty():
+				continue
+
+			reward_room.template = reward_template
+			reward_room.reward_type = RoomNode.RewardType.REWARD
+			rest_room.template = rest_template
+			rest_room.reward_type = RoomNode.RewardType.REST
+			return {
+				"entry_to_reward": entry_to_reward,
+				"reward_to_rest": reward_to_rest,
+				"rest_exit": rest_exits[0],
+				"reward_room_id": reward_room.room_id,
+				"rest_room_id": rest_room.room_id,
+			}
+
+	return {}
+
+func _load_template_resource(path: String) -> RoomTemplate:
+	var resource := load(path)
+	if resource is RoomTemplate:
+		return resource as RoomTemplate
+	return null
+
+func _assert_noncombat_room_ready(
+	run,
+	room_id: String,
+	room_type: RoomTemplate.RoomType,
+	exit_connection: RoomConnection,
+	label: String
+) -> void:
+	var room: RoomNode = run.run_controller.graph.get_room(room_id)
+	_check("%s room is current" % label, run.run_controller.current_room_id == room_id)
+	_check("%s room uses expected authored template" % label, room != null and room.template != null and room.template.room_type == room_type)
+	_check_eq("%s room auto-clears at entry" % label, room.state if room != null else RoomNode.State.LOCKED, RoomNode.State.CLEARED)
+	_check("%s room has no director" % label, run.current_director == null)
+	_check_eq("%s room requests CLEARED audio zone" % label, _audio_requested_zone_state(), "CLEARED")
+	var door := _bound_door_for(run, exit_connection)
+	_check("%s room opens its exit door at entry" % label, door != null and door.state == RoomDoorScript.State.OPEN)
+
+func _bound_door_for(run, connection: RoomConnection) -> RoomDoor:
+	if run == null or connection == null:
+		return null
+	var door := run.bound_doors.get(connection.door_name) as RoomDoor
+	if door == null:
+		door = run.bound_doors.get("RoomExit") as RoomDoor
+	return door
+
+func _room_fixture_area(run, fixture_name: String) -> Area3D:
+	if run == null or run.current_room_root == null:
+		return null
+	var fixture: Node = run.current_room_root.find_child(fixture_name, true, false)
+	if fixture is Area3D:
+		return fixture as Area3D
+	return null
+
+func _walk_through_open_door(run, connection: RoomConnection, label: String) -> void:
+	var door := _bound_door_for(run, connection)
+	_check("%s has an open bound door" % label, door != null and door.state == RoomDoorScript.State.OPEN)
+	if door == null:
+		return
+
+	_move_player_to_area_xz(run, door)
+	await _flush_physics_frames(2)
+	await _flush_frames(2)
+	if run.run_controller.current_room_id != connection.to_room_id:
+		door.emit_signal(&"body_entered", run.player)
+		await _flush_frames(2)
+	_check_eq("%s advances to destination" % label, run.run_controller.current_room_id, connection.to_room_id)
+
+func _walk_player_into_area(run, area: Area3D) -> void:
+	_move_player_to_area_xz(run, area)
+	for _i in range(10):
+		await _flush_physics_frames(1)
+		await _flush_frames(1)
+		if area != null and area.has_method("is_claimed") and bool(area.call("is_claimed")):
+			return
+
+func _walk_player_out_of_fixture(run) -> void:
+	if run == null or run.current_room_root == null or run.player == null:
+		return
+	var spawn := run.current_room_root.find_child("SpawnMarker", true, false) as Marker3D
+	if spawn != null:
+		run.player.global_position = spawn.global_position
+		run.player.velocity = Vector3.ZERO
+	await _flush_physics_frames(2)
+	await _flush_frames(1)
+
+func _move_player_to_area_xz(run, area: Area3D) -> void:
+	if run == null or area == null or run.player == null:
+		return
+	var current_y: float = run.player.global_position.y
+	run.player.global_position = Vector3(area.global_position.x, current_y, area.global_position.z)
+	run.player.velocity = Vector3.ZERO
+
+func _audio_requested_zone_state() -> String:
+	var director := root.get_node_or_null("AudioDirector")
+	if director == null or not director.has_method(&"describe"):
+		return ""
+	var description: Dictionary = director.call(&"describe")
+	return String(description.get("requested_music_state", ""))
 
 func _select_connection_toward_room(
 	graph: RoomGraph,
@@ -800,3 +1008,7 @@ func _cleanup_app(app: Node, save_path: String) -> void:
 func _flush_frames(count: int = 1) -> void:
 	for _i in range(count):
 		await process_frame
+
+func _flush_physics_frames(count: int = 1) -> void:
+	for _i in range(count):
+		await physics_frame

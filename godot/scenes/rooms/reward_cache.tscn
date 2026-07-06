@@ -1,4 +1,6 @@
-[gd_scene load_steps=6 format=3]
+[gd_scene load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://scripts/room_graph/room_fixture.gd" id="1_fixture"]
 
 [sub_resource type="StandardMaterial3D" id="Mat_floor"]
 albedo_color = Color(0.23, 0.23, 0.25, 1)
@@ -24,6 +26,9 @@ roughness = 0.78
 
 [sub_resource type="BoxShape3D" id="DoorShapeNorth"]
 size = Vector3(3, 2.2, 1.2)
+
+[sub_resource type="BoxShape3D" id="RewardShape"]
+size = Vector3(2.2, 1.6, 1.7)
 
 [node name="RewardCache" type="Node3D"]
 
@@ -53,8 +58,15 @@ use_collision = true
 size = Vector3(4.8, 0.7, 1.2)
 material = SubResource("Mat_obstacle")
 
-[node name="RewardFixture" type="CSGBox3D" parent="Geometry"]
+[node name="RewardFixture" type="Area3D" parent="Geometry"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.55, 1.2)
+script = ExtResource("1_fixture")
+scrap_amount = 10
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Geometry/RewardFixture"]
+shape = SubResource("RewardShape")
+
+[node name="RewardVisual" type="CSGBox3D" parent="Geometry/RewardFixture"]
 use_collision = true
 size = Vector3(1.8, 1.1, 1.3)
 material = SubResource("Mat_fixture")

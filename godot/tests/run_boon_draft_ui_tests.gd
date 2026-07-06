@@ -61,6 +61,7 @@ func _make_boon(
 	var boon: BoonDef = BoonDef.new()
 	boon.boon_id = boon_id
 	boon.display_name = display_name
+	boon.benefactor = _benefactor_for_slot(slot)
 	boon.rarity = rarity
 	boon.slot = slot
 	boon.domain = domain
@@ -104,6 +105,24 @@ func _card(ui, index: int) -> Button:
 func _label(card: Button, label_name: String) -> Label:
 	return card.get_node("Margin/VBox/%s" % label_name) as Label
 
+func _has_label(card: Button, label_name: String) -> bool:
+	return card.has_node("Margin/VBox/%s" % label_name)
+
+func _benefactor_for_slot(slot: BoonDef.Slot) -> StringName:
+	match slot:
+		BoonDef.Slot.ATTACK:
+			return &"swordbearer"
+		BoonDef.Slot.DASH:
+			return &"bearer"
+		BoonDef.Slot.CAST:
+			return &"marksman"
+		BoonDef.Slot.SPECIAL:
+			return &"swordbearer"
+		BoonDef.Slot.PASSIVE:
+			return &"hearthguard"
+		_:
+			return &"company"
+
 func _test_present_renders_three_offer_cards() -> void:
 	var ui = await _new_ui()
 	var offers := _make_offer_set()
@@ -118,12 +137,20 @@ func _test_present_renders_three_offer_cards() -> void:
 		var card := _card(ui, i)
 		_check("card %d is visible" % (i + 1), card.visible)
 		_check("card %d is selectable" % (i + 1), not card.disabled)
+		_check("card %d has benefactor label" % (i + 1), _has_label(card, "BenefactorLabel"))
+		if _has_label(card, "BenefactorLabel"):
+			_check_eq(
+				"card %d benefactor label" % (i + 1),
+				_label(card, "BenefactorLabel").text,
+				boon.benefactor_display_name
+			)
 		_check_eq("card %d name label" % (i + 1), _label(card, "NameLabel").text, boon.display_name)
 		_check_eq("card %d domain label" % (i + 1), _label(card, "DomainLabel").text, boon.domain)
 		_check_eq("card %d slot label" % (i + 1), _label(card, "SlotLabel").text, "%s Slot" % boon.slot_label())
 		_check_eq("card %d rarity label" % (i + 1), _label(card, "RarityLabel").text, boon.rarity_label())
 		_check_eq("card %d description label" % (i + 1), _label(card, "DescriptionLabel").text, boon.description)
 		_check_eq("card %d metadata tracks boon id" % (i + 1), card.get_meta("boon_id"), boon.boon_id)
+		_check_eq("card %d metadata tracks benefactor" % (i + 1), card.get_meta("benefactor", &""), boon.benefactor)
 		_check_eq("card %d metadata tracks slot label" % (i + 1), card.get_meta("slot_label"), boon.slot_label())
 		_check_eq("card %d metadata tracks rarity label" % (i + 1), card.get_meta("rarity_label"), boon.rarity_label())
 
@@ -172,6 +199,9 @@ func _test_present_with_zero_offers_hides_all_cards() -> void:
 		_check("zero-offer card %d is hidden" % (i + 1), not card.visible)
 		_check("zero-offer card %d is disabled" % (i + 1), card.disabled)
 		_check("zero-offer card %d has no stale boon metadata" % (i + 1), not card.has_meta("boon_id"))
+		_check("zero-offer card %d has no stale benefactor metadata" % (i + 1), not card.has_meta("benefactor"))
+		if _has_label(card, "BenefactorLabel"):
+			_check_eq("zero-offer card %d benefactor clears" % (i + 1), _label(card, "BenefactorLabel").text, "")
 		_check_eq("zero-offer card %d name clears" % (i + 1), _label(card, "NameLabel").text, "")
 
 	_check("zero-offer choose_offer returns false", not ui.choose_offer(0))

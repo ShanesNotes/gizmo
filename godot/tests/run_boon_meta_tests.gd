@@ -12,6 +12,7 @@ const BoonDraft := preload("res://scripts/boons/boon_draft.gd")
 const MetaState := preload("res://scripts/meta/meta_state.gd")
 const RunBonuses := preload("res://scripts/meta/run_bonuses.gd")
 const RunLifecycle := preload("res://scripts/meta/run_lifecycle.gd")
+const RunOrchestratorScript := preload("res://scripts/room_graph/run_orchestrator.gd")
 const RoomNode := preload("res://scripts/room_graph/room_node.gd")
 const RoomConnection := preload("res://scripts/room_graph/room_connection.gd")
 const RoomGraph := preload("res://scripts/room_graph/room_graph.gd")
@@ -21,6 +22,9 @@ var _failed := 0
 
 func _initialize() -> void:
 	print("Running boon/meta-progression tests...")
+	_test_benefactor_schema_role_id_display_defaults_and_validation()
+	_test_benefactor_reassignment_refreshes_placeholder()
+	_test_default_boon_pool_is_fully_tagged_with_valid_benefactors()
 	_test_rarity_weighted_draft_offers_unique_between_rooms()
 	await _test_boon_modifiers_apply_to_target_ability_kit()
 	_test_meta_state_round_trips_through_config_file()
@@ -67,6 +71,54 @@ func _make_boon(
 	boon.domain = domain
 	boon.slot = slot
 	return boon
+
+func _test_benefactor_schema_role_id_display_defaults_and_validation() -> void:
+	var boon := _make_boon(&"schema_probe", BoonDef.Rarity.COMMON)
+	boon.benefactor = &"hearthguard"
+
+	_check_eq("BoonDef stores benefactor as role-id", boon.benefactor, &"hearthguard")
+	_check_eq("benefactor display defaults to capitalized role-id", boon.benefactor_display_name, "Hearthguard")
+	_check("known benefactor role-id validates", boon.validate_benefactor())
+
+	var empty := _make_boon(&"empty_benefactor_probe", BoonDef.Rarity.COMMON)
+	_check("empty benefactor role-id reports a warning", not empty.validate_benefactor())
+	_check("empty benefactor warning names missing role-id", empty.benefactor_warning().contains("empty benefactor"))
+
+	var unknown := _make_boon(&"unknown_benefactor_probe", BoonDef.Rarity.COMMON)
+	unknown.benefactor = &"unknown_role"
+	_check("unknown benefactor role-id reports a warning", not unknown.validate_benefactor())
+	_check("unknown benefactor warning names invalid role-id", unknown.benefactor_warning().contains("unknown benefactor"))
+
+func _test_default_boon_pool_is_fully_tagged_with_valid_benefactors() -> void:
+	var orchestrator: RunOrchestrator = RunOrchestratorScript.new()
+	var pool: Array[BoonDef] = orchestrator._default_boon_pool()
+	var expected: Dictionary = {
+		&"spark_attack": &"swordbearer",
+		&"gear_dash": &"bearer",
+		&"core_special": &"swordbearer",
+		&"codex_cast": &"marksman",
+		&"humanity_guard": &"company",
+		&"ember_attack": &"swordbearer",
+		&"brass_dash": &"bearer",
+		&"gear_special": &"swordbearer",
+		&"spark_cast": &"marksman",
+		&"codex_passive": &"hearthguard",
+	}
+	var seen: Dictionary = {}
+
+	_check_eq("default boon pool keeps ten boons", pool.size(), 10)
+	for boon in pool:
+		seen[boon.boon_id] = boon.benefactor
+		_check("%s has a benefactor role-id" % boon.boon_id, boon.benefactor != &"")
+		_check("%s benefactor role-id is valid" % boon.boon_id, BoonDef.VALID_BENEFACTOR_IDS.has(boon.benefactor))
+		_check_eq(
+			"%s benefactor display uses placeholder role label" % boon.boon_id,
+			boon.benefactor_display_name,
+			boon.benefactor_placeholder_display_name()
+		)
+	for boon_id in expected.keys():
+		_check_eq("default pool tags %s" % boon_id, seen.get(boon_id, &""), expected[boon_id])
+	orchestrator.free()
 
 func _make_rng(seed: int = 42) -> RandomNumberGenerator:
 	var rng := RandomNumberGenerator.new()
@@ -377,3 +429,14 @@ func _test_death_resets_run_state_and_preserves_meta_state() -> void:
 	_check_eq("new run starts without old boon picks", draft.picked_boon_ids.size(), 0)
 	_check_eq("new run keeps banked meta scrap", meta.scrap_banked, 17)
 	await _cleanup(body)
+
+func _test_benefactor_reassignment_refreshes_placeholder() -> void:
+	var boon := BoonDef.new()
+	boon.boon_id = &"reassign_probe"
+	boon.benefactor = &"bearer"
+	_check_eq("first assignment derives placeholder", boon.benefactor_display_name, "Bearer")
+	boon.benefactor = &"marksman"
+	_check_eq("reassignment refreshes auto placeholder", boon.benefactor_display_name, "Marksman")
+	boon.benefactor_display_name = "Saint Placeholder"
+	boon.benefactor = &"company"
+	_check_eq("lore-authored display name survives reassignment", boon.benefactor_display_name, "Saint Placeholder")

@@ -44,6 +44,11 @@ const EXPECTED_FIXTURES := {
 	"reward_cache": "RewardFixture",
 }
 
+const EXPECTED_FIXTURE_METHODS := {
+	"rest_alcove": "refill_guard",
+	"reward_cache": "grant_scrap",
+}
+
 var _passed := 0
 var _failed := 0
 
@@ -145,7 +150,11 @@ func _assert_scene_authoring_contract(template_id: String, root_node: Node) -> v
 
 	if EXPECTED_FIXTURES.has(template_id):
 		var fixture_name: String = EXPECTED_FIXTURES[template_id]
-		_check("%s has authored fixture %s" % [template_id, fixture_name], root_node.find_child(fixture_name, true, false) != null)
+		var fixture := _find_area3d_named(root_node, fixture_name)
+		_check("%s has authored Area3D fixture %s" % [template_id, fixture_name], fixture != null)
+		if fixture != null:
+			_check("%s fixture has a CollisionShape3D" % template_id, _area_has_collision_shape(fixture))
+			_check("%s fixture exposes its runtime method" % template_id, fixture.has_method(EXPECTED_FIXTURE_METHODS[template_id]))
 		_check_eq("%s has no authored enemy nodes" % template_id, _count_named_prefix(root_node, "Enemy"), 0)
 		_check_eq("%s has no authored enemy spawn nodes" % template_id, _count_named_prefix(root_node, "EnemySpawn"), 0)
 

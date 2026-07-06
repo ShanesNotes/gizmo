@@ -66,6 +66,7 @@ var _transitioning := false
 var _death_teardown_complete := false
 var _cleared_room_ids: Dictionary = {}
 var _rewarded_exit_keys: Dictionary = {}
+var _claimed_fixture_keys: Dictionary = {}
 var _spawn_index_in_room: int = 0
 var _spawn_bounds_warning_room_ids: Dictionary = {}
 
@@ -132,6 +133,26 @@ func run_summary(victory: bool = false) -> Dictionary:
 		"survived_seconds": elapsed_seconds,
 		"elapsed": elapsed_seconds,
 	}
+
+func grant_fixture_scrap_once(fixture_key: String, amount: int = SCRAP_REWARD_VALUE) -> bool:
+	if not _run_active or _death_teardown_complete or _transitioning:
+		return false
+	if not _claim_fixture_key(fixture_key):
+		return false
+
+	scrap_earned += maxi(amount, 0)
+	_render_hud_payloads()
+	return true
+
+func refill_fixture_guard_once(fixture_key: String) -> bool:
+	if not _run_active or _death_teardown_complete or _transitioning or player_vitals == null:
+		return false
+	if not _claim_fixture_key(fixture_key):
+		return false
+
+	player_vitals.refill_guard()
+	_render_hud_payloads()
+	return true
 
 func load_template_pool() -> Array[RoomTemplate]:
 	var pool: Array[RoomTemplate] = []
@@ -777,8 +798,16 @@ func _reset_run_stats() -> void:
 	sparks_earned = 0
 	_cleared_room_ids.clear()
 	_rewarded_exit_keys.clear()
+	_claimed_fixture_keys.clear()
 	_spawn_index_in_room = 0
 	_spawn_bounds_warning_room_ids.clear()
+
+func _claim_fixture_key(fixture_key: String) -> bool:
+	var key := fixture_key.strip_edges()
+	if key == "" or _claimed_fixture_keys.has(key):
+		return false
+	_claimed_fixture_keys[key] = true
+	return true
 
 func _connection_key(connection: RoomConnection) -> String:
 	if connection == null:
@@ -805,16 +834,16 @@ func _ability_states() -> Array:
 
 func _default_boon_pool() -> Array[BoonDef]:
 	var pool: Array[BoonDef] = []
-	pool.append(_make_default_boon(&"spark_attack", "Spark-Cut", BoonDef.Rarity.COMMON, BoonDef.Slot.ATTACK))
-	pool.append(_make_default_boon(&"gear_dash", "Gyre Step", BoonDef.Rarity.RARE, BoonDef.Slot.DASH))
-	pool.append(_make_default_boon(&"core_special", "Brass Overdrive", BoonDef.Rarity.EPIC, BoonDef.Slot.SPECIAL))
-	pool.append(_make_default_boon(&"codex_cast", "Codex Shard", BoonDef.Rarity.COMMON, BoonDef.Slot.CAST))
-	pool.append(_make_default_boon(&"humanity_guard", "Humanity's Reserve", BoonDef.Rarity.LEGENDARY, BoonDef.Slot.PASSIVE))
-	pool.append(_make_default_boon(&"ember_attack", "Ember Teeth", BoonDef.Rarity.RARE, BoonDef.Slot.ATTACK))
-	pool.append(_make_default_boon(&"brass_dash", "Brass Wake", BoonDef.Rarity.COMMON, BoonDef.Slot.DASH))
-	pool.append(_make_default_boon(&"gear_special", "Gearbreak Pulse", BoonDef.Rarity.RARE, BoonDef.Slot.SPECIAL))
-	pool.append(_make_default_boon(&"spark_cast", "Warmth Shard", BoonDef.Rarity.EPIC, BoonDef.Slot.CAST))
-	pool.append(_make_default_boon(&"codex_passive", "Codex Margin", BoonDef.Rarity.COMMON, BoonDef.Slot.PASSIVE))
+	pool.append(_make_default_boon(&"spark_attack", "Spark-Cut", BoonDef.Rarity.COMMON, BoonDef.Slot.ATTACK, &"swordbearer"))
+	pool.append(_make_default_boon(&"gear_dash", "Gyre Step", BoonDef.Rarity.RARE, BoonDef.Slot.DASH, &"bearer"))
+	pool.append(_make_default_boon(&"core_special", "Brass Overdrive", BoonDef.Rarity.EPIC, BoonDef.Slot.SPECIAL, &"swordbearer"))
+	pool.append(_make_default_boon(&"codex_cast", "Codex Shard", BoonDef.Rarity.COMMON, BoonDef.Slot.CAST, &"marksman"))
+	pool.append(_make_default_boon(&"humanity_guard", "Humanity's Reserve", BoonDef.Rarity.LEGENDARY, BoonDef.Slot.PASSIVE, &"company"))
+	pool.append(_make_default_boon(&"ember_attack", "Ember Teeth", BoonDef.Rarity.RARE, BoonDef.Slot.ATTACK, &"swordbearer"))
+	pool.append(_make_default_boon(&"brass_dash", "Brass Wake", BoonDef.Rarity.COMMON, BoonDef.Slot.DASH, &"bearer"))
+	pool.append(_make_default_boon(&"gear_special", "Gearbreak Pulse", BoonDef.Rarity.RARE, BoonDef.Slot.SPECIAL, &"swordbearer"))
+	pool.append(_make_default_boon(&"spark_cast", "Warmth Shard", BoonDef.Rarity.EPIC, BoonDef.Slot.CAST, &"marksman"))
+	pool.append(_make_default_boon(&"codex_passive", "Codex Margin", BoonDef.Rarity.COMMON, BoonDef.Slot.PASSIVE, &"hearthguard"))
 	return pool
 
 func _make_default_boon(
@@ -822,6 +851,7 @@ func _make_default_boon(
 	display_name: String,
 	rarity: BoonDef.Rarity,
 	slot: BoonDef.Slot,
+	benefactor: StringName,
 ) -> BoonDef:
 	var boon := BoonDef.new()
 	boon.boon_id = boon_id
@@ -829,5 +859,7 @@ func _make_default_boon(
 	boon.description = "A run-scoped upgrade for this chamber chain."
 	boon.rarity = rarity
 	boon.slot = slot
+	boon.benefactor = benefactor
 	boon.domain = "spark"
+	boon.validate_benefactor()
 	return boon
