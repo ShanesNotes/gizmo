@@ -32,6 +32,7 @@ func _initialize() -> void:
 
 func _run_tests() -> void:
 	_test_save_root_is_user_scoped()
+	await _test_first_room_pacing_pins_real_run_start()
 	await _test_empty_boon_pool_replacement_reward_in_real_run()
 	await _test_live_enemy_ttk_texture_uses_real_attack_scale()
 	await _test_real_cast_kill_cycles_ammo_and_hud_count()
@@ -161,6 +162,50 @@ func _test_empty_boon_pool_replacement_reward_in_real_run() -> void:
 	_check("empty-pool BOON exit skips the draft overlay", not run.flow_bridge.is_draft_open() and not run.boon_draft_ui.visible)
 	_check_eq("empty-pool BOON exit grants Scrap replacement", run.scrap_earned, previous_scrap + SCRAP_REWARD_VALUE)
 	_check_eq("empty-pool BOON exit advances to its destination", run.run_controller.current_room_id, destination_id)
+	await _cleanup_app(app, save_path)
+
+func _test_first_room_pacing_pins_real_run_start() -> void:
+	const TEST_DELAY := 0.2
+	var save_path := _new_save_path("first_room_pacing")
+	_remove_save(save_path)
+	var app := await _new_app(save_path)
+	if app == null:
+		return
+
+	var run: Variant = await _start_real_run_from_hub(app, true)
+	if run == null:
+		await _cleanup_app(app, save_path)
+		return
+
+	var director: RoomDirector = run.current_director
+	_check("first-room pacing starts a real RoomDirector", director != null)
+	if director == null:
+		await _cleanup_app(app, save_path)
+		return
+
+	var planned := director.planned_waves()
+	_check("tier-0 first room plans at most two waves", director.wave_count <= 2)
+	_check_between("tier-0 first room total enemies is a warm-up", float(_total_request_count(planned)), 4.0, 6.0)
+
+	var has_delay := _object_has_property(run, "inter_wave_delay")
+	_check("real run exposes inter_wave_delay", has_delay)
+	if not has_delay:
+		await _cleanup_app(app, save_path)
+		return
+	_check_almost("real run default inter-wave delay is 0.9s", float(run.get("inter_wave_delay")), 0.9)
+	run.set("inter_wave_delay", TEST_DELAY)
+
+	for enemy in _live_spawned_enemies(run):
+		enemy.take_damage(maxf(enemy.hp, enemy.max_hp))
+	await process_frame
+
+	_check_eq("real run removes first-wave enemies before inter-wave beat", run.spawned_enemy_count(), 0)
+	_check_eq("real director advances to wave 1 before delayed spawn", director.current_wave_index, 1)
+	await _wait_seconds(TEST_DELAY * 0.5)
+	_check_eq("real run still has no enemies before inter_wave_delay elapses", run.spawned_enemy_count(), 0)
+	await _wait_seconds(TEST_DELAY * 0.75)
+	_check("real run spawns the next wave after inter_wave_delay", run.spawned_enemy_count() > 0)
+	_check_eq("real delayed wave count matches director ledger", run.spawned_enemy_count(), director.remaining_in_wave())
 	await _cleanup_app(app, save_path)
 
 func _test_live_enemy_ttk_texture_uses_real_attack_scale() -> void:
@@ -543,7 +588,7 @@ func _new_app(save_path: String) -> Node:
 	await _flush_frames(2)
 	return app
 
-func _start_real_run_from_hub(app: Node) -> Variant:
+func _start_real_run_from_hub(app: Node, preserve_inter_wave_delay: bool = false) -> Variant:
 	var hub := _current_hub(app)
 	_check("hub is present before run request", hub != null and hub.get_script() == HubControllerScript)
 	if hub == null:
@@ -557,6 +602,8 @@ func _start_real_run_from_hub(app: Node) -> Variant:
 	if run == null:
 		return null
 
+	if not preserve_inter_wave_delay and _object_has_property(run, "inter_wave_delay"):
+		run.set("inter_wave_delay", 0.0)
 	_check_eq("AppShell starts lifecycle RUNNING", app.lifecycle.phase, app.lifecycle.Phase.RUNNING)
 	_check("real run graph is seeded and active", run.run_controller.graph != null and run.run_controller.current_room_id != "")
 	_check("shell-owned run disables scene auto_start before ready", run.auto_start == false)
@@ -1005,6 +1052,13 @@ func _boon_loadout_count(hud: Hud) -> int:
 	var boon_loadout := hud.get_node_or_null("Root/BoonLoadout") as VBoxContainer
 	return boon_loadout.get_child_count() if boon_loadout != null and boon_loadout.visible else 0
 
+func _total_request_count(waves: Array[Array]) -> int:
+	var total := 0
+	for wave: Array in waves:
+		for request: Dictionary in wave:
+			total += int(request.get("count", 0))
+	return total
+
 func _first_spawned_enemy(run) -> GreyboxEnemy:
 	for enemy in run.spawned_enemies.values():
 		if enemy is GreyboxEnemy and is_instance_valid(enemy):
@@ -1240,6 +1294,15 @@ func _flush_frames(count: int = 1) -> void:
 	for _i in range(count):
 		await process_frame
 
+func _wait_seconds(seconds: float) -> void:
+	await create_timer(maxf(seconds, 0.0)).timeout
+
 func _flush_physics_frames(count: int = 1) -> void:
 	for _i in range(count):
 		await physics_frame
+
+func _object_has_property(object: Object, property_name: String) -> bool:
+	for property in object.get_property_list():
+		if str(property.get("name", "")) == property_name:
+			return true
+	return false

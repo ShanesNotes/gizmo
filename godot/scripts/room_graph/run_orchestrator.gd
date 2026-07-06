@@ -26,6 +26,7 @@ const BOSS_INTRO_HOLD_SECONDS := 1.0
 @export_range(2, 16) var room_count: int = 8
 @export var rng_seed: int = 32032
 @export_range(0.0, 64.0, 0.1) var min_spawn_distance: float = 8.0
+@export_range(0.0, 5.0, 0.05) var inter_wave_delay: float = 0.9
 @export_range(0.1, 8.0, 0.05) var melee_range: float = 2.0
 @export_range(1.0, 360.0, 1.0) var melee_arc_degrees: float = 120.0
 @export_range(0.1, 8.0, 0.05) var special_range: float = 2.75
@@ -79,6 +80,7 @@ var _claimed_fixture_keys: Dictionary = {}
 var _spawn_index_in_room: int = 0
 var _spawn_bounds_warning_room_ids: Dictionary = {}
 var _boss_intro_hold_remaining: float = 0.0
+var _wave_spawn_generation: int = 0
 
 func _ready() -> void:
 	_ensure_wiring()
@@ -330,6 +332,7 @@ func _load_current_room() -> void:
 	room_loaded.emit(room, current_room_root)
 
 func _cleanup_current_room() -> void:
+	_invalidate_pending_wave_spawns()
 	if combat_resolvers != null and is_instance_valid(combat_resolvers):
 		combat_resolvers.clear_for_room_cleanup(true)
 	_disconnect_current_boss()
@@ -506,6 +509,28 @@ func _finish_boss_intro(begin_fight: bool) -> void:
 func _on_director_wave_requested(_wave_index: int, requests: Array[Dictionary]) -> void:
 	if not _run_active or _death_teardown_complete:
 		return
+	if _wave_index > 0 and inter_wave_delay > 0.0:
+		_spawn_requests_after_inter_wave_delay(_wave_index, requests, _wave_spawn_generation)
+		return
+	_spawn_requests(requests)
+
+func _spawn_requests_after_inter_wave_delay(wave_index: int, requests: Array[Dictionary], generation: int) -> void:
+	var tree := get_tree()
+	if tree == null:
+		return
+	await tree.create_timer(maxf(inter_wave_delay, 0.0)).timeout
+	if (
+		generation != _wave_spawn_generation
+		or not _run_active
+		or _death_teardown_complete
+		or current_director == null
+		or current_director.current_wave_index != wave_index
+		or current_director.is_room_cleared()
+	):
+		return
+	_spawn_requests(requests)
+
+func _spawn_requests(requests: Array[Dictionary]) -> void:
 	for request in requests:
 		_spawn_from_request(request)
 
@@ -804,6 +829,7 @@ func _on_player_vitals_died() -> void:
 	_run_active = false
 	_death_teardown_complete = true
 	_boss_intro_hold_remaining = 0.0
+	_invalidate_pending_wave_spawns()
 	_disconnect_current_director()
 	for enemy in spawned_enemies.values():
 		if enemy is GreyboxEnemy and is_instance_valid(enemy):
@@ -817,6 +843,7 @@ func _on_player_vitals_died() -> void:
 
 func _on_run_controller_completed() -> void:
 	_run_active = false
+	_invalidate_pending_wave_spawns()
 	_disconnect_current_director()
 	_disconnect_current_boss()
 	_clear_spawned_enemies()
@@ -957,6 +984,10 @@ func _reset_run_stats() -> void:
 		combat_resolvers.reset_for_run()
 	_spawn_index_in_room = 0
 	_spawn_bounds_warning_room_ids.clear()
+	_invalidate_pending_wave_spawns()
+
+func _invalidate_pending_wave_spawns() -> void:
+	_wave_spawn_generation += 1
 
 func _claim_fixture_key(fixture_key: String) -> bool:
 	var key := fixture_key.strip_edges()

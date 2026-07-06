@@ -24,6 +24,9 @@ const ELITE_ROOM_BUDGET_BONUS := 6.0
 const ELITE_DOUBLE_TIER := 0.85
 const TIER_ZERO_CONCURRENT_BUDGET_CAP := 3.0
 const TIER_ONE_CONCURRENT_BUDGET_CAP := 6.0
+const LOW_TIER_WAVE_CEILING_TIER := 0.15
+const LOW_TIER_MAX_WAVES := 2
+const TIER_ZERO_BUDGET_SCALE := 0.75
 
 var difficulty_tier: float = 0.0
 var room_kind: String = ROOM_KIND_COMBAT
@@ -140,6 +143,7 @@ func _rebuild_plan() -> void:
 	_waves.clear()
 	spent_budget = 0.0
 	var base_budget := BASE_ROOM_BUDGET + difficulty_tier * TIER_BUDGET_GAIN + _rng.randf_range(0.0, BUDGET_JITTER)
+	base_budget *= _room_budget_scale()
 	if room_kind == ROOM_KIND_ELITE:
 		base_budget = base_budget * ELITE_ROOM_BUDGET_MULTIPLIER + ELITE_ROOM_BUDGET_BONUS
 	room_budget = _round_budget(base_budget)
@@ -167,7 +171,19 @@ func _rebuild_plan() -> void:
 func _calculate_wave_count(planned_budget: float) -> int:
 	var tier_wave_count := MIN_WAVES + int(ceil(difficulty_tier * float(MAX_WAVES - MIN_WAVES)))
 	var budget_wave_count := int(ceil(maxf(planned_budget, 0.0) / _concurrent_budget_cap()))
-	return clampi(maxi(tier_wave_count, budget_wave_count), MIN_WAVES, MAX_WAVES)
+	return clampi(maxi(tier_wave_count, budget_wave_count), MIN_WAVES, _max_waves_for_tier())
+
+func _max_waves_for_tier() -> int:
+	if difficulty_tier <= LOW_TIER_WAVE_CEILING_TIER:
+		return LOW_TIER_MAX_WAVES
+	return MAX_WAVES
+
+func _room_budget_scale() -> float:
+	if difficulty_tier <= 0.0:
+		return TIER_ZERO_BUDGET_SCALE
+	if difficulty_tier >= LOW_TIER_WAVE_CEILING_TIER:
+		return 1.0
+	return lerpf(TIER_ZERO_BUDGET_SCALE, 1.0, difficulty_tier / LOW_TIER_WAVE_CEILING_TIER)
 
 func _concurrent_budget_cap() -> float:
 	return maxf(

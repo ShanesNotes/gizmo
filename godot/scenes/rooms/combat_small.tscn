@@ -4,12 +4,12 @@
 background_mode = 1
 background_color = Color(0.045, 0.052, 0.075, 1)
 ambient_light_source = 2
-ambient_light_color = Color(0.62, 0.68, 0.78, 1)
+ambient_light_color = Color(0.677, 0.692, 0.735, 1)
 ambient_light_energy = 0.78
 tonemap_mode = 2
 
 [sub_resource type="StandardMaterial3D" id="Mat_floor"]
-albedo_color = Color(0.24, 0.24, 0.26, 1)
+albedo_color = Color(0.255, 0.246, 0.254, 1)
 roughness = 0.95
 
 [sub_resource type="StandardMaterial3D" id="Mat_obstacle"]
