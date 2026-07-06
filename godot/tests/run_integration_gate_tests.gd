@@ -34,6 +34,7 @@ func _run_tests() -> void:
 	_test_save_root_is_user_scoped()
 	await _test_empty_boon_pool_replacement_reward_in_real_run()
 	await _test_live_enemy_ttk_texture_uses_real_attack_scale()
+	await _test_real_cast_kill_cycles_ammo_and_hud_count()
 	await _test_real_elite_room_clears_through_live_attack_dps()
 	await _test_rest_reward_runtime_fixture_traversal()
 	await _test_victory_run_returns_to_hub_with_summary_and_persisted_scrap()
@@ -181,6 +182,49 @@ func _test_live_enemy_ttk_texture_uses_real_attack_scale() -> void:
 		_check_between("first live chaff remains in trash TTK band", float(ttk["seconds"]), 0.0, 0.5)
 		_check_eq("first live chaff takes two real melee hits", int(ttk["hits"]), 2)
 	_assert_spawned_enemies_inside_current_room_bounds(run, "integration live TTK texture")
+	await _cleanup_app(app, save_path)
+
+func _test_real_cast_kill_cycles_ammo_and_hud_count() -> void:
+	var save_path := _new_save_path("real_cast_kill")
+	_remove_save(save_path)
+	var app := await _new_app(save_path)
+	if app == null:
+		return
+
+	var run: Variant = await _start_real_run_from_hub(app)
+	if run == null:
+		await _cleanup_app(app, save_path)
+		return
+
+	var kit: AbilityComponent = run._player_ability_kit()
+	var cast := kit.get_ability(&"cast") as CastAbility if kit != null else null
+	var enemy := _first_spawned_enemy(run)
+	_check("real cast kill test has the player cast kit", kit != null and cast != null)
+	_check("real cast kill test has a spawned enemy", enemy != null)
+	if kit == null or cast == null or enemy == null:
+		await _cleanup_app(app, save_path)
+		return
+
+	cast.max_ammo = 1
+	cast.potency = maxf(enemy.hp, enemy.max_hp)
+	cast.cast_time = 0.0
+	cast.recovery_time = 0.01
+	run._render_hud_payloads()
+	_check_eq("HUD starts CAST count at available ammo", _ability_count_text(run.hud, "CAST"), "1")
+
+	run.player_vitals.set("spark_surge_charge_max", 300.0)
+	run.player_vitals.set("spark_damage_dealt_charge_rate", 1.0)
+	run.player_vitals.call("set_spark_surge_charge", 0.0)
+	_ready_enemy_for_player_attack(run, enemy, _player_forward(run) * 4.0)
+
+	_check("real cast activates through the live kit", kit.try_activate(&"cast"))
+	await _flush_frames(2)
+
+	_check("real cast kill removes or kills its target", not is_instance_valid(enemy) or enemy.is_dead())
+	_check_eq("real cast kill reclaims ammo through victim death", kit.cast_ammo(), 1)
+	_check_eq("real cast kill leaves no lodged ammo", kit.cast_lodged_ammo(), 0)
+	_check_eq("HUD CAST count follows reclaimed ammo", _ability_count_text(run.hud, "CAST"), "1")
+	_check("real cast damage charges Spark Surge", float(run.player_vitals.get("spark_surge_charge")) > 0.0)
 	await _cleanup_app(app, save_path)
 
 func _test_real_elite_room_clears_through_live_attack_dps() -> void:
@@ -776,6 +820,24 @@ func _guard_pips_visible(hud: Hud) -> bool:
 func _ability_bar_count(hud: Hud) -> int:
 	var ability_bar := hud.get_node_or_null("Root/AbilityBar") as HBoxContainer
 	return ability_bar.get_child_count() if ability_bar != null and ability_bar.visible else 0
+
+func _ability_count_text(hud: Hud, kind_label: String) -> String:
+	var ability_bar := hud.get_node_or_null("Root/AbilityBar") as HBoxContainer
+	if ability_bar == null or not ability_bar.visible:
+		return ""
+	for slot in ability_bar.get_children():
+		var labels := _labels_under(slot)
+		if labels.size() >= 2 and labels[0].text == kind_label:
+			return labels[1].text
+	return ""
+
+func _labels_under(node: Node) -> Array[Label]:
+	var labels: Array[Label] = []
+	if node is Label:
+		labels.append(node as Label)
+	for child in node.get_children():
+		labels.append_array(_labels_under(child))
+	return labels
 
 func _boon_loadout_count(hud: Hud) -> int:
 	var boon_loadout := hud.get_node_or_null("Root/BoonLoadout") as VBoxContainer

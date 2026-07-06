@@ -98,6 +98,12 @@ func _run_tests() -> void:
 	await _test_full_boon_exit_cycle_reaches_boss_and_completes_run()
 	await _test_enemy_damage_flows_through_guard_hp_and_stops_spawning_on_death()
 	await _test_real_attack_damages_front_enemy_only_and_charges_spark()
+	await _test_special_resolver_heavy_wide_arc_skips_windup_and_charges_spark()
+	await _test_cast_resolver_hits_first_target_consumes_ammo_and_charges_spark()
+	await _test_cast_shards_reclaim_on_victim_death_and_walkover_pickup()
+	await _test_cast_kills_clear_director_ledger_exactly_once()
+	await _test_cast_during_transition_is_gated_with_ammo_intact()
+	await _test_failed_shard_reclaim_converts_to_ownerless_pickup()
 	await _test_current_room_clears_through_real_attack_path()
 	await _test_spark_surge_hits_living_enemies_once_and_empties_meter()
 	await _test_spark_surge_skips_spawn_windup_enemies()
@@ -637,6 +643,213 @@ func _test_real_attack_damages_front_enemy_only_and_charges_spark() -> void:
 	_check_almost("front enemy takes the attack step damage", front_before - front_enemy.hp, expected_damage)
 	_check_almost("rear enemy outside the forward arc is untouched", rear_before - rear_enemy.hp, 0.0)
 	_check_almost("real dealt damage charges the Spark Surge meter", float(run.player_vitals.get("spark_surge_charge")), expected_damage)
+	await _cleanup_run(run)
+
+func _test_special_resolver_heavy_wide_arc_skips_windup_and_charges_spark() -> void:
+	var run = await _new_run()
+	run.start_run("hearth", _empty_template_pool(), 2, _seeded_rng(5))
+	await process_frame
+
+	var kit: AbilityComponent = run._player_ability_kit()
+	var enemies := _live_spawned_enemies(run)
+	_check("special resolver test has an AbilityComponent", kit != null)
+	_check("special resolver test has at least two enemies", enemies.size() >= 2)
+	if kit == null or enemies.size() < 2:
+		await _cleanup_run(run)
+		return
+
+	var special := kit.get_ability(&"special") as SpecialAbility
+	var attack := kit.get_ability(&"attack") as AttackAbility
+	_check("special resolver test has a SpecialAbility", special != null)
+	if special == null:
+		await _cleanup_run(run)
+		return
+	special.cost = 0.0
+	special.cooldown = 0.0
+	special.cast_time = 0.0
+	special.recovery_time = 0.05
+	_check("special damage is heavier than the opening melee hit", attack == null or special.potency > attack.damage_for_step(1))
+
+	var wide_arc_enemy := enemies[0]
+	var windup_enemy := enemies[1]
+	var rear_enemy := _spawn_fixture_enemy(run, "special_rear_probe", run.player.global_position - _player_forward(run) * 1.2)
+	_check("special resolver test can spawn a rear control enemy", rear_enemy != null)
+	if rear_enemy == null:
+		await _cleanup_run(run)
+		return
+
+	_ready_enemy_for_player_attack(run, wide_arc_enemy, _rotated_xz(_player_forward(run), deg_to_rad(70.0)) * 2.35)
+	_ready_enemy_for_player_attack(run, rear_enemy, -_player_forward(run) * 1.2)
+	windup_enemy.spawn_windup = 2.0
+	windup_enemy.configure(windup_enemy.archetype, windup_enemy.spawn_id)
+	windup_enemy.global_position = run.player.global_position + _player_forward(run) * 1.0
+	windup_enemy.velocity = Vector3.ZERO
+	for enemy in [wide_arc_enemy, windup_enemy, rear_enemy]:
+		enemy.max_hp = 200.0
+		enemy.hp = 200.0
+
+	run.player_vitals.set("spark_surge_charge_max", 300.0)
+	run.player_vitals.set("spark_damage_dealt_charge_rate", 1.0)
+	run.player_vitals.call("set_spark_surge_charge", 0.0)
+	var wide_before := wide_arc_enemy.hp
+	var windup_before := windup_enemy.hp
+	var rear_before := rear_enemy.hp
+
+	_check("special activates through the AbilityComponent", kit.try_activate(&"special"))
+	await process_frame
+
+	_check_almost("special hits the wider 160-degree arc at longer-than-melee range", wide_before - wide_arc_enemy.hp, special.potency)
+	_check_almost("special skips spawn-windup enemies", windup_before - windup_enemy.hp, 0.0)
+	_check_almost("special does not hit behind the player", rear_before - rear_enemy.hp, 0.0)
+	_check_almost("special dealt damage charges Spark Surge", float(run.player_vitals.get("spark_surge_charge")), special.potency)
+	await _cleanup_run(run)
+
+func _test_cast_resolver_hits_first_target_consumes_ammo_and_charges_spark() -> void:
+	var run = await _new_run()
+	run.start_run("hearth", _empty_template_pool(), 2, _seeded_rng(5))
+	await process_frame
+
+	var kit: AbilityComponent = run._player_ability_kit()
+	var enemies := _live_spawned_enemies(run)
+	_check("cast resolver test has an AbilityComponent", kit != null)
+	_check("cast resolver test has at least two enemies", enemies.size() >= 2)
+	if kit == null or enemies.size() < 2:
+		await _cleanup_run(run)
+		return
+
+	var cast := kit.get_ability(&"cast") as CastAbility
+	_check("cast resolver test has a CastAbility", cast != null)
+	if cast == null:
+		await _cleanup_run(run)
+		return
+	cast.max_ammo = 2
+	cast.cast_time = 0.0
+	cast.recovery_time = 0.05
+
+	var first_enemy := enemies[0]
+	var farther_enemy := enemies[1]
+	var side_enemy := _spawn_fixture_enemy(run, "cast_side_probe", run.player.global_position + _rotated_xz(_player_forward(run), deg_to_rad(18.0)) * 4.0)
+	_check("cast resolver test can spawn a side control enemy", side_enemy != null)
+	if side_enemy == null:
+		await _cleanup_run(run)
+		return
+
+	_ready_enemy_for_player_attack(run, first_enemy, _player_forward(run) * 4.0)
+	_ready_enemy_for_player_attack(run, farther_enemy, _player_forward(run) * 6.0)
+	_ready_enemy_for_player_attack(run, side_enemy, _rotated_xz(_player_forward(run), deg_to_rad(18.0)) * 4.0)
+	for enemy in [first_enemy, farther_enemy, side_enemy]:
+		enemy.max_hp = 200.0
+		enemy.hp = 200.0
+
+	run.player_vitals.set("spark_surge_charge_max", 300.0)
+	run.player_vitals.set("spark_damage_dealt_charge_rate", 1.0)
+	run.player_vitals.call("set_spark_surge_charge", 0.0)
+	var first_before := first_enemy.hp
+	var farther_before := farther_enemy.hp
+	var side_before := side_enemy.hp
+
+	_check("cast activates with available ammo", kit.try_activate(&"cast"))
+	await process_frame
+
+	_check_almost("cast damages the first target in the facing corridor", first_before - first_enemy.hp, cast.potency)
+	_check_almost("cast stops at the first target instead of piercing", farther_before - farther_enemy.hp, 0.0)
+	_check_almost("cast respects the narrow corridor arc", side_before - side_enemy.hp, 0.0)
+	_check_eq("cast consumes one ammo stone", kit.cast_ammo(), 1)
+	_check_eq("cast lodges one ammo stone", kit.cast_lodged_ammo(), 1)
+	_check_almost("cast dealt damage charges Spark Surge", float(run.player_vitals.get("spark_surge_charge")), cast.potency)
+	await _cleanup_run(run)
+
+func _test_cast_shards_reclaim_on_victim_death_and_walkover_pickup() -> void:
+	var run = await _new_run()
+	run.start_run("hearth", _empty_template_pool(), 2, _seeded_rng(5))
+	await process_frame
+
+	var kit: AbilityComponent = run._player_ability_kit()
+	var enemies := _live_spawned_enemies(run)
+	_check("cast reclaim test has an AbilityComponent", kit != null)
+	_check("cast reclaim test has at least two enemies", enemies.size() >= 2)
+	if kit == null or enemies.size() < 2:
+		await _cleanup_run(run)
+		return
+
+	var cast := kit.get_ability(&"cast") as CastAbility
+	_check("cast reclaim test has a CastAbility", cast != null)
+	if cast == null:
+		await _cleanup_run(run)
+		return
+	cast.max_ammo = 2
+	cast.cast_time = 0.0
+	cast.recovery_time = 0.05
+
+	var death_target := enemies[0]
+	_ready_enemy_for_player_attack(run, death_target, _player_forward(run) * 4.0)
+	death_target.max_hp = cast.potency
+	death_target.hp = cast.potency
+	_check("cast can fire at a lethal target", kit.try_activate(&"cast"))
+	await process_frame
+	_check_eq("cast victim death reclaims the lodged stone", kit.cast_ammo(), 2)
+	_check_eq("cast victim death clears lodged ammo", kit.cast_lodged_ammo(), 0)
+	kit.tick(0.10)
+
+	var pickup_target := enemies[1]
+	_ready_enemy_for_player_attack(run, pickup_target, _player_forward(run) * 4.0)
+	pickup_target.max_hp = cast.potency * 4.0
+	pickup_target.hp = cast.potency * 4.0
+	_check("cast can fire at a surviving target", kit.try_activate(&"cast"))
+	await process_frame
+	_check_eq("surviving cast target keeps one stone lodged", kit.cast_lodged_ammo(), 1)
+	var shard := _first_cast_shard_pickup(run)
+	_check("surviving cast target creates a walk-over shard pickup", shard != null)
+	if shard != null:
+		shard.emit_signal(&"body_entered", run.player)
+		await process_frame
+	_check_eq("walk-over shard pickup reclaims the lodged stone", kit.cast_ammo(), 2)
+	_check_eq("walk-over shard pickup clears lodged ammo", kit.cast_lodged_ammo(), 0)
+	_check("walk-over shard pickup does not require killing the victim", is_instance_valid(pickup_target) and not pickup_target.is_dead())
+	await _cleanup_run(run)
+
+func _test_cast_kills_clear_director_ledger_exactly_once() -> void:
+	var run = await _new_run()
+	run.start_run("hearth", _empty_template_pool(), 2, _seeded_rng(5))
+	await process_frame
+
+	var kit: AbilityComponent = run._player_ability_kit()
+	var cast := kit.get_ability(&"cast") as CastAbility if kit != null else null
+	_check("cast ledger test has the cast kit", kit != null and cast != null)
+	if kit == null or cast == null:
+		await _cleanup_run(run)
+		return
+	cast.max_ammo = 1
+	cast.potency = 999.0
+	cast.cast_time = 0.0
+	cast.recovery_time = 0.01
+
+	var room_cleared_events: Array[RoomNode] = []
+	run.run_controller.room_cleared.connect(func(room: RoomNode) -> void:
+		room_cleared_events.append(room)
+	)
+
+	var safety := 0
+	while run.current_director != null and not run.current_director.is_room_cleared() and safety < 20:
+		var enemies := _live_spawned_enemies(run)
+		_check("cast ledger test has live enemies to clear", not enemies.is_empty())
+		if enemies.is_empty():
+			await process_frame
+			safety += 1
+			continue
+		var target := enemies[0]
+		_ready_enemy_for_player_attack(run, target, _player_forward(run) * 4.0)
+		target.max_hp = cast.potency
+		target.hp = cast.potency
+		_check("cast kill activates with reclaimed ammo", kit.try_activate(&"cast"))
+		await process_frame
+		kit.tick(0.05)
+		safety += 1
+
+	_check("cast kills clear the current director", run.current_director != null and run.current_director.is_room_cleared())
+	_check_eq("cast kill room clear notifies the run controller exactly once", room_cleared_events.size(), 1)
+	_check_eq("cast kill room clear increments rooms_cleared exactly once", run.rooms_cleared, 1)
+	_check_eq("cast kill room clear leaves no spawned enemies", run.spawned_enemy_count(), 0)
 	await _cleanup_run(run)
 
 func _test_current_room_clears_through_real_attack_path() -> void:
@@ -1324,8 +1537,32 @@ func _spawn_fixture_enemy(run, spawn_id: String, position: Vector3) -> GreyboxEn
 	enemy.global_position = position
 	enemy.velocity = Vector3.ZERO
 	enemy.set_chase_target(run.player)
+	if not enemy.died.is_connected(run._on_enemy_died):
+		enemy.died.connect(run._on_enemy_died)
+	if not enemy.damage_event.is_connected(run._on_enemy_damage_event):
+		enemy.damage_event.connect(run._on_enemy_damage_event)
+	if not enemy.damage_taken.is_connected(run._on_enemy_damage_taken):
+		enemy.damage_taken.connect(run._on_enemy_damage_taken)
 	run.spawned_enemies[spawn_id] = enemy
 	return enemy
+
+func _rotated_xz(direction: Vector3, radians: float) -> Vector3:
+	var flat := Vector2(direction.x, direction.z)
+	if flat.length_squared() <= 0.000001:
+		flat = Vector2(0.0, -1.0)
+	flat = flat.normalized().rotated(radians)
+	return Vector3(flat.x, 0.0, flat.y).normalized()
+
+func _first_cast_shard_pickup(run) -> Area3D:
+	if run == null:
+		return null
+	for root_node in [run.current_room_root, run.actors_root]:
+		if root_node == null:
+			continue
+		var shard := (root_node as Node).find_child("CastShardPickup*", true, false)
+		if shard is Area3D:
+			return shard as Area3D
+	return null
 
 func _spawn_candidate_for(run, index: int, attempt: int, edge_clearance: float) -> Vector3:
 	var anchor: Marker3D = run._current_room_anchor()
@@ -1393,3 +1630,59 @@ func _object_has_property(object: Object, property_name: String) -> bool:
 		if str(property.get("name", "")) == property_name:
 			return true
 	return false
+
+func _test_cast_during_transition_is_gated_with_ammo_intact() -> void:
+	var run = await _new_run()
+	run.start_run("hearth", _empty_template_pool(), 2, _seeded_rng(31))
+	await process_frame
+
+	var kit: AbilityComponent = run._player_ability_kit()
+	_check("transition gate test has an AbilityComponent", kit != null)
+	if kit == null:
+		await _cleanup_run(run)
+		return
+	var cast := kit.get_ability(&"cast") as CastAbility
+	cast.max_ammo = 2
+	cast.cast_time = 0.0
+	cast.recovery_time = 0.05
+	var ammo_before := kit.cast_ammo()
+	var shards_before: int = run._cast_shards_by_key.size()
+
+	run.set("_transitioning", true)
+	kit.cast_started.emit(25.0)
+	await process_frame
+	run.set("_transitioning", false)
+
+	_check_eq("gated cast leaves shard registry untouched", run._cast_shards_by_key.size(), shards_before)
+	_check_eq("gated cast leaves ammo intact (refunded)", kit.cast_ammo(), ammo_before)
+	await _cleanup_run(run)
+
+func _test_failed_shard_reclaim_converts_to_ownerless_pickup() -> void:
+	var run = await _new_run()
+	run.start_run("hearth", _empty_template_pool(), 2, _seeded_rng(32))
+	await process_frame
+
+	var kit: AbilityComponent = run._player_ability_kit()
+	var enemies := _live_spawned_enemies(run)
+	_check("orphan test has enemies", enemies.size() >= 1)
+	if kit == null or enemies.is_empty():
+		await _cleanup_run(run)
+		return
+	var victim := enemies[0]
+	victim.max_hp = 200.0
+	victim.hp = 200.0
+	var victim_spawn_id: String = victim.spawn_id
+	var shard_key: String = run._register_cast_shard(victim_spawn_id, victim.global_position)
+	# Ammo is already at max, so reclaim_cast_ammo(1) will return 0 → the
+	# lodged shard cannot be banked on victim death.
+	_check("orphan test precondition: ammo already full", kit.cast_ammo() >= 1)
+
+	victim.take_damage(999.0, false)
+	await process_frame
+
+	var record: Dictionary = run._cast_shards_by_key.get(shard_key, {})
+	_check("failed reclaim keeps the shard record (walk-over recoverable)", not record.is_empty())
+	_check_eq("failed reclaim clears the dead spawn_id from the record", String(record.get("spawn_id", "missing")), "")
+	_check("failed reclaim keeps a live pickup", is_instance_valid(record.get("pickup")))
+	_check("failed reclaim leaves no dangling spawn-id mapping", not run._cast_shard_keys_by_spawn_id.has(victim_spawn_id))
+	await _cleanup_run(run)

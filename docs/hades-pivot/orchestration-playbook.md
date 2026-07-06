@@ -91,3 +91,10 @@ Workers make conventional commits per slice **on `hades-clone` only**; never pus
 orchestrator commits doc/queue reconciliations. Rationale: per-slice commits give
 the audit stage a clean diff boundary; the worktree isolates all risk from
 `gizmo-3d`.
+
+### Model routing addendum (Shane, 2026-07-06 evening)
+Grok (composer-2.5): mechanical, fully-specified edit batches only — no design
+judgment, no 3D-spatial reasoning, no scene authoring for gizmo-3d. Design-shaped
+work (boss/system design, spatial/Blender-class asset work) routes to Codex for
+implementation with Fable authoring the design — Blender-class work specifically
+is Fable-direct per Shane.
