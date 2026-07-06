@@ -6,10 +6,12 @@ extends SceneTree
 
 const AbilityComponentScript := preload("res://scripts/abilities/ability_component.gd")
 const AbilityInputRouterScript := preload("res://scripts/abilities/ability_input_router.gd")
+const PlayerVitalsScript := preload("res://scripts/player/player_vitals.gd")
 const ACTION_DASH: StringName = &"gizmo_dash"
 const ACTION_ATTACK: StringName = &"gizmo_attack"
 const ACTION_SPECIAL: StringName = &"gizmo_special"
 const ACTION_CAST: StringName = &"gizmo_cast"
+const ACTION_SURGE: StringName = &"gizmo_surge"
 
 class RetryFailingAbilityComponent:
 	extends AbilityComponent
@@ -83,6 +85,8 @@ func _test_input_map_entries_exist_with_expected_bindings() -> void:
 	_check("gizmo_special is bound to right mouse", _has_mouse_button_binding(&"gizmo_special", MOUSE_BUTTON_RIGHT))
 	_check("gizmo_cast action exists", InputMap.has_action(&"gizmo_cast"))
 	_check("gizmo_cast is bound to Q", _has_key_binding(&"gizmo_cast", KEY_Q))
+	_check("gizmo_surge action exists", InputMap.has_action(&"gizmo_surge"))
+	_check("gizmo_surge is bound to F", _has_key_binding(&"gizmo_surge", KEY_F))
 	_check("gizmo_move_up action exists", InputMap.has_action(&"gizmo_move_up"))
 	_check("gizmo_move_up is bound to W", _has_key_binding(&"gizmo_move_up", KEY_W))
 	_check("gizmo_move_down action exists", InputMap.has_action(&"gizmo_move_down"))
@@ -99,6 +103,7 @@ func _test_actions_route_to_matching_abilities() -> void:
 		[ACTION_ATTACK, &"attack"],
 		[ACTION_SPECIAL, &"special"],
 		[ACTION_CAST, &"cast"],
+		[ACTION_SURGE, &"surge"],
 	]
 
 	for test_case in cases:
@@ -107,6 +112,14 @@ func _test_actions_route_to_matching_abilities() -> void:
 		var kit: AbilityComponent = harness["kit"]
 		var router = harness["router"]
 		var activated_ids: Array[StringName] = []
+		if test_case[1] == &"surge":
+			var vitals: PlayerVitals = PlayerVitalsScript.new()
+			vitals.name = "PlayerVitals"
+			body.add_child(vitals)
+			await process_frame
+			if vitals.has_method("set_spark_surge_charge"):
+				vitals.set("spark_surge_charge_max", 100.0)
+				vitals.call("set_spark_surge_charge", 100.0)
 		kit.ability_activated.connect(func(ability: Ability) -> void:
 			activated_ids.append(ability.ability_id)
 		)

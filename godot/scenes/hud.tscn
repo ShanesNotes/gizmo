@@ -18,6 +18,13 @@ corner_radius_top_right = 3
 corner_radius_bottom_right = 3
 corner_radius_bottom_left = 3
 
+[sub_resource type="StyleBoxFlat" id="sb_spark_surge_fill"]
+bg_color = Color(0.9059, 0.7176, 0.2824, 1)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+
 [node name="Hud" type="CanvasLayer"]
 layer = 2
 script = ExtResource("1_hud")
@@ -149,6 +156,56 @@ theme_type_variation = &"CapsLabel"
 text = "SPARKS"
 theme_override_colors/font_color = Color(0.6706, 0.5608, 0.7765, 1.0)
 theme_override_font_sizes/font_size = 11
+
+[node name="SparkGauge" type="PanelContainer" parent="Root"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 6
+anchor_left = 1.0
+anchor_top = 0.5
+anchor_right = 1.0
+anchor_bottom = 0.5
+offset_left = -220.0
+offset_top = -44.0
+offset_right = -16.0
+offset_bottom = 44.0
+grow_horizontal = 0
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="Margin" type="MarginContainer" parent="Root/SparkGauge"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 8
+
+[node name="VBox" type="VBoxContainer" parent="Root/SparkGauge/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="Caption" type="Label" parent="Root/SparkGauge/Margin/VBox"]
+layout_mode = 2
+theme_type_variation = &"CapsLabel"
+text = "SPARK SURGE"
+theme_override_font_sizes/font_size = 13
+
+[node name="SparkFill" type="ProgressBar" parent="Root/SparkGauge/Margin/VBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(172, 18)
+layout_mode = 2
+theme_override_styles/fill = SubResource("sb_spark_surge_fill")
+max_value = 100.0
+show_percentage = false
+
+[node name="Status" type="Label" parent="Root/SparkGauge/Margin/VBox"]
+unique_name_in_owner = true
+theme_type_variation = &"NumericLabel"
+layout_mode = 2
+text = "0%"
+horizontal_alignment = 2
+theme_override_font_sizes/font_size = 14
 
 [node name="BoonLoadout" type="VBoxContainer" parent="Root"]
 unique_name_in_owner = true

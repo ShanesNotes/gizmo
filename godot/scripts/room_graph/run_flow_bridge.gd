@@ -88,11 +88,13 @@ func _request_boon_exit(connection: RoomConnection) -> bool:
 		_active_rng(),
 		offer_count
 	)
-	if offers.size() != offer_count:
-		push_error("RunFlowBridge: expected %d boon offers, got %d." % [offer_count, offers.size()])
+	if offers.is_empty():
 		_clear_draft()
-		exit_completed.emit(connection, false)
-		return false
+		var fallback_accepted := run_controller.choose_exit(connection)
+		if fallback_accepted:
+			reward_granted.emit(RoomNode.RewardType.SCRAP, connection)
+		exit_completed.emit(connection, fallback_accepted)
+		return fallback_accepted
 
 	var connect_error := ui_surface.connect(&"boon_chosen", Callable(self, "_on_ui_boon_chosen"), CONNECT_ONE_SHOT)
 	if connect_error != OK:

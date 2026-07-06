@@ -21,6 +21,8 @@ const ZONE_STATE_CLEARED: StringName = &"CLEARED"
 @export_range(2, 16) var room_count: int = 8
 @export var rng_seed: int = 32032
 @export_range(0.0, 64.0, 0.1) var min_spawn_distance: float = 8.0
+@export_range(0.1, 8.0, 0.05) var melee_range: float = 2.0
+@export_range(1.0, 360.0, 1.0) var melee_arc_degrees: float = 120.0
 @export var template_pool_paths: Array[String] = [
 	"res://resources/room_templates/combat_small.tres",
 	"res://resources/room_templates/combat_large.tres",
@@ -156,6 +158,15 @@ func _ensure_wiring() -> void:
 			player_vitals.player_died.connect(_on_player_vitals_died)
 		if player_vitals != null and not player_vitals.vitals_changed.is_connected(_on_player_vitals_changed):
 			player_vitals.vitals_changed.connect(_on_player_vitals_changed)
+		if player_vitals != null and not player_vitals.spark_surge_changed.is_connected(_on_player_spark_surge_changed):
+			player_vitals.spark_surge_changed.connect(_on_player_spark_surge_changed)
+		var kit := _player_ability_kit()
+		if kit != null:
+			kit.bind_player_vitals(player_vitals)
+			if not kit.attack_started.is_connected(_on_player_attack_started):
+				kit.attack_started.connect(_on_player_attack_started)
+			if not kit.surge_started.is_connected(_on_player_surge_started):
+				kit.surge_started.connect(_on_player_surge_started)
 
 	if camera != null:
 		camera.target = player
@@ -182,6 +193,8 @@ func _ensure_wiring() -> void:
 		)
 		if not flow_bridge.exit_completed.is_connected(_on_exit_completed):
 			flow_bridge.exit_completed.connect(_on_exit_completed)
+		if not flow_bridge.reward_granted.is_connected(_on_flow_bridge_reward_granted):
+			flow_bridge.reward_granted.connect(_on_flow_bridge_reward_granted)
 
 func _ensure_player_vitals(target_player: Node) -> PlayerVitals:
 	var existing := target_player.get_node_or_null("PlayerVitals")
@@ -340,6 +353,7 @@ func _spawn_from_request(request: Dictionary) -> void:
 		enemy.set_chase_target(player)
 		enemy.died.connect(_on_enemy_died)
 		enemy.damage_event.connect(_on_enemy_damage_event)
+		enemy.damage_taken.connect(_on_enemy_damage_taken)
 		spawned_enemies[spawn_id] = enemy
 
 func _spawn_position_for(index: int) -> Vector3:
@@ -418,6 +432,12 @@ func _on_enemy_damage_event(event: Dictionary) -> void:
 	if player_vitals == null:
 		return
 	player_vitals.apply_damage(int(event.get("damage", 0)))
+	_render_hud_payloads()
+
+func _on_enemy_damage_taken(_spawn_id: String, amount: float, charges_spark: bool) -> void:
+	if not charges_spark or player_vitals == null:
+		return
+	player_vitals.record_damage_dealt(amount)
 	_render_hud_payloads()
 
 func _on_director_room_cleared() -> void:
@@ -507,6 +527,12 @@ func _on_exit_completed(_connection: RoomConnection, accepted: bool) -> void:
 	_load_current_room()
 	_transitioning = false
 
+func _on_flow_bridge_reward_granted(reward_type: RoomNode.RewardType, connection: RoomConnection) -> void:
+	if connection == null or run_controller == null:
+		return
+	if run_controller.exit_reward_type(connection) == RoomNode.RewardType.BOON and reward_type == RoomNode.RewardType.SCRAP:
+		_apply_reward_type_for_exit(reward_type, connection)
+
 func _on_player_vitals_died() -> void:
 	if not _run_active:
 		return
@@ -537,14 +563,90 @@ func _on_boon_accepted(_boon: BoonDef) -> void:
 func _on_player_vitals_changed(hp: int, max_hp: int, guard: int, max_guard: int) -> void:
 	_render_vitals_payloads(hp, max_hp, guard, max_guard)
 
+func _on_player_spark_surge_changed(charge: float, charge_max: float) -> void:
+	if hud != null:
+		hud.render_spark(charge, charge_max)
+
+func _on_player_attack_started(_step: int, damage: float) -> void:
+	if player == null or damage <= 0.0:
+		return
+	var center := player.global_position
+	var forward := _player_facing_direction()
+	var snapshot: Array = spawned_enemies.values()
+	for candidate in snapshot:
+		if not (candidate is GreyboxEnemy) or not is_instance_valid(candidate):
+			continue
+		var enemy := candidate as GreyboxEnemy
+		if enemy.is_dead() or enemy.is_spawning():
+			continue
+		if not _is_enemy_in_melee_arc(enemy, center, forward):
+			continue
+		enemy.take_damage(damage, true)
+	_render_hud_payloads()
+
+func _on_player_surge_started(damage: float, radius: float, stagger_seconds: float) -> void:
+	if player == null:
+		return
+	var center := player.global_position
+	var snapshot: Array = spawned_enemies.values()
+	for candidate in snapshot:
+		if not (candidate is GreyboxEnemy) or not is_instance_valid(candidate):
+			continue
+		var enemy := candidate as GreyboxEnemy
+		if enemy.is_dead() or enemy.is_spawning() or _xz_distance(enemy.global_position, center) > radius:
+			continue
+		enemy.stagger(stagger_seconds)
+		enemy.take_damage(damage, false)
+	_render_hud_payloads()
+
+func _is_enemy_in_melee_arc(enemy: GreyboxEnemy, center: Vector3, forward: Vector3) -> bool:
+	var offset := Vector3(enemy.global_position.x - center.x, 0.0, enemy.global_position.z - center.z)
+	var distance := offset.length()
+	if distance > maxf(melee_range, 0.0):
+		return false
+	if distance <= 0.000001:
+		return true
+
+	var flat_forward := Vector3(forward.x, 0.0, forward.z)
+	if flat_forward.length_squared() <= 0.000001:
+		flat_forward = Vector3(0.0, 0.0, -1.0)
+	flat_forward = flat_forward.normalized()
+	if melee_arc_degrees >= 359.9:
+		return true
+
+	var half_arc := deg_to_rad(clampf(melee_arc_degrees, 1.0, 360.0) * 0.5)
+	return flat_forward.dot(offset / distance) >= cos(half_arc)
+
+func _player_facing_direction() -> Vector3:
+	if player == null:
+		return Vector3(0.0, 0.0, -1.0)
+
+	var motor = player.get("motor")
+	if motor != null:
+		var facing := Vector3(motor.get("facing_direction"))
+		if facing.length_squared() > 0.000001:
+			return facing.normalized()
+
+	var pivot := player.get_node_or_null("VisualPivot") as Node3D
+	if pivot != null:
+		var visual_forward := -pivot.global_transform.basis.z
+		visual_forward.y = 0.0
+		if visual_forward.length_squared() > 0.000001:
+			return visual_forward.normalized()
+	return Vector3(0.0, 0.0, -1.0)
+
 func _apply_exit_reward(connection: RoomConnection) -> void:
 	if connection == null or run_controller == null:
+		return
+	_apply_reward_type_for_exit(run_controller.exit_reward_type(connection), connection)
+
+func _apply_reward_type_for_exit(reward_type: RoomNode.RewardType, connection: RoomConnection) -> void:
+	if connection == null:
 		return
 	var key := _connection_key(connection)
 	if _rewarded_exit_keys.has(key):
 		return
 
-	var reward_type := run_controller.exit_reward_type(connection)
 	match reward_type:
 		RoomNode.RewardType.SCRAP:
 			scrap_earned += SCRAP_REWARD_VALUE
@@ -589,6 +691,7 @@ func _render_hud_payloads() -> void:
 		return
 	if player_vitals != null:
 		_render_vitals_payloads(player_vitals.hp, player_vitals.max_hp, player_vitals.guard, player_vitals.max_guard)
+		hud.render_spark(player_vitals.spark_surge_charge, player_vitals.spark_surge_charge_max)
 	hud.render_boons(boon_draft.picked_boons)
 	hud.render_abilities(_ability_states())
 
@@ -628,7 +731,7 @@ func _ability_states() -> Array:
 	var kit := _player_ability_kit()
 	if kit == null:
 		return states
-	for ability_id in [&"dash", &"attack", &"special", &"cast"]:
+	for ability_id in [&"dash", &"attack", &"special", &"cast", &"surge"]:
 		var ability := kit.get_ability(ability_id)
 		if ability == null:
 			continue
@@ -648,6 +751,11 @@ func _default_boon_pool() -> Array[BoonDef]:
 	pool.append(_make_default_boon(&"core_special", "Brass Overdrive", BoonDef.Rarity.EPIC, BoonDef.Slot.SPECIAL))
 	pool.append(_make_default_boon(&"codex_cast", "Codex Shard", BoonDef.Rarity.COMMON, BoonDef.Slot.CAST))
 	pool.append(_make_default_boon(&"humanity_guard", "Humanity's Reserve", BoonDef.Rarity.LEGENDARY, BoonDef.Slot.PASSIVE))
+	pool.append(_make_default_boon(&"ember_attack", "Ember Teeth", BoonDef.Rarity.RARE, BoonDef.Slot.ATTACK))
+	pool.append(_make_default_boon(&"brass_dash", "Brass Wake", BoonDef.Rarity.COMMON, BoonDef.Slot.DASH))
+	pool.append(_make_default_boon(&"gear_special", "Gearbreak Pulse", BoonDef.Rarity.RARE, BoonDef.Slot.SPECIAL))
+	pool.append(_make_default_boon(&"spark_cast", "Warmth Shard", BoonDef.Rarity.EPIC, BoonDef.Slot.CAST))
+	pool.append(_make_default_boon(&"codex_passive", "Codex Margin", BoonDef.Rarity.COMMON, BoonDef.Slot.PASSIVE))
 	return pool
 
 func _make_default_boon(

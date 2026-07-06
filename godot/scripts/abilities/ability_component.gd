@@ -1,6 +1,8 @@
 class_name AbilityComponent
 extends Node
 
+const SurgeAbilityScript := preload("res://scripts/abilities/surge_ability.gd")
+
 ## CharacterBody3D-attachable runtime owner for the Hades-pivot player kit.
 ## It grants abilities, spends resources, starts cooldowns, tracks cast ammo,
 ## tracks attack combos, and exposes dash i-frames without coupling to
@@ -17,6 +19,7 @@ signal dash_started(direction: Vector3, speed: float, duration: float)
 signal attack_started(step: int, damage: float)
 signal special_started(potency: float)
 signal cast_started(potency: float)
+signal surge_started(damage: float, radius: float, stagger_seconds: float)
 signal cast_ammo_changed(current_ammo: int, max_ammo: int, lodged_ammo: int)
 signal cast_ammo_reclaimed(amount: int, current_ammo: int, lodged_ammo: int)
 
@@ -24,6 +27,7 @@ signal cast_ammo_reclaimed(amount: int, current_ammo: int, lodged_ammo: int)
 @export var starting_abilities: Array[Ability] = []
 @export var ability_modifiers: Array[AbilityModifier] = []
 @export var state_machine: PlayerActionStateMachine
+@export var player_vitals: PlayerVitals
 @export var default_resource_key: StringName = &"spark_charge"
 @export_range(0.0, 999.0) var starting_resource: float = 100.0
 
@@ -54,6 +58,7 @@ func grant_default_kit() -> void:
 	grant(AttackAbility.new())
 	grant(SpecialAbility.new())
 	grant(CastAbility.new())
+	grant(SurgeAbilityScript.new())
 
 func grant(ability: Ability) -> void:
 	if ability == null:
@@ -87,6 +92,9 @@ func try_activate(ability_id: StringName, direction: Vector3 = Vector3.ZERO) -> 
 	if not _has_cast_ammo_for(ability):
 		ability_failed.emit(ability, "no_cast_ammo")
 		return false
+	if not _has_spark_surge_charge_for(ability):
+		ability_failed.emit(ability, "spark_not_ready")
+		return false
 
 	var machine := _ensure_state_machine()
 	if not machine.can_start_ability(ability):
@@ -96,6 +104,9 @@ func try_activate(ability_id: StringName, direction: Vector3 = Vector3.ZERO) -> 
 		ability_failed.emit(ability, "conditions_unmet")
 		return false
 
+	if not _flare_spark_surge_charge_for(ability):
+		ability_failed.emit(ability, "spark_not_ready")
+		return false
 	_spend_resource_for(ability)
 	_consume_cast_ammo_for(ability)
 	_start_ability_effect(ability, direction)
@@ -105,6 +116,9 @@ func try_activate(ability_id: StringName, direction: Vector3 = Vector3.ZERO) -> 
 
 func enter_hitstun(duration: float) -> void:
 	_ensure_state_machine().enter_hitstun(duration)
+
+func bind_player_vitals(vitals: PlayerVitals) -> void:
+	player_vitals = vitals
 
 func tick(delta: float) -> void:
 	_tick_state(delta)
@@ -180,6 +194,8 @@ func _start_ability_effect(ability: Ability, direction: Vector3) -> void:
 		Ability.AbilityKind.CAST:
 			_ensure_state_machine().start_ability(ability, ability.cast_time + ability.recovery_time)
 			cast_started.emit(ability.potency)
+		Ability.AbilityKind.SURGE:
+			_start_surge(ability)
 		_:
 			_ensure_state_machine().start_ability(ability, ability.cast_time + ability.recovery_time)
 
@@ -200,6 +216,13 @@ func _start_attack(ability: AttackAbility) -> void:
 	var recovery := ability.recovery_for_step(step) if ability != null else 0.0
 	_ensure_state_machine().start_ability(ability, recovery)
 	attack_started.emit(step, damage)
+
+func _start_surge(ability: Ability) -> void:
+	_ensure_state_machine().start_ability(ability, ability.cast_time + ability.recovery_time)
+	if ability == null:
+		surge_started.emit(0.0, 0.0, 0.0)
+		return
+	surge_started.emit(float(ability.get("damage")), float(ability.get("radius")), float(ability.get("stagger_seconds")))
 
 func _next_combo_step(ability: AttackAbility) -> int:
 	var max_steps := maxi(ability.combo_steps if ability != null else 1, 1)
@@ -230,6 +253,18 @@ func _has_cast_ammo_for(ability: Ability) -> bool:
 		return true
 	_ensure_cast_ammo_state(ability as CastAbility)
 	return _cast_ammo_current > 0
+
+func _has_spark_surge_charge_for(ability: Ability) -> bool:
+	if ability == null or ability.kind != Ability.AbilityKind.SURGE:
+		return true
+	var vitals := _resolve_player_vitals()
+	return vitals != null and vitals.can_spark_surge()
+
+func _flare_spark_surge_charge_for(ability: Ability) -> bool:
+	if ability == null or ability.kind != Ability.AbilityKind.SURGE:
+		return true
+	var vitals := _resolve_player_vitals()
+	return vitals != null and vitals.flare_spark_surge_charge()
 
 func _consume_cast_ammo_for(ability: Ability) -> void:
 	if ability == null or ability.kind != Ability.AbilityKind.CAST:
@@ -321,3 +356,14 @@ func _ensure_state_machine() -> PlayerActionStateMachine:
 		state_machine.name = "ActionStateMachine"
 		add_child(state_machine)
 	return state_machine
+
+func _resolve_player_vitals() -> PlayerVitals:
+	if player_vitals != null and is_instance_valid(player_vitals):
+		return player_vitals
+	var parent := get_parent()
+	if parent == null:
+		return null
+	var sibling := parent.get_node_or_null("PlayerVitals")
+	if sibling is PlayerVitals:
+		player_vitals = sibling as PlayerVitals
+	return player_vitals

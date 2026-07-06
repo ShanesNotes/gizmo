@@ -12,11 +12,15 @@ const GUARD_PIP_SIZE := Vector2(14.0, 14.0)
 const GUARD_PIP_BRASS := Color(0.7882, 0.5647, 0.4196, 1.0)
 const GUARD_PIP_EMPTY_ALPHA := 0.25
 const ABILITY_SLOT_DIM_ALPHA := 0.4
+const SPARK_READY_EPSILON := 0.001
 
 @onready var _guard_pips: HBoxContainer = %GuardPips
 @onready var _hp_bar: ProgressBar = %HpBar
 @onready var _hp_label: Label = %HpLabel
 @onready var _sparks_label: Label = %SparksLabel
+@onready var _spark_gauge: PanelContainer = %SparkGauge
+@onready var _spark_fill: ProgressBar = %SparkFill
+@onready var _spark_status: Label = %Status
 @onready var _boon_loadout: VBoxContainer = %BoonLoadout
 @onready var _ability_bar: HBoxContainer = %AbilityBar
 
@@ -48,6 +52,21 @@ func render_guard(guard: int, guard_max: int) -> void:
 		if pip.visible:
 			var alpha := 1.0 if i < filled else GUARD_PIP_EMPTY_ALPHA
 			pip.color = Color(GUARD_PIP_BRASS.r, GUARD_PIP_BRASS.g, GUARD_PIP_BRASS.b, alpha)
+
+func render_spark(charge: float, charge_max: float) -> void:
+	var safe_max := maxf(charge_max, 0.0)
+	if safe_max <= 0.0:
+		_spark_gauge.visible = false
+		return
+
+	var safe_charge := clampf(charge, 0.0, safe_max)
+	_spark_gauge.visible = true
+	_spark_fill.max_value = safe_max
+	_spark_fill.value = safe_charge
+	if safe_charge + SPARK_READY_EPSILON >= safe_max:
+		_spark_status.text = "READY"
+	else:
+		_spark_status.text = "%d%%" % int(roundf((safe_charge / safe_max) * 100.0))
 
 
 ## Payload-driven boon loadout rows (HZ-052). Controller passes picked boons when the
@@ -145,6 +164,8 @@ func _ability_kind_label(kind: int) -> String:
 			return "SPECIAL"
 		Ability.AbilityKind.CAST:
 			return "CAST"
+		Ability.AbilityKind.SURGE:
+			return "SURGE"
 		_:
 			return "ATTACK"
 

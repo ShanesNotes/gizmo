@@ -31,6 +31,13 @@ func _run_tests() -> void:
 	await _test_missing_spawn_bounds_warns_once_for_bare_room()
 	await _test_full_boon_exit_cycle_reaches_boss_and_completes_run()
 	await _test_enemy_damage_flows_through_guard_hp_and_stops_spawning_on_death()
+	await _test_real_attack_damages_front_enemy_only_and_charges_spark()
+	await _test_current_room_clears_through_real_attack_path()
+	await _test_spark_surge_hits_living_enemies_once_and_empties_meter()
+	await _test_spark_surge_skips_spawn_windup_enemies()
+	await _test_real_combat_fills_gauge_and_spends_on_surge()
+	await _test_spark_charge_persists_across_room_transition()
+	await _test_rest_room_does_not_refill_spark_surge_charge()
 	await _test_player_death_disconnects_director_and_ignores_posthumous_enemy_deaths()
 	await _test_real_orchestrator_survivability_bands()
 	print("")
@@ -57,6 +64,9 @@ func _check_eq(desc: String, actual: Variant, expected: Variant) -> void:
 
 func _check_between(desc: String, value: float, low: float, high: float) -> void:
 	_check("%s (%.2f in [%.2f, %.2f])" % [desc, value, low, high], value >= low and value <= high)
+
+func _check_almost(desc: String, actual: float, expected: float, margin: float = 0.001) -> void:
+	_check("%s (got %.4f, expected %.4f +/- %.4f)" % [desc, actual, expected, margin], absf(actual - expected) <= margin)
 
 func _seeded_rng(seed: int) -> RandomNumberGenerator:
 	var rng := RandomNumberGenerator.new()
@@ -319,6 +329,243 @@ func _test_enemy_damage_flows_through_guard_hp_and_stops_spawning_on_death() -> 
 	_check("dead player leaves the run inactive", not run._run_active)
 	await _cleanup_run(run)
 
+func _test_real_attack_damages_front_enemy_only_and_charges_spark() -> void:
+	var run = await _new_run()
+	run.start_run("hearth", _empty_template_pool(), 2, _seeded_rng(5))
+	await process_frame
+
+	var kit: AbilityComponent = run._player_ability_kit()
+	var enemies := _live_spawned_enemies(run)
+	_check("real attack test has an AbilityComponent", kit != null)
+	_check("real attack test has at least two enemies", enemies.size() >= 2)
+	if kit == null or enemies.size() < 2:
+		await _cleanup_run(run)
+		return
+
+	var front_enemy := enemies[0]
+	var rear_enemy := enemies[1]
+	_ready_enemy_for_player_attack(run, front_enemy, _player_forward(run) * 1.2)
+	_ready_enemy_for_player_attack(run, rear_enemy, -_player_forward(run) * 1.2)
+	front_enemy.max_hp = 100.0
+	front_enemy.hp = 100.0
+	rear_enemy.max_hp = 100.0
+	rear_enemy.hp = 100.0
+	run.player_vitals.set("spark_surge_charge_max", 100.0)
+	run.player_vitals.set("spark_damage_dealt_charge_rate", 1.0)
+	run.player_vitals.call("set_spark_surge_charge", 0.0)
+
+	var attack := kit.get_ability(&"attack") as AttackAbility
+	var expected_damage := attack.damage_for_step(1) if attack != null else 0.0
+	var front_before := front_enemy.hp
+	var rear_before := rear_enemy.hp
+
+	_check("real attack activates through the AbilityComponent", kit.try_activate(&"attack"))
+	await process_frame
+
+	_check_almost("front enemy takes the attack step damage", front_before - front_enemy.hp, expected_damage)
+	_check_almost("rear enemy outside the forward arc is untouched", rear_before - rear_enemy.hp, 0.0)
+	_check_almost("real dealt damage charges the Spark Surge meter", float(run.player_vitals.get("spark_surge_charge")), expected_damage)
+	await _cleanup_run(run)
+
+func _test_current_room_clears_through_real_attack_path() -> void:
+	var run = await _new_run()
+	run.start_run("hearth", _empty_template_pool(), 2, _seeded_rng(5))
+	await process_frame
+
+	var kit: AbilityComponent = run._player_ability_kit()
+	_check("real room-clear test has an AbilityComponent", kit != null)
+	if kit == null:
+		await _cleanup_run(run)
+		return
+
+	run.player_vitals.set("spark_surge_charge_max", 999.0)
+	run.player_vitals.call("set_spark_surge_charge", 0.0)
+	var room_id := String(run.run_controller.current_room_id)
+	var cleared := await _clear_current_room_by_real_attacks(run)
+	var room: RoomNode = run.run_controller.graph.get_room(room_id)
+
+	_check("room clears through the real attack signal path", cleared)
+	_check("run controller marks the melee-cleared room CLEARED", room != null and room.state == RoomNode.State.CLEARED)
+	_check_eq("spawned enemy bookkeeping is empty after real attack clear", run.spawned_enemy_count(), 0)
+	_check("real attack room clear charged the Spark Surge meter", float(run.player_vitals.get("spark_surge_charge")) > 0.0)
+	await _cleanup_run(run)
+
+func _test_spark_surge_hits_living_enemies_once_and_empties_meter() -> void:
+	var run = await _new_run()
+	run.start_run("hearth", _empty_template_pool(), 2, _seeded_rng(5))
+	await process_frame
+
+	var kit: AbilityComponent = run._player_ability_kit()
+	_check("run player kit exists for Spark Surge", kit != null)
+	_check("run PlayerVitals can set Spark Surge charge", run.player_vitals != null and run.player_vitals.has_method("set_spark_surge_charge"))
+	if kit == null or run.player_vitals == null or not run.player_vitals.has_method("set_spark_surge_charge"):
+		await _cleanup_run(run)
+		return
+	_check("run player kit grants Spark Surge", kit.has_ability(&"surge"))
+	var surge := kit.get_ability(&"surge")
+	if surge == null:
+		await _cleanup_run(run)
+		return
+
+	var enemies := _live_spawned_enemies(run)
+	_check("Spark Surge test has living enemies", not enemies.is_empty())
+	if enemies.is_empty():
+		await _cleanup_run(run)
+		return
+	for enemy in enemies:
+		_ready_enemy_for_player_attack(run, enemy, Vector3(1.0 + float(enemies.find(enemy)), 0.0, -1.0))
+		enemy.max_hp = 100.0
+		enemy.hp = 100.0
+
+	run.player_vitals.set("spark_surge_charge_max", 100.0)
+	run.player_vitals.call("set_spark_surge_charge", 100.0)
+	var before_hp: Dictionary = {}
+	for enemy in enemies:
+		before_hp[enemy.spawn_id] = enemy.hp
+
+	_check("full Spark Surge activates through player kit", kit.try_activate(&"surge"))
+	await process_frame
+
+	var expected_damage := float(surge.get("damage"))
+	for enemy in enemies:
+		if enemy == null or not is_instance_valid(enemy):
+			_check("Spark Surge keeps toughened enemy instance valid", false)
+			continue
+		_check_almost(
+			"Spark Surge damages %s exactly once" % enemy.spawn_id,
+			float(before_hp[enemy.spawn_id]) - enemy.hp,
+			expected_damage,
+			0.001
+		)
+		_check("Spark Surge staggers %s" % enemy.spawn_id, enemy.brain.has_method("is_staggered") and bool(enemy.brain.call("is_staggered")))
+	_check_almost("Spark Surge meter empties after burst", float(run.player_vitals.get("spark_surge_charge")), 0.0)
+	await _cleanup_run(run)
+
+func _test_spark_surge_skips_spawn_windup_enemies() -> void:
+	var run = await _new_run()
+	run.start_run("hearth", _empty_template_pool(), 2, _seeded_rng(5))
+	await process_frame
+
+	var kit: AbilityComponent = run._player_ability_kit()
+	var enemy := _first_spawned_enemy(run)
+	_check("spawn-windup Surge test has a kit", kit != null)
+	_check("spawn-windup Surge test has an enemy", enemy != null)
+	if kit == null or enemy == null:
+		await _cleanup_run(run)
+		return
+
+	enemy.spawn_windup = 2.0
+	enemy.configure(enemy.archetype, enemy.spawn_id)
+	enemy.global_position = run.player.global_position + Vector3(0.8, 0.0, 0.0)
+	enemy.max_hp = 10.0
+	enemy.hp = 10.0
+	var spawn_id := enemy.spawn_id
+	var before_count: int = run.spawned_enemy_count()
+	run.player_vitals.set("spark_surge_charge_max", 100.0)
+	run.player_vitals.call("set_spark_surge_charge", 100.0)
+
+	_check("full Spark Surge activates with a windup enemy present", kit.try_activate(&"surge"))
+	await process_frame
+
+	_check("windup enemy remains in spawned-enemy bookkeeping after Surge", run.spawned_enemies.has(spawn_id))
+	_check("director kill ledger still tracks the windup enemy", run.current_director.remaining_spawn_ids().has(spawn_id))
+	_check_eq("windup Surge skip preserves spawned enemy count", run.spawned_enemy_count(), before_count)
+	if is_instance_valid(enemy):
+		_check_almost("windup enemy takes no Surge damage", enemy.hp, 10.0)
+		_check("windup enemy is not staggered by Surge", not enemy.is_staggered())
+	await _cleanup_run(run)
+
+func _test_real_combat_fills_gauge_and_spends_on_surge() -> void:
+	var run = await _new_run()
+	run.start_run("hearth", _empty_template_pool(), 2, _seeded_rng(5))
+	await process_frame
+
+	var kit: AbilityComponent = run._player_ability_kit()
+	var enemies := _live_spawned_enemies(run)
+	_check("real combat gauge test has a kit", kit != null)
+	_check("real combat gauge test has at least two enemies", enemies.size() >= 2)
+	if kit == null or enemies.size() < 2:
+		await _cleanup_run(run)
+		return
+
+	var charge_target := enemies[0]
+	var surge_target := enemies[1]
+	_ready_enemy_for_player_attack(run, charge_target, _player_forward(run) * 1.2)
+	_ready_enemy_for_player_attack(run, surge_target, Vector3(3.0, 0.0, 0.0))
+	charge_target.max_hp = 100.0
+	charge_target.hp = 100.0
+	surge_target.max_hp = 100.0
+	surge_target.hp = 100.0
+	run.player_vitals.set("spark_surge_charge_max", 10.0)
+	run.player_vitals.set("spark_damage_dealt_charge_rate", 1.0)
+	run.player_vitals.call("set_spark_surge_charge", 0.0)
+
+	_check("attack activates to fill the gauge through combat", kit.try_activate(&"attack"))
+	await process_frame
+	_check_almost("real attack fills the Spark Surge gauge", float(run.player_vitals.get("spark_surge_charge")), 10.0)
+	kit.tick(1.0)
+
+	var surge_before := surge_target.hp
+	_check("full gauge activates Spark Surge after real combat charge", kit.try_activate(&"surge"))
+	await process_frame
+	_check("Spark Surge damages the non-melee-range target", surge_target.hp < surge_before)
+	_check_almost("Spark Surge empties after real-combat fill", float(run.player_vitals.get("spark_surge_charge")), 0.0)
+	await _cleanup_run(run)
+
+func _test_spark_charge_persists_across_room_transition() -> void:
+	var run = await _new_run()
+	var graph = _start_run_with_first_boon_exit(run)
+	await process_frame
+	if run.player_vitals == null or not run.player_vitals.has_method("set_spark_surge_charge"):
+		_check("run PlayerVitals can set Spark Surge charge for room persistence", false)
+		await _cleanup_run(run)
+		return
+
+	var opened_batches: Array[Array] = []
+	run.doors_bound.connect(func(connections: Array[RoomConnection]) -> void:
+		opened_batches.append(connections)
+	)
+	await _clear_current_room_by_enemy_deaths(run)
+	run.player_vitals.set("spark_surge_charge_max", 100.0)
+	run.player_vitals.call("set_spark_surge_charge", 42.0)
+	var start_room_id: String = run.run_controller.current_room_id
+	var boon_connection := _first_open_boon_connection(run, opened_batches[0])
+	_check("room-persistence test found a BOON exit", boon_connection != null)
+	if boon_connection == null:
+		await _cleanup_run(run)
+		return
+	var door := run.bound_doors.get(boon_connection.door_name) as RoomDoor
+	door.emit_signal(&"body_entered", run.player)
+	await process_frame
+	run.boon_draft_ui.choose_offer(0)
+	await process_frame
+
+	_check("room transition advanced", graph != null and run.run_controller.current_room_id != start_room_id)
+	_check_almost("Spark Surge charge persists across room transition", float(run.player_vitals.get("spark_surge_charge")), 42.0)
+	await _cleanup_run(run)
+
+func _test_rest_room_does_not_refill_spark_surge_charge() -> void:
+	var run = await _new_run()
+	run.start_run("hearth", _empty_template_pool(), 2, _seeded_rng(5))
+	await process_frame
+	if run.player_vitals == null or not run.player_vitals.has_method("set_spark_surge_charge"):
+		_check("run PlayerVitals can set Spark Surge charge before REST fixture", false)
+		await _cleanup_run(run)
+		return
+
+	run.player_vitals.set("spark_surge_charge_max", 100.0)
+	run.player_vitals.call("set_spark_surge_charge", 37.0)
+	var rest_template := RoomTemplate.new()
+	rest_template.room_type = RoomTemplate.RoomType.REST
+	var rest_room := RoomNode.new()
+	rest_room.room_id = "rest_probe"
+	rest_room.template = rest_template
+	run._start_room_director(rest_room)
+	await process_frame
+
+	_check_almost("REST room auto-clear does not refill Spark Surge charge", float(run.player_vitals.get("spark_surge_charge")), 37.0)
+	await _cleanup_run(run)
+
 func _test_player_death_disconnects_director_and_ignores_posthumous_enemy_deaths() -> void:
 	var run = await _new_run()
 	var graph: RoomGraph = null
@@ -480,6 +727,51 @@ func _tick_survival_melee(run, model: Dictionary, delta: float) -> void:
 	model["combo_remaining"] = attack.combo_window
 	model["cooldown"] = maxf(attack.recovery_for_step(next_step) / maxf(SURVIVAL_PLAYER_DPS_SCALE, 0.001), SURVIVAL_DT)
 	model["swings"] = int(model["swings"]) + 1
+
+func _clear_current_room_by_real_attacks(run) -> bool:
+	var kit: AbilityComponent = run._player_ability_kit()
+	if kit == null:
+		return false
+
+	var safety := 0
+	while run.current_director != null and not run.current_director.is_room_cleared() and safety < 60:
+		var enemies := _live_spawned_enemies(run)
+		if enemies.is_empty():
+			await process_frame
+			safety += 1
+			continue
+
+		var target := enemies[0]
+		_ready_enemy_for_player_attack(run, target, _player_forward(run) * 1.1)
+		if kit.try_activate(&"attack"):
+			await process_frame
+		kit.tick(1.0)
+		await process_frame
+		safety += 1
+
+	return run.current_director == null or run.current_director.is_room_cleared()
+
+func _ready_enemy_for_player_attack(run, enemy: GreyboxEnemy, offset: Vector3) -> void:
+	if enemy == null:
+		return
+	var motor = run.player.get("motor") if run.player != null else null
+	if motor != null:
+		motor.set("facing_direction", _player_forward(run))
+	while enemy.is_spawning():
+		enemy.tick_chase(run.player.global_position, maxf(enemy.spawn_windup_remaining(), 0.1))
+	enemy.global_position = run.player.global_position + offset
+	enemy.velocity = Vector3.ZERO
+
+func _player_forward(run) -> Vector3:
+	var default_forward := Vector3(0.0, 0.0, -1.0)
+	if run == null or run.player == null:
+		return default_forward
+	var motor = run.player.get("motor")
+	if motor != null:
+		var facing := Vector3(motor.get("facing_direction"))
+		if facing.length_squared() > 0.000001:
+			return facing.normalized()
+	return default_forward
 
 func _nearest_live_enemy(run) -> GreyboxEnemy:
 	var nearest: GreyboxEnemy = null
