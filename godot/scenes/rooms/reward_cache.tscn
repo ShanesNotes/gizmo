@@ -1,6 +1,14 @@
-[gd_scene load_steps=8 format=3]
+[gd_scene load_steps=9 format=3]
 
 [ext_resource type="Script" path="res://scripts/room_graph/room_fixture.gd" id="1_fixture"]
+
+[sub_resource type="Environment" id="Env_res"]
+background_mode = 1
+background_color = Color(0.06, 0.05, 0.032, 1)
+ambient_light_source = 2
+ambient_light_color = Color(0.82, 0.66, 0.38, 1)
+ambient_light_energy = 0.8
+tonemap_mode = 2
 
 [sub_resource type="StandardMaterial3D" id="Mat_floor"]
 albedo_color = Color(0.23, 0.23, 0.25, 1)
@@ -31,6 +39,16 @@ size = Vector3(3, 2.2, 1.2)
 size = Vector3(2.2, 1.6, 1.7)
 
 [node name="RewardCache" type="Node3D"]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Env_res")
+
+[node name="KeyLight" type="DirectionalLight3D" parent="."]
+rotation_degrees = Vector3(-50, -8, 0)
+light_color = Color(1, 0.86, 0.48, 1)
+light_energy = 1.55
+shadow_enabled = true
+sky_mode = 1
 
 [node name="Geometry" type="Node3D" parent="."]
 

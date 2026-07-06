@@ -7,13 +7,11 @@ const PlayerMotorScript := preload("res://scripts/player/player_motor.gd")
 @export var move_speed: float = 4.0
 @export var acceleration: float = 32.0
 @export var friction: float = 40.0
-@export var turn_speed: float = 14.0
 
 @export_group("Dash")
 @export var dash_speed: float = 14.0
 @export var dash_duration: float = 0.25
 
-@onready var visual_pivot: Node3D = $VisualPivot
 @onready var ability_component: AbilityComponent = $AbilityComponent
 @onready var ability_input_router: AbilityInputRouter = $AbilityInputRouter
 
@@ -32,7 +30,6 @@ func _physics_process(delta: float) -> void:
 	var input_direction: Vector3 = current_input_direction()
 	velocity = motor.step(velocity, input_direction, delta)
 	move_and_slide()
-	_face_direction(motor.facing_direction, delta)
 
 func current_input_direction() -> Vector3:
 	var input_vector := Input.get_vector(
@@ -71,12 +68,3 @@ func _on_dash_started(direction: Vector3, speed: float, duration: float) -> void
 		dash_direction = current_input_direction()
 	motor.begin_dash(dash_direction, speed, duration)
 
-func _face_direction(direction: Vector3, delta: float) -> void:
-	if visual_pivot == null:
-		return
-	var flat_direction: Vector3 = PlayerMotorScript.flatten_direction(direction)
-	if flat_direction == Vector3.ZERO:
-		return
-	var target_yaw := atan2(flat_direction.x, flat_direction.z)
-	var turn_weight := 1.0 - exp(-turn_speed * maxf(delta, 0.0))
-	visual_pivot.rotation.y = lerp_angle(visual_pivot.rotation.y, target_yaw, turn_weight)

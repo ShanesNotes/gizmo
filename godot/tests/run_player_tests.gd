@@ -18,6 +18,9 @@ func _initialize() -> void:
 	await _test_dash_burst_overrides_then_decays()
 	await _test_dash_burst_arguments_do_not_stick_to_defaults()
 	await _test_player_scene_instantiates_with_stable_nodes()
+	await _test_player_collision_shape_contract_is_byte_identical()
+	await _test_player_visual_faces_motor_direction_smoothly()
+	await _test_player_visual_idle_bob_and_movement_lean()
 	_test_player_vitals_guard_recharges_after_damage_delay()
 	_test_player_vitals_damage_lockout_limits_burst_contact()
 	_test_player_vitals_spark_charge_bands_and_clamps()
@@ -140,13 +143,100 @@ func _test_player_scene_instantiates_with_stable_nodes() -> void:
 	_check_eq("scene root node name is stable", player.name, "GizmoPlayer")
 	_check("CollisionShape3D node exists", player.get_node_or_null("CollisionShape3D") is CollisionShape3D)
 	_check("VisualPivot node exists", player.get_node_or_null("VisualPivot") is Node3D)
-	_check("placeholder Capsule mesh exists", player.get_node_or_null("VisualPivot/Capsule") is MeshInstance3D)
-	_check("gizmo.glb Model node is not wired yet", player.get_node_or_null("VisualPivot/Model") == null)
+	_check("placeholder Capsule mesh has been removed from player visual", player.get_node_or_null("VisualPivot/Capsule") == null)
+	_check("gizmo.glb Model node is wired under VisualPivot", player.get_node_or_null("VisualPivot/Model") is Node3D)
+	var visual := player.get_node_or_null("VisualPivot") as Node3D
+	_check("VisualPivot owns the procedural visual script", visual != null and visual.has_method("update_visual"))
+	_check("VisualPivot can report its motor-facing forward direction", visual != null and visual.has_method("visual_forward_direction"))
+	var model := player.get_node_or_null("VisualPivot/Model") as Node3D
+	if model != null:
+		_check_vec3_almost("gizmo.glb is scaled to the old 1.75m placeholder height", model.scale, Vector3(0.875, 0.875, 0.875))
+		_check_almost("gizmo.glb authored +Z is flipped to the motor -Z forward convention", absf(model.rotation.y), PI, 0.001)
+		_check("gizmo.glb skeleton imports under the Model node", model.get_node_or_null("UniRigArmature/Skeleton3D") is Skeleton3D)
 	_check("AbilityComponent node exists", player.get_node_or_null("AbilityComponent") is AbilityComponent)
 	_check("AbilityInputRouter node exists", player.get_node_or_null("AbilityInputRouter") is AbilityInputRouter)
 	_check("router is bound to the scene AbilityComponent", player.ability_input_router.ability_component == player.ability_component)
 	_check_almost("scene dash duration is Hades-spec ~0.25s", player.motor.dash_duration, 0.25)
+	_check_almost("legacy root visual turn is disabled so GizmoVisual owns facing", player.turn_speed, 0.0)
 	_check("scene root is tagged for player-only trigger filters", player.is_in_group(&"player"))
+
+	await _cleanup(player)
+
+func _test_player_collision_shape_contract_is_byte_identical() -> void:
+	var scene_text := FileAccess.get_file_as_string("res://scenes/gizmo_player.tscn")
+	_check(
+		"collision CapsuleShape3D text block is byte-identical",
+		scene_text.contains("[sub_resource type=\"CapsuleShape3D\" id=\"CapsuleShape3D_player\"]\nradius = 0.38\nheight = 1.1\n")
+	)
+	_check(
+		"CollisionShape3D node text block is byte-identical",
+		scene_text.contains("[node name=\"CollisionShape3D\" type=\"CollisionShape3D\" parent=\".\"]\ntransform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.875, 0)\nshape = SubResource(\"CapsuleShape3D_player\")\n")
+	)
+
+	var player = await _new_player()
+	var collision_shape := player.get_node_or_null("CollisionShape3D") as CollisionShape3D
+	_check("collision node is still live after visual swap", collision_shape != null)
+	if collision_shape != null:
+		_check_vec3_almost("collision node position remains unchanged", collision_shape.position, Vector3(0.0, 0.875, 0.0))
+		var capsule_shape := collision_shape.shape as CapsuleShape3D
+		_check("collision shape remains a CapsuleShape3D", capsule_shape != null)
+		if capsule_shape != null:
+			_check_almost("collision capsule radius remains unchanged", capsule_shape.radius, 0.38)
+			_check_almost("collision capsule height remains unchanged", capsule_shape.height, 1.1)
+	await _cleanup(player)
+
+func _test_player_visual_faces_motor_direction_smoothly() -> void:
+	var player = await _new_player()
+	var visual := player.get_node_or_null("VisualPivot") as Node3D
+	_check("visual script is present for facing test", visual != null and visual.has_method("update_visual"))
+	if visual == null or not visual.has_method("update_visual"):
+		await _cleanup(player)
+		return
+
+	visual.set("turn_speed", 10.0)
+	player.motor.facing_direction = Vector3(0.0, 0.0, -1.0)
+	visual.call("update_visual", 1.0)
+	var initial_forward := Vector3(visual.call("visual_forward_direction"))
+	_check_vec3_almost("visual starts on the motor default -Z facing", initial_forward, Vector3(0.0, 0.0, -1.0), 0.01)
+
+	player.motor.facing_direction = Vector3.RIGHT
+	visual.call("update_visual", 0.016)
+	var first_turn_forward := Vector3(visual.call("visual_forward_direction"))
+	_check("visual begins turning toward motor facing direction", first_turn_forward.x > 0.05)
+	_check("visual turn is smoothed rather than snapped", first_turn_forward.dot(Vector3.RIGHT) < 0.98)
+
+	visual.call("update_visual", 0.5)
+	var settled_forward := Vector3(visual.call("visual_forward_direction"))
+	_check("visual settles facing the motor direction", settled_forward.dot(Vector3.RIGHT) > 0.98)
+
+	await _cleanup(player)
+
+func _test_player_visual_idle_bob_and_movement_lean() -> void:
+	var player = await _new_player()
+	var visual := player.get_node_or_null("VisualPivot") as Node3D
+	var model := player.get_node_or_null("VisualPivot/Model") as Node3D
+	_check("visual script is present for bob test", visual != null and visual.has_method("update_visual"))
+	_check("model node is present for bob test", model != null)
+	if visual == null or model == null or not visual.has_method("update_visual"):
+		await _cleanup(player)
+		return
+
+	visual.set("idle_bob_amplitude", 0.05)
+	visual.set("idle_bob_frequency_hz", 1.0)
+	visual.set("movement_bob_amplitude", 0.0)
+	visual.set("lean_response", 100.0)
+	_check("visual can reset procedural motion for deterministic bob phase", visual.has_method("reset_procedural_motion"))
+	visual.call("reset_procedural_motion")
+	var base_y := model.position.y
+	visual.call("update_visual", 0.25)
+	_check("idle bob raises the model on a sine crest", model.position.y > base_y + 0.045)
+	visual.call("update_visual", 0.25)
+	_check_almost("idle bob returns near the base height halfway through the cycle", model.position.y, base_y, 0.01)
+
+	player.velocity = Vector3.RIGHT * player.move_speed
+	visual.call("update_visual", 0.1)
+	_check("movement lean tilts the model into horizontal velocity", absf(model.rotation.z) > 0.05)
+	_check("movement lean remains subtle", absf(model.rotation.z) <= 0.35)
 
 	await _cleanup(player)
 
