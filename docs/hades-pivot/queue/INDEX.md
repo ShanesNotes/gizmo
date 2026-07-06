@@ -101,7 +101,7 @@ Rubric: Opus = seam-shaping/cross-system judgment; Sonnet = specified single-fil
 | ID | Title | Model | HP | Status | blockedBy |
 |---|---|---|---|---|---|
 | HZ-001 | `room_graph` headless tests (RoomGraph lookups, generator linear chain, state machine) | Sonnet | HP-1 | done | — |
-| HZ-002 | `RunController` core (owns `RoomGraph`, `current_room_id`, enter/clear lifecycle) | Opus | HP-2 | ready-for-agent | 001 |
+| HZ-002 | `RunController` core (owns `RoomGraph`, `current_room_id`, enter/clear lifecycle) | Opus | HP-2 | done | 001 |
 | HZ-003 | `room_camera.gd` bounds-clamped follow + transition cut (room-graph doc §2, corrected) | Sonnet | HP-3 | blocked:HZ-002 | 002 |
 | HZ-004 | `RoomDirector` per-room (difficulty_tier pressure, room-clear signal) | Opus | HP-4 | blocked:HZ-002 | 002 |
 | HZ-005 | room scene contract validator (CameraAnchor, SpawnMarker, RoomExit) | Sonnet | HP-4 | ready-for-agent | 001 |
