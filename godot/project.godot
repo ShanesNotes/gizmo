@@ -12,7 +12,7 @@ config_version=5
 
 config/name="Gizmo"
 config/description="A 3D rogue-lite: Gizmo the clanker preserves the spark of humanity through escalating enemy pressure."
-run/main_scene="uid://di7plimb8je4i"
+run/main_scene="res://scenes/app.tscn"
 config/features=PackedStringArray("4.7", "Forward Plus")
 config/icon="res://icon.svg"
 

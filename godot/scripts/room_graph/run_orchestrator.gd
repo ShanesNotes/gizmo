@@ -9,6 +9,9 @@ signal player_died()
 const RoomDoorScript := preload("res://scripts/room_graph/room_door.gd")
 const PlayerVitalsScript := preload("res://scripts/player/player_vitals.gd")
 
+const SCRAP_REWARD_VALUE := 10
+const SPARKS_REWARD_VALUE := 5
+
 @export var auto_start: bool = true
 @export var biome_id: String = "hearth"
 @export_range(2, 16) var room_count: int = 8
@@ -38,11 +41,19 @@ var current_room_root: Node3D = null
 var current_director: RoomDirector = null
 var bound_doors: Dictionary = {}
 var spawned_enemies: Dictionary = {}
+var rooms_cleared: int = 0
+var boons_taken: int = 0
+var elapsed_seconds: float = 0.0
+var scrap_earned: int = 0
+var sparks_earned: int = 0
+var active_run_bonuses: Dictionary = {}
 
 var _rng: RandomNumberGenerator = null
 var _run_active := false
 var _transitioning := false
 var _death_teardown_complete := false
+var _cleared_room_ids: Dictionary = {}
+var _rewarded_exit_keys: Dictionary = {}
 
 func _ready() -> void:
 	_ensure_wiring()
@@ -52,6 +63,14 @@ func _ready() -> void:
 		var pool: Array[RoomTemplate] = []
 		start_run(biome_id, pool, room_count, seeded)
 
+func _process(delta: float) -> void:
+	if _run_active and not _death_teardown_complete:
+		elapsed_seconds += maxf(delta, 0.0)
+
+func start_new_run(run_bonuses: Dictionary = {}) -> RoomGraph:
+	active_run_bonuses = run_bonuses.duplicate(true)
+	return start_run()
+
 func start_run(
 	p_biome_id: String = "",
 	p_template_pool: Array[RoomTemplate] = [],
@@ -60,6 +79,7 @@ func start_run(
 ) -> RoomGraph:
 	_ensure_wiring()
 	_cleanup_current_room()
+	_reset_run_stats()
 	spawned_enemies.clear()
 	bound_doors.clear()
 	boon_draft.reset_run()
@@ -88,6 +108,17 @@ func start_run(
 	_render_hud_payloads()
 	return graph
 
+func run_summary(victory: bool = false) -> Dictionary:
+	return {
+		"victory": victory,
+		"rooms_cleared": rooms_cleared,
+		"boons_taken": boons_taken,
+		"scrap_banked": scrap_earned,
+		"sparks_banked": sparks_earned,
+		"survived_seconds": elapsed_seconds,
+		"elapsed": elapsed_seconds,
+	}
+
 func load_template_pool() -> Array[RoomTemplate]:
 	var pool: Array[RoomTemplate] = []
 	for path in template_pool_paths:
@@ -113,15 +144,22 @@ func _ensure_wiring() -> void:
 		player_vitals = _ensure_player_vitals(player)
 		if player_vitals != null and not player_vitals.player_died.is_connected(_on_player_vitals_died):
 			player_vitals.player_died.connect(_on_player_vitals_died)
+		if player_vitals != null and not player_vitals.vitals_changed.is_connected(_on_player_vitals_changed):
+			player_vitals.vitals_changed.connect(_on_player_vitals_changed)
 
 	if camera != null:
 		camera.target = player
 
 	if run_controller != null:
+		if not run_controller.room_cleared.is_connected(_on_run_controller_room_cleared):
+			run_controller.room_cleared.connect(_on_run_controller_room_cleared)
 		if not run_controller.doors_opened.is_connected(_on_doors_opened):
 			run_controller.doors_opened.connect(_on_doors_opened)
 		if not run_controller.run_completed.is_connected(_on_run_controller_completed):
 			run_controller.run_completed.connect(_on_run_controller_completed)
+
+	if not boon_draft.boon_accepted.is_connected(_on_boon_accepted):
+		boon_draft.boon_accepted.connect(_on_boon_accepted)
 
 	if flow_bridge != null:
 		flow_bridge.configure(
@@ -319,13 +357,70 @@ func _on_director_room_cleared() -> void:
 		run_controller.notify_room_cleared()
 
 func _on_doors_opened(connections: Array[RoomConnection]) -> void:
+	var ordinal := 0
 	for connection in connections:
-		var door := bound_doors.get(connection.door_name) as RoomDoor
+		var door := _bound_door_for_connection(connection, ordinal, connections.size())
 		if door == null:
 			push_error("RunOrchestrator: room has no bound door named '%s'." % connection.door_name)
+			ordinal += 1
 			continue
 		door.open_for(connection, run_controller.exit_reward_type(connection))
+		ordinal += 1
 	doors_bound.emit(connections)
+
+func _bound_door_for_connection(connection: RoomConnection, ordinal: int, connection_count: int) -> RoomDoor:
+	if connection == null:
+		return null
+
+	var existing := bound_doors.get(connection.door_name) as RoomDoor
+	if existing != null:
+		return existing
+
+	var fallback := bound_doors.get("RoomExit") as RoomDoor
+	if fallback == null:
+		return null
+	if connection_count <= 1:
+		bound_doors[connection.door_name] = fallback
+		return fallback
+
+	return _create_runtime_branch_door(fallback, connection.door_name, ordinal, connection_count)
+
+func _create_runtime_branch_door(
+	fallback: RoomDoor,
+	door_name: String,
+	ordinal: int,
+	connection_count: int
+) -> RoomDoor:
+	var parent := fallback.get_parent()
+	if parent == null:
+		return null
+
+	var door := RoomDoorScript.new() as RoomDoor
+	door.name = door_name
+	door.transform = fallback.transform
+	var center_offset := float(ordinal) - (float(connection_count) - 1.0) * 0.5
+	door.position.x += center_offset * 2.4
+	door.collision_layer = fallback.collision_layer
+	door.collision_mask = fallback.collision_mask
+	door.monitorable = fallback.monitorable
+	door.input_ray_pickable = fallback.input_ray_pickable
+
+	for child in fallback.get_children():
+		if child is CollisionShape3D:
+			var source_shape := child as CollisionShape3D
+			var shape := CollisionShape3D.new()
+			shape.name = source_shape.name
+			shape.transform = source_shape.transform
+			shape.shape = source_shape.shape
+			shape.disabled = source_shape.disabled
+			door.add_child(shape)
+
+	parent.add_child(door)
+	door.seal()
+	if not door.exit_requested.is_connected(_on_door_exit_requested):
+		door.exit_requested.connect(_on_door_exit_requested)
+	bound_doors[door.name] = door
+	return door
 
 func _on_door_exit_requested(connection: RoomConnection) -> void:
 	if not _run_active or _transitioning:
@@ -335,6 +430,7 @@ func _on_door_exit_requested(connection: RoomConnection) -> void:
 func _on_exit_completed(_connection: RoomConnection, accepted: bool) -> void:
 	if not accepted or not _run_active:
 		return
+	_apply_exit_reward(_connection)
 	_transitioning = true
 	_load_current_room()
 	_transitioning = false
@@ -356,6 +452,36 @@ func _on_run_controller_completed() -> void:
 	_clear_spawned_enemies()
 	run_completed.emit()
 
+func _on_run_controller_room_cleared(room: RoomNode) -> void:
+	if room == null or _cleared_room_ids.has(room.room_id):
+		return
+	_cleared_room_ids[room.room_id] = true
+	rooms_cleared += 1
+
+func _on_boon_accepted(_boon: BoonDef) -> void:
+	boons_taken += 1
+	_render_hud_payloads()
+
+func _on_player_vitals_changed(hp: int, max_hp: int, guard: int, max_guard: int) -> void:
+	_render_vitals_payloads(hp, max_hp, guard, max_guard)
+
+func _apply_exit_reward(connection: RoomConnection) -> void:
+	if connection == null or run_controller == null:
+		return
+	var key := _connection_key(connection)
+	if _rewarded_exit_keys.has(key):
+		return
+
+	var reward_type := run_controller.exit_reward_type(connection)
+	match reward_type:
+		RoomNode.RewardType.SCRAP:
+			scrap_earned += SCRAP_REWARD_VALUE
+		RoomNode.RewardType.SPARKS:
+			sparks_earned += SPARKS_REWARD_VALUE
+		_:
+			pass
+	_rewarded_exit_keys[key] = true
+
 func _clear_spawned_enemies() -> void:
 	for enemy in spawned_enemies.values():
 		if enemy is Node and is_instance_valid(enemy):
@@ -374,9 +500,38 @@ func _render_hud_payloads() -> void:
 	if hud == null:
 		return
 	if player_vitals != null:
-		hud.render_guard(player_vitals.guard, player_vitals.max_guard)
+		_render_vitals_payloads(player_vitals.hp, player_vitals.max_hp, player_vitals.guard, player_vitals.max_guard)
 	hud.render_boons(boon_draft.picked_boons)
 	hud.render_abilities(_ability_states())
+
+func _render_vitals_payloads(hp: int, max_hp: int, guard: int, max_guard: int) -> void:
+	if hud == null:
+		return
+	hud.render_guard(guard, max_guard)
+	_render_hp_payload(hp, max_hp)
+
+func _render_hp_payload(hp: int, max_hp: int) -> void:
+	var hp_bar := hud.get_node_or_null("Root/Nameplate/Margin/VBox/HpRow/HpBar") as ProgressBar
+	if hp_bar != null:
+		hp_bar.value = 0.0 if max_hp <= 0 else clampf(float(hp) / float(max_hp), 0.0, 1.0) * 100.0
+
+	var hp_label := hud.get_node_or_null("Root/Nameplate/Margin/VBox/HpRow/HpLabel") as Label
+	if hp_label != null:
+		hp_label.text = "%d / %d" % [maxi(0, hp), maxi(0, max_hp)]
+
+func _reset_run_stats() -> void:
+	rooms_cleared = 0
+	boons_taken = 0
+	elapsed_seconds = 0.0
+	scrap_earned = 0
+	sparks_earned = 0
+	_cleared_room_ids.clear()
+	_rewarded_exit_keys.clear()
+
+func _connection_key(connection: RoomConnection) -> String:
+	if connection == null:
+		return ""
+	return "%s>%s:%s" % [connection.from_room_id, connection.to_room_id, connection.door_name]
 
 func _ability_states() -> Array:
 	var states: Array = []
