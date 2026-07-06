@@ -1,0 +1,14 @@
+[gd_resource type="Resource" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/room_graph/room_template.gd" id="1_template"]
+[ext_resource type="PackedScene" path="res://scenes/rooms/reward_cache.tscn" id="2_scene"]
+
+[resource]
+script = ExtResource("1_template")
+template_id = "reward_cache"
+biome_id = "hearth"
+room_type = 3
+scene = ExtResource("2_scene")
+min_exits = 1
+max_exits = 1
+tags = Array[String](["reward", "cache", "non_combat"])

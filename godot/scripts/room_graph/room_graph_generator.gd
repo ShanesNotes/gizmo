@@ -11,6 +11,8 @@ extends RefCounted
 ## door telegraphs.
 
 const BRANCH_CHANCE: float = 0.55
+const REST_ROOM_CHANCE: float = 0.35
+const REWARD_ROOM_CHANCE: float = 0.25
 const DOOR_SINGLE: String = "RoomExit"
 const DOOR_BRANCH_A: String = "RoomExitA"
 const DOOR_BRANCH_B: String = "RoomExitB"
@@ -35,12 +37,31 @@ static func generate(
 	var shop_index := int(fixture_indices["shop"])
 	var elite_index := int(fixture_indices["elite"])
 	var branch_sources := _pick_branch_sources(room_count, active_rng)
+	var non_combat_indices := _pick_non_combat_replacement_indices(
+		room_count,
+		active_rng,
+		template_pool,
+		shop_index,
+		elite_index,
+		branch_sources
+	)
+	var rest_index := int(non_combat_indices["rest"])
+	var reward_indices: Array[int] = non_combat_indices["reward"]
 
 	for i in range(room_count):
 		var room := RoomNode.new()
 		room.room_id = "room_%02d" % i
-		room.template = _pick_template(template_pool, i, room_count, active_rng, elite_index, shop_index)
-		room.reward_type = _pick_reward_type(i, shop_index, active_rng)
+		room.template = _pick_template(
+			template_pool,
+			i,
+			room_count,
+			active_rng,
+			elite_index,
+			shop_index,
+			rest_index,
+			reward_indices
+		)
+		room.reward_type = _pick_reward_type(i, shop_index, rest_index, reward_indices, active_rng)
 		room.difficulty_tier = float(i) / float(maxi(room_count - 1, 1))
 		room.state = RoomNode.State.LOCKED if i > 0 else RoomNode.State.AVAILABLE
 		graph.rooms.append(room)
@@ -62,6 +83,8 @@ static func _pick_template(
 	rng: RandomNumberGenerator,
 	elite_index: int = -1,
 	shop_index: int = -1,
+	rest_index: int = -1,
+	reward_indices: Array[int] = [],
 ) -> RoomTemplate:
 	if pool.is_empty():
 		push_error("RoomGraphGenerator: template pool is empty")
@@ -78,6 +101,14 @@ static func _pick_template(
 			candidates = _standard_room_candidates(pool)
 	elif index == shop_index:
 		candidates = _templates_matching_types(pool, [RoomTemplate.RoomType.SHOP])
+		if candidates.is_empty():
+			candidates = _standard_room_candidates(pool)
+	elif index == rest_index:
+		candidates = _templates_matching_types(pool, [RoomTemplate.RoomType.REST])
+		if candidates.is_empty():
+			candidates = _standard_room_candidates(pool)
+	elif reward_indices.has(index):
+		candidates = _templates_matching_types(pool, [RoomTemplate.RoomType.REWARD])
 		if candidates.is_empty():
 			candidates = _standard_room_candidates(pool)
 	else:
@@ -101,6 +132,70 @@ static func _pick_fixture_indices(room_count: int, rng: RandomNumberGenerator) -
 		elite_candidates.erase(shop_index)
 		elite_index = elite_candidates[rng.randi_range(0, elite_candidates.size() - 1)]
 	return {"shop": shop_index, "elite": elite_index}
+
+static func _pick_non_combat_replacement_indices(
+	room_count: int,
+	rng: RandomNumberGenerator,
+	pool: Array[RoomTemplate],
+	shop_index: int,
+	elite_index: int,
+	branch_sources: Dictionary,
+) -> Dictionary:
+	var rest_index := -1
+	if _has_template_type(pool, RoomTemplate.RoomType.REST):
+		var rest_candidates := _eligible_non_combat_indices(room_count, shop_index, elite_index, branch_sources, true)
+		if not rest_candidates.is_empty() and rng.randf() < REST_ROOM_CHANCE:
+			rest_index = rest_candidates[rng.randi_range(0, rest_candidates.size() - 1)]
+
+	var reward_indices: Array[int] = []
+	if _has_template_type(pool, RoomTemplate.RoomType.REWARD):
+		var reward_candidates := _eligible_non_combat_indices(room_count, shop_index, elite_index, branch_sources, false)
+		if rest_index >= 0:
+			reward_candidates.erase(rest_index)
+		if not reward_candidates.is_empty() and rng.randf() < REWARD_ROOM_CHANCE:
+			reward_indices.append(reward_candidates[rng.randi_range(0, reward_candidates.size() - 1)])
+
+	return {
+		"rest": rest_index,
+		"reward": reward_indices,
+	}
+
+static func _eligible_non_combat_indices(
+	room_count: int,
+	shop_index: int,
+	elite_index: int,
+	branch_sources: Dictionary,
+	back_half_only: bool,
+) -> Array[int]:
+	var result: Array[int] = []
+	var first_allowed := 1
+	var last_allowed := room_count - 3
+	if last_allowed < first_allowed:
+		return result
+
+	var first_back_half := int(ceil(float(room_count) * 0.5))
+	for i in range(first_allowed, last_allowed + 1):
+		if back_half_only and i < first_back_half:
+			continue
+		if i == shop_index or i == elite_index:
+			continue
+		# Non-combat room eligibility is based on the graph edges this generator
+		# will build, including branch skips, not only neighboring room indices.
+		if _is_shop_graph_adjacent_candidate(i, shop_index, branch_sources):
+			continue
+		result.append(i)
+	return result
+
+static func _is_shop_graph_adjacent_candidate(index: int, shop_index: int, branch_sources: Dictionary) -> bool:
+	if shop_index < 0:
+		return false
+	if absi(index - shop_index) <= 1:
+		return true
+	if branch_sources.has(shop_index - 2) and index == shop_index - 2:
+		return true
+	if branch_sources.has(shop_index) and index == shop_index + 2:
+		return true
+	return false
 
 static func _mid_biome_indices(room_count: int) -> Array[int]:
 	var result: Array[int] = []
@@ -144,7 +239,17 @@ static func _add_connection(graph: RoomGraph, from_index: int, to_index: int, do
 	connection.door_name = door_name
 	graph.connections.append(connection)
 
-static func _pick_reward_type(index: int, shop_index: int, rng: RandomNumberGenerator) -> RoomNode.RewardType:
+static func _pick_reward_type(
+	index: int,
+	shop_index: int,
+	rest_index: int,
+	reward_indices: Array[int],
+	rng: RandomNumberGenerator,
+) -> RoomNode.RewardType:
+	if index == rest_index:
+		return RoomNode.RewardType.REST
+	if reward_indices.has(index):
+		return RoomNode.RewardType.REWARD
 	if index == shop_index:
 		return RoomNode.RewardType.SHOP
 
@@ -174,6 +279,12 @@ static func _templates_matching_types(pool: Array[RoomTemplate], room_types: Arr
 			candidates.append(template)
 	return candidates
 
+static func _has_template_type(pool: Array[RoomTemplate], room_type: RoomTemplate.RoomType) -> bool:
+	for template in pool:
+		if template != null and template.room_type == room_type:
+			return true
+	return false
+
 static func _standard_room_candidates(pool: Array[RoomTemplate]) -> Array[RoomTemplate]:
 	var candidates: Array[RoomTemplate] = []
 	for template in pool:
@@ -184,6 +295,10 @@ static func _standard_room_candidates(pool: Array[RoomTemplate]) -> Array[RoomTe
 		if template.room_type == RoomTemplate.RoomType.ELITE:
 			continue
 		if template.room_type == RoomTemplate.RoomType.SHOP:
+			continue
+		if template.room_type == RoomTemplate.RoomType.REST:
+			continue
+		if template.room_type == RoomTemplate.RoomType.REWARD:
 			continue
 		candidates.append(template)
 	return candidates

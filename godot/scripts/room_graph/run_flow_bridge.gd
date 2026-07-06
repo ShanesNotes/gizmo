@@ -54,7 +54,7 @@ func request_exit(connection: RoomConnection) -> bool:
 		return false
 
 	var reward_type := run_controller.exit_reward_type(connection)
-	if reward_type != RoomNode.RewardType.BOON:
+	if not _reward_opens_boon_draft(reward_type):
 		reward_granted.emit(reward_type, connection)
 		var non_boon_accepted := run_controller.choose_exit(connection)
 		exit_completed.emit(connection, non_boon_accepted)
@@ -156,6 +156,9 @@ func _can_choose_exit_now(connection: RoomConnection) -> bool:
 
 	var destination := run_controller.graph.get_room(connection.to_room_id)
 	return destination != null and destination.state == RoomNode.State.AVAILABLE
+
+func _reward_opens_boon_draft(reward_type: RoomNode.RewardType) -> bool:
+	return reward_type == RoomNode.RewardType.BOON
 
 func _active_rng() -> RandomNumberGenerator:
 	if rng != null:

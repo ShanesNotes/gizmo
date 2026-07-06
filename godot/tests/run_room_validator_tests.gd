@@ -5,6 +5,12 @@ extends SceneTree
 #   godot --headless --user-data-dir /tmp/grok-godot-userdata --path godot --script res://tests/run_room_validator_tests.gd
 
 const RoomSceneValidator := preload("res://scripts/room_graph/room_scene_validator.gd")
+const RoomTemplate := preload("res://scripts/room_graph/room_template.gd")
+
+const NON_COMBAT_TEMPLATE_PATHS := [
+	"res://resources/room_templates/rest_alcove.tres",
+	"res://resources/room_templates/reward_cache.tres",
+]
 
 var _passed := 0
 var _failed := 0
@@ -22,6 +28,7 @@ func _initialize() -> void:
 	_test_wrong_type_exit_door_reports_one_violation()
 	_test_room_exit_a_without_b_reports_one_violation()
 	_test_multiple_violations_each_produce_one_message()
+	_test_authored_rest_reward_templates_validate_cleanly()
 	print("")
 	if _failed == 0 and _passed > 0:
 		print("PASS — %d checks" % _passed)
@@ -168,3 +175,18 @@ func _test_multiple_violations_each_produce_one_message() -> void:
 			"Room scene is missing an Area3D exit door named 'RoomExit', 'RoomExitA', or 'RoomExitB'.",
 		],
 	)
+
+func _test_authored_rest_reward_templates_validate_cleanly() -> void:
+	for template_path in NON_COMBAT_TEMPLATE_PATHS:
+		var resource := load(template_path)
+		_check("%s loads" % template_path, resource != null)
+		if resource == null:
+			continue
+		_check("%s is RoomTemplate" % template_path, resource is RoomTemplate)
+		if not resource is RoomTemplate:
+			continue
+		var template := resource as RoomTemplate
+		_check("%s has a scene" % template_path, template.scene != null)
+		if template.scene == null:
+			continue
+		_assert_violations("%s authored scene" % template.template_id, template.scene, [])

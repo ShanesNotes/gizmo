@@ -14,6 +14,7 @@ func _initialize() -> void:
 	print("Running end-screen tests...")
 	await _test_run_summary_renders_victory_payload()
 	await _test_run_summary_renders_loss_payload()
+	await _test_end_screen_declares_blocking_overlay_group()
 	await _test_retired_copy_tokens_are_absent()
 	print("")
 	if _failed == 0 and _passed > 0:
@@ -82,6 +83,11 @@ func _test_run_summary_renders_loss_payload() -> void:
 	_check_eq("loss result stat", _label_text(screen, "Root/Center/Panel/Margin/VBox/Stats/ResultValue"), "LOST")
 	_check_eq("zero survived stat", _label_text(screen, "Root/Center/Panel/Margin/VBox/Stats/SurvivedValue"), "0:00")
 
+	await _cleanup(screen)
+
+func _test_end_screen_declares_blocking_overlay_group() -> void:
+	var screen := await _new_screen()
+	_check("EndScreen participates in global blocking overlay group", screen.is_in_group(&"blocking_overlay"))
 	await _cleanup(screen)
 
 func _test_retired_copy_tokens_are_absent() -> void:

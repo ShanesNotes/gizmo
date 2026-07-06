@@ -6,7 +6,7 @@ extends Resource
 ## (ADR 0010 replaces the whole-island `pressure_clock` with per-room state).
 
 enum State { LOCKED, AVAILABLE, ENTERED, CLEARED, REWARDED }
-enum RewardType { BOON, SCRAP, SPARKS, HAMMER, HEAL, SHOP }
+enum RewardType { BOON, SCRAP, SPARKS, HAMMER, HEAL, SHOP, REST, REWARD }
 
 ## Unique within one run's graph (e.g. "room_03"), not shared across runs.
 @export var room_id: String = ""

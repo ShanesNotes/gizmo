@@ -130,9 +130,9 @@ Rubric: Opus = seam-shaping/cross-system judgment; Sonnet = specified single-fil
 | HZ-061 | full-run integration gate | Opus | HP-15 | done | 032,042,051,052,060 |
 | HZ-062 | end-screen hub-return copy + stats | Haiku | HP-13 | done | 042 |
 | HZ-070 | combat feel & survivability pass (spawn distance, telegraph, TTK) | Codex | feel | done | 061 |
-| HZ-102 | REST/REWARD room types (generation side) | Codex | rooms | in-progress | 061 |
+| HZ-102 | REST/REWARD room types (generation side) | Codex | rooms | done | 061 |
 | HZ-104 | AudioDirector runtime seam (room-state music) | Codex | audio | done | 061 |
-| HZ-106 | pause menu + export pipeline | Codex | ship | in-progress | 061 |
+| HZ-106 | pause menu + export pipeline | Codex | ship | done | 061 |
 
 ## Salvage notes (old queue → this queue)
 - **Do not reopen GZ-001…GZ-041** as frontier tickets. Reuse only documented numbers/formulas.
