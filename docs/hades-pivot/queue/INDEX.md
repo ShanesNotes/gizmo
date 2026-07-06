@@ -116,19 +116,19 @@ Rubric: Opus = seam-shaping/cross-system judgment; Sonnet = specified single-fil
 | HZ-022 | `boon_draft.tscn` UI (3-card choice; signal contract) | Sonnet | HP-9 | done | 021 |
 | HZ-023 | RunController boon-draft bridge (pause run, overlay, resume) | Sonnet | HP-9 | done | 002,021,022 |
 | HZ-030 | door unlock on room clear (`RoomConnection.door_name`) | Sonnet | HP-10 | done | 002,004 |
-| HZ-031 | reward telegraph (door shows destination's generation-time `reward_type`) | Haiku | HP-11 | ready-for-agent | 030 |
-| HZ-032 | room transition orchestration (mark REWARDED, free/load, boon gate) | Opus | HP-2,10 | ready-for-agent | 003,023,030 |
+| HZ-031 | reward telegraph (door shows destination's generation-time `reward_type`) | Haiku | HP-11 | done | 030 |
+| HZ-032 | room transition orchestration (mark REWARDED, free/load, boon gate) | Opus | HP-2,10 | done | 003,023,030 |
 | HZ-040 | `meta_state.gd` save/load (Sparks/Scrap meta, schema_version) | Sonnet | HP-12 | done | — |
 | HZ-041 | hub scene (death return; codex/Brass Sphere frame) | Opus | HP-13 | done | 040 |
-| HZ-042 | death → hub → new run flow | Sonnet | HP-13 | ready-for-agent | 002,040,041 |
+| HZ-042 | death → hub → new run flow | Sonnet | HP-13 | done | 002,040,041 |
 | HZ-043 | meta bonuses injected at run start | Sonnet | HP-8 | done | 021,040 |
 | HZ-050 | HUD retire Path A chrome (beacon, level, XP bar) | Sonnet | HP-14 | done | — |
 | HZ-051 | HUD ability bar (dash/attack/special/cast) | Sonnet | HP-14 | done | 015 |
 | HZ-052 | HUD boon loadout display | Sonnet | HP-14 | done | 021 |
 | HZ-053 | HUD guard-over-HP carry-forward | Sonnet | HP-14 | done | — |
 | HZ-060 | greybox `RoomTemplate` pool (combat + boss scenes) | Sonnet | HP-15 | done | 005 |
-| HZ-061 | full-run integration gate | Opus | HP-15 | blocked:HZ-032,042,051,052,060 | 032,042,051,052,060 |
-| HZ-062 | end-screen hub-return copy + stats | Haiku | HP-13 | blocked:HZ-042 | 042 |
+| HZ-061 | full-run integration gate | Opus | HP-15 | ready-for-agent | 032,042,051,052,060 |
+| HZ-062 | end-screen hub-return copy + stats | Haiku | HP-13 | done | 042 |
 
 ## Salvage notes (old queue → this queue)
 - **Do not reopen GZ-001…GZ-041** as frontier tickets. Reuse only documented numbers/formulas.
