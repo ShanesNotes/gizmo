@@ -179,9 +179,9 @@ Rubric: Opus = seam-shaping/cross-system judgment; Sonnet = specified single-fil
 | HZ-076 | gizmo.glb player visual (capsule replaced, procedural motion) | Codex | look | done | — |
 | HZ-077 | room mood lighting per type (gouache-lit greybox) | Codex | look | done | — |
 - HZ-074/076/077 audit rulings (2026-07-06 evening): through-wall cast ACCEPTED v1 (open arenas; revisit at boss geometry); room-exit shard auto-reclaim KEPT (Hades bloodstone parity); HZ-077 received proportional audit (zero logic — live visual verification + green validator suites instead of finder pair); run_all_checks.sh rewritten to auto-discover all scripts/suites after audit found the gate orphaned at 5 suites; dead _face_direction rotation writer deleted from gizmo_player.gd (was neutralized only by scene data).
-| HZ-080 | hub identity: gizmo.glb placeholder swap + anchor labels + void blocker | Codex | look | ready-for-agent | — |
+| HZ-080 | hub identity: gizmo.glb placeholder swap + anchor labels + void blocker | Codex | look | done | — |
 | HZ-081 | first-room pacing: tier-0 wave-count floor + inter-wave beat | Codex | feel | ready-for-agent | 071 |
 | HZ-082 | stale-import brick: hub error surface + doorway blocker + sync docs | Codex | ship | ready-for-agent | — |
 | HZ-083 | combat-room baseline lighting warmth | Codex | look | ready-for-agent | 077 |
-| HZ-084 | combat feedback kit (hit flash, death pop, surge ring, stagger read) | FABLE | feel | ready | — |
+| HZ-084 | combat feedback kit (hit flash, death pop, surge ring, stagger read) | FABLE | feel | done | — |
 - Director's playthrough (2026-07-06 evening, Shane-directed): survived 3:31 with the full kit live, zero errors; demo backlog at queue/DEMO-POLISH-BACKLOG.md. Headline gap: combat feedback (HZ-084, Fable-owned). Process: merged-checkout sync ritual now includes --import (stale class-name cache bricked the run door and revealed the void-walk).

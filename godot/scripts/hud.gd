@@ -36,10 +36,13 @@ func render(sim: Simulation) -> void:
 
 ## Payload-driven guard pips (ADR 0007). Controller passes guard values when the
 ## player entity exists; the Simulation has no guard fields in this rescope.
+var _last_guard_filled := 0
+
 func render_guard(guard: int, guard_max: int) -> void:
 	var max_pips := clampi(guard_max, 0, GUARD_PIP_MAX)
 	if max_pips <= 0:
 		_guard_pips.visible = false
+		_last_guard_filled = 0
 		return
 
 	_ensure_guard_pip_count(max_pips)
@@ -52,6 +55,23 @@ func render_guard(guard: int, guard_max: int) -> void:
 		if pip.visible:
 			var alpha := 1.0 if i < filled else GUARD_PIP_EMPTY_ALPHA
 			pip.color = Color(GUARD_PIP_BRASS.r, GUARD_PIP_BRASS.g, GUARD_PIP_BRASS.b, alpha)
+	# Guard-hit read (HZ-084): flash the pips just lost, red, ~0.2s.
+	if filled < _last_guard_filled:
+		for i in range(filled, mini(_last_guard_filled, pips.size())):
+			var lost_pip := pips[i] as ColorRect
+			if lost_pip == null or not lost_pip.visible:
+				continue
+			# 0.92 alpha: visually a hard red flash, but below the full-alpha
+			# threshold the HUD contract uses to mean "filled" (pinned in tests).
+			lost_pip.color = Color(0.95, 0.25, 0.2, 0.92)
+			var tween := lost_pip.create_tween()
+			tween.tween_property(
+				lost_pip,
+				"color",
+				Color(GUARD_PIP_BRASS.r, GUARD_PIP_BRASS.g, GUARD_PIP_BRASS.b, GUARD_PIP_EMPTY_ALPHA),
+				0.2
+			)
+	_last_guard_filled = filled
 
 func render_spark(charge: float, charge_max: float) -> void:
 	var safe_max := maxf(charge_max, 0.0)
