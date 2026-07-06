@@ -41,6 +41,9 @@ static func follow_step(
 	return current_position.lerp(desired_position, weight)
 
 func _ready() -> void:
+	# Inert while the follow runs in _process (engine interpolation only smooths
+	# _physics_process transforms); kept so a future move to _physics_process
+	# doesn't re-smooth the enter_room hard cut.
 	physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
 
 func enter_room(room_root: Node3D) -> bool:
