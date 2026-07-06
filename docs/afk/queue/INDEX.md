@@ -10,8 +10,9 @@ GZ-171–175 (world frame, ADR 0010), REGION-TEMPLATE + 9 REGION-*.md (all nine 
 # P0 band — fun-loop v1 (DAG)
 
 Generated 2026-07-04 by the Fable orchestrator pass (plan-only). Spec: `SPEC-fun-loop-v1.md`.
-Tracker fallback: GitHub unreachable from this environment; import each `GZ-*.md` via
-`gh issue create -R ShanesNotes/gizmo -F <file> -l <status-label>` later. Branch law: all work off `gizmo-3d`.
+Tracker state: this local queue is authoritative until imported/synced to GitHub issues. Use the
+status-aware import command in `RUNBOOK.md`; do not pass raw `blocked:*` or `deferred:*` status
+strings as GitHub labels. Branch law: all work off `gizmo-3d`.
 
 ## Decision 1 (locked; no anchor edits)
 ADR-0002 hybrid stands: Simulation (deep headless module) owns rules; scenes render; GameController bridges.
@@ -31,9 +32,11 @@ FRONTIER (ready-for-agent, pick up cold):
 - GZ-010 gizmo dash [Sonnet]
 - GZ-014 HUD objective + rekindle indicator [Sonnet]
 - GZ-017 beacon visual states [Sonnet]
-- GZ-018 end-screen copy + stats [Haiku]
 - GZ-030 asset-pipeline P0 q01–q04 [Opus] (run inside gizmo-asset-pipeline/)
 - GZ-031 audio 5-cue handoff [Sonnet] (run inside gizmo-audio-canon/)
+
+COMPLETED:
+- GZ-018 end-screen copy + stats [Haiku] — completed 2026-07-05 value pass.
 
 SIM LANE (strictly serial — all edit simulation.gd):
 GZ-001 → GZ-002 [Sonnet] → GZ-003 [Sonnet] → GZ-004 [Sonnet] → GZ-005 [Opus] → GZ-006 [Opus] → GZ-007 [Sonnet] → GZ-008 [Sonnet] → GZ-009 [Sonnet]
@@ -56,11 +59,11 @@ PARALLEL BRANCHES (blockedBy):
 Acyclicity: verified by inspection — edges only point from lower prerequisites to higher dependents; sim lane is a chain; no back-edges.
 
 ## Model routing summary
-Opus (5): 001, 005, 006, 020, 030. Sonnet (18): 002–004, 007–015 (exc. 016), 017, 019, 021, 031–033, 040, 041. Haiku (3): 016, 018, 022.
+Opus (5): 001, 005, 006, 020, 030. Sonnet (20): 002–004, 007–015, 017, 019, 021, 031–033, 040, 041. Haiku (3): 016, 018, 022.
 Rubric: Opus = seam-shaping/cross-system judgment; Sonnet = specified single-file ports and wiring; Haiku = one-multiplier/mirror/copy work.
 
 ## Live-code audit findings folded into tickets (loop 2)
-- end_screen.gd:45 shows a survived clock — ADR 0005 violation; removal is now an explicit GZ-018 AC.
+- end_screen.gd previously showed a survived clock — ADR 0005 violation; GZ-018 removed it.
 - hud.gd:55 already implements the rekindle text readout — GZ-014 rescoped to proximity gating + fill bar + flourish.
 - game_controller.gd:164 `_apply_game_feel` is a no-op stub — became the GZ-021 seam; sim event channel (:132–139) confirmed live.
 - Coverage gap closed: GZ-003/004 produced events nothing rendered → GZ-021/022 added.

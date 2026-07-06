@@ -11,9 +11,7 @@ extends CanvasLayer
 @onready var _root: Control = %Root
 @onready var _title: Label = %TitleLabel
 @onready var _flavor: Label = %FlavorLabel
-@onready var _survived_value: Label = %SurvivedValue
-@onready var _level_value: Label = %LevelValue
-@onready var _sparks_value: Label = %SparksValue
+@onready var _stats_value: Label = %StatsValue
 @onready var _retry_button: Button = %RetryButton
 
 func _ready() -> void:
@@ -26,25 +24,18 @@ func _ready() -> void:
 ## stays empty, so a mis-call shows nothing rather than a wrong banner).
 static func outcome(phase: String) -> Dictionary:
 	if phase == Simulation.PHASE_COMPLETE:
-		return {"title": "BEACON REKINDLED", "flavor": "The hearth catches; the cold world holds back.", "win": true}
+		return {"title": "Beacon Rekindled", "flavor": "The hearth catches; the cold world holds back.", "win": true}
 	if phase == Simulation.PHASE_GAMEOVER:
-		return {"title": "GIZMO OFFLINE", "flavor": "Gizmo's light failed.", "win": false}
+		return {"title": "Gizmo's light failed", "flavor": "The Beacon waits in the dark.", "win": false}
 	return {"title": "", "flavor": "", "win": false}
 
 
-## Populate the panel from the finished run and reveal it. Reuses Hud.format_clock
-## for the survived time — the same pure formatter the HUD's run clock uses.
+## Populate the panel from the finished run and reveal it.
 func show_outcome(sim: Simulation) -> void:
 	var copy := outcome(sim.phase)
 	_title.text = copy["title"]
 	_flavor.text = copy["flavor"]
-	# Survived = whole seconds lasted: floor the partial second (you died at 2:17.6,
-	# not 2:18). Reads raw `elapsed` (a debug/tuning value post-0020; ADR 0005) — no
-	# run_duration clamp, since the clock no longer bounds the run. Pre-flooring an
-	# integer into Hud.format_clock yields floor semantics — one shared formatter.
-	_survived_value.text = Hud.format_clock(floorf(maxf(0.0, sim.elapsed)))
-	_level_value.text = str(sim.level)
-	_sparks_value.text = str(sim.xp)
+	_stats_value.text = "Level %d · %d kills · %d Sparks" % [sim.level, sim.kills, sim.xp]
 	_root.visible = true
 	_retry_button.grab_focus()
 

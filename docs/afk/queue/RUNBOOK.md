@@ -37,7 +37,28 @@ docs/afk/queue/BLOCKERS.md naming the gap — do not improvise scope.
 - Post-v1: open EPICS.md, decompose the chosen epic's seeds into GZ-1xx files with the same schema.
 
 ## Import to GitHub (when reachable)
-`for f in docs/afk/queue/GZ-*.md; do gh issue create -R ShanesNotes/gizmo -F "$f" \
-  -t "$(head -1 "$f" | sed 's/^# //')" -l "$(grep -oP '(?<=^status: ).*' "$f" | sed 's/ .*//')"; done`
-(ready-for-agent / blocked:* map to the repo's label conventions; blocked issues get the label
-`needs-info` replaced by nothing — blockedBy lives in the body.)
+GitHub is reachable from the current Codex environment. Import only when you are ready to
+make GitHub the active durable tracker; keep `PROGRESS.md` and downstream `status:` lines in
+sync after each landing.
+
+```bash
+for f in docs/afk/queue/GZ-*.md; do
+  title="$(head -1 "$f" | sed 's/^# //')"
+  status="$(grep -m1 -oP '(?<=^status: ).*' "$f" | sed 's/ .*//')"
+  case "$status" in
+    ready-for-agent) label="ready-for-agent" ;;
+    ready-for-human) label="ready-for-human" ;;
+    blocked:*) label="needs-info" ;;
+    deferred:*) label="" ;;
+    done) label="" ;;
+    *) label="needs-triage" ;;
+  esac
+  if [ -n "$label" ]; then
+    gh issue create -R ShanesNotes/gizmo -F "$f" -t "$title" -l "$label"
+  else
+    gh issue create -R ShanesNotes/gizmo -F "$f" -t "$title"
+  fi
+done
+```
+
+`blockedBy` / deferred epic details live in the ticket body; GitHub labels stay coarse.

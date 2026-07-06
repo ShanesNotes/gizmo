@@ -1,7 +1,7 @@
 # SPEC — Playable Fun-Loop v1 (Path A, Hearthwake Basin)
 
 Status: accepted (red-teamed 2026-07-04, Fable orchestrator pass)
-Home: `docs/afk/queue/` (tracker fallback — GitHub unreachable from this environment; import to `ShanesNotes/gizmo` issues later)
+Home: `docs/afk/queue/` (local queue; GitHub is reachable, but this queue has not been imported/synced yet)
 Branch: all work branches off `gizmo-3d`. Tickets: `GZ-*.md` in this folder; DAG in `INDEX.md`.
 
 ## Decision 1 — locked v1 architecture (no anchor edits required)

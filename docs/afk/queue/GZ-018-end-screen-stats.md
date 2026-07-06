@@ -10,7 +10,7 @@ files in scope:
 grounding:
 - ADR 0005 consequences: end-screen copy win = "Beacon Rekindled", lose = "Gizmo's light failed" — exact strings; no elapsed-time stat (that's pressure_clock, director fuel + debug only).
 - Copy tone: warm, ceremonial, sentence case, at most one exclamation per payoff (lore lab generated-writing rules as projected into NARRATIVE-adjacent copy; do not invent new lore terms).
-- Much already exists (end_screen.gd:27–47): outcome() titles present; lose flavor "Gizmo's light failed." correct. **KNOWN VIOLATIONS to fix (ADR 0005): end_screen.gd:45 renders a survived clock (`Hud.format_clock(sim.elapsed)`); end_screen.tscn has `SurvivedCap`/`SurvivedValue` label nodes (:127,:135) and flavor text "Gizmo survived the run." (:113). Remove all three; the stat row becomes kills.** Win title: verify it renders exactly "Beacon Rekindled" (outcome() win branch — align if it differs).
+- Completed by the 2026-07-05 value pass: outcome() titles render "Beacon Rekindled" / "Gizmo's light failed"; the old survived-clock rendering, `SurvivedCap`/`SurvivedValue` nodes, and "Gizmo survived the run." flavor text are gone.
 
 decisions made:
 - Stats block: "Level N · M kills · S sparks" (single line, Spectral numerals via theme NumericLabel). No score (score system is deferred epic E5). No time.
@@ -21,8 +21,9 @@ executable success criteria:
 2. `tools/godot/run_all_checks.sh` exits 0.
 
 acceptance / done: end screens carry Beacon/HP truth and no timer-survival framing; branch off `gizmo-3d`.
-dependencies / order: none — FRONTIER. Parallel-safe with sim and HUD lanes; touches only end-screen files.
+dependencies / order: none — completed. Parallel-safe with sim and HUD lanes; touched only end-screen files.
 model routing: **Haiku** — copy/stat cleanup with explicit tests.
 cross-domain: lore tone only; no lore-canon edits.
-status: ready-for-agent
+status: done
+completed: 2026-07-05 value-pass; focused end-screen suite and `tools/godot/run_all_checks.sh` green.
 format: one issue per file (gh import later).

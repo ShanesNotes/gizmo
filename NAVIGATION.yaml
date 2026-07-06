@@ -19,7 +19,7 @@ authority:
     - godot/ project, scenes, scripts, and its five test suites
     - active mechanics port (game-src-phaser/src/game/simulation.ts -> godot/scripts/simulation.gd)
     - Path A build target (docs/path-a-shattered-meridian-spec.md)
-    - locked decisions (docs/adr/0001-0009)
+    - locked decisions (docs/adr/0001-0010)
     - acceptance of all sibling handoffs (theme, assets, audio, level data, copy)
   defers: {narrative: gizmo-lore, visual: gizmo-design-system, spatial: gizmo-level-design, sonic: gizmo-audio-canon, raw_soundtrack_sources: gizmo-soundtrack, asset_production: gizmo-asset-pipeline}
 read_order:
@@ -28,7 +28,7 @@ read_order:
     - {path: CONTEXT.md, why: orientation keystone - the game, the loop (Path A beacon-rekindle), v1 scope, truth map; wins doc conflicts, cost: M}
     - {path: CLAUDE.md, why: Claude agent-development memory - skills routing, GodotPrompter grounding, Godot rules, commands/gates, teaching contract (explicit /teach only), cost: M}
   tier1_per_task:
-    - {path: docs/adr/, why: locked decisions 0001-0009 (0001 Sparks/HP/Spark-of-Humanity distinct; 0003 director-not-waves; 0005 beacon-rekindle replaces timer; 0006 spatial pressure zones; 0007 guard-over-HP; 0009 Godot 4.7), cost: M, task: any design decision}
+    - {path: docs/adr/, why: locked decisions 0001-0010 (0001 Sparks/HP/Spark-of-Humanity distinct; 0003 director-not-waves; 0005 beacon-rekindle replaces timer; 0006 spatial pressure zones; 0007 guard-over-HP; 0009 Godot 4.7; 0010 hades-clone pivot), cost: M, task: any design decision}
     - {path: docs/path-a-shattered-meridian-spec.md, why: the active v1 build target (traverse a wounded island, rekindle a cold Beacon), cost: M, task: building Path A}
     - {path: godot/scripts/simulation.gd, why: the ported headless simulation (518 lines) - the live rules, cost: M, task: mechanics work}
     - {path: game-src-phaser/src/game/simulation.ts, why: mechanics source of truth (1746 lines) - port/parity anchor, cost: L, task: porting or checking parity}
@@ -53,7 +53,7 @@ modules:
   - {path: godot/, purpose: active Godot 4.7 project - scripts/ (simulation, gizmo, camera_rig, game_controller, hud, end_screen), scenes/ (main, hud, enemy, gizmo, spark, end_screen + hud_theme.tres), tests/ (5 runners), assets/ (fonts + gizmo.glb), cost: M, when: every slice}
   - {path: game-src-phaser/, purpose: Phaser+TS seed - src/game/simulation.ts is the mechanics source of truth, cost: L, when: porting / parity}
   - {path: design-handoff/, purpose: art direction + premise - NARRATIVE.md, ART_DIRECTION.md, gizmo-hud.png, cost: L, when: look or premise questions}
-  - {path: docs/, purpose: adr/ (0001-0009), path-a-shattered-meridian-spec.md, afk/queue current local tracker, reference/region-graph, _archive/ logs, cost: M, when: decisions / spec / ticket pickup}
+  - {path: docs/, purpose: adr/ (0001-0010), path-a-shattered-meridian-spec.md, afk/queue current local tracker, reference/region-graph, _archive/ logs, cost: M, when: decisions / spec / ticket pickup}
   - {path: tools/, purpose: godot/run_all_checks.sh gate; blender/ island+glb tooling; audio/ sfx generation, cost: S, when: verify / asset gen}
   - {path: ../gizmo-audio-canon/, purpose: sonic canon, AudioContract, cue maps, conversion/import handoff law; owns audio meaning and runtime-ready derivative rules, cost: M, when: soundtrack / ambience / SFX work}
   - {path: ../gizmo-soundtrack/, purpose: raw soundtrack source pack (61 MP4 cue files plus composition/map docs); source material only, not Godot-ready runtime audio, cost: L, when: locating soundtrack media}
@@ -61,7 +61,7 @@ modules:
   - {path: lessons/ + learning-records/, purpose: /teach history (lessons 0001-0020, records 0001-0020), cost: M, when: teaching resumes}
   - {path: index.html, purpose: playable web feel reference (root assets/ Vite bundles), cost: S, when: feel check via npx serve .}
 commands:
-  - {name: full-gate, run: "tools/godot/run_all_checks.sh", from: README/AGENTS, note: "import -> --check-only on 6 scripts -> run 5 headless test suites -> smoke main.tscn; GODOT_BIN overrides the binary"}
+  - {name: full-gate, run: "tools/godot/run_all_checks.sh", from: README/AGENTS, note: "import -> --check-only on 6 runtime scripts plus 5 test runners -> run 5 headless test suites -> smoke main.tscn; GODOT_BIN overrides the binary"}
   - {name: godot-version, run: "${GODOT_BIN:-godot} --version", note: "target Godot 4.7 stable, Forward+ renderer (ADR-0009)"}
   - {name: godot-import, run: "${GODOT_BIN:-godot} --headless --path godot --import"}
   - {name: godot-tests, run: "${GODOT_BIN:-godot} --headless --path godot --script res://tests/run_simulation_tests.gd", note: "five suites: run_simulation, run_balance, run_game_controller, run_hud, run_end_screen"}
@@ -108,8 +108,8 @@ do_not_load:
 afk_entry: >-
   Read AGENTS.md, then CONTEXT.md (the loop + v1 scope + truth map), then CLAUDE.md; consult
   gizmo-ecosystem.yaml to route any cross-domain work by specialty. First command:
-  tools/godot/run_all_checks.sh - it imports godot/, syntax-checks the six scripts, runs all five
-  headless suites, and smoke-loads main.tscn; green is the starting line. The active branch is
+  tools/godot/run_all_checks.sh - it imports godot/, syntax-checks runtime scripts plus test
+  runners, runs all five headless suites, and smoke-loads main.tscn; green is the starting line. The active branch is
   gizmo-3d (Path A, Godot 4.7 Forward+); do NOT treat remote main as the implementation line, and
   do not revive 2.5D/sprite scaffolding (AGENTS.md stale-history rule). Default mode is bounded AFK
   agent slices with executable success criteria and tracker/Daily handoff; enter /teach only when the

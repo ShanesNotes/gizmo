@@ -110,7 +110,7 @@ theme_override_font_sizes/font_size = 44
 [node name="FlavorLabel" type="Label" parent="Root/Center/Panel/Margin/VBox"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "Gizmo survived the run."
+text = "The hearth catches; the cold world holds back."
 horizontal_alignment = 1
 theme_override_colors/font_color = Color(0.7569, 0.6667, 0.5686, 1.0)
 theme_override_font_sizes/font_size = 16
@@ -118,58 +118,12 @@ theme_override_font_sizes/font_size = 16
 [node name="Divider" type="HSeparator" parent="Root/Center/Panel/Margin/VBox"]
 layout_mode = 2
 
-[node name="Stats" type="GridContainer" parent="Root/Center/Panel/Margin/VBox"]
-layout_mode = 2
-theme_override_constants/h_separation = 24
-theme_override_constants/v_separation = 10
-columns = 2
-
-[node name="SurvivedCap" type="Label" parent="Root/Center/Panel/Margin/VBox/Stats"]
-layout_mode = 2
-theme_type_variation = &"CapsLabel"
-size_flags_horizontal = 3
-text = "SURVIVED"
-theme_override_colors/font_color = Color(0.7569, 0.6667, 0.5686, 1.0)
-theme_override_font_sizes/font_size = 15
-
-[node name="SurvivedValue" type="Label" parent="Root/Center/Panel/Margin/VBox/Stats"]
+[node name="StatsValue" type="Label" parent="Root/Center/Panel/Margin/VBox"]
 unique_name_in_owner = true
 theme_type_variation = &"NumericLabel"
 layout_mode = 2
-text = "4:00"
-horizontal_alignment = 2
-theme_override_font_sizes/font_size = 20
-
-[node name="LevelCap" type="Label" parent="Root/Center/Panel/Margin/VBox/Stats"]
-layout_mode = 2
-theme_type_variation = &"CapsLabel"
-size_flags_horizontal = 3
-text = "LEVEL"
-theme_override_colors/font_color = Color(0.7569, 0.6667, 0.5686, 1.0)
-theme_override_font_sizes/font_size = 15
-
-[node name="LevelValue" type="Label" parent="Root/Center/Panel/Margin/VBox/Stats"]
-unique_name_in_owner = true
-theme_type_variation = &"NumericLabel"
-layout_mode = 2
-text = "3"
-horizontal_alignment = 2
-theme_override_font_sizes/font_size = 20
-
-[node name="SparksCap" type="Label" parent="Root/Center/Panel/Margin/VBox/Stats"]
-layout_mode = 2
-theme_type_variation = &"CapsLabel"
-size_flags_horizontal = 3
-text = "SPARKS"
-theme_override_colors/font_color = Color(0.7569, 0.6667, 0.5686, 1.0)
-theme_override_font_sizes/font_size = 15
-
-[node name="SparksValue" type="Label" parent="Root/Center/Panel/Margin/VBox/Stats"]
-unique_name_in_owner = true
-theme_type_variation = &"NumericLabel"
-layout_mode = 2
-text = "64"
-horizontal_alignment = 2
+text = "Level 3 · 4 kills · 64 Sparks"
+horizontal_alignment = 1
 theme_override_colors/font_color = Color(0.6706, 0.5608, 0.7765, 1.0)
 theme_override_font_sizes/font_size = 20
 
