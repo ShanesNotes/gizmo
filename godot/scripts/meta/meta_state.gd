@@ -4,13 +4,21 @@ extends Resource
 ## Persistent player meta-progression. This is save data, so it serializes to a
 ## ConfigFile rather than a Resource file loaded from user-controlled storage.
 
-const CURRENT_SCHEMA_VERSION: int = 1
+const CURRENT_SCHEMA_VERSION: int = 2
 const DEFAULT_SAVE_PATH: String = "user://saves/meta_state.cfg"
+const STAT_GRADE_KEYS: Array[String] = ["dash_charges", "guard_max", "draft_rerolls"]
+const STAT_GRADE_CAPS: Dictionary = {
+	"dash_charges": 2,
+	"guard_max": 2,
+	"draft_rerolls": 2,
+}
+const STAT_GRADE_PRICES: Array[int] = [50, 100]
 
 @export var schema_version: int = CURRENT_SCHEMA_VERSION
 @export var scrap_banked: int = 0
 @export var sparks_banked: int = 0
 @export var unlocked_boon_ids: Array[StringName] = []
+@export var stat_grades: Dictionary = {}
 
 func bank_currency(scrap: int, sparks: int = 0) -> void:
 	scrap_banked = maxi(0, scrap_banked + maxi(0, scrap))
@@ -24,6 +32,31 @@ func unlock_boon(boon_id: StringName) -> void:
 func is_boon_unlocked(boon_id: StringName) -> bool:
 	return unlocked_boon_ids.has(boon_id)
 
+func get_stat_grade(stat: String) -> int:
+	_ensure_stat_grades()
+	return int(stat_grades.get(stat, 0))
+
+func purchase_grade(stat: String) -> bool:
+	_ensure_stat_grades()
+	if not STAT_GRADE_CAPS.has(stat):
+		return false
+	var current_rank := int(stat_grades.get(stat, 0))
+	var cap := int(STAT_GRADE_CAPS[stat])
+	if current_rank >= cap:
+		return false
+	if current_rank >= STAT_GRADE_PRICES.size():
+		push_error(
+			"MetaState purchase_grade rank %d exceeds price table size %d for stat %s"
+			% [current_rank, STAT_GRADE_PRICES.size(), stat]
+		)
+		return false
+	var cost := STAT_GRADE_PRICES[current_rank]
+	if scrap_banked < cost:
+		return false
+	scrap_banked -= cost
+	stat_grades[stat] = current_rank + 1
+	return true
+
 func save_to_path(path: String = DEFAULT_SAVE_PATH) -> Error:
 	schema_version = CURRENT_SCHEMA_VERSION
 	var dir_error := _ensure_parent_dir(path)
@@ -36,6 +69,9 @@ func save_to_path(path: String = DEFAULT_SAVE_PATH) -> Error:
 	config.set_value("currency", "scrap_banked", scrap_banked)
 	config.set_value("currency", "sparks_banked", sparks_banked)
 	config.set_value("unlocks", "boon_ids", _string_name_array_to_strings(unlocked_boon_ids))
+	_ensure_stat_grades()
+	for key in STAT_GRADE_KEYS:
+		config.set_value("stat_grades", key, int(stat_grades.get(key, 0)))
 
 	var save_error := config.save(path)
 	if save_error != OK:
@@ -60,6 +96,9 @@ static func load_from_path(path: String = DEFAULT_SAVE_PATH) -> Resource:
 	state.scrap_banked = maxi(0, int(config.get_value("currency", "scrap_banked", 0)))
 	state.sparks_banked = maxi(0, int(config.get_value("currency", "sparks_banked", 0)))
 	state.unlocked_boon_ids = _variant_to_string_name_array(config.get_value("unlocks", "boon_ids", []))
+	state._ensure_stat_grades()
+	for key in STAT_GRADE_KEYS:
+		state.stat_grades[key] = maxi(0, int(config.get_value("stat_grades", key, 0)))
 	return state
 
 static func _ensure_parent_dir(path: String) -> Error:
@@ -97,3 +136,10 @@ static func _append_unique_string_name(values: Array[StringName], value: StringN
 	if value == &"" or values.has(value):
 		return
 	values.append(value)
+
+func _ensure_stat_grades() -> void:
+	for key in STAT_GRADE_KEYS:
+		if not stat_grades.has(key):
+			stat_grades[key] = 0
+		else:
+			stat_grades[key] = maxi(0, int(stat_grades[key]))

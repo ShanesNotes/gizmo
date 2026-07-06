@@ -44,13 +44,12 @@ FRONTIER (ready-for-agent, pick up cold):
 - HZ-015 gizmo ability input wiring [Sonnet] — unblocked (011–014 done)
 - HZ-022 boon_draft UI scene [Sonnet] — unblocked (021 done)
 - HZ-041 hub scene [Opus] — unblocked (040 done)
-- HZ-043 meta bonuses at run start [Sonnet] — unblocked (021, 040 done)
 - HZ-050 HUD retire Path A chrome [Sonnet] — no blockers
 - HZ-053 HUD guard-over-HP carry-forward [Sonnet] — parallel; ADR 0007 unchanged
 
 COMPLETED (2026-07-05 pivot bootstrap + spec-§7 corrections; verified: 160+46+42 headless checks pass):
 - HZ-001 room_graph tests · HZ-010 ability data model · HZ-011–014 dash/attack/special/cast
-- HZ-020 BoonDef model · HZ-021 draft roller + apply · HZ-040 meta_state save/load
+- HZ-020 BoonDef model · HZ-021 draft roller + apply · HZ-040 meta_state save/load · HZ-043 meta bonuses at run start
 - HZ-042 partial: `run_lifecycle.gd` covers the death→bank→hub→new-run *logic*; scene wiring remains with 041
 - Spec-§7 corrections (HADES-PARITY-SPEC.md): cast → ammo-with-reclaim; dash-cancel out of
   attack/special/cast recovery; `RoomNode.reward_type` assigned at generation; branch/rejoin
@@ -110,22 +109,23 @@ Rubric: Opus = seam-shaping/cross-system judgment; Sonnet = specified single-fil
 | HZ-012 | attack ability implementation | Sonnet | HP-6 | done | 010 |
 | HZ-013 | special ability implementation | Sonnet | HP-6 | done | 010 |
 | HZ-014 | cast ability implementation | Sonnet | HP-6 | done | 010 |
-| HZ-015 | gizmo ability input wiring (actions → kit) | Sonnet | HP-6 | ready-for-agent | 011–014 |
+| HZ-015 | gizmo ability input wiring (actions → kit) | Sonnet | HP-6 | done | 011–014 |
+| HZ-016 | Gizmo player entity scene (CharacterBody3D + AbilityComponent + AbilityInputRouter + placeholder mesh) | Opus | HP-6 | ready-for-agent | 015 |
 | HZ-020 | `BoonDef` resource model (authored boon table; run-scoped ranks) | Opus | HP-7 | done | — |
 | HZ-021 | boon draft roller + apply logic (between-room offers) | Opus | HP-8 | done | 020 |
-| HZ-022 | `boon_draft.tscn` UI (3-card choice; signal contract) | Sonnet | HP-9 | ready-for-agent | 021 |
+| HZ-022 | `boon_draft.tscn` UI (3-card choice; signal contract) | Sonnet | HP-9 | done | 021 |
 | HZ-023 | RunController boon-draft bridge (pause run, overlay, resume) | Sonnet | HP-9 | blocked:HZ-002,021,022 | 002,021,022 |
 | HZ-030 | door unlock on room clear (`RoomConnection.door_name`) | Sonnet | HP-10 | blocked:HZ-002,004 | 002,004 |
 | HZ-031 | reward telegraph (door shows destination's generation-time `reward_type`) | Haiku | HP-11 | blocked:HZ-030 | 030 |
 | HZ-032 | room transition orchestration (mark REWARDED, free/load, boon gate) | Opus | HP-2,10 | blocked:HZ-003,023,030 | 003,023,030 |
 | HZ-040 | `meta_state.gd` save/load (Sparks/Scrap meta, schema_version) | Sonnet | HP-12 | done | — |
-| HZ-041 | hub scene (death return; codex/Brass Sphere frame) | Opus | HP-13 | ready-for-agent | 040 |
+| HZ-041 | hub scene (death return; codex/Brass Sphere frame) | Opus | HP-13 | done | 040 |
 | HZ-042 | death → hub → new run flow | Sonnet | HP-13 | blocked:HZ-002,040,041 | 002,040,041 |
-| HZ-043 | meta bonuses injected at run start | Sonnet | HP-8 | ready-for-agent | 021,040 |
+| HZ-043 | meta bonuses injected at run start | Sonnet | HP-8 | done | 021,040 |
 | HZ-050 | HUD retire Path A chrome (beacon, level, XP bar) | Sonnet | HP-14 | done | — |
 | HZ-051 | HUD ability bar (dash/attack/special/cast) | Sonnet | HP-14 | blocked:HZ-015 | 015 |
 | HZ-052 | HUD boon loadout display | Sonnet | HP-14 | ready-for-agent | 021 |
-| HZ-053 | HUD guard-over-HP carry-forward | Sonnet | HP-14 | ready-for-agent | — |
+| HZ-053 | HUD guard-over-HP carry-forward | Sonnet | HP-14 | done | — |
 | HZ-060 | greybox `RoomTemplate` pool (combat + boss scenes) | Sonnet | HP-15 | blocked:HZ-005 | 005 |
 | HZ-061 | full-run integration gate | Opus | HP-15 | blocked:HZ-032,042,051,052,060 | 032,042,051,052,060 |
 | HZ-062 | end-screen hub-return copy + stats | Haiku | HP-13 | blocked:HZ-042 | 042 |
@@ -151,4 +151,7 @@ Rubric: Opus = seam-shaping/cross-system judgment; Sonnet = specified single-fil
 - No ticket revives waves/countdown/beacon-rekindle win; HZ-050/062 carry explicit ABSENCE assertions.
 - `ability-kit.md` landed (with `godot/scripts/abilities/`): HZ-015 and the HUD tickets cite it as authority; Phaser dash constants remain salvage-by-value reference only.
 - Room graph scaffold exists but has **zero tests** — HZ-001 is the cold-start entry, not a re-scaffold.
+- Wave-2 audit (2026-07-05): HZ-015's router is headless-only by design — HZ-016 (added) owns scene
+  integration; HZ-051 and HZ-061 should treat 016 as a prerequisite. Hub door entry is tested via
+  simulated body_entered signals, not real physics overlap — accepted; the HZ-061 live gate covers it.
 - No ready-for-human labels emitted; open calls are decided in design anchors above.

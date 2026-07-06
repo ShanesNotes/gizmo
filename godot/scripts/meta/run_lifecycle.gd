@@ -3,6 +3,7 @@ extends RefCounted
 
 const BoonDraft := preload("res://scripts/boons/boon_draft.gd")
 const MetaState := preload("res://scripts/meta/meta_state.gd")
+const RunBonuses := preload("res://scripts/meta/run_bonuses.gd")
 
 ## Small orchestration seam for death -> bank meta currency -> hub -> new run.
 ## It is intentionally not a scene controller; future hub/run scenes can call
@@ -21,6 +22,7 @@ var phase: Phase = Phase.HUB
 var run_scrap: int = 0
 var run_sparks: int = 0
 var current_room_id: String = ""
+var run_bonuses: Dictionary = {}
 
 func _init(initial_meta_state: MetaState = null, initial_boon_draft: BoonDraft = null) -> void:
 	meta_state = initial_meta_state if initial_meta_state != null else MetaState.new()
@@ -29,6 +31,7 @@ func _init(initial_meta_state: MetaState = null, initial_boon_draft: BoonDraft =
 func start_new_run(entry_room_id: String = "") -> void:
 	_reset_run_scoped_state()
 	current_room_id = entry_room_id
+	run_bonuses = RunBonuses.from_meta(meta_state)
 	phase = Phase.RUNNING
 	run_started.emit()
 
@@ -56,5 +59,6 @@ func _reset_run_scoped_state() -> void:
 	run_scrap = 0
 	run_sparks = 0
 	current_room_id = ""
+	run_bonuses = {}
 	if boon_draft != null:
 		boon_draft.reset_run()

@@ -38,7 +38,7 @@ anchors_preset = 0
 offset_left = 16.0
 offset_top = 16.0
 offset_right = 320.0
-offset_bottom = 96.0
+offset_bottom = 110.0
 mouse_filter = 2
 
 [node name="Margin" type="MarginContainer" parent="Root/Nameplate"]
@@ -57,6 +57,32 @@ layout_mode = 2
 theme_type_variation = &"CapsLabel"
 text = "GIZMO"
 theme_override_font_sizes/font_size = 20
+
+[node name="GuardPips" type="HBoxContainer" parent="Root/Nameplate/Margin/VBox"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="Pip0" type="ColorRect" parent="Root/Nameplate/Margin/VBox/GuardPips"]
+custom_minimum_size = Vector2(14, 14)
+layout_mode = 2
+color = Color(0.7882, 0.5647, 0.4196, 1)
+
+[node name="Pip1" type="ColorRect" parent="Root/Nameplate/Margin/VBox/GuardPips"]
+custom_minimum_size = Vector2(14, 14)
+layout_mode = 2
+color = Color(0.7882, 0.5647, 0.4196, 1)
+
+[node name="Pip2" type="ColorRect" parent="Root/Nameplate/Margin/VBox/GuardPips"]
+custom_minimum_size = Vector2(14, 14)
+layout_mode = 2
+color = Color(0.7882, 0.5647, 0.4196, 1)
+
+[node name="Pip3" type="ColorRect" parent="Root/Nameplate/Margin/VBox/GuardPips"]
+custom_minimum_size = Vector2(14, 14)
+layout_mode = 2
+color = Color(0.7882, 0.5647, 0.4196, 1)
 
 [node name="HpRow" type="HBoxContainer" parent="Root/Nameplate/Margin/VBox"]
 layout_mode = 2
