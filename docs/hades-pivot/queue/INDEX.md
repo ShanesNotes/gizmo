@@ -109,16 +109,16 @@ Rubric: Opus = seam-shaping/cross-system judgment; Sonnet = specified single-fil
 | HZ-012 | attack ability implementation | Sonnet | HP-6 | done | 010 |
 | HZ-013 | special ability implementation | Sonnet | HP-6 | done | 010 |
 | HZ-014 | cast ability implementation | Sonnet | HP-6 | done | 010 |
-| HZ-015 | gizmo ability input wiring (actions → kit) | Sonnet | HP-6 | ready-for-agent | 011–014 |
+| HZ-015 | gizmo ability input wiring (actions → kit) | Sonnet | HP-6 | done | 011–014 |
 | HZ-020 | `BoonDef` resource model (authored boon table; run-scoped ranks) | Opus | HP-7 | done | — |
 | HZ-021 | boon draft roller + apply logic (between-room offers) | Opus | HP-8 | done | 020 |
-| HZ-022 | `boon_draft.tscn` UI (3-card choice; signal contract) | Sonnet | HP-9 | ready-for-agent | 021 |
+| HZ-022 | `boon_draft.tscn` UI (3-card choice; signal contract) | Sonnet | HP-9 | done | 021 |
 | HZ-023 | RunController boon-draft bridge (pause run, overlay, resume) | Sonnet | HP-9 | blocked:HZ-002,021,022 | 002,021,022 |
 | HZ-030 | door unlock on room clear (`RoomConnection.door_name`) | Sonnet | HP-10 | blocked:HZ-002,004 | 002,004 |
 | HZ-031 | reward telegraph (door shows destination's generation-time `reward_type`) | Haiku | HP-11 | blocked:HZ-030 | 030 |
 | HZ-032 | room transition orchestration (mark REWARDED, free/load, boon gate) | Opus | HP-2,10 | blocked:HZ-003,023,030 | 003,023,030 |
 | HZ-040 | `meta_state.gd` save/load (Sparks/Scrap meta, schema_version) | Sonnet | HP-12 | done | — |
-| HZ-041 | hub scene (death return; codex/Brass Sphere frame) | Opus | HP-13 | ready-for-agent | 040 |
+| HZ-041 | hub scene (death return; codex/Brass Sphere frame) | Opus | HP-13 | done | 040 |
 | HZ-042 | death → hub → new run flow | Sonnet | HP-13 | blocked:HZ-002,040,041 | 002,040,041 |
 | HZ-043 | meta bonuses injected at run start | Sonnet | HP-8 | done | 021,040 |
 | HZ-050 | HUD retire Path A chrome (beacon, level, XP bar) | Sonnet | HP-14 | done | — |
