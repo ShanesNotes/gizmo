@@ -21,6 +21,7 @@ func _initialize() -> void:
 	await _test_take_damage_emits_died_once()
 	await _test_scene_instantiates_headless()
 	await _test_scene_chase_emits_damage_event_data_without_player_wiring()
+	await _test_physics_process_is_inert_after_exit()
 	print("")
 	if _failed == 0 and _passed > 0:
 		print("PASS - %d checks" % _passed)
@@ -220,3 +221,24 @@ func _test_scene_chase_emits_damage_event_data_without_player_wiring() -> void:
 		_check_eq("returned event matches emitted event", Dictionary(contact["damage_event"]), events[0])
 
 	await _cleanup(enemy)
+
+func _test_physics_process_is_inert_after_exit() -> void:
+	var enemy = await _new_enemy()
+	var target := Node3D.new()
+	target.name = "EnemyExitTarget"
+	target.position = Vector3(5.0, 0.0, 0.0)
+	root.add_child(target)
+	enemy.set_chase_target(target)
+	enemy.velocity = Vector3(3.0, 0.0, 0.0)
+
+	root.remove_child(enemy)
+	await process_frame
+	enemy._physics_process(0.2)
+
+	_check_eq("enemy is outside tree after teardown", enemy.is_inside_tree(), false)
+	_check_eq("enemy disables physics processing on exit", enemy.is_physics_processing(), false)
+	_check_vec3_almost("post-exit physics guard keeps velocity inert", enemy.velocity, Vector3.ZERO)
+
+	enemy.free()
+	target.queue_free()
+	await process_frame

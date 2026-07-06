@@ -31,6 +31,42 @@ class MissingRunSignalsSurface:
 	func start_run(_run_bonuses: Dictionary) -> void:
 		start_call_count += 1
 
+class PhysicsHandlerProbe:
+	extends Node
+
+	signal callback_ran()
+
+	var app: Node = null
+	var mode: StringName = &"start"
+	var ran := false
+	var phase_after_call := -1
+	var child_count_after_call := -1
+	var content_after_call: Node = null
+
+	func _physics_process(_delta: float) -> void:
+		if ran:
+			return
+		ran = true
+		if mode == &"death":
+			var surface := _active_content()
+			if surface != null and surface.has_signal(&"player_died"):
+				surface.emit_signal(&"player_died")
+		else:
+			app.call(&"_on_hub_run_requested")
+
+		var slot := app.get_node("ContentSlot")
+		child_count_after_call = slot.get_child_count()
+		content_after_call = slot.get_child(0) if child_count_after_call > 0 else null
+		phase_after_call = app.lifecycle.phase
+		set_physics_process(false)
+		callback_ran.emit()
+
+	func _active_content() -> Node:
+		var slot := app.get_node("ContentSlot")
+		if slot.get_child_count() == 0:
+			return null
+		return slot.get_child(0)
+
 var _passed := 0
 var _failed := 0
 var _surface_index := 0
@@ -42,9 +78,11 @@ func _initialize() -> void:
 func _run_tests() -> void:
 	await _test_boots_into_hub_with_loaded_meta_state()
 	await _test_hub_run_request_swaps_to_run_surface_with_bonuses()
+	await _test_physics_frame_run_request_defers_content_swap()
 	await _test_running_phase_ignores_reentrant_run_request()
 	await _test_malformed_run_surface_is_rejected_without_leaving_hub()
 	await _test_player_death_banks_saves_and_returns_to_hub()
+	await _test_physics_frame_death_defers_hub_return_swap()
 	await _test_new_run_dismisses_lingering_summary_overlay()
 	await _test_victory_returns_to_hub_and_persists_outcome_flag()
 	await _test_double_death_same_frame_banks_once()
@@ -178,6 +216,35 @@ func _test_hub_run_request_swaps_to_run_surface_with_bonuses() -> void:
 
 	await _cleanup_app(app, save_path)
 
+func _test_physics_frame_run_request_defers_content_swap() -> void:
+	var save_path := _new_save_path("physics_start_run")
+	_remove_save(save_path)
+	var app := await _new_app(save_path)
+	if app == null:
+		return
+	var hub := _current_hub(app)
+	var probe := PhysicsHandlerProbe.new()
+	probe.app = app
+	probe.mode = &"start"
+	root.add_child(probe)
+
+	await probe.callback_ran
+
+	_check("physics-frame run request probe ran", probe.ran)
+	_check_eq("physics-frame run request leaves lifecycle HUB during callback", probe.phase_after_call, RunLifecycle.Phase.HUB)
+	_check_eq("physics-frame run request keeps one content child during callback", probe.child_count_after_call, 1)
+	_check("physics-frame run request keeps hub content during callback", probe.content_after_call == hub)
+
+	await _flush_free_queue()
+	var surface := _current_surface(app)
+	_check("deferred physics-frame run request swaps after callback", surface is StubRunSurface)
+	_check_eq("deferred physics-frame run request starts lifecycle", app.lifecycle.phase, RunLifecycle.Phase.RUNNING)
+	if surface != null:
+		_check_eq("deferred physics-frame run request starts surface once", surface.start_call_count, 1)
+
+	probe.queue_free()
+	await _cleanup_app(app, save_path)
+
 func _test_running_phase_ignores_reentrant_run_request() -> void:
 	var save_path := _new_save_path("reentrant")
 	_remove_save(save_path)
@@ -249,6 +316,37 @@ func _test_player_death_banks_saves_and_returns_to_hub() -> void:
 		"last_return_was_victory": false,
 	})
 
+	await _cleanup_app(app, save_path)
+
+func _test_physics_frame_death_defers_hub_return_swap() -> void:
+	var save_path := _new_save_path("physics_death")
+	_remove_save(save_path)
+	var app := await _new_app(save_path)
+	if app == null:
+		return
+	_current_hub(app).run_requested.emit()
+	await _flush_free_queue()
+	var surface := _current_surface(app)
+	app.lifecycle.add_run_currency(5, 0)
+	var probe := PhysicsHandlerProbe.new()
+	probe.app = app
+	probe.mode = &"death"
+	root.add_child(probe)
+
+	await probe.callback_ran
+
+	_check("physics-frame death probe ran", probe.ran)
+	_check_eq("physics-frame death leaves lifecycle RUNNING during callback", probe.phase_after_call, RunLifecycle.Phase.RUNNING)
+	_check_eq("physics-frame death keeps one content child during callback", probe.child_count_after_call, 1)
+	_check("physics-frame death keeps run surface during callback", probe.content_after_call == surface)
+
+	await _flush_free_queue()
+	var returned_hub := _current_hub(app)
+	_check("deferred physics-frame death returns to hub after callback", returned_hub != null and returned_hub.get_script() == HubControllerScript)
+	_check_eq("deferred physics-frame death banks currency", app.meta_state.scrap_banked, 5)
+	_check_eq("deferred physics-frame death leaves lifecycle HUB", app.lifecycle.phase, RunLifecycle.Phase.HUB)
+
+	probe.queue_free()
 	await _cleanup_app(app, save_path)
 
 func _test_new_run_dismisses_lingering_summary_overlay() -> void:

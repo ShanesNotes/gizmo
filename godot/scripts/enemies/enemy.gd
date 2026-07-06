@@ -28,12 +28,23 @@ var _configured := false
 var _dead := false
 var _current_stats: Dictionary = {}
 
+func _enter_tree() -> void:
+	set_physics_process(true)
+
+func _exit_tree() -> void:
+	velocity = Vector3.ZERO
+	set_physics_process(false)
+
 func _ready() -> void:
 	if not _configured:
 		configure(archetype, spawn_id)
 	_apply_visuals()
 
 func _physics_process(delta: float) -> void:
+	if not is_inside_tree():
+		velocity = Vector3.ZERO
+		set_physics_process(false)
+		return
 	if _dead:
 		velocity = Vector3.ZERO
 		move_and_slide()

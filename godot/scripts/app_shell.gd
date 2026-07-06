@@ -62,6 +62,8 @@ func _show_hub() -> void:
 	_swap_content(hub)
 
 func _on_hub_run_requested() -> void:
+	if _defer_from_physics_frame(&"_on_hub_run_requested"):
+		return
 	if lifecycle == null:
 		push_error("AppShell cannot start a run without RunLifecycle.")
 		return
@@ -130,9 +132,13 @@ func _connect_run_surface(run_surface: Node) -> bool:
 	return true
 
 func _on_run_surface_player_died(_payload: Variant = null) -> void:
+	if _defer_from_physics_frame(&"_on_run_surface_player_died", [_payload]):
+		return
 	_return_to_hub(false)
 
 func _on_run_surface_run_completed(_payload: Variant = null) -> void:
+	if _defer_from_physics_frame(&"_on_run_surface_run_completed", [_payload]):
+		return
 	_return_to_hub(true)
 
 func _return_to_hub(victory: bool) -> void:
@@ -249,6 +255,18 @@ func _swap_content(next_content: Node) -> void:
 		content_slot.remove_child(child)
 		child.queue_free()
 	content_slot.add_child(next_content)
+
+func _defer_from_physics_frame(method_name: StringName, args: Array = []) -> bool:
+	if not Engine.is_in_physics_frame():
+		return false
+	call_deferred(&"_call_after_process_frame", method_name, args)
+	return true
+
+func _call_after_process_frame(method_name: StringName, args: Array) -> void:
+	await get_tree().process_frame
+	if not is_inside_tree():
+		return
+	callv(method_name, args)
 
 func _ensure_content_slot() -> void:
 	if content_slot != null:
