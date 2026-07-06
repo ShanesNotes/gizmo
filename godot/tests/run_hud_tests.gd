@@ -146,6 +146,11 @@ func _test_guard_pips() -> void:
 	counts = _guard_pip_counts(hud)
 	_check_eq("guard > guard_max clamps fill to guard_max", counts["filled"], 2)
 
+	hud.render_guard(7, 10)
+	counts = _guard_pip_counts(hud)
+	_check_eq("render_guard(7,10) shows tuned guard pool", counts["visible"], 10)
+	_check_eq("render_guard(7,10) fills current guard", counts["filled"], 7)
+
 	hud.render_guard(-3, 4)
 	counts = _guard_pip_counts(hud)
 	_check_eq("negative guard clamps to zero filled", counts["filled"], 0)
@@ -156,7 +161,7 @@ func _test_guard_pips() -> void:
 
 	hud.render_guard(3, 99)
 	counts = _guard_pip_counts(hud)
-	_check_eq("guard_max > cap shows at most 4 pips", counts["visible"], 4)
+	_check_eq("guard_max > cap shows at most HUD cap pips", counts["visible"], Hud.GUARD_PIP_MAX)
 	_check_eq("guard_max > cap clamps fill", counts["filled"], 3)
 
 	await _cleanup_hud(hud)

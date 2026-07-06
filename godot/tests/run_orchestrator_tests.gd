@@ -9,6 +9,11 @@ const RoomNode := preload("res://scripts/room_graph/room_node.gd")
 const RoomTemplate := preload("res://scripts/room_graph/room_template.gd")
 const RoomConnection := preload("res://scripts/room_graph/room_connection.gd")
 const RoomDoorScript := preload("res://scripts/room_graph/room_door.gd")
+const AttackAbilityScript := preload("res://scripts/abilities/attack_ability.gd")
+
+const SURVIVAL_DT := 0.05
+const SURVIVAL_RETREAT_SPEED := 4.0
+const SURVIVAL_PLAYER_DPS_SCALE := 1.0
 
 var _passed := 0
 var _failed := 0
@@ -20,9 +25,14 @@ func _initialize() -> void:
 func _run_tests() -> void:
 	await _test_run_scene_auto_starts_with_default_pool()
 	await _test_run_scene_instantiates_and_enters_room()
+	await _test_spawn_positions_respect_current_player_distance()
+	await _test_spawn_positions_ignore_player_elevation()
+	await _test_spawn_position_small_room_uses_farthest_valid_fallback()
+	await _test_missing_spawn_bounds_warns_once_for_bare_room()
 	await _test_full_boon_exit_cycle_reaches_boss_and_completes_run()
 	await _test_enemy_damage_flows_through_guard_hp_and_stops_spawning_on_death()
 	await _test_player_death_disconnects_director_and_ignores_posthumous_enemy_deaths()
+	await _test_real_orchestrator_survivability_bands()
 	print("")
 	if _failed == 0 and _passed > 0:
 		print("PASS - %d checks" % _passed)
@@ -44,6 +54,9 @@ func _check(desc: String, condition: bool) -> void:
 
 func _check_eq(desc: String, actual: Variant, expected: Variant) -> void:
 	_check("%s (got %s, expected %s)" % [desc, actual, expected], actual == expected)
+
+func _check_between(desc: String, value: float, low: float, high: float) -> void:
+	_check("%s (%.2f in [%.2f, %.2f])" % [desc, value, low, high], value >= low and value <= high)
 
 func _seeded_rng(seed: int) -> RandomNumberGenerator:
 	var rng := RandomNumberGenerator.new()
@@ -100,6 +113,102 @@ func _test_run_scene_instantiates_and_enters_room() -> void:
 	_check("director starts for the entered room", run.current_director != null)
 	_check("director spawned at least one greybox enemy", run.spawned_enemy_count() > 0)
 	_check("room doors are bound to RoomDoor behavior", _all_bound_doors_are_room_doors(run))
+	await _cleanup_run(run)
+
+func _test_spawn_positions_respect_current_player_distance() -> void:
+	var run = await _new_run()
+	run.start_run("hearth", _empty_template_pool(), 2, _seeded_rng(5))
+	await process_frame
+
+	var has_min_distance := _object_has_property(run, "min_spawn_distance")
+	_check("orchestrator exposes min_spawn_distance", has_min_distance)
+	var min_distance := 8.0
+	if has_min_distance:
+		min_distance = float(run.get("min_spawn_distance"))
+
+	var anchor := run.current_room_root.find_child("CameraAnchor", true, false) as Marker3D
+	_check("spawn distance test has a room CameraAnchor", anchor != null)
+	if anchor == null:
+		await _cleanup_run(run)
+		return
+
+	run.player.global_position = anchor.global_position + Vector3(0.0, 0.0, 7.2)
+	for index in range(12):
+		var spawn_position: Vector3 = run._spawn_position_for(index)
+		_check(
+			"spawn %d is at least %.1fm from the current player" % [index, min_distance],
+			_xz_distance(spawn_position, run.player.global_position) + 0.001 >= min_distance
+		)
+
+	await _cleanup_run(run)
+
+func _test_spawn_positions_ignore_player_elevation() -> void:
+	var run = await _new_run()
+	run.start_run("hearth", _empty_template_pool(), 2, _seeded_rng(5))
+	await process_frame
+
+	var anchor := run.current_room_root.find_child("CameraAnchor", true, false) as Marker3D
+	_check("elevation spawn distance test has a room CameraAnchor", anchor != null)
+	if anchor == null:
+		await _cleanup_run(run)
+		return
+
+	run.min_spawn_distance = 4.0
+	var first_ring_point := anchor.global_position + Vector3(run.min_spawn_distance, 0.0, 0.0)
+	run.player.global_position = Vector3(first_ring_point.x, 5.0, first_ring_point.z)
+	var spawn_position: Vector3 = run._spawn_position_for(0)
+
+	_check(
+		"spawn distance ignores player elevation and rejects a same-XZ candidate",
+		_xz_distance(spawn_position, run.player.global_position) + 0.001 >= run.min_spawn_distance
+	)
+
+	await _cleanup_run(run)
+
+func _test_spawn_position_small_room_uses_farthest_valid_fallback() -> void:
+	var run = await _new_run()
+	run.start_run("hearth", _empty_template_pool(), 2, _seeded_rng(5))
+	await process_frame
+
+	var anchor := run.current_room_root.find_child("CameraAnchor", true, false) as Marker3D
+	_check("small-room fallback test has a room CameraAnchor", anchor != null)
+	if anchor == null:
+		await _cleanup_run(run)
+		return
+
+	anchor.set_meta("camera_half_extent_x", 2.0)
+	anchor.set_meta("camera_half_extent_z", 2.0)
+	run.player.global_position = anchor.global_position
+
+	var first: Vector3 = run._spawn_position_for(1)
+	var second: Vector3 = run._spawn_position_for(1)
+	var local := first - anchor.global_position
+	var distance := _xz_distance(first, run.player.global_position)
+
+	_check("small-room fallback stays within authored X extent", absf(local.x) <= 2.001)
+	_check("small-room fallback stays within authored Z extent", absf(local.z) <= 2.001)
+	_check("small-room fallback is deterministic for the same index", first.distance_to(second) < 0.001)
+	_check("small-room fallback is below the normal min distance because no point can satisfy it", distance < 8.0)
+	_check("small-room fallback chooses the farthest valid point", absf(distance - sqrt(8.0)) < 0.01)
+
+	await _cleanup_run(run)
+
+func _test_missing_spawn_bounds_warns_once_for_bare_room() -> void:
+	var run = await _new_run()
+	var bare_room := Node3D.new()
+	bare_room.name = "BareRoomWithoutCameraAnchor"
+	run.rooms_root.add_child(bare_room)
+	run.current_room_root = bare_room
+
+	var before_count: int = _spawn_bounds_warning_count(run)
+	run._spawn_position_for(0)
+	var after_first_count: int = _spawn_bounds_warning_count(run)
+	run._spawn_position_for(1)
+	var after_second_count: int = _spawn_bounds_warning_count(run)
+
+	_check("bare room spawn containment warning is recorded", after_first_count == before_count + 1)
+	_check_eq("bare room spawn containment warning is once per room", after_second_count, after_first_count)
+
 	await _cleanup_run(run)
 
 func _test_full_boon_exit_cycle_reaches_boss_and_completes_run() -> void:
@@ -251,6 +360,19 @@ func _test_player_death_disconnects_director_and_ignores_posthumous_enemy_deaths
 	_check("posthumous death test kept graph alive for inspection", graph != null)
 	await _cleanup_run(run)
 
+func _test_real_orchestrator_survivability_bands() -> void:
+	var stationary := await _run_survivability_probe(&"stationary", 90.0, 1)
+	_check("motionless real-run probe eventually dies", bool(stationary["died"]))
+	_check_between("motionless real-run death is not an instant spawn melt", float(stationary["survived_seconds"]), 20.0, 75.0)
+	_check("motionless real-run damage stays chip-sized", int(stationary["max_hit_delta"]) <= 1)
+
+	var retreating := await _run_survivability_probe(&"retreat", 12.0, 3)
+	_check("retreating real-run DPS probe avoids death while clearing three rooms", not bool(retreating["died"]))
+	_check_between("retreating real-run DPS clear time", float(retreating["survived_seconds"]), 2.0, 3.5)
+	_check("retreating real-run enters at least three rooms", int(retreating["rooms_entered"]) >= 3)
+	_check("retreating real-run clears at least three rooms", int(retreating["rooms_cleared"]) >= 3)
+	_check("retreating real-run damage stays chip-sized", int(retreating["max_hit_delta"]) <= 1)
+
 func _start_run_with_first_boon_exit(run) -> RoomGraph:
 	for seed in range(1, 80):
 		var graph: RoomGraph = run.start_run("hearth", _empty_template_pool(), 2, _seeded_rng(seed))
@@ -260,6 +382,203 @@ func _start_run_with_first_boon_exit(run) -> RoomGraph:
 				return graph
 	_check("found a seed whose first exit telegraphs BOON", false)
 	return run.run_controller.graph
+
+func _run_survivability_probe(profile: StringName, max_seconds: float, target_rooms: int) -> Dictionary:
+	var run = await _new_run()
+	var entered_room_ids: Array[String] = []
+	run.room_loaded.connect(func(room: RoomNode, _room_root: Node3D) -> void:
+		entered_room_ids.append(room.room_id)
+	)
+	run.start_run("hearth", _empty_template_pool(), 8, _seeded_rng(70))
+	await process_frame
+	if entered_room_ids.is_empty() and run.run_controller.current_room_id != "":
+		entered_room_ids.append(run.run_controller.current_room_id)
+
+	var previous_total := _vital_total(run)
+	var damage_events := 0
+	var max_hit_delta := 0
+	var first_damage := -1.0
+	var elapsed := 0.0
+	var melee_model := _survival_melee_model(run)
+
+	while elapsed < max_seconds and run._run_active:
+		if profile == &"retreat":
+			_drive_retreating_player(run, SURVIVAL_DT)
+			_tick_survival_melee(run, melee_model, SURVIVAL_DT)
+
+		run._process(SURVIVAL_DT)
+		if run.player_vitals != null:
+			run.player_vitals.tick_guard_recharge(SURVIVAL_DT)
+		_step_live_enemies(run, SURVIVAL_DT)
+
+		elapsed += SURVIVAL_DT
+		var total := _vital_total(run)
+		if total < previous_total:
+			damage_events += 1
+			max_hit_delta = maxi(max_hit_delta, previous_total - total)
+			if first_damage < 0.0:
+				first_damage = elapsed
+		previous_total = total
+
+		if profile == &"retreat" and _current_room_is_cleared(run) and run._run_active:
+			if run.rooms_cleared >= target_rooms:
+				break
+			if _current_room_has_exit(run):
+				await _take_first_available_exit(run)
+				previous_total = _vital_total(run)
+
+	var result := {
+		"died": not run._run_active and run.player_vitals != null and run.player_vitals.is_dead(),
+		"survived_seconds": elapsed,
+		"rooms_entered": entered_room_ids.size(),
+		"rooms_cleared": run.rooms_cleared,
+		"damage_events": damage_events,
+		"max_hit_delta": max_hit_delta,
+		"first_damage": first_damage,
+		"melee_swings": int(melee_model["swings"]),
+	}
+	await _cleanup_run(run)
+	return result
+
+func _survival_melee_model(run) -> Dictionary:
+	var kit: AbilityComponent = run._player_ability_kit()
+	var attack := kit.get_ability(&"attack") as AttackAbility if kit != null else null
+	if attack == null:
+		attack = AttackAbilityScript.new()
+	return {
+		"attack": attack,
+		"cooldown": 0.0,
+		"combo_step": 0,
+		"combo_remaining": 0.0,
+		"swings": 0,
+	}
+
+func _tick_survival_melee(run, model: Dictionary, delta: float) -> void:
+	var attack := model["attack"] as AttackAbility
+	if attack == null:
+		return
+
+	model["cooldown"] = maxf(0.0, float(model["cooldown"]) - delta)
+	model["combo_remaining"] = maxf(0.0, float(model["combo_remaining"]) - delta)
+	if float(model["cooldown"]) > 0.0:
+		return
+
+	var target := _nearest_live_enemy(run)
+	if target == null:
+		return
+
+	# DPS model uses the real default melee kit from godot/scripts/abilities/attack_ability.gd:
+	# step_damage [18, 20, 26], step_recovery [0.16, 0.18, 0.24], combo_window 0.45.
+	var current_step := int(model["combo_step"])
+	if float(model["combo_remaining"]) <= 0.0:
+		current_step = 0
+	var next_step := (current_step % maxi(attack.combo_steps, 1)) + 1
+	var damage := attack.damage_for_step(next_step)
+	target.take_damage(damage)
+
+	model["combo_step"] = next_step
+	model["combo_remaining"] = attack.combo_window
+	model["cooldown"] = maxf(attack.recovery_for_step(next_step) / maxf(SURVIVAL_PLAYER_DPS_SCALE, 0.001), SURVIVAL_DT)
+	model["swings"] = int(model["swings"]) + 1
+
+func _nearest_live_enemy(run) -> GreyboxEnemy:
+	var nearest: GreyboxEnemy = null
+	var nearest_distance := INF
+	for enemy in _live_spawned_enemies(run):
+		if enemy.is_dead():
+			continue
+		var distance := _xz_distance(enemy.global_position, run.player.global_position)
+		if distance < nearest_distance:
+			nearest_distance = distance
+			nearest = enemy
+	return nearest
+
+func _step_live_enemies(run, delta: float) -> void:
+	for enemy in _live_spawned_enemies(run):
+		if enemy.is_dead():
+			continue
+		var result: Dictionary = enemy.tick_chase(run.player.global_position, delta)
+		var velocity := Vector3(result["velocity"])
+		enemy.global_position += velocity * delta
+
+func _drive_retreating_player(run, delta: float) -> void:
+	var direction := _retreat_direction(run)
+	var next_position: Vector3 = run.player.global_position + direction * SURVIVAL_RETREAT_SPEED * delta
+	run.player.global_position = _clamp_to_current_room(run, next_position)
+	run.player.velocity = Vector3.ZERO
+
+func _retreat_direction(run) -> Vector3:
+	var position: Vector3 = run.player.global_position
+	var danger := Vector3.ZERO
+	for enemy in _live_spawned_enemies(run):
+		var away: Vector3 = position - enemy.global_position
+		away.y = 0.0
+		var distance := away.length()
+		if distance > 0.05:
+			danger += away / maxf(distance * distance, 0.25)
+
+	var anchor := run.current_room_root.find_child("CameraAnchor", true, false) as Marker3D
+	if anchor != null:
+		var half_x := float(anchor.get_meta("camera_half_extent_x", 6.0))
+		var half_z := float(anchor.get_meta("camera_half_extent_z", 6.0))
+		var margin := 1.4
+		if position.x > anchor.global_position.x + half_x - margin:
+			danger.x -= 2.5
+		elif position.x < anchor.global_position.x - half_x + margin:
+			danger.x += 2.5
+		if position.z > anchor.global_position.z + half_z - margin:
+			danger.z -= 2.5
+		elif position.z < anchor.global_position.z - half_z + margin:
+			danger.z += 2.5
+
+	if danger.length_squared() <= 0.0001:
+		return Vector3.RIGHT
+	return danger.normalized()
+
+func _clamp_to_current_room(run, position: Vector3) -> Vector3:
+	var anchor := run.current_room_root.find_child("CameraAnchor", true, false) as Marker3D
+	if anchor == null:
+		return position
+	var half_x := maxf(float(anchor.get_meta("camera_half_extent_x", 6.0)) - 0.4, 0.5)
+	var half_z := maxf(float(anchor.get_meta("camera_half_extent_z", 6.0)) - 0.4, 0.5)
+	return Vector3(
+		clampf(position.x, anchor.global_position.x - half_x, anchor.global_position.x + half_x),
+		position.y,
+		clampf(position.z, anchor.global_position.z - half_z, anchor.global_position.z + half_z)
+	)
+
+func _take_first_available_exit(run) -> void:
+	var graph: RoomGraph = run.run_controller.graph
+	var connections: Array[RoomConnection] = graph.get_connections_from(run.run_controller.current_room_id)
+	_check("survivability helper has an exit to take", not connections.is_empty())
+	if connections.is_empty():
+		return
+	var connection := connections[0]
+	var door := run.bound_doors.get(connection.door_name) as RoomDoor
+	if door == null:
+		door = run.bound_doors.get("RoomExit") as RoomDoor
+	_check("survivability helper found a bound exit door", door != null)
+	if door == null:
+		return
+
+	var reward_type: int = run.run_controller.exit_reward_type(connection)
+	door.emit_signal(&"body_entered", run.player)
+	await process_frame
+	if reward_type == RoomNode.RewardType.BOON and run.flow_bridge.is_draft_open():
+		_check("survivability helper can accept boon exit draft", run.boon_draft_ui.choose_offer(0))
+		await process_frame
+
+func _current_room_is_cleared(run) -> bool:
+	return run.current_director != null and run.current_director.is_room_cleared()
+
+func _current_room_has_exit(run) -> bool:
+	var graph: RoomGraph = run.run_controller.graph
+	return graph != null and not graph.get_connections_from(run.run_controller.current_room_id).is_empty()
+
+func _vital_total(run) -> int:
+	if run.player_vitals == null:
+		return 0
+	return run.player_vitals.hp + run.player_vitals.guard
 
 func _clear_current_room_by_enemy_deaths(run) -> void:
 	var safety := 0
@@ -308,3 +627,18 @@ func _live_spawned_enemies(run) -> Array[GreyboxEnemy]:
 		if enemy is GreyboxEnemy and is_instance_valid(enemy):
 			enemies.append(enemy as GreyboxEnemy)
 	return enemies
+
+func _xz_distance(a: Vector3, b: Vector3) -> float:
+	return Vector2(a.x, a.z).distance_to(Vector2(b.x, b.z))
+
+func _spawn_bounds_warning_count(run) -> int:
+	if not _object_has_property(run, "_spawn_bounds_warning_room_ids"):
+		return 0
+	var warnings: Dictionary = run.get("_spawn_bounds_warning_room_ids")
+	return warnings.size()
+
+func _object_has_property(object: Object, property_name: String) -> bool:
+	for property in object.get_property_list():
+		if str(property.get("name", "")) == property_name:
+			return true
+	return false

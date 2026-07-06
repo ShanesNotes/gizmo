@@ -11,11 +11,14 @@ const PlayerVitalsScript := preload("res://scripts/player/player_vitals.gd")
 
 const SCRAP_REWARD_VALUE := 10
 const SPARKS_REWARD_VALUE := 5
+const SPAWN_GOLDEN_ANGLE := 2.399963
+const SPAWN_CANDIDATE_COUNT := 48
 
 @export var auto_start: bool = true
 @export var biome_id: String = "hearth"
 @export_range(2, 16) var room_count: int = 8
 @export var rng_seed: int = 32032
+@export_range(0.0, 64.0, 0.1) var min_spawn_distance: float = 8.0
 @export var template_pool_paths: Array[String] = [
 	"res://resources/room_templates/combat_small.tres",
 	"res://resources/room_templates/combat_large.tres",
@@ -54,6 +57,8 @@ var _transitioning := false
 var _death_teardown_complete := false
 var _cleared_room_ids: Dictionary = {}
 var _rewarded_exit_keys: Dictionary = {}
+var _spawn_index_in_room: int = 0
+var _spawn_bounds_warning_room_ids: Dictionary = {}
 
 func _ready() -> void:
 	_ensure_wiring()
@@ -206,6 +211,7 @@ func _load_current_room() -> void:
 		push_error("RunOrchestrator: room template scene root must be Node3D.")
 		return
 	rooms_root.add_child(current_room_root)
+	_spawn_index_in_room = 0
 
 	_place_player_at_spawn(current_room_root)
 	bound_doors = _bind_room_doors(current_room_root)
@@ -316,7 +322,8 @@ func _spawn_from_request(request: Dictionary) -> void:
 			push_error("RunOrchestrator: enemy_scene must instantiate GreyboxEnemy.")
 			return
 		enemies_root.add_child(enemy)
-		enemy.global_position = _spawn_position_for(spawned_enemies.size())
+		enemy.global_position = _spawn_position_for(_spawn_index_in_room)
+		_spawn_index_in_room += 1
 		enemy.configure(archetype, spawn_id)
 		enemy.set_chase_target(player)
 		enemy.died.connect(_on_enemy_died)
@@ -324,14 +331,66 @@ func _spawn_from_request(request: Dictionary) -> void:
 		spawned_enemies[spawn_id] = enemy
 
 func _spawn_position_for(index: int) -> Vector3:
-	var center := Vector3.ZERO
-	if current_room_root != null:
-		var anchor := current_room_root.find_child("CameraAnchor", true, false) as Marker3D
-		if anchor != null:
-			center = anchor.global_position
-	var radius := 4.0 + float(index % 3)
-	var angle := float(index) * 2.399963
-	return center + Vector3(cos(angle) * radius, 0.1, sin(angle) * radius)
+	var anchor := _current_room_anchor()
+	var center := anchor.global_position if anchor != null else Vector3.ZERO
+	var half_extents := _spawn_half_extents(anchor)
+	var player_position := player.global_position if player != null else center
+	var required_distance := maxf(min_spawn_distance, 0.0)
+	var best_position := center + Vector3(0.0, 0.1, 0.0)
+	var best_distance := -1.0
+
+	for attempt in range(SPAWN_CANDIDATE_COUNT):
+		var radius := required_distance + float((index + attempt) % 3)
+		var angle := (float(index) + float(attempt)) * SPAWN_GOLDEN_ANGLE
+		var candidate := center + Vector3(cos(angle) * radius, 0.1, sin(angle) * radius)
+		candidate = _constrain_spawn_position(candidate, center, half_extents)
+		var distance := _xz_distance(candidate, player_position)
+		if distance > best_distance:
+			best_distance = distance
+			best_position = candidate
+		if distance + 0.001 >= required_distance:
+			return candidate
+
+	return best_position
+
+func _current_room_anchor() -> Marker3D:
+	if current_room_root == null:
+		return null
+	return current_room_root.find_child("CameraAnchor", true, false) as Marker3D
+
+func _spawn_half_extents(anchor: Marker3D) -> Vector2:
+	if anchor == null:
+		_warn_missing_spawn_bounds("missing CameraAnchor")
+		return Vector2.ZERO
+	var half_x := float(anchor.get_meta("camera_half_extent_x", 0.0))
+	var half_z := float(anchor.get_meta("camera_half_extent_z", 0.0))
+	if half_x <= 0.0 or half_z <= 0.0:
+		_warn_missing_spawn_bounds("CameraAnchor lacks positive camera_half_extent_x/z metadata")
+		return Vector2.ZERO
+	return Vector2(half_x, half_z)
+
+func _constrain_spawn_position(position: Vector3, center: Vector3, half_extents: Vector2) -> Vector3:
+	if half_extents.x <= 0.0 or half_extents.y <= 0.0:
+		return position
+	return Vector3(
+		clampf(position.x, center.x - half_extents.x, center.x + half_extents.x),
+		position.y,
+		clampf(position.z, center.z - half_extents.y, center.z + half_extents.y)
+	)
+
+func _xz_distance(a: Vector3, b: Vector3) -> float:
+	return Vector2(a.x, a.z).distance_to(Vector2(b.x, b.z))
+
+func _warn_missing_spawn_bounds(reason: String) -> void:
+	var room_key := 0
+	var room_name := "<no room>"
+	if current_room_root != null and is_instance_valid(current_room_root):
+		room_key = current_room_root.get_instance_id()
+		room_name = String(current_room_root.name)
+	if _spawn_bounds_warning_room_ids.has(room_key):
+		return
+	_spawn_bounds_warning_room_ids[room_key] = true
+	push_warning("RunOrchestrator: spawn containment disabled for %s: %s." % [room_name, reason])
 
 func _on_enemy_died(spawn_id: String) -> void:
 	if not _run_active or _death_teardown_complete:
@@ -527,6 +586,8 @@ func _reset_run_stats() -> void:
 	sparks_earned = 0
 	_cleared_room_ids.clear()
 	_rewarded_exit_keys.clear()
+	_spawn_index_in_room = 0
+	_spawn_bounds_warning_room_ids.clear()
 
 func _connection_key(connection: RoomConnection) -> String:
 	if connection == null:

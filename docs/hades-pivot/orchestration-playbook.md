@@ -21,6 +21,14 @@ governs **design**.
    Confirmed defects go back **to the same worker** as a corrections handoff with
    failing-test anchors; orchestrator never patches worker code silently.
 5. **Record** — queue INDEX status flip, ADR if canon moved, Daily ledger entry.
+6. **Strategic gate (Fable, milestone-scoped)** — added 2026-07-06 per Shane. Per-slice
+   audits stay Sonnet-find/Fable-refute; additionally, at strategic boundaries (a
+   multi-wave batch merging, a pre-ship candidate, a new system family opening), Fable
+   runs a zoomed-out AAA-quality review of the whole system: architecture coherence
+   across merged slices, feel vs. the Hades bar, spec/canon drift, test-battery honesty
+   (no vacuous-pass accumulation), and cross-slice interaction defects no per-ticket
+   finder can see. Output: a gate verdict in the Daily ledger + corrective tickets in
+   the queue. Token law: Fable never per-ticket by default; always at these gates.
 
 ## Teammate capability map (learned, attempt 1)
 

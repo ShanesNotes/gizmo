@@ -7,7 +7,8 @@ extends CanvasLayer
 ## reaches into the Simulation on its own. The .tscn ships with sensible default
 ## widget values so running this scene standalone shows a populated HUD.
 
-const GUARD_PIP_MAX := 4
+const GUARD_PIP_MAX := 12
+const GUARD_PIP_SIZE := Vector2(14.0, 14.0)
 const GUARD_PIP_BRASS := Color(0.7882, 0.5647, 0.4196, 1.0)
 const GUARD_PIP_EMPTY_ALPHA := 0.25
 const ABILITY_SLOT_DIM_ALPHA := 0.4
@@ -37,10 +38,11 @@ func render_guard(guard: int, guard_max: int) -> void:
 		_guard_pips.visible = false
 		return
 
+	_ensure_guard_pip_count(max_pips)
 	var filled := clampi(guard, 0, max_pips)
 	_guard_pips.visible = true
 	var pips := _guard_pips.get_children()
-	for i in GUARD_PIP_MAX:
+	for i in pips.size():
 		var pip := pips[i] as ColorRect
 		pip.visible = i < max_pips
 		if pip.visible:
@@ -122,6 +124,15 @@ func _make_ability_slot(state: Dictionary) -> PanelContainer:
 
 	panel.modulate = Color(1.0, 1.0, 1.0, 1.0 if ready else ABILITY_SLOT_DIM_ALPHA)
 	return panel
+
+
+func _ensure_guard_pip_count(count: int) -> void:
+	while _guard_pips.get_child_count() < count:
+		var pip := ColorRect.new()
+		pip.name = "Pip%d" % _guard_pips.get_child_count()
+		pip.custom_minimum_size = GUARD_PIP_SIZE
+		pip.color = GUARD_PIP_BRASS
+		_guard_pips.add_child(pip)
 
 
 func _ability_kind_label(kind: int) -> String:
