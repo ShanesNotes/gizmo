@@ -121,8 +121,12 @@ func _test_cast_ammo_consumes_reclaims_and_empty_fails() -> void:
 	cast.cast_time = 0.0
 	cast.recovery_time = 0.05
 	var reclaim_events: Array[int] = []
+	var ammo_events: Array[Array] = []
 	kit.cast_ammo_reclaimed.connect(func(amount: int, _current_ammo: int, _lodged_ammo: int) -> void:
 		reclaim_events.append(amount)
+	)
+	kit.cast_ammo_changed.connect(func(current_ammo: int, max_ammo: int, lodged_ammo: int) -> void:
+		ammo_events.append([current_ammo, max_ammo, lodged_ammo])
 	)
 
 	_check_eq("cast starts with max ammo stones", kit.cast_ammo(), 2)
@@ -144,6 +148,7 @@ func _test_cast_ammo_consumes_reclaims_and_empty_fails() -> void:
 	_check_eq("reclaim signal reports the reclaimed count", reclaim_events, [1])
 	_check("cast can fire again after reclaim", kit.try_activate(&"cast"))
 	_check_eq("re-fired reclaimed stone lodges again", kit.cast_lodged_ammo(), 2)
+	_check_eq("cast ammo changed payloads track consume/reclaim cycle", ammo_events, [[1, 2, 1], [0, 2, 2], [1, 2, 1], [0, 2, 2]])
 	await _cleanup(body)
 
 func _test_surge_requires_full_gauge_and_empties_on_use() -> void:

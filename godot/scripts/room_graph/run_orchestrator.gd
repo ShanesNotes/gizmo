@@ -8,6 +8,7 @@ signal player_died()
 
 const RoomDoorScript := preload("res://scripts/room_graph/room_door.gd")
 const PlayerVitalsScript := preload("res://scripts/player/player_vitals.gd")
+const CastShardPickupScript := preload("res://scripts/abilities/cast_shard_pickup.gd")
 
 const SCRAP_REWARD_VALUE := 10
 const SPARKS_REWARD_VALUE := 5
@@ -25,6 +26,10 @@ const ZONE_STATE_CLEARED: StringName = &"CLEARED"
 @export_range(0.0, 64.0, 0.1) var min_spawn_distance: float = 8.0
 @export_range(0.1, 8.0, 0.05) var melee_range: float = 2.0
 @export_range(1.0, 360.0, 1.0) var melee_arc_degrees: float = 120.0
+@export_range(0.1, 8.0, 0.05) var special_range: float = 2.75
+@export_range(1.0, 360.0, 1.0) var special_arc_degrees: float = 160.0
+@export_range(0.1, 24.0, 0.1) var cast_range: float = 8.0
+@export_range(1.0, 90.0, 0.5) var cast_arc_degrees: float = 20.0
 @export var template_pool_paths: Array[String] = [
 	"res://resources/room_templates/combat_small.tres",
 	"res://resources/room_templates/combat_large.tres",
@@ -67,6 +72,9 @@ var _death_teardown_complete := false
 var _cleared_room_ids: Dictionary = {}
 var _rewarded_exit_keys: Dictionary = {}
 var _claimed_fixture_keys: Dictionary = {}
+var _cast_shard_sequence: int = 0
+var _cast_shards_by_key: Dictionary = {}
+var _cast_shard_keys_by_spawn_id: Dictionary = {}
 var _spawn_index_in_room: int = 0
 var _spawn_bounds_warning_room_ids: Dictionary = {}
 
@@ -154,6 +162,14 @@ func refill_fixture_guard_once(fixture_key: String) -> bool:
 	_render_hud_payloads()
 	return true
 
+func reclaim_cast_shard_once(shard_key: String) -> bool:
+	if not _run_active or _death_teardown_complete:
+		return false
+	var key := shard_key.strip_edges()
+	if key == "" or not _cast_shards_by_key.has(key):
+		return false
+	return _reclaim_cast_shard_key(key)
+
 func load_template_pool() -> Array[RoomTemplate]:
 	var pool: Array[RoomTemplate] = []
 	for path in template_pool_paths:
@@ -188,8 +204,14 @@ func _ensure_wiring() -> void:
 			kit.bind_player_vitals(player_vitals)
 			if not kit.attack_started.is_connected(_on_player_attack_started):
 				kit.attack_started.connect(_on_player_attack_started)
+			if not kit.special_started.is_connected(_on_player_special_started):
+				kit.special_started.connect(_on_player_special_started)
+			if not kit.cast_started.is_connected(_on_player_cast_started):
+				kit.cast_started.connect(_on_player_cast_started)
 			if not kit.surge_started.is_connected(_on_player_surge_started):
 				kit.surge_started.connect(_on_player_surge_started)
+			if not kit.cast_ammo_changed.is_connected(_on_player_cast_ammo_changed):
+				kit.cast_ammo_changed.connect(_on_player_cast_ammo_changed)
 
 	if camera != null:
 		camera.target = player
@@ -263,6 +285,7 @@ func _load_current_room() -> void:
 	room_loaded.emit(room, current_room_root)
 
 func _cleanup_current_room() -> void:
+	_clear_cast_shards(true)
 	_clear_spawned_enemies()
 	_disconnect_current_director()
 	if current_room_root != null and is_instance_valid(current_room_root):
@@ -479,6 +502,7 @@ func _warn_missing_spawn_bounds(reason: String) -> void:
 func _on_enemy_died(spawn_id: String) -> void:
 	if not _run_active or _death_teardown_complete:
 		return
+	_reclaim_cast_shards_for_spawn_id(spawn_id)
 	var enemy := spawned_enemies.get(spawn_id) as Node
 	if enemy != null and is_instance_valid(enemy):
 		enemy.queue_free()
@@ -647,24 +671,38 @@ func _on_player_spark_surge_changed(charge: float, charge_max: float) -> void:
 	if hud != null:
 		hud.render_spark(charge, charge_max)
 
+func _combat_input_allowed() -> bool:
+	return _run_active and not _death_teardown_complete and not _transitioning
+
 func _on_player_attack_started(_step: int, damage: float) -> void:
-	if player == null or damage <= 0.0:
+	if not _combat_input_allowed():
 		return
-	var center := player.global_position
-	var forward := _player_facing_direction()
-	var snapshot: Array = spawned_enemies.values()
-	for candidate in snapshot:
-		if not (candidate is GreyboxEnemy) or not is_instance_valid(candidate):
-			continue
-		var enemy := candidate as GreyboxEnemy
-		if enemy.is_dead() or enemy.is_spawning():
-			continue
-		if not _is_enemy_in_melee_arc(enemy, center, forward):
-			continue
-		enemy.take_damage(damage, true)
+	_resolve_player_arc_damage(damage, melee_range, melee_arc_degrees)
+
+func _on_player_special_started(potency: float) -> void:
+	if not _combat_input_allowed():
+		return
+	_resolve_player_arc_damage(potency, special_range, special_arc_degrees)
+
+func _on_player_cast_started(potency: float) -> void:
+	if not _combat_input_allowed():
+		# The kit consumed ammo before emitting; a gated cast must refund or
+		# the stone is silently stranded (HZ-074 audit HIGH).
+		_refund_cast_ammo()
+		return
+	_resolve_player_cast_damage(potency)
+
+func _on_player_cast_ammo_changed(_current_ammo: int, _max_ammo: int, _lodged_ammo: int) -> void:
 	_render_hud_payloads()
 
+func _refund_cast_ammo() -> void:
+	var kit := _player_ability_kit()
+	if kit != null:
+		kit.reclaim_cast_ammo(1)
+
 func _on_player_surge_started(damage: float, radius: float, stagger_seconds: float) -> void:
+	if not _combat_input_allowed():
+		return
 	if player == null:
 		return
 	var center := player.global_position
@@ -679,23 +717,227 @@ func _on_player_surge_started(damage: float, radius: float, stagger_seconds: flo
 		enemy.take_damage(damage, false)
 	_render_hud_payloads()
 
+func _resolve_player_arc_damage(damage: float, range: float, arc_degrees: float) -> int:
+	if player == null or damage <= 0.0:
+		_render_hud_payloads()
+		return 0
+	var center := player.global_position
+	var forward := _player_facing_direction()
+	var hits := 0
+	for enemy in _damageable_enemy_snapshot():
+		if not _is_enemy_in_player_arc(enemy, center, forward, range, arc_degrees):
+			continue
+		enemy.take_damage(damage, true)
+		hits += 1
+	_render_hud_payloads()
+	return hits
+
+func _resolve_player_cast_damage(damage: float) -> GreyboxEnemy:
+	if player == null:
+		# Post-consume abort: never strand the stone (HZ-074 audit HIGH).
+		_refund_cast_ammo()
+		_render_hud_payloads()
+		return null
+	var center := player.global_position
+	var forward := _player_facing_direction()
+	var target := _first_enemy_in_cast_corridor(center, forward)
+	if target == null:
+		_register_cast_shard("", center + _flat_forward_or_default(forward) * maxf(cast_range, 0.0))
+		_render_hud_payloads()
+		return null
+
+	_register_cast_shard(target.spawn_id, target.global_position)
+	if damage > 0.0:
+		target.take_damage(damage, true)
+	_render_hud_payloads()
+	return target
+
+func _damageable_enemy_snapshot() -> Array[GreyboxEnemy]:
+	var enemies: Array[GreyboxEnemy] = []
+	var snapshot: Array = spawned_enemies.values()
+	for candidate in snapshot:
+		if not (candidate is GreyboxEnemy) or not is_instance_valid(candidate):
+			continue
+		var enemy := candidate as GreyboxEnemy
+		if _enemy_can_receive_player_damage(enemy):
+			enemies.append(enemy)
+	return enemies
+
+func _enemy_can_receive_player_damage(enemy: GreyboxEnemy) -> bool:
+	return enemy != null and is_instance_valid(enemy) and not enemy.is_dead() and not enemy.is_spawning()
+
 func _is_enemy_in_melee_arc(enemy: GreyboxEnemy, center: Vector3, forward: Vector3) -> bool:
+	return _is_enemy_in_player_arc(enemy, center, forward, melee_range, melee_arc_degrees)
+
+func _is_enemy_in_player_arc(
+	enemy: GreyboxEnemy,
+	center: Vector3,
+	forward: Vector3,
+	range: float,
+	arc_degrees: float
+) -> bool:
 	var offset := Vector3(enemy.global_position.x - center.x, 0.0, enemy.global_position.z - center.z)
 	var distance := offset.length()
-	if distance > maxf(melee_range, 0.0):
+	if distance > maxf(range, 0.0):
 		return false
 	if distance <= 0.000001:
 		return true
 
+	return _offset_in_forward_arc(offset, forward, arc_degrees)
+
+func _first_enemy_in_cast_corridor(center: Vector3, forward: Vector3) -> GreyboxEnemy:
+	var flat_forward := _flat_forward_or_default(forward)
+	var best: GreyboxEnemy = null
+	var best_projection := INF
+	var best_distance := INF
+	for enemy in _damageable_enemy_snapshot():
+		var offset := Vector3(enemy.global_position.x - center.x, 0.0, enemy.global_position.z - center.z)
+		var distance := offset.length()
+		if distance > maxf(cast_range, 0.0):
+			continue
+		if distance <= 0.000001:
+			return enemy
+		var projection := flat_forward.dot(offset)
+		if projection < 0.0:
+			continue
+		if not _offset_in_forward_arc(offset, flat_forward, cast_arc_degrees):
+			continue
+		if projection < best_projection - 0.001 or (absf(projection - best_projection) <= 0.001 and distance < best_distance):
+			best = enemy
+			best_projection = projection
+			best_distance = distance
+	return best
+
+func _offset_in_forward_arc(offset: Vector3, forward: Vector3, arc_degrees: float) -> bool:
+	var distance := offset.length()
+	if distance <= 0.000001:
+		return true
+	var flat_forward := _flat_forward_or_default(forward)
+	if arc_degrees >= 359.9:
+		return true
+	var half_arc := deg_to_rad(clampf(arc_degrees, 1.0, 360.0) * 0.5)
+	return flat_forward.dot(offset / distance) >= cos(half_arc)
+
+func _flat_forward_or_default(forward: Vector3) -> Vector3:
 	var flat_forward := Vector3(forward.x, 0.0, forward.z)
 	if flat_forward.length_squared() <= 0.000001:
-		flat_forward = Vector3(0.0, 0.0, -1.0)
-	flat_forward = flat_forward.normalized()
-	if melee_arc_degrees >= 359.9:
-		return true
+		return Vector3(0.0, 0.0, -1.0)
+	return flat_forward.normalized()
 
-	var half_arc := deg_to_rad(clampf(melee_arc_degrees, 1.0, 360.0) * 0.5)
-	return flat_forward.dot(offset / distance) >= cos(half_arc)
+func _register_cast_shard(owner_spawn_id: String, position: Vector3) -> String:
+	_cast_shard_sequence += 1
+	var shard_key := "cast_shard:%d" % _cast_shard_sequence
+	var pickup := _spawn_cast_shard_pickup(shard_key, owner_spawn_id, position)
+	_cast_shards_by_key[shard_key] = {
+		"spawn_id": owner_spawn_id,
+		"pickup": pickup,
+	}
+	if owner_spawn_id != "":
+		var keys: Array = _cast_shard_keys_by_spawn_id.get(owner_spawn_id, [])
+		keys.append(shard_key)
+		_cast_shard_keys_by_spawn_id[owner_spawn_id] = keys
+	return shard_key
+
+func _spawn_cast_shard_pickup(shard_key: String, owner_spawn_id: String, position: Vector3) -> Area3D:
+	var parent: Node = current_room_root if current_room_root != null and is_instance_valid(current_room_root) else actors_root
+	if parent == null:
+		return null
+
+	var pickup := CastShardPickupScript.new() as Area3D
+	pickup.name = "CastShardPickup%d" % _cast_shard_sequence
+	pickup.call("configure", shard_key, owner_spawn_id)
+
+	var shape := CollisionShape3D.new()
+	var sphere := SphereShape3D.new()
+	sphere.radius = 0.55
+	shape.shape = sphere
+	pickup.add_child(shape)
+
+	var visual := MeshInstance3D.new()
+	visual.name = "Visual"
+	var mesh := SphereMesh.new()
+	mesh.radius = 0.18
+	mesh.height = 0.36
+	visual.mesh = mesh
+	var material := StandardMaterial3D.new()
+	material.albedo_color = Color(0.88, 0.74, 0.38, 1.0)
+	material.emission_enabled = true
+	material.emission = Color(0.55, 0.34, 0.08, 1.0)
+	material.emission_energy_multiplier = 0.45
+	material.roughness = 0.78
+	visual.material_override = material
+	pickup.add_child(visual)
+
+	parent.add_child(pickup)
+	pickup.global_position = Vector3(position.x, maxf(position.y, 0.45), position.z)
+	return pickup
+
+func _reclaim_cast_shards_for_spawn_id(spawn_id: String) -> void:
+	var keys: Array = _cast_shard_keys_by_spawn_id.get(spawn_id, []).duplicate()
+	for key in keys:
+		var shard_key := String(key)
+		if _reclaim_cast_shard_key(shard_key):
+			continue
+		# Reclaim refused (e.g. ammo already full): the victim is being freed,
+		# so convert the record to an ownerless floor pickup instead of
+		# orphaning it against a dead spawn_id (HZ-074 audit).
+		_disown_cast_shard(shard_key)
+
+func _disown_cast_shard(shard_key: String) -> void:
+	if not _cast_shards_by_key.has(shard_key):
+		return
+	var record: Dictionary = _cast_shards_by_key[shard_key]
+	var spawn_id := String(record.get("spawn_id", ""))
+	record["spawn_id"] = ""
+	_cast_shards_by_key[shard_key] = record
+	if spawn_id == "":
+		return
+	var keys: Array = _cast_shard_keys_by_spawn_id.get(spawn_id, [])
+	keys.erase(shard_key)
+	if keys.is_empty():
+		_cast_shard_keys_by_spawn_id.erase(spawn_id)
+	else:
+		_cast_shard_keys_by_spawn_id[spawn_id] = keys
+
+func _reclaim_cast_shard_key(shard_key: String) -> bool:
+	if not _cast_shards_by_key.has(shard_key):
+		return false
+	var kit := _player_ability_kit()
+	if kit == null:
+		return false
+	var reclaimed := kit.reclaim_cast_ammo(1)
+	if reclaimed <= 0:
+		return false
+	_remove_cast_shard_record(shard_key)
+	_render_hud_payloads()
+	return true
+
+func _clear_cast_shards(reclaim: bool) -> void:
+	var keys: Array = _cast_shards_by_key.keys()
+	for key in keys:
+		var shard_key := String(key)
+		if reclaim and _reclaim_cast_shard_key(shard_key):
+			continue
+		_remove_cast_shard_record(shard_key)
+	_cast_shards_by_key.clear()
+	_cast_shard_keys_by_spawn_id.clear()
+
+func _remove_cast_shard_record(shard_key: String) -> void:
+	var record: Dictionary = _cast_shards_by_key.get(shard_key, {})
+	var spawn_id := String(record.get("spawn_id", ""))
+	var pickup := record.get("pickup") as Node
+	if pickup != null and is_instance_valid(pickup):
+		pickup.queue_free()
+	_cast_shards_by_key.erase(shard_key)
+
+	if spawn_id == "":
+		return
+	var keys: Array = _cast_shard_keys_by_spawn_id.get(spawn_id, [])
+	keys.erase(shard_key)
+	if keys.is_empty():
+		_cast_shard_keys_by_spawn_id.erase(spawn_id)
+	else:
+		_cast_shard_keys_by_spawn_id[spawn_id] = keys
 
 func _player_facing_direction() -> Vector3:
 	if player == null:
@@ -799,6 +1041,8 @@ func _reset_run_stats() -> void:
 	_cleared_room_ids.clear()
 	_rewarded_exit_keys.clear()
 	_claimed_fixture_keys.clear()
+	_clear_cast_shards(false)
+	_cast_shard_sequence = 0
 	_spawn_index_in_room = 0
 	_spawn_bounds_warning_room_ids.clear()
 
