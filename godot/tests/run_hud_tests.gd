@@ -40,6 +40,8 @@ func _initialize() -> void:
 	_test_retired_nodes_absent()
 	_test_retired_source_tokens_absent()
 	await _test_guard_pips()
+	await _test_spark_gauge()
+	await _test_spark_gauge_and_ability_bar_do_not_overlap_at_800x600()
 	await _test_boon_loadout()
 	await _test_ability_bar()
 	print("")
@@ -163,6 +165,68 @@ func _test_guard_pips() -> void:
 	counts = _guard_pip_counts(hud)
 	_check_eq("guard_max > cap shows at most HUD cap pips", counts["visible"], Hud.GUARD_PIP_MAX)
 	_check_eq("guard_max > cap clamps fill", counts["filled"], 3)
+
+	await _cleanup_hud(hud)
+
+func _test_spark_gauge() -> void:
+	var hud := await _instantiate_hud()
+	var gauge := hud.get_node_or_null("Root/SparkGauge")
+	_check_eq("Spark Surge gauge exists", gauge != null, true)
+	if gauge == null:
+		await _cleanup_hud(hud)
+		return
+	_check_eq("Spark Surge gauge hidden by default", gauge.visible, false)
+	_check_eq("HUD exposes render_spark payload seam", hud.has_method("render_spark"), true)
+	if not hud.has_method("render_spark"):
+		await _cleanup_hud(hud)
+		return
+
+	hud.call("render_spark", 35.0, 100.0)
+	var fill := hud.get_node_or_null("Root/SparkGauge/Margin/VBox/SparkFill") as ProgressBar
+	var caption := hud.get_node_or_null("Root/SparkGauge/Margin/VBox/Caption") as Label
+	var status := hud.get_node_or_null("Root/SparkGauge/Margin/VBox/Status") as Label
+	_check_eq("Spark Surge gauge shows after payload", gauge.visible, true)
+	_check_eq("Spark Surge fill max follows payload", fill.max_value if fill != null else -1.0, 100.0)
+	_check_eq("Spark Surge fill value follows payload", fill.value if fill != null else -1.0, 35.0)
+	_check_eq("Spark Surge caption uses Surge copy", caption.text if caption != null else "", "SPARK SURGE")
+	_check_eq("Spark Surge partial status is percent", status.text if status != null else "", "35%")
+
+	hud.call("render_spark", 100.0, 100.0)
+	_check_eq("full Spark Surge status reads READY", status.text if status != null else "", "READY")
+	hud.call("render_spark", 0.0, 0.0)
+	_check_eq("zero max hides Spark Surge gauge", gauge.visible, false)
+
+	await _cleanup_hud(hud)
+
+func _test_spark_gauge_and_ability_bar_do_not_overlap_at_800x600() -> void:
+	var hud := await _instantiate_hud()
+	var hud_root := hud.get_node("Root") as Control
+	hud_root.anchor_left = 0.0
+	hud_root.anchor_top = 0.0
+	hud_root.anchor_right = 0.0
+	hud_root.anchor_bottom = 0.0
+	hud_root.offset_left = 0.0
+	hud_root.offset_top = 0.0
+	hud_root.offset_right = 800.0
+	hud_root.offset_bottom = 600.0
+	hud.call("render_spark", 100.0, 100.0)
+	hud.render_abilities([
+		{"kind": Ability.AbilityKind.DASH, "ready": true, "count": -1},
+		{"kind": Ability.AbilityKind.ATTACK, "ready": true, "count": -1},
+		{"kind": Ability.AbilityKind.SPECIAL, "ready": true, "count": -1},
+		{"kind": Ability.AbilityKind.CAST, "ready": true, "count": 1},
+		{"kind": Ability.AbilityKind.SURGE, "ready": true, "count": -1},
+	])
+	await process_frame
+
+	var gauge := hud.get_node_or_null("Root/SparkGauge") as Control
+	var bar := hud.get_node_or_null("Root/AbilityBar") as Control
+	_check_eq("800px SparkGauge is visible for overlap check", gauge != null and gauge.visible, true)
+	_check_eq("800px AbilityBar is visible for overlap check", bar != null and bar.visible, true)
+	if gauge != null and bar != null:
+		var gauge_rect := Rect2(gauge.global_position, gauge.size)
+		var bar_rect := Rect2(bar.global_position, bar.size)
+		_check_eq("SparkGauge and AbilityBar do not overlap at 800x600", gauge_rect.intersects(bar_rect), false)
 
 	await _cleanup_hud(hud)
 

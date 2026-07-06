@@ -14,6 +14,7 @@ var attack_recovery: float = 0.65
 
 var _attack_state := ATTACK_READY
 var _attack_timer := 0.0
+var _stagger_timer := 0.0
 
 func configure(stats: Dictionary) -> void:
 	move_speed = float(stats.get("move_speed", move_speed))
@@ -23,10 +24,21 @@ func configure(stats: Dictionary) -> void:
 	attack_windup = float(stats.get("attack_windup", attack_windup))
 	attack_recovery = float(stats.get("attack_recovery", attack_recovery))
 	reset_attack()
+	_stagger_timer = 0.0
 
 func reset_attack() -> void:
 	_attack_state = ATTACK_READY
 	_attack_timer = 0.0
+
+func stagger(duration: float) -> void:
+	_stagger_timer = maxf(_stagger_timer, maxf(duration, 0.0))
+	reset_attack()
+
+func is_staggered() -> bool:
+	return _stagger_timer > 0.0
+
+func stagger_remaining() -> float:
+	return _stagger_timer
 
 func attack_state() -> String:
 	return _attack_state
@@ -36,6 +48,17 @@ func attack_timer_remaining() -> float:
 
 func step(current_position: Vector3, target_position: Vector3, delta: float) -> Dictionary:
 	var safe_delta: float = maxf(delta, 0.0)
+	if _stagger_timer > 0.0:
+		tick_stagger(safe_delta)
+		var stagger_steering := chase_steering(current_position, target_position, 0.0, contact_radius, safe_delta)
+		return {
+			"velocity": Vector3.ZERO,
+			"direction": stagger_steering["direction"],
+			"distance": stagger_steering["distance"],
+			"in_contact": stagger_steering["in_contact"],
+			"attack_state": _attack_state,
+			"damage_event": {},
+		}
 	var steering := chase_steering(current_position, target_position, move_speed, contact_radius, safe_delta)
 	var damage_payload: Dictionary = {}
 	var distance := float(steering["distance"])
@@ -55,6 +78,11 @@ func step(current_position: Vector3, target_position: Vector3, delta: float) -> 
 		"attack_state": _attack_state,
 		"damage_event": damage_payload,
 	}
+
+func tick_stagger(delta: float) -> void:
+	if _stagger_timer <= 0.0:
+		return
+	_stagger_timer = maxf(0.0, _stagger_timer - maxf(delta, 0.0))
 
 static func chase_steering(
 	current_position: Vector3,

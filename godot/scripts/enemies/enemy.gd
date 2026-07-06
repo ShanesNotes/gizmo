@@ -2,6 +2,7 @@ class_name GreyboxEnemy
 extends CharacterBody3D
 
 signal damage_event(event: Dictionary)
+signal damage_taken(spawn_id: String, amount: float, charges_spark: bool)
 signal died(spawn_id: String)
 
 const EnemyArchetypesScript := preload("res://scripts/enemies/enemy_archetypes.gd")
@@ -53,6 +54,7 @@ func _physics_process(delta: float) -> void:
 		return
 	if _is_spawning():
 		_tick_spawn_windup(delta)
+		brain.tick_stagger(delta)
 		velocity = Vector3.ZERO
 		move_and_slide()
 		return
@@ -92,6 +94,13 @@ func clear_chase_target() -> void:
 	velocity = Vector3.ZERO
 	brain.reset_attack()
 
+func stagger(duration: float) -> void:
+	brain.stagger(duration)
+	velocity = Vector3.ZERO
+
+func is_staggered() -> bool:
+	return brain.is_staggered()
+
 func tick_chase(target_position: Vector3, delta: float) -> Dictionary:
 	if _dead:
 		velocity = Vector3.ZERO
@@ -106,6 +115,7 @@ func tick_chase(target_position: Vector3, delta: float) -> Dictionary:
 	if _is_spawning():
 		_tick_spawn_windup(delta)
 		velocity = Vector3.ZERO
+		brain.tick_stagger(delta)
 		brain.reset_attack()
 		var steering := EnemyBrainScript.chase_steering(global_position, target_position, 0.0, contact_radius, 0.0)
 		return {
@@ -129,11 +139,15 @@ func tick_chase(target_position: Vector3, delta: float) -> Dictionary:
 		result["damage_event"] = event
 	return result
 
-func take_damage(amount: float) -> float:
+func take_damage(amount: float, charges_spark: bool = true) -> float:
 	if _dead or amount <= 0.0:
 		return hp
 
+	var before := hp
 	hp = maxf(0.0, hp - amount)
+	var applied := before - hp
+	if applied > 0.0:
+		damage_taken.emit(spawn_id, applied, charges_spark)
 	if hp <= 0.0 and not _dead:
 		_dead = true
 		velocity = Vector3.ZERO

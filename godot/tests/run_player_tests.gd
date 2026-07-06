@@ -20,6 +20,8 @@ func _initialize() -> void:
 	await _test_player_scene_instantiates_with_stable_nodes()
 	_test_player_vitals_guard_recharges_after_damage_delay()
 	_test_player_vitals_damage_lockout_limits_burst_contact()
+	_test_player_vitals_spark_charge_bands_and_clamps()
+	_test_player_vitals_spark_charge_empties_on_death()
 	await _test_scene_router_press_reaches_ability_component()
 	await _test_scene_dash_uses_held_movement_direction()
 	await _test_scene_dash_press_during_dash_is_blocked_by_current_kit()
@@ -197,6 +199,58 @@ func _test_player_vitals_damage_lockout_limits_burst_contact() -> void:
 	vitals.tick_guard_recharge(0.02)
 	vitals.apply_damage(1)
 	_check_eq("damage can land again after lockout elapses", vitals.guard, 2)
+	vitals.free()
+
+func _test_player_vitals_spark_charge_bands_and_clamps() -> void:
+	var vitals: PlayerVitals = PlayerVitalsScript.new()
+	var has_charge := _object_has_property(vitals, "spark_surge_charge")
+	var has_max := _object_has_property(vitals, "spark_surge_charge_max")
+	var has_dealt_rate := _object_has_property(vitals, "spark_damage_dealt_charge_rate")
+	var has_guard_rate := _object_has_property(vitals, "spark_guard_damage_taken_charge_rate")
+	var has_record_dealt := vitals.has_method("record_damage_dealt")
+	var has_set_charge := vitals.has_method("set_spark_surge_charge")
+	_check("PlayerVitals exposes Spark Surge charge", has_charge)
+	_check("PlayerVitals exposes Spark Surge max", has_max)
+	_check("PlayerVitals exposes dealt-damage charge rate", has_dealt_rate)
+	_check("PlayerVitals exposes guard-damage charge rate", has_guard_rate)
+	_check("PlayerVitals exposes record_damage_dealt", has_record_dealt)
+	_check("PlayerVitals exposes set_spark_surge_charge", has_set_charge)
+	if not (has_charge and has_max and has_dealt_rate and has_guard_rate and has_record_dealt and has_set_charge):
+		vitals.free()
+		return
+
+	vitals.max_hp = 3
+	vitals.max_guard = 4
+	vitals.set("spark_surge_charge_max", 100.0)
+	vitals.set("spark_damage_dealt_charge_rate", 5.0)
+	vitals.set("spark_guard_damage_taken_charge_rate", 20.0)
+	vitals.reset()
+
+	_check_almost("Spark Surge starts empty on run reset", float(vitals.get("spark_surge_charge")), 0.0)
+	vitals.call("record_damage_dealt", 3.0)
+	_check_almost("damage dealt adds small Spark Surge charge", float(vitals.get("spark_surge_charge")), 15.0)
+	vitals.apply_damage(2)
+	_check_almost("guard damage taken adds large Spark Surge charge", float(vitals.get("spark_surge_charge")), 55.0)
+	vitals.call("record_damage_dealt", 99.0)
+	_check_almost("Spark Surge charge clamps at max", float(vitals.get("spark_surge_charge")), 100.0)
+	vitals.call("set_spark_surge_charge", -10.0)
+	_check_almost("Spark Surge charge clamps at zero", float(vitals.get("spark_surge_charge")), 0.0)
+	vitals.free()
+
+func _test_player_vitals_spark_charge_empties_on_death() -> void:
+	var vitals: PlayerVitals = PlayerVitalsScript.new()
+	if not vitals.has_method("set_spark_surge_charge") or not _object_has_property(vitals, "spark_surge_charge"):
+		_check("PlayerVitals can set Spark Surge charge for death reset", false)
+		vitals.free()
+		return
+
+	vitals.max_hp = 3
+	vitals.max_guard = 2
+	vitals.reset()
+	vitals.call("set_spark_surge_charge", 80.0)
+	vitals.apply_damage(vitals.max_hp + vitals.max_guard)
+	_check_eq("lethal damage marks player dead", vitals.is_dead(), true)
+	_check_almost("Spark Surge charge empties on death", float(vitals.get("spark_surge_charge")), 0.0)
 	vitals.free()
 
 func _object_has_property(object: Object, property_name: String) -> bool:

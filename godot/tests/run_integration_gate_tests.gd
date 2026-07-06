@@ -8,6 +8,7 @@ const AppScene := preload("res://scenes/app.tscn")
 const AppShellScript := preload("res://scripts/app_shell.gd")
 const HubControllerScript := preload("res://scripts/hub_controller.gd")
 const RunOrchestratorScript := preload("res://scripts/room_graph/run_orchestrator.gd")
+const BoonDef := preload("res://scripts/boons/boon_def.gd")
 const MetaState := preload("res://scripts/meta/meta_state.gd")
 const RoomNode := preload("res://scripts/room_graph/room_node.gd")
 const RoomTemplate := preload("res://scripts/room_graph/room_template.gd")
@@ -25,6 +26,7 @@ func _initialize() -> void:
 	call_deferred("_run_tests")
 
 func _run_tests() -> void:
+	await _test_empty_boon_pool_replacement_reward_in_real_run()
 	await _test_victory_run_returns_to_hub_with_summary_and_persisted_scrap()
 	await _test_death_run_returns_to_hub_with_summary_and_persisted_scrap()
 	print("")
@@ -88,6 +90,51 @@ func _test_victory_run_returns_to_hub_with_summary_and_persisted_scrap() -> void
 	_check_eq("victory hub scrap label reflects persisted bank", _hub_scrap_label(returned_hub), "SCRAP %d" % int(gate["scrap_earned"]))
 
 	await _dismiss_summary_and_assert_hub(app, screen, "victory")
+	await _cleanup_app(app, save_path)
+
+func _test_empty_boon_pool_replacement_reward_in_real_run() -> void:
+	var save_path := _new_save_path("empty_boon_pool")
+	_remove_save(save_path)
+	var app := await _new_app(save_path)
+	if app == null:
+		return
+
+	var run: Variant = await _start_real_run_from_hub(app)
+	if run == null:
+		await _cleanup_app(app, save_path)
+		return
+	var empty_pool: Array[BoonDef] = []
+	run.flow_bridge.set_boon_pool(empty_pool)
+
+	var gate := _new_gate_state(run)
+	var connection: RoomConnection = null
+	var safety := 0
+	while is_instance_valid(run) and run._run_active and safety < 10:
+		await _clear_current_room_by_enemy_deaths(run, gate)
+		connection = _select_progress_connection(run, true, false)
+		if connection == null:
+			break
+		if run.run_controller.exit_reward_type(connection) == RoomNode.RewardType.BOON:
+			break
+		await _take_exit(run, connection, gate)
+		safety += 1
+
+	_check("empty-pool integration found a BOON exit", connection != null and run.run_controller.exit_reward_type(connection) == RoomNode.RewardType.BOON)
+	if connection == null or run.run_controller.exit_reward_type(connection) != RoomNode.RewardType.BOON:
+		await _cleanup_app(app, save_path)
+		return
+
+	var previous_scrap: int = run.scrap_earned
+	var destination_id := connection.to_room_id
+	var door := run.bound_doors.get(connection.door_name) as RoomDoor
+	_check("empty-pool BOON exit has a real bound door", door != null)
+	if door != null:
+		door.emit_signal(&"body_entered", run.player)
+		await process_frame
+
+	_check("empty-pool BOON exit skips the draft overlay", not run.flow_bridge.is_draft_open() and not run.boon_draft_ui.visible)
+	_check_eq("empty-pool BOON exit grants Scrap replacement", run.scrap_earned, previous_scrap + SCRAP_REWARD_VALUE)
+	_check_eq("empty-pool BOON exit advances to its destination", run.run_controller.current_room_id, destination_id)
 	await _cleanup_app(app, save_path)
 
 func _test_death_run_returns_to_hub_with_summary_and_persisted_scrap() -> void:
@@ -239,15 +286,21 @@ func _take_exit(run, connection: RoomConnection, gate: Dictionary) -> void:
 	await process_frame
 
 	if reward_type == RoomNode.RewardType.BOON:
-		_check("BOON exit opens a real boon draft", run.flow_bridge.is_draft_open() and run.boon_draft_ui.visible)
-		var picked: bool = run.boon_draft_ui.choose_offer(0)
-		_check("BOON draft choice succeeds through real UI", picked)
-		await process_frame
-		if picked:
-			gate["picked_boon"] = true
-			gate["boons_taken"] = int(gate["boons_taken"]) + 1
-			_check_eq("orchestrator boons_taken counter tracks draft picks", run.boons_taken, int(gate["boons_taken"]))
-			_check("HUD renders picked boons", _boon_loadout_count(run.hud) == int(gate["boons_taken"]))
+		if run.flow_bridge.is_draft_open() and run.boon_draft_ui.visible:
+			var picked: bool = run.boon_draft_ui.choose_offer(0)
+			_check("BOON draft choice succeeds through real UI", picked)
+			await process_frame
+			if picked:
+				gate["picked_boon"] = true
+				gate["boons_taken"] = int(gate["boons_taken"]) + 1
+				_check_eq("orchestrator boons_taken counter tracks draft picks", run.boons_taken, int(gate["boons_taken"]))
+				_check("HUD renders current picked boon slots", _boon_loadout_count(run.hud) == run.boon_draft.picked_boons.size())
+		else:
+			var expected_scrap := int(gate["scrap_earned"]) + SCRAP_REWARD_VALUE
+			_check_eq("empty BOON replacement grants Scrap", run.scrap_earned, expected_scrap)
+			if run.scrap_earned == expected_scrap:
+				gate["picked_scrap"] = true
+				gate["scrap_earned"] = expected_scrap
 	elif reward_type == RoomNode.RewardType.SCRAP:
 		gate["picked_scrap"] = true
 		gate["scrap_earned"] = int(gate["scrap_earned"]) + SCRAP_REWARD_VALUE

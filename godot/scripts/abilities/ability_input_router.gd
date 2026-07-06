@@ -9,6 +9,7 @@ const ACTION_DASH: StringName = &"gizmo_dash"
 const ACTION_ATTACK: StringName = &"gizmo_attack"
 const ACTION_SPECIAL: StringName = &"gizmo_special"
 const ACTION_CAST: StringName = &"gizmo_cast"
+const ACTION_SURGE: StringName = &"gizmo_surge"
 const DEFAULT_BUFFER_SECONDS: float = 0.15
 
 @export var ability_component: AbilityComponent
@@ -109,11 +110,13 @@ static func ability_id_for_action(action: StringName) -> StringName:
 			return &"special"
 		ACTION_CAST:
 			return &"cast"
+		ACTION_SURGE:
+			return &"surge"
 		_:
 			return &""
 
 static func _action_priority() -> Array[StringName]:
-	return [ACTION_DASH, ACTION_ATTACK, ACTION_SPECIAL, ACTION_CAST]
+	return [ACTION_DASH, ACTION_ATTACK, ACTION_SPECIAL, ACTION_CAST, ACTION_SURGE]
 
 func _should_buffer(action: StringName) -> bool:
 	if buffer_seconds <= 0.0 or action == ACTION_DASH:

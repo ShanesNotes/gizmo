@@ -5,7 +5,7 @@ extends Node
 ## temporal state and transition rules; ability-specific resources/cooldowns live
 ## on AbilityComponent.
 
-enum ActionState { IDLE, DASH, ATTACK, SPECIAL, CAST, HITSTUN }
+enum ActionState { IDLE, DASH, ATTACK, SPECIAL, CAST, HITSTUN, SURGE }
 
 signal state_changed(previous_state: int, new_state: int)
 signal state_finished(finished_state: int)
@@ -61,6 +61,8 @@ static func state_name_for(state: ActionState) -> String:
 			return "cast"
 		ActionState.HITSTUN:
 			return "hitstun"
+		ActionState.SURGE:
+			return "surge"
 		_:
 			return "unknown"
 
@@ -74,6 +76,8 @@ func _state_for_ability(ability: Ability) -> ActionState:
 			return ActionState.SPECIAL
 		Ability.AbilityKind.CAST:
 			return ActionState.CAST
+		Ability.AbilityKind.SURGE:
+			return ActionState.SURGE
 		_:
 			return ActionState.IDLE
 

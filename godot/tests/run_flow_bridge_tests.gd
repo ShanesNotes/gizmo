@@ -43,6 +43,8 @@ func _initialize() -> void:
 
 func _run_tests() -> void:
 	await _test_boon_exit_presents_draft_before_advance_and_advances_after_pick()
+	await _test_boon_exit_with_short_pool_presents_short_draft()
+	await _test_boon_exit_with_empty_pool_grants_scrap_fallback()
 	await _test_non_boon_rewards_emit_payload_and_advance_immediately()
 	_test_reward_type_vocabulary_includes_rest_reward()
 	await _test_rest_reward_exits_emit_reward_without_draft()
@@ -121,6 +123,74 @@ func _test_boon_exit_presents_draft_before_advance_and_advances_after_pick() -> 
 	_check_eq("destination room becomes current after pick", controller.current_room_id, destination.room_id)
 	_check_eq("destination room is ENTERED after pick", destination.state, RoomNode.State.ENTERED)
 	_check("draft is closed after BOON completion", not bridge.is_draft_open())
+	await _cleanup_harness(harness)
+
+func _test_boon_exit_with_short_pool_presents_short_draft() -> void:
+	var short_pool: Array[BoonDef] = [
+		_make_boon(&"short_attack", BoonDef.Rarity.COMMON, BoonDef.Slot.ATTACK),
+		_make_boon(&"short_dash", BoonDef.Rarity.RARE, BoonDef.Slot.DASH),
+	]
+	var harness := _make_harness(RoomNode.RewardType.BOON, RoomNode.State.AVAILABLE, null, short_pool)
+	var bridge = harness["bridge"]
+	var controller = harness["controller"]
+	var draft: BoonDraft = harness["draft"]
+	var ui: StubBoonDraftUI = harness["ui"]
+	var graph: RoomGraph = harness["graph"]
+	var connection: RoomConnection = harness["connection"]
+	var current := graph.get_room("room_00")
+	var destination := graph.get_room("room_01")
+	var completions: Array[bool] = []
+	bridge.exit_completed.connect(func(_connection, accepted: bool) -> void:
+		completions.append(accepted)
+	)
+
+	bridge.request_exit(connection)
+	await process_frame
+
+	_check_eq("short BOON pool still presents one draft", ui.present_count, 1)
+	_check_eq("short BOON pool presents remaining offers only", ui.presented_offers.size(), 2)
+	_check("short BOON pool leaves draft open for a real choice", bridge.is_draft_open())
+	ui.choose(1)
+	await process_frame
+
+	_check_eq("short BOON pool completion succeeds", completions, [true])
+	_check_eq("short BOON pool applies exactly one picked boon", draft.picked_boon_ids.size(), 1)
+	_check_eq("short BOON pool marks current REWARDED", current.state, RoomNode.State.REWARDED)
+	_check_eq("short BOON pool enters destination", destination.state, RoomNode.State.ENTERED)
+	_check_eq("short BOON pool advances current_room_id", controller.current_room_id, destination.room_id)
+	_check("short BOON pool closes draft after choice", not bridge.is_draft_open())
+	await _cleanup_harness(harness)
+
+func _test_boon_exit_with_empty_pool_grants_scrap_fallback() -> void:
+	var empty_pool: Array[BoonDef] = []
+	var harness := _make_harness(RoomNode.RewardType.BOON, RoomNode.State.AVAILABLE, null, empty_pool)
+	var bridge = harness["bridge"]
+	var controller = harness["controller"]
+	var ui: StubBoonDraftUI = harness["ui"]
+	var graph: RoomGraph = harness["graph"]
+	var connection: RoomConnection = harness["connection"]
+	var current := graph.get_room("room_00")
+	var destination := graph.get_room("room_01")
+	var granted_types: Array[int] = []
+	var completions: Array[bool] = []
+	bridge.reward_granted.connect(func(granted_type: RoomNode.RewardType, _connection: RoomConnection) -> void:
+		granted_types.append(granted_type)
+	)
+	bridge.exit_completed.connect(func(_connection, accepted: bool) -> void:
+		completions.append(accepted)
+	)
+
+	var accepted: bool = bridge.request_exit(connection)
+	await process_frame
+
+	_check("empty BOON pool advances through replacement reward", accepted)
+	_check_eq("empty BOON pool emits Scrap replacement reward", granted_types, [RoomNode.RewardType.SCRAP])
+	_check_eq("empty BOON pool never presents a draft", ui.present_count, 0)
+	_check_eq("empty BOON pool reports one accepted completion", completions, [true])
+	_check_eq("empty BOON pool marks current REWARDED", current.state, RoomNode.State.REWARDED)
+	_check_eq("empty BOON pool enters destination", destination.state, RoomNode.State.ENTERED)
+	_check_eq("empty BOON pool advances current_room_id", controller.current_room_id, destination.room_id)
+	_check("empty BOON pool leaves no open draft", not bridge.is_draft_open())
 	await _cleanup_harness(harness)
 
 func _test_non_boon_rewards_emit_payload_and_advance_immediately() -> void:
@@ -353,6 +423,7 @@ func _make_harness(
 	reward_type: RoomNode.RewardType,
 	destination_state: RoomNode.State = RoomNode.State.AVAILABLE,
 	initial_ui_surface: Object = null,
+	initial_boon_pool: Variant = null,
 ) -> Dictionary:
 	var graph := _make_graph(reward_type, destination_state)
 	var controller = RunControllerScript.new()
@@ -368,6 +439,13 @@ func _make_harness(
 	if ui_surface is Node and (ui_surface as Node).get_parent() == null:
 		root.add_child(ui_surface as Node)
 
+	var active_boon_pool: Array[BoonDef] = _make_boon_pool()
+	if initial_boon_pool != null:
+		active_boon_pool.clear()
+		for boon in initial_boon_pool:
+			if boon is BoonDef:
+				active_boon_pool.append(boon as BoonDef)
+
 	var bridge = RunFlowBridgeScript.new()
 	bridge.name = "RunFlowBridgeHarness"
 	root.add_child(bridge)
@@ -375,7 +453,7 @@ func _make_harness(
 		controller,
 		draft,
 		ui_surface,
-		_make_boon_pool(),
+		active_boon_pool,
 		_seeded_rng(23),
 		AbilityComponentScript.new()
 	)

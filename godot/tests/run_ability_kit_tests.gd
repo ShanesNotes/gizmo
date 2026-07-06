@@ -10,6 +10,7 @@ const DashAbilityScript := preload("res://scripts/abilities/dash_ability.gd")
 const SpecialAbilityScript := preload("res://scripts/abilities/special_ability.gd")
 const CastAbilityScript := preload("res://scripts/abilities/cast_ability.gd")
 const PlayerActionStateMachineScript := preload("res://scripts/abilities/player_action_state_machine.gd")
+const PlayerVitalsScript := preload("res://scripts/player/player_vitals.gd")
 
 var _passed := 0
 var _failed := 0
@@ -20,6 +21,7 @@ func _initialize() -> void:
 	await _test_attack_combo_chains_within_window_and_resets_after()
 	await _test_special_respects_resource_cost_and_cooldown()
 	await _test_cast_ammo_consumes_reclaims_and_empty_fails()
+	await _test_surge_requires_full_gauge_and_empties_on_use()
 	await _test_dash_cancel_from_attack_without_opening_other_interrupts()
 	print("")
 	if _failed == 0 and _passed > 0:
@@ -39,6 +41,9 @@ func _check(desc: String, condition: bool) -> void:
 
 func _check_eq(desc: String, actual: Variant, expected: Variant) -> void:
 	_check("%s (got %s, expected %s)" % [desc, actual, expected], actual == expected)
+
+func _check_almost(desc: String, actual: float, expected: float, margin: float = 0.001) -> void:
+	_check("%s (got %.4f, expected %.4f +/- %.4f)" % [desc, actual, expected, margin], absf(actual - expected) <= margin)
 
 func _new_kit() -> Dictionary:
 	var body := CharacterBody3D.new()
@@ -141,6 +146,57 @@ func _test_cast_ammo_consumes_reclaims_and_empty_fails() -> void:
 	_check_eq("re-fired reclaimed stone lodges again", kit.cast_lodged_ammo(), 2)
 	await _cleanup(body)
 
+func _test_surge_requires_full_gauge_and_empties_on_use() -> void:
+	var harness := await _new_kit()
+	var body: Node = harness["body"]
+	var kit: AbilityComponent = harness["kit"]
+	var vitals: PlayerVitals = PlayerVitalsScript.new()
+	vitals.name = "PlayerVitals"
+	body.add_child(vitals)
+	await process_frame
+
+	var surge := kit.get_ability(&"surge")
+	_check("default kit grants Spark Surge ability", surge != null)
+	if surge == null:
+		await _cleanup(body)
+		return
+	var has_set_charge := vitals.has_method("set_spark_surge_charge")
+	var has_charge := _object_has_property(vitals, "spark_surge_charge")
+	_check("Spark Surge test vitals can set charge", has_set_charge and has_charge)
+	if not has_set_charge or not has_charge:
+		await _cleanup(body)
+		return
+
+	vitals.set("spark_surge_charge_max", 100.0)
+	vitals.call("set_spark_surge_charge", 99.0)
+	var failures: Array[String] = []
+	var surge_payloads: Array[Dictionary] = []
+	kit.ability_failed.connect(func(_ability: Ability, reason: String) -> void:
+		failures.append(reason)
+	)
+	if kit.has_signal("surge_started"):
+		kit.connect("surge_started", func(damage: float, radius: float, stagger_seconds: float) -> void:
+			surge_payloads.append({
+				"damage": damage,
+				"radius": radius,
+				"stagger_seconds": stagger_seconds,
+			})
+		)
+
+	_check("partial Spark Surge gauge refuses activation", not kit.try_activate(&"surge"))
+	_check_eq("partial Spark Surge refusal reports not ready", failures, ["spark_not_ready"])
+	_check_almost("partial Spark Surge gauge remains unchanged", float(vitals.get("spark_surge_charge")), 99.0)
+
+	vitals.call("set_spark_surge_charge", 100.0)
+	_check("full Spark Surge gauge activates", kit.try_activate(&"surge"))
+	_check_almost("Spark Surge charge empties on use", float(vitals.get("spark_surge_charge")), 0.0)
+	_check_eq("Spark Surge emits one burst payload", surge_payloads.size(), 1)
+	if surge_payloads.size() == 1:
+		_check("Spark Surge payload carries damage", float(surge_payloads[0]["damage"]) > 0.0)
+		_check("Spark Surge payload carries room-scale radius", float(surge_payloads[0]["radius"]) >= 16.0)
+		_check("Spark Surge payload carries stagger window", float(surge_payloads[0]["stagger_seconds"]) > 0.0)
+	await _cleanup(body)
+
 func _test_dash_cancel_from_attack_without_opening_other_interrupts() -> void:
 	var harness := await _new_kit()
 	var body: Node = harness["body"]
@@ -175,3 +231,9 @@ func _test_dash_cancel_from_attack_without_opening_other_interrupts() -> void:
 	_check("attack cannot cancel hitstun", not kit.try_activate(&"attack"))
 	_check_eq("blocked hitstun interrupts leave FSM in HITSTUN", kit.current_action_state(), PlayerActionStateMachine.ActionState.HITSTUN)
 	await _cleanup(body)
+
+func _object_has_property(object: Object, property_name: String) -> bool:
+	for property in object.get_property_list():
+		if str(property.get("name", "")) == property_name:
+			return true
+	return false
