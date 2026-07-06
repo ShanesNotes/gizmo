@@ -14,6 +14,7 @@ const DEFAULT_BUFFER_SECONDS: float = 0.15
 @export var ability_component: AbilityComponent
 @export_range(0.0, 0.50, 0.01) var buffer_seconds: float = DEFAULT_BUFFER_SECONDS
 
+var direction_provider: Callable = Callable()
 var _buffered_action: StringName = &""
 var _buffered_direction: Vector3 = Vector3.ZERO
 var _buffer_time_remaining: float = 0.0
@@ -29,13 +30,16 @@ func _process(delta: float) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	for action in _action_priority():
 		if event.is_action_pressed(action):
-			handle_action_pressed(action)
+			handle_action_pressed(action, _current_direction())
 			get_viewport().set_input_as_handled()
 			return
 
 func bind_component(component: AbilityComponent) -> void:
 	ability_component = component
 	clear_buffer()
+
+func bind_direction_provider(provider: Callable) -> void:
+	direction_provider = provider
 
 func handle_action_pressed(action: StringName, direction: Vector3 = Vector3.ZERO) -> bool:
 	if ability_component == null:
@@ -115,3 +119,11 @@ func _should_buffer(action: StringName) -> bool:
 	if buffer_seconds <= 0.0 or action == ACTION_DASH:
 		return false
 	return ability_component.current_action_state() != PlayerActionStateMachine.ActionState.IDLE
+
+func _current_direction() -> Vector3:
+	if not direction_provider.is_valid():
+		return Vector3.ZERO
+	var value: Variant = direction_provider.call()
+	if value is Vector3:
+		return value
+	return Vector3.ZERO

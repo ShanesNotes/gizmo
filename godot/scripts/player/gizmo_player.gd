@@ -24,6 +24,7 @@ func _ready() -> void:
 	_configure_default_dash()
 	if ability_input_router != null:
 		ability_input_router.bind_component(ability_component)
+		ability_input_router.bind_direction_provider(Callable(self, "current_input_direction"))
 	if ability_component != null and not ability_component.dash_started.is_connected(_on_dash_started):
 		ability_component.dash_started.connect(_on_dash_started)
 

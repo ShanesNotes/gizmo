@@ -25,6 +25,8 @@ var current_wave_index: int = -1
 var _rng: RandomNumberGenerator
 var _waves: Array[Array] = []
 var _remaining_by_archetype: Dictionary = {}
+var _remaining_spawn_ids: Dictionary = {}
+var _reported_kill_spawn_ids: Dictionary = {}
 var _started := false
 var _cleared := false
 
@@ -40,6 +42,8 @@ func configure(p_difficulty_tier: float, p_rng: RandomNumberGenerator = null) ->
 	_rebuild_plan()
 	current_wave_index = -1
 	_remaining_by_archetype.clear()
+	_remaining_spawn_ids.clear()
+	_reported_kill_spawn_ids.clear()
 	_started = false
 	_cleared = false
 
@@ -67,6 +71,13 @@ func current_spawn_requests() -> Array[Dictionary]:
 func remaining_by_archetype() -> Dictionary:
 	return _remaining_by_archetype.duplicate()
 
+func remaining_spawn_ids() -> Array[String]:
+	var result: Array[String] = []
+	for spawn_id in _remaining_spawn_ids.keys():
+		result.append(String(spawn_id))
+	result.sort()
+	return result
+
 func remaining_in_wave() -> int:
 	var total := 0
 	for archetype in _remaining_by_archetype.keys():
@@ -79,16 +90,23 @@ func is_room_cleared() -> bool:
 func unspent_budget() -> float:
 	return maxf(0.0, room_budget - spent_budget)
 
-func notify_kill(archetype: String) -> bool:
+func notify_kill(spawn_id: String) -> bool:
+	var normalized_id := String(spawn_id)
+	if normalized_id == "":
+		return false
+	if _reported_kill_spawn_ids.has(normalized_id):
+		push_error("RoomDirector ignored duplicate kill report for spawn_id '%s'." % normalized_id)
+		return false
 	if not _started or _cleared:
 		return false
-	if not _remaining_by_archetype.has(archetype):
+	if not _remaining_spawn_ids.has(normalized_id):
 		return false
+
+	var archetype := String(_remaining_spawn_ids[normalized_id])
+	_remaining_spawn_ids.erase(normalized_id)
+	_reported_kill_spawn_ids[normalized_id] = true
 
 	var remaining := int(_remaining_by_archetype[archetype])
-	if remaining <= 0:
-		return false
-
 	remaining -= 1
 	if remaining <= 0:
 		_remaining_by_archetype.erase(archetype)
@@ -132,12 +150,12 @@ func _requests_for_budget(budget: float, wave_index: int) -> Array[Dictionary]:
 
 	var bruiser_count := _bruiser_count_for_budget(budget_left, wave_index)
 	if bruiser_count > 0:
-		requests.append({"archetype": ARCHETYPE_BRUISER, "count": bruiser_count})
+		requests.append(_spawn_request(ARCHETYPE_BRUISER, bruiser_count, wave_index))
 		budget_left -= float(bruiser_count) * BRUISER_COST
 
 	var chaff_count := int(floor((budget_left + 0.001) / CHAFF_COST))
 	if chaff_count > 0:
-		requests.insert(0, {"archetype": ARCHETYPE_CHAFF, "count": chaff_count})
+		requests.insert(0, _spawn_request(ARCHETYPE_CHAFF, chaff_count, wave_index))
 
 	return requests
 
@@ -158,11 +176,16 @@ func _bruiser_count_for_budget(budget: float, wave_index: int) -> int:
 
 func _prime_current_wave() -> void:
 	_remaining_by_archetype.clear()
+	_remaining_spawn_ids.clear()
 	for request: Dictionary in current_spawn_requests():
 		var archetype := String(request.get("archetype", ""))
 		var count := int(request.get("count", 0))
 		if archetype != "" and count > 0:
 			_remaining_by_archetype[archetype] = int(_remaining_by_archetype.get(archetype, 0)) + count
+			for spawn_id in request.get("spawn_ids", []):
+				var normalized_id := String(spawn_id)
+				if normalized_id != "":
+					_remaining_spawn_ids[normalized_id] = archetype
 
 func _advance_after_wave_dead() -> void:
 	if _cleared:
@@ -178,13 +201,27 @@ func _advance_after_wave_dead() -> void:
 	_cleared = true
 	current_wave_index = _waves.size()
 	_remaining_by_archetype.clear()
+	_remaining_spawn_ids.clear()
 	room_cleared.emit()
 
 func _duplicate_requests(requests: Array) -> Array[Dictionary]:
 	var result: Array[Dictionary] = []
 	for request: Dictionary in requests:
-		result.append(request.duplicate())
+		result.append(request.duplicate(true))
 	return result
+
+func _spawn_request(archetype: String, count: int, wave_index: int) -> Dictionary:
+	var spawn_ids: Array[String] = []
+	for ordinal in range(maxi(count, 0)):
+		spawn_ids.append(_spawn_id(wave_index, archetype, ordinal))
+	return {
+		"archetype": archetype,
+		"count": count,
+		"spawn_ids": spawn_ids,
+	}
+
+func _spawn_id(wave_index: int, archetype: String, ordinal: int) -> String:
+	return "w%d:%s:%d" % [wave_index, archetype, ordinal]
 
 func _requests_cost(requests: Array[Dictionary]) -> float:
 	var total := 0.0

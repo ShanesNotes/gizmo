@@ -11,6 +11,7 @@ var dash_duration: float = 0.25
 var facing_direction: Vector3 = DEFAULT_FACING_DIRECTION
 
 var _dash_direction: Vector3 = Vector3.ZERO
+var _dash_speed: float = 0.0
 var _dash_time_remaining: float = 0.0
 
 func step(current_velocity: Vector3, input_direction: Vector3, delta: float) -> Vector3:
@@ -21,7 +22,7 @@ func step(current_velocity: Vector3, input_direction: Vector3, delta: float) -> 
 
 	var horizontal_velocity := Vector3(current_velocity.x, 0.0, current_velocity.z)
 	if is_dashing():
-		horizontal_velocity = _dash_direction * dash_speed
+		horizontal_velocity = _dash_direction * _dash_speed
 		_dash_time_remaining = maxf(0.0, _dash_time_remaining - safe_delta)
 		if is_dashing():
 			return horizontal_velocity
@@ -37,13 +38,15 @@ func begin_dash(direction: Vector3 = Vector3.ZERO, speed: float = -1.0, duration
 	if chosen_direction == Vector3.ZERO:
 		chosen_direction = DEFAULT_FACING_DIRECTION
 
+	var burst_speed := speed if speed > 0.0 else dash_speed
+	var burst_duration := duration if duration > 0.0 else dash_duration
 	_dash_direction = chosen_direction
-	dash_speed = speed if speed > 0.0 else dash_speed
-	dash_duration = duration if duration > 0.0 else dash_duration
-	_dash_time_remaining = dash_duration
+	_dash_speed = burst_speed
+	_dash_time_remaining = burst_duration
 
 func clear_dash() -> void:
 	_dash_direction = Vector3.ZERO
+	_dash_speed = 0.0
 	_dash_time_remaining = 0.0
 
 func is_dashing() -> bool:

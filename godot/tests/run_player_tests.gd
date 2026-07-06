@@ -15,8 +15,12 @@ func _initialize() -> void:
 	print("Running player tests...")
 	await _test_motor_velocity_math()
 	await _test_dash_burst_overrides_then_decays()
+	await _test_dash_burst_arguments_do_not_stick_to_defaults()
 	await _test_player_scene_instantiates_with_stable_nodes()
 	await _test_scene_router_press_reaches_ability_component()
+	await _test_scene_dash_uses_held_movement_direction()
+	await _test_scene_dash_press_during_dash_is_blocked_by_current_kit()
+	await _test_scene_dash_cancels_attack_recovery_end_to_end()
 	print("")
 	if _failed == 0 and _passed > 0:
 		print("PASS - %d checks" % _passed)
@@ -109,6 +113,21 @@ func _test_dash_burst_overrides_then_decays() -> void:
 	_check_almost("post-dash decay returns to base move speed", velocity.length(), 4.0, 0.01)
 	_check("post-dash velocity follows held movement input", absf(velocity.x) < 0.01 and velocity.z < 0.0)
 
+func _test_dash_burst_arguments_do_not_stick_to_defaults() -> void:
+	var motor = _new_motor()
+
+	motor.begin_dash(Vector3.RIGHT, 28.0, 0.10)
+	_check_almost("explicit dash speed does not overwrite motor default speed", motor.dash_speed, 14.0)
+	_check_almost("explicit dash duration does not overwrite motor default duration", motor.dash_duration, 0.25)
+	var velocity := motor.step(Vector3.ZERO, Vector3.ZERO, 0.01)
+	_check_vec3_almost("explicit dash uses call-scoped burst speed", velocity, Vector3(28.0, 0.0, 0.0))
+
+	motor.clear_dash()
+	motor.begin_dash(Vector3.LEFT)
+	_check_almost("argless dash restores default duration", motor.dash_time_remaining(), 0.25)
+	velocity = motor.step(Vector3.ZERO, Vector3.ZERO, 0.01)
+	_check_vec3_almost("argless dash restores default speed", velocity, Vector3(-14.0, 0.0, 0.0))
+
 func _test_player_scene_instantiates_with_stable_nodes() -> void:
 	var player = await _new_player()
 
@@ -142,5 +161,88 @@ func _test_scene_router_press_reaches_ability_component() -> void:
 	_check("dash signal starts player motor burst", player.motor.is_dashing())
 	_check_almost("scene dash burst duration came from DashAbility", player.motor.dash_time_remaining(), 0.25)
 	_check_vec3_almost("zero-direction action falls back to facing direction", player.motor.dash_direction(), PlayerMotorScript.DEFAULT_FACING_DIRECTION)
+
+	await _cleanup(player)
+
+func _test_scene_dash_uses_held_movement_direction() -> void:
+	var player = await _new_player()
+	var activated_ids: Array[StringName] = []
+	var dash_signal_directions: Array[Vector3] = []
+	player.ability_component.ability_activated.connect(func(ability: Ability) -> void:
+		activated_ids.append(ability.ability_id)
+	)
+	player.ability_component.dash_started.connect(func(direction: Vector3, _speed: float, _duration: float) -> void:
+		dash_signal_directions.append(direction)
+	)
+
+	Input.action_press(&"gizmo_move_right")
+	Input.action_press(&"gizmo_move_up")
+	var event := InputEventAction.new()
+	event.action = ACTION_DASH
+	event.pressed = true
+	player.ability_input_router._unhandled_input(event)
+	Input.action_release(&"gizmo_move_right")
+	Input.action_release(&"gizmo_move_up")
+
+	var expected_direction := Vector3(1.0, 0.0, -1.0).normalized()
+	_check_eq("held diagonal dash action reaches AbilityComponent", activated_ids, [&"dash"])
+	_check_eq("held diagonal dash emits one dash_started payload", dash_signal_directions.size(), 1)
+	if dash_signal_directions.size() == 1:
+		_check_vec3_almost("held diagonal reaches try_activate as normalized direction", dash_signal_directions[0], expected_direction)
+	_check_vec3_almost("held diagonal dash uses normalized movement direction", player.motor.dash_direction(), expected_direction)
+
+	await _cleanup(player)
+
+func _test_scene_dash_press_during_dash_is_blocked_by_current_kit() -> void:
+	var player = await _new_player()
+	var activated_ids: Array[StringName] = []
+	player.ability_component.ability_activated.connect(func(ability: Ability) -> void:
+		activated_ids.append(ability.ability_id)
+	)
+
+	var first_event := InputEventAction.new()
+	first_event.action = ACTION_DASH
+	first_event.pressed = true
+	player.ability_input_router._unhandled_input(first_event)
+	var first_remaining: float = player.motor.dash_time_remaining()
+
+	Input.action_press(&"gizmo_move_left")
+	var second_event := InputEventAction.new()
+	second_event.action = ACTION_DASH
+	second_event.pressed = true
+	player.ability_input_router._unhandled_input(second_event)
+	Input.action_release(&"gizmo_move_left")
+
+	_check_eq("current kit blocks dash press during DASH", activated_ids, [&"dash"])
+	_check_eq("dash press during DASH leaves action state in DASH", player.ability_component.current_action_state(), PlayerActionStateMachine.ActionState.DASH)
+	_check_almost("blocked dash during DASH does not restart burst timer", player.motor.dash_time_remaining(), first_remaining)
+	_check_vec3_almost("blocked dash during DASH keeps original direction", player.motor.dash_direction(), PlayerMotorScript.DEFAULT_FACING_DIRECTION)
+
+	await _cleanup(player)
+
+func _test_scene_dash_cancels_attack_recovery_end_to_end() -> void:
+	var player = await _new_player()
+	var activated_ids: Array[StringName] = []
+	player.ability_component.ability_activated.connect(func(ability: Ability) -> void:
+		activated_ids.append(ability.ability_id)
+	)
+
+	var attack_event := InputEventAction.new()
+	attack_event.action = &"gizmo_attack"
+	attack_event.pressed = true
+	player.ability_input_router._unhandled_input(attack_event)
+	_check_eq("attack press puts scene AbilityComponent in ATTACK", player.ability_component.current_action_state(), PlayerActionStateMachine.ActionState.ATTACK)
+
+	Input.action_press(&"gizmo_move_right")
+	var dash_event := InputEventAction.new()
+	dash_event.action = ACTION_DASH
+	dash_event.pressed = true
+	player.ability_input_router._unhandled_input(dash_event)
+	Input.action_release(&"gizmo_move_right")
+
+	_check_eq("dash-cancel scene path activates attack then dash", activated_ids, [&"attack", &"dash"])
+	_check_eq("dash-cancel scene path moves state to DASH", player.ability_component.current_action_state(), PlayerActionStateMachine.ActionState.DASH)
+	_check("dash-cancel scene path starts motor burst", player.motor.is_dashing())
+	_check_vec3_almost("dash-cancel scene path uses held movement direction", player.motor.dash_direction(), Vector3.RIGHT)
 
 	await _cleanup(player)
