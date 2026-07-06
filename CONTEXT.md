@@ -2,6 +2,17 @@
 
 Orientation keystone. Read first; if other docs disagree, this wins.
 
+## Hades-clone structural pivot (2026-07-05)
+Standing mandate: Gizmo is now built as a **structural and stylistic clone of
+Hades** (fixed isometric camera, room-graph traversal, dash/attack/special/cast
+kit, boon draft between rooms + death-and-return meta-progression, flat
+gouache art) reskinned with existing Gizmo lore. This **supersedes** the Path A
+"traverse one island" model and the P0 fun-loop-v1 arena queue described below
+on structure/mechanics only — narrative/lore/art-direction canon is unchanged.
+See `docs/adr/0010-hades-clone-structural-pivot.md` for the full reconciliation
+and what's demoted to reference-only. The rest of this file still describes
+the pre-pivot Path A model; treat it as historical until rewritten.
+
 ## Clean-slate reset (2026-06-20)
 This project is now a **clean-slate 3D Godot rebuild**. Prior 2.5D, sprite-first,
 or orthographic-presentation plans/docs are inactive history unless the user
