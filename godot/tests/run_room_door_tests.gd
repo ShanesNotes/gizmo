@@ -22,6 +22,9 @@ func _initialize() -> void:
 	await _test_gizmo_player_class_without_player_group_is_ignored()
 	await _test_open_door_detects_player_already_overlapping_in_physics()
 	await _test_open_door_polls_existing_overlap_without_body_entered_signal()
+	await _test_open_for_shows_telegraph_for_all_reward_types()
+	await _test_seal_hides_telegraph_label()
+	await _test_reopen_updates_telegraph_text_and_color()
 	print("")
 	if _failed == 0 and _passed > 0:
 		print("PASS - %d checks" % _passed)
@@ -278,3 +281,99 @@ func _test_open_door_polls_existing_overlap_without_body_entered_signal() -> voi
 	await physics_frame
 	_check_eq("explicit overlap poll remains single-shot", requested_connections.size(), 1)
 	await _cleanup([door, player])
+
+const PINNED_TELEGRAPH_TEXT := {
+	RoomNode.RewardType.BOON: "BOON",
+	RoomNode.RewardType.SCRAP: "SCRAP",
+	RoomNode.RewardType.SPARKS: "SPARKS",
+	RoomNode.RewardType.HAMMER: "HAMMER",
+	RoomNode.RewardType.HEAL: "HEAL",
+	RoomNode.RewardType.SHOP: "SHOP",
+}
+
+const PINNED_TELEGRAPH_COLORS := {
+	RoomNode.RewardType.BOON: Color(1.0, 0.843, 0.0),
+	RoomNode.RewardType.SCRAP: Color(0.804, 0.498, 0.196),
+	RoomNode.RewardType.SPARKS: Color(0.259, 0.522, 0.957),
+	RoomNode.RewardType.HAMMER: Color(1.0, 0.549, 0.0),
+	RoomNode.RewardType.HEAL: Color(0.298, 0.686, 0.314),
+	RoomNode.RewardType.SHOP: Color(0.612, 0.153, 0.690),
+}
+
+func _telegraph_label(door: Variant) -> Label3D:
+	return door.get_node_or_null(NodePath(RoomDoorScript.TELEGRAPH_LABEL_NAME)) as Label3D
+
+func _test_open_for_shows_telegraph_for_all_reward_types() -> void:
+	for reward_type in PINNED_TELEGRAPH_TEXT.keys():
+		var door: Variant = await _new_door()
+		var connection := _make_connection("RoomExitA")
+		door.open_for(connection, reward_type)
+		await process_frame
+
+		var label := _telegraph_label(door)
+		_check(
+			"open_for creates telegraph label for %s" % PINNED_TELEGRAPH_TEXT[reward_type],
+			label != null
+		)
+		if label == null:
+			await _cleanup([door])
+			continue
+
+		_check_eq(
+			"%s telegraph text" % PINNED_TELEGRAPH_TEXT[reward_type],
+			label.text,
+			PINNED_TELEGRAPH_TEXT[reward_type]
+		)
+		_check(
+			"%s telegraph color" % PINNED_TELEGRAPH_TEXT[reward_type],
+			label.modulate.is_equal_approx(PINNED_TELEGRAPH_COLORS[reward_type])
+		)
+		_check(
+			"%s telegraph billboard enabled" % PINNED_TELEGRAPH_TEXT[reward_type],
+			label.billboard == BaseMaterial3D.BILLBOARD_ENABLED
+		)
+		_check(
+			"%s telegraph visible when OPEN" % PINNED_TELEGRAPH_TEXT[reward_type],
+			label.visible
+		)
+		await _cleanup([door])
+
+func _test_seal_hides_telegraph_label() -> void:
+	var door: Variant = await _new_door()
+	door.open_for(_make_connection("RoomExitA"), RoomNode.RewardType.BOON)
+	await process_frame
+
+	var label := _telegraph_label(door)
+	_check("open door exposes telegraph label before seal", label != null)
+	if label != null:
+		_check("telegraph visible while OPEN", label.visible)
+
+	door.seal()
+	await process_frame
+
+	label = _telegraph_label(door)
+	_check("telegraph label still exists after seal", label != null)
+	if label != null:
+		_check("seal hides telegraph label", not label.visible)
+	await _cleanup([door])
+
+func _test_reopen_updates_telegraph_text_and_color() -> void:
+	var door: Variant = await _new_door()
+	door.open_for(_make_connection("RoomExitA"), RoomNode.RewardType.SPARKS)
+	await process_frame
+
+	var label := _telegraph_label(door)
+	_check_eq("first open telegraph text", label.text if label != null else "", "SPARKS")
+	if label != null:
+		_check("first open telegraph color", label.modulate.is_equal_approx(PINNED_TELEGRAPH_COLORS[RoomNode.RewardType.SPARKS]))
+
+	door.seal()
+	door.open_for(_make_connection("RoomExitB"), RoomNode.RewardType.HEAL)
+	await process_frame
+
+	label = _telegraph_label(door)
+	_check_eq("reopen replaces telegraph text", label.text if label != null else "", "HEAL")
+	if label != null:
+		_check("reopen replaces telegraph color", label.modulate.is_equal_approx(PINNED_TELEGRAPH_COLORS[RoomNode.RewardType.HEAL]))
+		_check("reopen shows telegraph again", label.visible)
+	await _cleanup([door])

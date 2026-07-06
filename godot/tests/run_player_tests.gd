@@ -5,6 +5,7 @@ extends SceneTree
 #   godot --headless --user-data-dir /tmp/codex-godot-userdata --path godot --script res://tests/run_player_tests.gd
 
 const PlayerMotorScript := preload("res://scripts/player/player_motor.gd")
+const PlayerVitalsScript := preload("res://scripts/player/player_vitals.gd")
 const GizmoPlayerScene := preload("res://scenes/gizmo_player.tscn")
 const ACTION_DASH: StringName = &"gizmo_dash"
 
@@ -17,6 +18,7 @@ func _initialize() -> void:
 	await _test_dash_burst_overrides_then_decays()
 	await _test_dash_burst_arguments_do_not_stick_to_defaults()
 	await _test_player_scene_instantiates_with_stable_nodes()
+	_test_player_vitals_guard_recharges_after_damage_delay()
 	await _test_scene_router_press_reaches_ability_component()
 	await _test_scene_dash_uses_held_movement_direction()
 	await _test_scene_dash_press_during_dash_is_blocked_by_current_kit()
@@ -144,6 +146,43 @@ func _test_player_scene_instantiates_with_stable_nodes() -> void:
 	_check("scene root is tagged for player-only trigger filters", player.is_in_group(&"player"))
 
 	await _cleanup(player)
+
+func _test_player_vitals_guard_recharges_after_damage_delay() -> void:
+	var vitals: PlayerVitals = PlayerVitalsScript.new()
+	vitals.max_hp = 3
+	vitals.max_guard = 4
+	var has_recharge_delay := _object_has_property(vitals, "guard_recharge_delay")
+	var has_recharge_rate := _object_has_property(vitals, "guard_recharge_rate")
+	var has_recharge_tick := vitals.has_method("tick_guard_recharge")
+	_check("PlayerVitals exposes guard_recharge_delay", has_recharge_delay)
+	_check("PlayerVitals exposes guard_recharge_rate", has_recharge_rate)
+	_check("PlayerVitals exposes tick_guard_recharge", has_recharge_tick)
+	if not has_recharge_delay or not has_recharge_rate or not has_recharge_tick:
+		vitals.free()
+		return
+	vitals.set("guard_recharge_delay", 1.0)
+	vitals.set("guard_recharge_rate", 2.0)
+	vitals.reset()
+
+	vitals.apply_damage(2)
+	_check_eq("guard damage reduces guard before recharge", vitals.guard, 2)
+	vitals.call("tick_guard_recharge", 0.99)
+	_check_eq("guard does not recharge before delay", vitals.guard, 2)
+	vitals.call("tick_guard_recharge", 0.51)
+	_check_eq("guard begins recharging once delay elapses", vitals.guard, 3)
+	vitals.call("tick_guard_recharge", 0.50)
+	_check_eq("guard continues recharging up to max", vitals.guard, 4)
+	vitals.apply_damage(1)
+	_check_eq("new damage resets guard recharge timer", vitals.guard, 3)
+	vitals.call("tick_guard_recharge", 0.99)
+	_check_eq("guard still waits full delay after reset damage", vitals.guard, 3)
+	vitals.free()
+
+func _object_has_property(object: Object, property_name: String) -> bool:
+	for property in object.get_property_list():
+		if str(property.get("name", "")) == property_name:
+			return true
+	return false
 
 func _test_scene_router_press_reaches_ability_component() -> void:
 	var player = await _new_player()
