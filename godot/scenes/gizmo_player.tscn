@@ -1,0 +1,39 @@
+[gd_scene load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://scripts/player/gizmo_player.gd" id="1_player"]
+[ext_resource type="Script" path="res://scripts/abilities/ability_component.gd" id="2_ability_component"]
+[ext_resource type="Script" path="res://scripts/abilities/ability_input_router.gd" id="3_input_router"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_player"]
+radius = 0.38
+height = 1.1
+
+[sub_resource type="CapsuleMesh" id="CapsuleMesh_player"]
+radius = 0.38
+height = 1.75
+radial_segments = 18
+rings = 8
+
+[sub_resource type="StandardMaterial3D" id="Material_gizmo_placeholder"]
+albedo_color = Color(0.45, 0.72, 0.68, 1)
+roughness = 0.9
+
+[node name="GizmoPlayer" type="CharacterBody3D"]
+script = ExtResource("1_player")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.875, 0)
+shape = SubResource("CapsuleShape3D_player")
+
+[node name="VisualPivot" type="Node3D" parent="."]
+
+[node name="Capsule" type="MeshInstance3D" parent="VisualPivot"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.875, 0)
+mesh = SubResource("CapsuleMesh_player")
+surface_material_override/0 = SubResource("Material_gizmo_placeholder")
+
+[node name="AbilityComponent" type="Node" parent="."]
+script = ExtResource("2_ability_component")
+
+[node name="AbilityInputRouter" type="Node" parent="."]
+script = ExtResource("3_input_router")
