@@ -1,7 +1,7 @@
 extends SceneTree
 
-# Headless tests for the end screen's copy and rendered scene state.
-#   godot --headless --path godot --script res://tests/run_end_screen_tests.gd
+# Headless tests for the end screen's run-summary contract.
+#   godot --headless --user-data-dir /tmp/codex-godot-userdata --path godot --script res://tests/run_end_screen_tests.gd
 # Exits 0 if all pass, 1 if any fail.
 
 var _passed := 0
@@ -11,86 +11,92 @@ const EndScreen := preload("res://scripts/end_screen.gd")
 const EndScreenScene := preload("res://scenes/end_screen.tscn")
 
 func _initialize() -> void:
-	print("Running end-screen tests…")
-	_test_outcome()
-	await _test_show_outcome()
+	print("Running end-screen tests...")
+	await _test_run_summary_renders_victory_payload()
+	await _test_run_summary_renders_loss_payload()
+	await _test_retired_copy_tokens_are_absent()
 	print("")
 	if _failed == 0 and _passed > 0:
-		print("PASS — %d checks" % _passed)
+		print("PASS - %d checks" % _passed)
 		quit(0)
 	else:
-		printerr("FAIL — %d passed, %d failed" % [_passed, _failed])
+		printerr("FAIL - %d passed, %d failed" % [_passed, _failed])
 		quit(1)
 
-func _check_eq(desc: String, actual: Variant, expected: Variant) -> void:
-	if actual == expected:
+func _check(desc: String, condition: bool) -> void:
+	if condition:
 		_passed += 1
 		print("  ok   - ", desc)
 	else:
 		_failed += 1
-		printerr("  FAIL - %s (got %s, expected %s)" % [desc, actual, expected])
+		printerr("  FAIL - %s" % desc)
 
-func _check_no_match(desc: String, text: String, regex: RegEx) -> void:
-	if regex.search(text) == null:
-		_passed += 1
-		print("  ok   - ", desc)
-	else:
-		_failed += 1
-		printerr("  FAIL - %s (matched forbidden text in %s)" % [desc, text])
+func _check_eq(desc: String, actual: Variant, want: Variant) -> void:
+	_check("%s (got %s, want %s)" % [desc, actual, want], actual == want)
 
-func _screen_text(screen: Node) -> String:
-	var parts: Array[String] = []
-	_collect_text(screen, parts)
-	return "\n".join(parts)
-
-func _collect_text(node: Node, parts: Array[String]) -> void:
-	if node is Label or node is Button:
-		parts.append(node.text)
-	for child in node.get_children():
-		_collect_text(child, parts)
-
-func _make_sim(phase: String, level: int, kills: int, sparks: int) -> Simulation:
-	var sim := Simulation.new()
-	sim.phase = phase
-	sim.level = level
-	sim.kills = kills
-	sim.xp = sparks
-	sim.elapsed = 137.0
-	return sim
-
-# outcome() maps the finished phase to {title, flavor, win}. A "playing" phase has
-# no outcome (defensive empty title), so a mis-call shows nothing, not a wrong banner.
-func _test_outcome() -> void:
-	var win := EndScreen.outcome(Simulation.PHASE_COMPLETE)
-	_check_eq("complete -> win", win["win"], true)
-	_check_eq("complete -> Beacon Rekindled", win["title"], "Beacon Rekindled")
-
-	var loss := EndScreen.outcome(Simulation.PHASE_GAMEOVER)
-	_check_eq("gameover -> not win", loss["win"], false)
-	_check_eq("gameover -> Gizmo's light failed", loss["title"], "Gizmo's light failed")
-
-	var playing := EndScreen.outcome(Simulation.PHASE_PLAYING)
-	_check_eq("playing -> no outcome (empty title)", playing["title"], "")
-	_check_eq("playing -> not win", playing["win"], false)
-
-func _test_show_outcome() -> void:
-	var forbidden := RegEx.new()
-	forbidden.compile("(?i)(survived|time|[0-9]+:[0-9]{2})")
-
-	var win_screen := EndScreenScene.instantiate()
-	get_root().add_child(win_screen)
+func _new_screen() -> EndScreen:
+	var screen := EndScreenScene.instantiate() as EndScreen
+	root.add_child(screen)
 	await process_frame
-	win_screen.show_outcome(_make_sim(Simulation.PHASE_COMPLETE, 4, 9, 27))
-	_check_eq("win path renders exact title", win_screen.get_node("Root/Center/Panel/Margin/VBox/TitleLabel").text, "Beacon Rekindled")
-	_check_eq("win stats render level/kills/Sparks", win_screen.get_node("Root/Center/Panel/Margin/VBox/StatsValue").text, "Level 4 · 9 kills · 27 Sparks")
-	_check_no_match("win screen has no survived/time/clock text", _screen_text(win_screen), forbidden)
-	win_screen.queue_free()
+	return screen
 
-	var loss_screen := EndScreenScene.instantiate()
-	get_root().add_child(loss_screen)
+func _cleanup(node: Node) -> void:
+	node.queue_free()
 	await process_frame
-	loss_screen.show_outcome(_make_sim(Simulation.PHASE_GAMEOVER, 2, 3, 11))
-	_check_eq("loss path renders exact title", loss_screen.get_node("Root/Center/Panel/Margin/VBox/TitleLabel").text, "Gizmo's light failed")
-	_check_eq("loss stats render level/kills/Sparks", loss_screen.get_node("Root/Center/Panel/Margin/VBox/StatsValue").text, "Level 2 · 3 kills · 11 Sparks")
-	_check_no_match("loss screen has no survived/time/clock text", _screen_text(loss_screen), forbidden)
-	loss_screen.queue_free()
+
+func _label_text(screen: EndScreen, node_path: String) -> String:
+	var label := screen.get_node(node_path) as Label
+	return label.text if label != null else ""
+
+func _test_run_summary_renders_victory_payload() -> void:
+	var screen := await _new_screen()
+	screen.show_run_summary({
+		"rooms_cleared": 8,
+		"boons_taken": 3,
+		"scrap_banked": 41,
+		"survived_seconds": 125.2,
+		"victory": true,
+	})
+
+	_check("summary becomes visible", screen.get_node("Root").visible)
+	_check_eq("victory title", _label_text(screen, "Root/Center/Panel/Margin/VBox/TitleLabel"), "RUN COMPLETE")
+	_check_eq("result stat", _label_text(screen, "Root/Center/Panel/Margin/VBox/Stats/ResultValue"), "COMPLETE")
+	_check_eq("rooms stat", _label_text(screen, "Root/Center/Panel/Margin/VBox/Stats/RoomsValue"), "8")
+	_check_eq("boons stat", _label_text(screen, "Root/Center/Panel/Margin/VBox/Stats/BoonsValue"), "3")
+	_check_eq("scrap stat", _label_text(screen, "Root/Center/Panel/Margin/VBox/Stats/ScrapValue"), "41")
+	_check_eq("survived stat uses HUD clock", _label_text(screen, "Root/Center/Panel/Margin/VBox/Stats/SurvivedValue"), "2:06")
+
+	await _cleanup(screen)
+
+func _test_run_summary_renders_loss_payload() -> void:
+	var screen := await _new_screen()
+	screen.show_run_summary({
+		"rooms_cleared": 2,
+		"boons_taken": 1,
+		"scrap_banked": 7,
+		"survived_seconds": 0.0,
+		"victory": false,
+	})
+
+	_check_eq("loss title", _label_text(screen, "Root/Center/Panel/Margin/VBox/TitleLabel"), "RUN LOST")
+	_check_eq("loss result stat", _label_text(screen, "Root/Center/Panel/Margin/VBox/Stats/ResultValue"), "LOST")
+	_check_eq("zero survived stat", _label_text(screen, "Root/Center/Panel/Margin/VBox/Stats/SurvivedValue"), "0:00")
+
+	await _cleanup(screen)
+
+func _test_retired_copy_tokens_are_absent() -> void:
+	var tokens: Array[String] = [
+		"wa" + "ve",
+		"count" + "down",
+		"lev" + "el",
+		"x" + "p",
+	]
+	var paths: Array[String] = [
+		"res://scenes/end_screen.tscn",
+		"res://scripts/end_screen.gd",
+		"res://tests/run_end_screen_tests.gd",
+	]
+	for path in paths:
+		var text := FileAccess.get_file_as_string(path).to_lower()
+		for token in tokens:
+			_check("%s retired token absent from %s" % [token, path], not text.contains(token))

@@ -1,0 +1,77 @@
+[gd_scene load_steps=5 format=3]
+
+[sub_resource type="StandardMaterial3D" id="Mat_floor"]
+albedo_color = Color(0.25, 0.24, 0.29, 1)
+roughness = 0.95
+
+[sub_resource type="StandardMaterial3D" id="Mat_obstacle"]
+albedo_color = Color(0.39, 0.35, 0.42, 1)
+roughness = 0.9
+
+[sub_resource type="StandardMaterial3D" id="Mat_exit"]
+albedo_color = Color(0.74, 0.54, 0.32, 1)
+emission_enabled = true
+emission = Color(0.36, 0.2, 0.08, 1)
+emission_energy_multiplier = 0.55
+roughness = 0.82
+
+[sub_resource type="BoxShape3D" id="DoorShapeNorth"]
+size = Vector3(3.6, 2.2, 1.2)
+
+[node name="EliteArena" type="Node3D"]
+
+[node name="Geometry" type="Node3D" parent="."]
+
+[node name="Floor" type="CSGBox3D" parent="Geometry"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.15, 0)
+use_collision = true
+size = Vector3(32, 0.3, 32)
+material = SubResource("Mat_floor")
+
+[node name="ObstacleA" type="CSGBox3D" parent="Geometry"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6.5, 0.9, -6.5)
+use_collision = true
+size = Vector3(2.5, 1.8, 2.5)
+material = SubResource("Mat_obstacle")
+
+[node name="ObstacleB" type="CSGBox3D" parent="Geometry"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.5, 0.9, -6.5)
+use_collision = true
+size = Vector3(2.5, 1.8, 2.5)
+material = SubResource("Mat_obstacle")
+
+[node name="ObstacleC" type="CSGBox3D" parent="Geometry"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6.5, 0.9, 5.0)
+use_collision = true
+size = Vector3(2.5, 1.8, 2.5)
+material = SubResource("Mat_obstacle")
+
+[node name="ObstacleD" type="CSGBox3D" parent="Geometry"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.5, 0.9, 5.0)
+use_collision = true
+size = Vector3(2.5, 1.8, 2.5)
+material = SubResource("Mat_obstacle")
+
+[node name="CentralBlock" type="CSGBox3D" parent="Geometry"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.45, -1.0)
+use_collision = true
+size = Vector3(4.0, 0.9, 2.0)
+material = SubResource("Mat_obstacle")
+
+[node name="RoomExitPad" type="CSGBox3D" parent="Geometry"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.04, -15.0)
+size = Vector3(4.4, 0.08, 1.6)
+material = SubResource("Mat_exit")
+
+[node name="CameraAnchor" type="Marker3D" parent="."]
+metadata/camera_half_extent_x = 8.0
+metadata/camera_half_extent_z = 8.0
+
+[node name="SpawnMarker" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 12.4)
+
+[node name="RoomExit" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1, -15.7)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="RoomExit"]
+shape = SubResource("DoorShapeNorth")

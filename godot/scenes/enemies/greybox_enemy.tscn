@@ -1,0 +1,31 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/enemies/enemy.gd" id="1_enemy"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_enemy"]
+radius = 0.45
+height = 1.2
+
+[sub_resource type="CapsuleMesh" id="CapsuleMesh_enemy"]
+radius = 0.45
+height = 1.5
+radial_segments = 12
+rings = 6
+
+[sub_resource type="StandardMaterial3D" id="Material_enemy_greybox"]
+albedo_color = Color(0.42, 0.44, 0.46, 1)
+roughness = 0.9
+
+[node name="GreyboxEnemy" type="CharacterBody3D"]
+script = ExtResource("1_enemy")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.6, 0)
+shape = SubResource("CapsuleShape3D_enemy")
+
+[node name="VisualPivot" type="Node3D" parent="."]
+
+[node name="Capsule" type="MeshInstance3D" parent="VisualPivot"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.75, 0)
+mesh = SubResource("CapsuleMesh_enemy")
+surface_material_override/0 = SubResource("Material_enemy_greybox")

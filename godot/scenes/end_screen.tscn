@@ -110,7 +110,7 @@ theme_override_font_sizes/font_size = 44
 [node name="FlavorLabel" type="Label" parent="Root/Center/Panel/Margin/VBox"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "The hearth catches; the cold world holds back."
+text = "Run summary recorded."
 horizontal_alignment = 1
 theme_override_colors/font_color = Color(0.7569, 0.6667, 0.5686, 1.0)
 theme_override_font_sizes/font_size = 16
@@ -118,13 +118,91 @@ theme_override_font_sizes/font_size = 16
 [node name="Divider" type="HSeparator" parent="Root/Center/Panel/Margin/VBox"]
 layout_mode = 2
 
-[node name="StatsValue" type="Label" parent="Root/Center/Panel/Margin/VBox"]
+[node name="Stats" type="GridContainer" parent="Root/Center/Panel/Margin/VBox"]
+layout_mode = 2
+theme_override_constants/h_separation = 24
+theme_override_constants/v_separation = 10
+columns = 2
+
+[node name="ResultCap" type="Label" parent="Root/Center/Panel/Margin/VBox/Stats"]
+layout_mode = 2
+theme_type_variation = &"CapsLabel"
+size_flags_horizontal = 3
+text = "RESULT"
+theme_override_colors/font_color = Color(0.7569, 0.6667, 0.5686, 1.0)
+theme_override_font_sizes/font_size = 15
+
+[node name="ResultValue" type="Label" parent="Root/Center/Panel/Margin/VBox/Stats"]
 unique_name_in_owner = true
 theme_type_variation = &"NumericLabel"
 layout_mode = 2
-text = "Level 3 · 4 kills · 64 Sparks"
-horizontal_alignment = 1
-theme_override_colors/font_color = Color(0.6706, 0.5608, 0.7765, 1.0)
+text = "COMPLETE"
+horizontal_alignment = 2
+theme_override_font_sizes/font_size = 20
+
+[node name="RoomsCap" type="Label" parent="Root/Center/Panel/Margin/VBox/Stats"]
+layout_mode = 2
+theme_type_variation = &"CapsLabel"
+size_flags_horizontal = 3
+text = "ROOMS CLEARED"
+theme_override_colors/font_color = Color(0.7569, 0.6667, 0.5686, 1.0)
+theme_override_font_sizes/font_size = 15
+
+[node name="RoomsValue" type="Label" parent="Root/Center/Panel/Margin/VBox/Stats"]
+unique_name_in_owner = true
+theme_type_variation = &"NumericLabel"
+layout_mode = 2
+text = "0"
+horizontal_alignment = 2
+theme_override_font_sizes/font_size = 20
+
+[node name="BoonsCap" type="Label" parent="Root/Center/Panel/Margin/VBox/Stats"]
+layout_mode = 2
+theme_type_variation = &"CapsLabel"
+size_flags_horizontal = 3
+text = "BOONS TAKEN"
+theme_override_colors/font_color = Color(0.7569, 0.6667, 0.5686, 1.0)
+theme_override_font_sizes/font_size = 15
+
+[node name="BoonsValue" type="Label" parent="Root/Center/Panel/Margin/VBox/Stats"]
+unique_name_in_owner = true
+theme_type_variation = &"NumericLabel"
+layout_mode = 2
+text = "0"
+horizontal_alignment = 2
+theme_override_font_sizes/font_size = 20
+
+[node name="ScrapCap" type="Label" parent="Root/Center/Panel/Margin/VBox/Stats"]
+layout_mode = 2
+theme_type_variation = &"CapsLabel"
+size_flags_horizontal = 3
+text = "SCRAP BANKED"
+theme_override_colors/font_color = Color(0.7569, 0.6667, 0.5686, 1.0)
+theme_override_font_sizes/font_size = 15
+
+[node name="ScrapValue" type="Label" parent="Root/Center/Panel/Margin/VBox/Stats"]
+unique_name_in_owner = true
+theme_type_variation = &"NumericLabel"
+layout_mode = 2
+text = "0"
+horizontal_alignment = 2
+theme_override_colors/font_color = Color(0.7412, 0.5176, 0.4078, 1.0)
+theme_override_font_sizes/font_size = 20
+
+[node name="SurvivedCap" type="Label" parent="Root/Center/Panel/Margin/VBox/Stats"]
+layout_mode = 2
+theme_type_variation = &"CapsLabel"
+size_flags_horizontal = 3
+text = "SURVIVED"
+theme_override_colors/font_color = Color(0.7569, 0.6667, 0.5686, 1.0)
+theme_override_font_sizes/font_size = 15
+
+[node name="SurvivedValue" type="Label" parent="Root/Center/Panel/Margin/VBox/Stats"]
+unique_name_in_owner = true
+theme_type_variation = &"NumericLabel"
+layout_mode = 2
+text = "0:00"
+horizontal_alignment = 2
 theme_override_font_sizes/font_size = 20
 
 [node name="Spacer" type="Control" parent="Root/Center/Panel/Margin/VBox"]

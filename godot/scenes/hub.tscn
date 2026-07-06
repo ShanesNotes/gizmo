@@ -1,0 +1,238 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/hub_controller.gd" id="1_ctrl"]
+
+[sub_resource type="ProceduralSkyMaterial" id="Sky_mat"]
+sky_top_color = Color(0.09, 0.07, 0.16, 1)
+sky_horizon_color = Color(0.28, 0.22, 0.18, 1)
+ground_bottom_color = Color(0.06, 0.05, 0.08, 1)
+ground_horizon_color = Color(0.2, 0.16, 0.13, 1)
+
+[sub_resource type="Sky" id="Sky_res"]
+sky_material = SubResource("Sky_mat")
+
+[sub_resource type="Environment" id="Env_res"]
+background_mode = 2
+sky = SubResource("Sky_res")
+ambient_light_source = 3
+tonemap_mode = 2
+
+[sub_resource type="StandardMaterial3D" id="Mat_floor"]
+albedo_color = Color(0.24, 0.23, 0.24, 1)
+roughness = 0.95
+
+[sub_resource type="StandardMaterial3D" id="Mat_wall"]
+albedo_color = Color(0.38, 0.34, 0.29, 1)
+roughness = 0.94
+
+[sub_resource type="StandardMaterial3D" id="Mat_brass"]
+albedo_color = Color(0.72, 0.52, 0.28, 1)
+emission_enabled = true
+emission = Color(0.4, 0.24, 0.08, 1)
+emission_energy_multiplier = 0.35
+roughness = 0.78
+
+[sub_resource type="StandardMaterial3D" id="Mat_teal"]
+albedo_color = Color(0.28, 0.52, 0.5, 1)
+emission_enabled = true
+emission = Color(0.12, 0.32, 0.3, 1)
+emission_energy_multiplier = 0.45
+roughness = 0.9
+
+[sub_resource type="StandardMaterial3D" id="Mat_violet"]
+albedo_color = Color(0.46, 0.34, 0.68, 1)
+emission_enabled = true
+emission = Color(0.24, 0.16, 0.48, 1)
+emission_energy_multiplier = 0.55
+roughness = 0.88
+
+[sub_resource type="StandardMaterial3D" id="Mat_door"]
+albedo_color = Color(0.86, 0.68, 0.32, 1)
+emission_enabled = true
+emission = Color(0.52, 0.32, 0.08, 1)
+emission_energy_multiplier = 0.8
+roughness = 0.82
+
+[sub_resource type="StandardMaterial3D" id="Mat_gizmo_placeholder"]
+albedo_color = Color(0.48, 0.72, 0.68, 1)
+roughness = 0.9
+
+[sub_resource type="BoxMesh" id="Floor_mesh"]
+size = Vector3(12, 0.2, 12)
+
+[sub_resource type="BoxMesh" id="Wall_side_mesh"]
+size = Vector3(0.35, 3, 12)
+
+[sub_resource type="BoxMesh" id="Wall_back_mesh"]
+size = Vector3(12, 3, 0.35)
+
+[sub_resource type="BoxMesh" id="Wall_north_side_mesh"]
+size = Vector3(4.2, 3, 0.35)
+
+[sub_resource type="BoxMesh" id="Wall_north_header_mesh"]
+size = Vector3(3.6, 0.8, 0.35)
+
+[sub_resource type="BoxMesh" id="Plinth_mesh"]
+size = Vector3(2.4, 0.5, 1.4)
+
+[sub_resource type="CylinderMesh" id="Sphere_base_mesh"]
+top_radius = 1.5
+bottom_radius = 1.7
+height = 0.35
+
+[sub_resource type="SphereMesh" id="Brass_sphere_mesh"]
+radius = 0.85
+height = 1.7
+radial_segments = 24
+rings = 12
+
+[sub_resource type="BoxMesh" id="Door_pad_mesh"]
+size = Vector3(2.7, 0.08, 1.4)
+
+[sub_resource type="CapsuleMesh" id="Gizmo_capsule_mesh"]
+radius = 0.35
+height = 1.65
+radial_segments = 16
+rings = 8
+
+[sub_resource type="BoxShape3D" id="RunDoor_shape"]
+size = Vector3(2.8, 2.2, 1.2)
+
+[sub_resource type="CapsuleShape3D" id="Gizmo_capsule_shape"]
+radius = 0.35
+height = 1.1
+
+[node name="Hub" type="Node3D"]
+script = ExtResource("1_ctrl")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Env_res")
+
+[node name="Sun" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.866025, 0.353553, -0.353553, 0, 0.707107, 0.707107, 0.5, -0.612372, 0.612372, 0, 0, 0)
+light_color = Color(1, 0.86, 0.64, 1)
+light_energy = 1.45
+shadow_enabled = true
+sky_mode = 1
+
+[node name="Geometry" type="Node3D" parent="."]
+
+[node name="Floor" type="MeshInstance3D" parent="Geometry"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.1, 0)
+mesh = SubResource("Floor_mesh")
+surface_material_override/0 = SubResource("Mat_floor")
+
+[node name="WestWall" type="MeshInstance3D" parent="Geometry"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 1.4, 0)
+mesh = SubResource("Wall_side_mesh")
+surface_material_override/0 = SubResource("Mat_wall")
+
+[node name="EastWall" type="MeshInstance3D" parent="Geometry"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 1.4, 0)
+mesh = SubResource("Wall_side_mesh")
+surface_material_override/0 = SubResource("Mat_wall")
+
+[node name="SouthWall" type="MeshInstance3D" parent="Geometry"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.4, 6)
+mesh = SubResource("Wall_back_mesh")
+surface_material_override/0 = SubResource("Mat_wall")
+
+[node name="NorthWallLeft" type="MeshInstance3D" parent="Geometry"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.9, 1.4, -6)
+mesh = SubResource("Wall_north_side_mesh")
+surface_material_override/0 = SubResource("Mat_wall")
+
+[node name="NorthWallRight" type="MeshInstance3D" parent="Geometry"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.9, 1.4, -6)
+mesh = SubResource("Wall_north_side_mesh")
+surface_material_override/0 = SubResource("Mat_wall")
+
+[node name="NorthDoorHeader" type="MeshInstance3D" parent="Geometry"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.5, -6)
+mesh = SubResource("Wall_north_header_mesh")
+surface_material_override/0 = SubResource("Mat_wall")
+
+[node name="BrassSphereBase" type="MeshInstance3D" parent="Geometry"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.15, 0)
+mesh = SubResource("Sphere_base_mesh")
+surface_material_override/0 = SubResource("Mat_brass")
+
+[node name="BrassSphere" type="MeshInstance3D" parent="Geometry"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.25, 0)
+mesh = SubResource("Brass_sphere_mesh")
+surface_material_override/0 = SubResource("Mat_brass")
+
+[node name="MirrorPlinth" type="MeshInstance3D" parent="Geometry"]
+transform = Transform3D(0.707107, 0, -0.707107, 0, 1, 0, 0.707107, 0, 0.707107, -4.3, 0.25, -1.5)
+mesh = SubResource("Plinth_mesh")
+surface_material_override/0 = SubResource("Mat_teal")
+
+[node name="CodexPlinth" type="MeshInstance3D" parent="Geometry"]
+transform = Transform3D(0.707107, 0, 0.707107, 0, 1, 0, -0.707107, 0, 0.707107, 4.3, 0.25, -1.5)
+mesh = SubResource("Plinth_mesh")
+surface_material_override/0 = SubResource("Mat_violet")
+
+[node name="RunDoorPad" type="MeshInstance3D" parent="Geometry"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.04, -5.25)
+mesh = SubResource("Door_pad_mesh")
+surface_material_override/0 = SubResource("Mat_door")
+
+[node name="HubSpawn" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 3.2)
+
+[node name="MirrorAnchor" type="Marker3D" parent="."]
+transform = Transform3D(0.707107, 0, -0.707107, 0, 1, 0, 0.707107, 0, 0.707107, -4.3, 0.65, -1.5)
+
+[node name="CodexAnchor" type="Marker3D" parent="."]
+transform = Transform3D(0.707107, 0, 0.707107, 0, 1, 0, -0.707107, 0, 0.707107, 4.3, 0.65, -1.5)
+
+[node name="RunDoor" type="Area3D" parent="."]
+unique_name_in_owner = true
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.05, -5.35)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="RunDoor"]
+shape = SubResource("RunDoor_shape")
+
+[node name="GizmoPlaceholder" type="CharacterBody3D" parent="."]
+unique_name_in_owner = true
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 3.2)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="GizmoPlaceholder"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.85, 0)
+shape = SubResource("Gizmo_capsule_shape")
+
+[node name="Capsule" type="MeshInstance3D" parent="GizmoPlaceholder"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.85, 0)
+mesh = SubResource("Gizmo_capsule_mesh")
+surface_material_override/0 = SubResource("Mat_gizmo_placeholder")
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.642788, 0.766044, 0, -0.766044, 0.642788, 0, 9, 8)
+current = true
+fov = 50.0
+
+[node name="HubUi" type="CanvasLayer" parent="."]
+layer = 2
+
+[node name="Root" type="Control" parent="HubUi"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="ScrapLabel" type="Label" parent="HubUi/Root"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 0
+offset_left = 18.0
+offset_top = 16.0
+offset_right = 180.0
+offset_bottom = 44.0
+theme_override_colors/font_color = Color(0.86, 0.68, 0.32, 1)
+theme_override_colors/font_outline_color = Color(0.08, 0.06, 0.05, 0.9)
+theme_override_constants/outline_size = 3
+theme_override_font_sizes/font_size = 20
+text = "SCRAP 0"
