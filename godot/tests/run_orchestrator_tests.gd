@@ -10,13 +10,74 @@ const RoomTemplate := preload("res://scripts/room_graph/room_template.gd")
 const RoomConnection := preload("res://scripts/room_graph/room_connection.gd")
 const RoomDoorScript := preload("res://scripts/room_graph/room_door.gd")
 const AttackAbilityScript := preload("res://scripts/abilities/attack_ability.gd")
+const BoonDef := preload("res://scripts/boons/boon_def.gd")
+const GreyboxEnemyScene := preload("res://scenes/enemies/greybox_enemy.tscn")
 
 const SURVIVAL_DT := 0.05
 const SURVIVAL_RETREAT_SPEED := 4.0
 const SURVIVAL_PLAYER_DPS_SCALE := 1.0
+const SPAWN_GOLDEN_ANGLE := 2.399963
+const SPAWN_CANDIDATE_COUNT := 48
+const SPAWN_SEPARATION_DISTANCE := 1.1
+const STEPPED_CONTAINMENT_FRAMES := 60
 
 var _passed := 0
 var _failed := 0
+
+class DoorPhysicsProbe:
+	extends Node
+
+	signal callback_ran()
+
+	var run = null
+	var door: RoomDoor = null
+	var player: Node3D = null
+	var previous_room_root: Node3D = null
+	var ran := false
+	var room_root_during_callback: Node3D = null
+	var room_child_count_during_callback := -1
+	var previous_room_valid_during_callback := false
+
+	func _physics_process(_delta: float) -> void:
+		if ran:
+			return
+		ran = true
+		if door != null:
+			door.emit_signal(&"body_entered", player)
+		if run != null:
+			room_root_during_callback = run.current_room_root
+			room_child_count_during_callback = run.rooms_root.get_child_count()
+		previous_room_valid_during_callback = is_instance_valid(previous_room_root)
+		set_physics_process(false)
+		callback_ran.emit()
+
+class TwoDoorPhysicsProbe:
+	extends Node
+
+	signal callback_ran()
+
+	var run = null
+	var doors: Array[RoomDoor] = []
+	var player: Node3D = null
+	var previous_room_root: Node3D = null
+	var ran := false
+	var room_root_during_callback: Node3D = null
+	var room_child_count_during_callback := -1
+	var previous_room_valid_during_callback := false
+
+	func _physics_process(_delta: float) -> void:
+		if ran:
+			return
+		ran = true
+		for door in doors:
+			if door != null:
+				door.emit_signal(&"body_entered", player)
+		if run != null:
+			room_root_during_callback = run.current_room_root
+			room_child_count_during_callback = run.rooms_root.get_child_count()
+		previous_room_valid_during_callback = is_instance_valid(previous_room_root)
+		set_physics_process(false)
+		callback_ran.emit()
 
 func _initialize() -> void:
 	print("Running run orchestrator tests...")
@@ -25,10 +86,15 @@ func _initialize() -> void:
 func _run_tests() -> void:
 	await _test_run_scene_auto_starts_with_default_pool()
 	await _test_run_scene_instantiates_and_enters_room()
+	await _test_real_room_load_spawns_enemies_inside_camera_bounds_after_physics()
+	await _test_exact_overlapping_enemies_reproduce_depenetration_blowout()
 	await _test_spawn_positions_respect_current_player_distance()
 	await _test_spawn_positions_ignore_player_elevation()
 	await _test_spawn_position_small_room_uses_farthest_valid_fallback()
+	await _test_spawn_position_crowded_small_room_uses_max_separation_fallback()
 	await _test_missing_spawn_bounds_warns_once_for_bare_room()
+	await _test_physics_frame_door_exit_defers_room_swap()
+	await _test_two_doors_same_physics_frame_runs_one_transition()
 	await _test_full_boon_exit_cycle_reaches_boss_and_completes_run()
 	await _test_enemy_damage_flows_through_guard_hp_and_stops_spawning_on_death()
 	await _test_real_attack_damages_front_enemy_only_and_charges_spark()
@@ -89,6 +155,14 @@ func _cleanup_run(run: Node) -> void:
 		run.queue_free()
 	await process_frame
 
+func _flush_process_frames(count: int = 1) -> void:
+	for _i in range(count):
+		await process_frame
+
+func _step_physics_frames(count: int = 1) -> void:
+	for _i in range(count):
+		await physics_frame
+
 func _test_run_scene_auto_starts_with_default_pool() -> void:
 	var run = RunScene.instantiate()
 	root.add_child(run)
@@ -123,6 +197,51 @@ func _test_run_scene_instantiates_and_enters_room() -> void:
 	_check("director starts for the entered room", run.current_director != null)
 	_check("director spawned at least one greybox enemy", run.spawned_enemy_count() > 0)
 	_check("room doors are bound to RoomDoor behavior", _all_bound_doors_are_room_doors(run))
+	await _cleanup_run(run)
+
+func _test_real_room_load_spawns_enemies_inside_camera_bounds_after_physics() -> void:
+	var run = await _new_run()
+	run.start_run("hearth", _empty_template_pool(), 2, _seeded_rng(70))
+	await process_frame
+	await physics_frame
+	await _flush_process_frames(2)
+
+	_check("scene-tree spawn containment test has a loaded room", run.current_room_root != null)
+	_assert_spawned_enemies_inside_current_room_bounds(run, "scene-tree room load")
+	_assert_spawned_enemies_pairwise_separated(run, "scene-tree room load")
+	await _step_physics_frames(STEPPED_CONTAINMENT_FRAMES)
+	_assert_spawned_enemies_inside_current_room_bounds(run, "scene-tree room load after 60 physics frames")
+	await _cleanup_run(run)
+
+func _test_exact_overlapping_enemies_reproduce_depenetration_blowout() -> void:
+	var run = await _new_run()
+	run.start_run("hearth", _empty_template_pool(), 2, _seeded_rng(5))
+	await process_frame
+	run._clear_spawned_enemies()
+	await process_frame
+
+	var start_position: Vector3 = run.player.global_position + Vector3(2.0, 0.1, 0.0)
+	var first := _spawn_fixture_enemy(run, "overlap_probe_a", start_position)
+	var second := _spawn_fixture_enemy(run, "overlap_probe_b", start_position)
+	_check("overlap probe created two exact-position enemies", first != null and second != null)
+	if first == null or second == null:
+		await _cleanup_run(run)
+		return
+	_check("overlap probe starts with identical enemy coordinates", first.global_position.distance_to(second.global_position) < 0.001)
+
+	await _step_physics_frames(STEPPED_CONTAINMENT_FRAMES)
+
+	var first_displacement := _xz_distance(first.global_position, start_position)
+	var second_displacement := _xz_distance(second.global_position, start_position)
+	var max_abs_x := maxf(absf(first.global_position.x), absf(second.global_position.x))
+	var reproduced := (
+		first_displacement > 32.0
+		or second_displacement > 32.0
+		or max_abs_x > 32.0
+		or first.global_position.y <= 0.0
+		or second.global_position.y <= 0.0
+	)
+	_check("exact overlap chase reproduces the off-world displacement mechanism", reproduced)
 	await _cleanup_run(run)
 
 func _test_spawn_positions_respect_current_player_distance() -> void:
@@ -203,6 +322,46 @@ func _test_spawn_position_small_room_uses_farthest_valid_fallback() -> void:
 
 	await _cleanup_run(run)
 
+func _test_spawn_position_crowded_small_room_uses_max_separation_fallback() -> void:
+	var run = await _new_run()
+	run.start_run("hearth", _empty_template_pool(), 2, _seeded_rng(5))
+	await process_frame
+
+	var anchor := run.current_room_root.find_child("CameraAnchor", true, false) as Marker3D
+	_check("crowded fallback test has a room CameraAnchor", anchor != null)
+	if anchor == null:
+		await _cleanup_run(run)
+		return
+
+	run._clear_spawned_enemies()
+	await process_frame
+	anchor.set_meta("camera_half_extent_x", 2.0)
+	anchor.set_meta("camera_half_extent_z", 2.0)
+	run.player.global_position = anchor.global_position
+	run.min_spawn_distance = 8.0
+
+	var first_attempt := _spawn_candidate_for(run, 0, 0, 0.0)
+	var blocker := _spawn_fixture_enemy(run, "fallback_blocker", first_attempt)
+	_check("crowded fallback fixture has a blocker at attempt zero", blocker != null)
+	if blocker == null:
+		await _cleanup_run(run)
+		return
+
+	var impossible_separation := 100.0
+	_check(
+		"crowded fallback fixture makes separation impossible",
+		not _has_separation_valid_spawn_candidate(run, 0, 0.0, impossible_separation)
+	)
+	var expected := _maximal_fallback_spawn_position(run, 0, 0.0)
+	var actual: Vector3 = run._spawn_position_for(0, 0.0, impossible_separation)
+	var first_nearest := _nearest_fixture_enemy_distance(run, first_attempt)
+	var expected_nearest := _nearest_fixture_enemy_distance(run, expected)
+	var actual_nearest := _nearest_fixture_enemy_distance(run, actual)
+
+	_check("maximal fallback is better than attempt zero", expected_nearest > first_nearest + 0.5)
+	_check_almost("crowded fallback maximizes nearest-enemy separation", actual_nearest, expected_nearest, 0.001)
+	await _cleanup_run(run)
+
 func _test_missing_spawn_bounds_warns_once_for_bare_room() -> void:
 	var run = await _new_run()
 	var bare_room := Node3D.new()
@@ -219,6 +378,118 @@ func _test_missing_spawn_bounds_warns_once_for_bare_room() -> void:
 	_check("bare room spawn containment warning is recorded", after_first_count == before_count + 1)
 	_check_eq("bare room spawn containment warning is once per room", after_second_count, after_first_count)
 
+	await _cleanup_run(run)
+
+func _test_physics_frame_door_exit_defers_room_swap() -> void:
+	var run = await _new_run()
+	run.start_run("hearth", _empty_template_pool(), 2, _seeded_rng(70))
+	var empty_boon_pool: Array[BoonDef] = []
+	run.flow_bridge.set_boon_pool(empty_boon_pool)
+	await process_frame
+
+	var previous_room_root: Node3D = run.current_room_root
+	var previous_room_id := String(run.run_controller.current_room_id)
+	await _clear_current_room_by_enemy_deaths(run)
+	var connections: Array[RoomConnection] = run.run_controller.graph.get_connections_from(previous_room_id)
+	_check("physics-frame door test has an opened exit", not connections.is_empty())
+	if connections.is_empty():
+		await _cleanup_run(run)
+		return
+
+	var connection := connections[0]
+	var door := run.bound_doors.get(connection.door_name) as RoomDoor
+	if door == null:
+		door = run.bound_doors.get("RoomExit") as RoomDoor
+	_check("physics-frame door test found a bound RoomDoor", door != null)
+	if door == null:
+		await _cleanup_run(run)
+		return
+
+	var probe := DoorPhysicsProbe.new()
+	probe.run = run
+	probe.door = door
+	probe.player = run.player
+	probe.previous_room_root = previous_room_root
+	root.add_child(probe)
+	await probe.callback_ran
+
+	_check("physics-frame door probe ran", probe.ran)
+	_check_eq("physics-frame door exit keeps previous room during callback", probe.room_root_during_callback, previous_room_root)
+	_check("physics-frame door exit keeps previous room valid during callback", probe.previous_room_valid_during_callback)
+	_check_eq("physics-frame door exit keeps exactly one room child during callback", probe.room_child_count_during_callback, 1)
+
+	await _flush_process_frames(2)
+	_check("deferred door exit replaces the previous room after idle", run.current_room_root != previous_room_root and run.current_room_root != null)
+	_check("deferred door exit frees the previous room after idle", not is_instance_valid(previous_room_root))
+	_check_eq("deferred door exit leaves exactly one loaded room", run.rooms_root.get_child_count(), 1)
+	_assert_spawned_enemies_inside_current_room_bounds(run, "deferred room load")
+
+	probe.queue_free()
+	await _cleanup_run(run)
+
+func _test_two_doors_same_physics_frame_runs_one_transition() -> void:
+	var run = await _new_run()
+	var graph: RoomGraph = await _start_run_with_two_entry_exits(run)
+	var empty_boon_pool: Array[BoonDef] = []
+	run.flow_bridge.set_boon_pool(empty_boon_pool)
+	await process_frame
+
+	var previous_room_root: Node3D = run.current_room_root
+	var previous_room_id := String(run.run_controller.current_room_id)
+	var loaded_after_start: Array[String] = []
+	var exit_completed_events: Array[RoomConnection] = []
+	var reward_events: Array[RoomNode.RewardType] = []
+	run.room_loaded.connect(func(room: RoomNode, _room_root: Node3D) -> void:
+		loaded_after_start.append(room.room_id)
+	)
+	run.flow_bridge.exit_completed.connect(func(connection: RoomConnection, accepted: bool) -> void:
+		if accepted:
+			exit_completed_events.append(connection)
+	)
+	run.flow_bridge.reward_granted.connect(func(reward_type: RoomNode.RewardType, _connection: RoomConnection) -> void:
+		reward_events.append(reward_type)
+	)
+
+	await _clear_current_room_by_enemy_deaths(run)
+	var connections: Array[RoomConnection] = graph.get_connections_from(previous_room_id)
+	_check("same-frame door test has two opened exits", connections.size() >= 2)
+	if connections.size() < 2:
+		await _cleanup_run(run)
+		return
+
+	var doors: Array[RoomDoor] = []
+	for index in range(2):
+		var door := run.bound_doors.get(connections[index].door_name) as RoomDoor
+		_check("same-frame door %d is bound" % index, door != null)
+		if door != null:
+			doors.append(door)
+	if doors.size() < 2:
+		await _cleanup_run(run)
+		return
+
+	var probe := TwoDoorPhysicsProbe.new()
+	probe.run = run
+	probe.doors = doors
+	probe.player = run.player
+	probe.previous_room_root = previous_room_root
+	root.add_child(probe)
+	await probe.callback_ran
+
+	_check("same-frame door probe ran", probe.ran)
+	_check_eq("same-frame doors keep previous room during physics callback", probe.room_root_during_callback, previous_room_root)
+	_check("same-frame doors keep previous room valid during physics callback", probe.previous_room_valid_during_callback)
+	_check_eq("same-frame doors keep exactly one room child during callback", probe.room_child_count_during_callback, 1)
+
+	await _flush_process_frames(2)
+	_check_eq("same-frame doors complete exactly one accepted exit", exit_completed_events.size(), 1)
+	_check("same-frame doors run at most one reward path", reward_events.size() <= 1)
+	_check_eq("same-frame doors load exactly one destination room", loaded_after_start.size(), 1)
+	_check("same-frame doors advance to one of the touched destinations", [connections[0].to_room_id, connections[1].to_room_id].has(run.run_controller.current_room_id))
+	_check("same-frame doors replace the previous room after idle", run.current_room_root != previous_room_root and run.current_room_root != null)
+	_check_eq("same-frame doors leave exactly one room child after idle", run.rooms_root.get_child_count(), 1)
+	_check("same-frame doors leave no draft open", not run.flow_bridge.is_draft_open())
+
+	probe.queue_free()
 	await _cleanup_run(run)
 
 func _test_full_boon_exit_cycle_reaches_boss_and_completes_run() -> void:
@@ -630,6 +901,15 @@ func _start_run_with_first_boon_exit(run) -> RoomGraph:
 	_check("found a seed whose first exit telegraphs BOON", false)
 	return run.run_controller.graph
 
+func _start_run_with_two_entry_exits(run) -> RoomGraph:
+	for seed in range(1, 160):
+		var graph: RoomGraph = run.start_run("hearth", _empty_template_pool(), 8, _seeded_rng(seed))
+		await process_frame
+		if graph != null and graph.get_connections_from(graph.entry_room_id).size() >= 2:
+			return graph
+	_check("found a seed whose entry room has two exits", false)
+	return run.run_controller.graph
+
 func _run_survivability_probe(profile: StringName, max_seconds: float, target_rooms: int) -> Dictionary:
 	var run = await _new_run()
 	var entered_room_ids: Array[String] = []
@@ -906,6 +1186,110 @@ func _all_bound_doors_are_room_doors(run) -> bool:
 		if door.state != RoomDoorScript.State.SEALED:
 			return false
 	return true
+
+func _assert_spawned_enemies_inside_current_room_bounds(run, prefix: String) -> void:
+	var anchor := run.current_room_root.find_child("CameraAnchor", true, false) as Marker3D if run.current_room_root != null else null
+	_check("%s has a room CameraAnchor" % prefix, anchor != null)
+	if anchor == null:
+		return
+	var half_x := float(anchor.get_meta("camera_half_extent_x", 0.0))
+	var half_z := float(anchor.get_meta("camera_half_extent_z", 0.0))
+	_check("%s has positive camera spawn extents" % prefix, half_x > 0.0 and half_z > 0.0)
+	var enemies := _live_spawned_enemies(run)
+	_check("%s has live spawned enemies" % prefix, not enemies.is_empty())
+	for enemy in enemies:
+		var position := enemy.global_position
+		var inside_bounds := (
+			absf(position.x - anchor.global_position.x) <= half_x + 0.001
+			and absf(position.z - anchor.global_position.z) <= half_z + 0.001
+			and position.y > 0.0
+		)
+		_check(
+			"%s keeps %s inside camera extents and above floor at %s"
+			% [prefix, enemy.spawn_id, position],
+			inside_bounds
+			)
+
+func _assert_spawned_enemies_pairwise_separated(run, prefix: String) -> void:
+	var anchor := run.current_room_root.find_child("CameraAnchor", true, false) as Marker3D if run.current_room_root != null else null
+	if anchor == null:
+		return
+	var half_x := float(anchor.get_meta("camera_half_extent_x", 0.0))
+	var half_z := float(anchor.get_meta("camera_half_extent_z", 0.0))
+	var enemies := _live_spawned_enemies(run)
+	if not _room_can_satisfy_spawn_separation(half_x, half_z, enemies.size(), SPAWN_SEPARATION_DISTANCE):
+		return
+	for a in range(enemies.size()):
+		for b in range(a + 1, enemies.size()):
+			var distance := _xz_distance(enemies[a].global_position, enemies[b].global_position)
+			_check(
+				"%s keeps %s and %s at least %.1fm apart"
+				% [prefix, enemies[a].spawn_id, enemies[b].spawn_id, SPAWN_SEPARATION_DISTANCE],
+				distance + 0.001 >= SPAWN_SEPARATION_DISTANCE
+			)
+
+func _room_can_satisfy_spawn_separation(half_x: float, half_z: float, enemy_count: int, separation_distance: float) -> bool:
+	if enemy_count <= 1:
+		return false
+	if separation_distance <= 0.0:
+		return false
+	var width := half_x * 2.0
+	var depth := half_z * 2.0
+	if width < separation_distance or depth < separation_distance:
+		return false
+	return width * depth >= float(enemy_count) * separation_distance * separation_distance
+
+func _spawn_fixture_enemy(run, spawn_id: String, position: Vector3) -> GreyboxEnemy:
+	var enemy := GreyboxEnemyScene.instantiate() as GreyboxEnemy
+	if enemy == null:
+		return null
+	enemy.spawn_windup = 0.0
+	run.enemies_root.add_child(enemy)
+	enemy.configure(RoomDirector.ARCHETYPE_CHAFF, spawn_id)
+	enemy.global_position = position
+	enemy.velocity = Vector3.ZERO
+	enemy.set_chase_target(run.player)
+	run.spawned_enemies[spawn_id] = enemy
+	return enemy
+
+func _spawn_candidate_for(run, index: int, attempt: int, edge_clearance: float) -> Vector3:
+	var anchor: Marker3D = run._current_room_anchor()
+	var center: Vector3 = anchor.global_position if anchor != null else Vector3.ZERO
+	var half_extents: Vector2 = run._spawn_half_extents(anchor, edge_clearance)
+	var required_distance := maxf(float(run.min_spawn_distance), 0.0)
+	var radius := required_distance + float((index + attempt) % 3)
+	var angle := (float(index) + float(attempt)) * SPAWN_GOLDEN_ANGLE
+	var candidate: Vector3 = center + Vector3(cos(angle) * radius, 0.1, sin(angle) * radius)
+	return run._constrain_spawn_position(candidate, center, half_extents)
+
+func _has_separation_valid_spawn_candidate(run, index: int, edge_clearance: float, separation_distance: float) -> bool:
+	for attempt in range(SPAWN_CANDIDATE_COUNT):
+		var candidate := _spawn_candidate_for(run, index, attempt, edge_clearance)
+		if _nearest_fixture_enemy_distance(run, candidate) + 0.001 >= separation_distance:
+			return true
+	return false
+
+func _maximal_fallback_spawn_position(run, index: int, edge_clearance: float) -> Vector3:
+	var player_position: Vector3 = run.player.global_position if run.player != null else Vector3.ZERO
+	var best_position := _spawn_candidate_for(run, index, 0, edge_clearance)
+	var best_nearest := -INF
+	var best_distance := -INF
+	for attempt in range(SPAWN_CANDIDATE_COUNT):
+		var candidate := _spawn_candidate_for(run, index, attempt, edge_clearance)
+		var nearest := _nearest_fixture_enemy_distance(run, candidate)
+		var distance := _xz_distance(candidate, player_position)
+		if nearest > best_nearest + 0.001 or (absf(nearest - best_nearest) <= 0.001 and distance > best_distance):
+			best_nearest = nearest
+			best_distance = distance
+			best_position = candidate
+	return best_position
+
+func _nearest_fixture_enemy_distance(run, position: Vector3) -> float:
+	var nearest := INF
+	for candidate in run.spawned_enemies.values():
+		if candidate is GreyboxEnemy and is_instance_valid(candidate):
+			nearest = minf(nearest, _xz_distance(position, (candidate as GreyboxEnemy).global_position))
+	return nearest
 
 func _first_spawned_enemy(run) -> GreyboxEnemy:
 	for enemy in run.spawned_enemies.values():

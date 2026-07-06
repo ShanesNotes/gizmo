@@ -13,6 +13,8 @@ const SCRAP_REWARD_VALUE := 10
 const SPARKS_REWARD_VALUE := 5
 const SPAWN_GOLDEN_ANGLE := 2.399963
 const SPAWN_CANDIDATE_COUNT := 48
+const SPAWN_EDGE_CLEARANCE := 0.75
+const SPAWN_SEPARATION_DISTANCE := 1.1
 const ZONE_STATE_COMBAT: StringName = &"COMBAT"
 const ZONE_STATE_CLEARED: StringName = &"CLEARED"
 
@@ -347,7 +349,11 @@ func _spawn_from_request(request: Dictionary) -> void:
 			push_error("RunOrchestrator: enemy_scene must instantiate GreyboxEnemy.")
 			return
 		enemies_root.add_child(enemy)
-		enemy.global_position = _spawn_position_for(_spawn_index_in_room)
+		enemy.global_position = _spawn_position_for(
+			_spawn_index_in_room,
+			SPAWN_EDGE_CLEARANCE,
+			SPAWN_SEPARATION_DISTANCE
+		)
 		_spawn_index_in_room += 1
 		enemy.configure(archetype, spawn_id)
 		enemy.set_chase_target(player)
@@ -356,14 +362,18 @@ func _spawn_from_request(request: Dictionary) -> void:
 		enemy.damage_taken.connect(_on_enemy_damage_taken)
 		spawned_enemies[spawn_id] = enemy
 
-func _spawn_position_for(index: int) -> Vector3:
+func _spawn_position_for(index: int, edge_clearance: float = 0.0, separation_distance: float = 0.0) -> Vector3:
 	var anchor := _current_room_anchor()
 	var center := anchor.global_position if anchor != null else Vector3.ZERO
-	var half_extents := _spawn_half_extents(anchor)
+	var half_extents := _spawn_half_extents(anchor, edge_clearance)
 	var player_position := player.global_position if player != null else center
 	var required_distance := maxf(min_spawn_distance, 0.0)
-	var best_position := center + Vector3(0.0, 0.1, 0.0)
-	var best_distance := -1.0
+	var best_valid_position := center + Vector3(0.0, 0.1, 0.0)
+	var best_valid_score := -INF
+	var has_valid_position := false
+	var best_fallback_position := best_valid_position
+	var best_fallback_nearest_enemy_distance := -INF
+	var best_fallback_player_distance := -INF
 
 	for attempt in range(SPAWN_CANDIDATE_COUNT):
 		var radius := required_distance + float((index + attempt) % 3)
@@ -371,20 +381,36 @@ func _spawn_position_for(index: int) -> Vector3:
 		var candidate := center + Vector3(cos(angle) * radius, 0.1, sin(angle) * radius)
 		candidate = _constrain_spawn_position(candidate, center, half_extents)
 		var distance := _xz_distance(candidate, player_position)
-		if distance > best_distance:
-			best_distance = distance
-			best_position = candidate
-		if distance + 0.001 >= required_distance:
+		var nearest_enemy_distance := _nearest_spawned_enemy_distance(candidate)
+		var separation_ok := separation_distance <= 0.0 or nearest_enemy_distance + 0.001 >= separation_distance
+		if (
+			nearest_enemy_distance > best_fallback_nearest_enemy_distance + 0.001
+			or (
+				absf(nearest_enemy_distance - best_fallback_nearest_enemy_distance) <= 0.001
+				and distance > best_fallback_player_distance
+			)
+		):
+			best_fallback_nearest_enemy_distance = nearest_enemy_distance
+			best_fallback_player_distance = distance
+			best_fallback_position = candidate
+		if not separation_ok:
+			continue
+		var score := distance + minf(nearest_enemy_distance, maxf(separation_distance, 0.0))
+		if not has_valid_position or score > best_valid_score:
+			has_valid_position = true
+			best_valid_score = score
+			best_valid_position = candidate
+		if distance + 0.001 >= required_distance and separation_ok:
 			return candidate
 
-	return best_position
+	return best_valid_position if has_valid_position else best_fallback_position
 
 func _current_room_anchor() -> Marker3D:
 	if current_room_root == null:
 		return null
 	return current_room_root.find_child("CameraAnchor", true, false) as Marker3D
 
-func _spawn_half_extents(anchor: Marker3D) -> Vector2:
+func _spawn_half_extents(anchor: Marker3D, edge_clearance: float = 0.0) -> Vector2:
 	if anchor == null:
 		_warn_missing_spawn_bounds("missing CameraAnchor")
 		return Vector2.ZERO
@@ -393,7 +419,8 @@ func _spawn_half_extents(anchor: Marker3D) -> Vector2:
 	if half_x <= 0.0 or half_z <= 0.0:
 		_warn_missing_spawn_bounds("CameraAnchor lacks positive camera_half_extent_x/z metadata")
 		return Vector2.ZERO
-	return Vector2(half_x, half_z)
+	var clearance := maxf(edge_clearance, 0.0)
+	return Vector2(maxf(half_x - clearance, 0.001), maxf(half_z - clearance, 0.001))
 
 func _constrain_spawn_position(position: Vector3, center: Vector3, half_extents: Vector2) -> Vector3:
 	if half_extents.x <= 0.0 or half_extents.y <= 0.0:
@@ -406,6 +433,13 @@ func _constrain_spawn_position(position: Vector3, center: Vector3, half_extents:
 
 func _xz_distance(a: Vector3, b: Vector3) -> float:
 	return Vector2(a.x, a.z).distance_to(Vector2(b.x, b.z))
+
+func _nearest_spawned_enemy_distance(position: Vector3) -> float:
+	var nearest := INF
+	for candidate in spawned_enemies.values():
+		if candidate is GreyboxEnemy and is_instance_valid(candidate):
+			nearest = minf(nearest, _xz_distance(position, (candidate as GreyboxEnemy).global_position))
+	return nearest
 
 func _warn_missing_spawn_bounds(reason: String) -> void:
 	var room_key := 0
@@ -522,10 +556,32 @@ func _on_door_exit_requested(connection: RoomConnection) -> void:
 func _on_exit_completed(_connection: RoomConnection, accepted: bool) -> void:
 	if not accepted or not _run_active:
 		return
-	_apply_exit_reward(_connection)
+	if Engine.is_in_physics_frame():
+		_transitioning = true
+		_defer_from_physics_frame(&"_complete_exit_transition", [_connection])
+		return
+	_complete_exit_transition(_connection)
+
+func _complete_exit_transition(connection: RoomConnection) -> void:
+	if not _run_active:
+		_transitioning = false
+		return
+	_apply_exit_reward(connection)
 	_transitioning = true
 	_load_current_room()
 	_transitioning = false
+
+func _defer_from_physics_frame(method_name: StringName, args: Array = []) -> bool:
+	if not Engine.is_in_physics_frame():
+		return false
+	call_deferred(&"_call_after_process_frame", method_name, args)
+	return true
+
+func _call_after_process_frame(method_name: StringName, args: Array) -> void:
+	await get_tree().process_frame
+	if not is_inside_tree():
+		return
+	callv(method_name, args)
 
 func _on_flow_bridge_reward_granted(reward_type: RoomNode.RewardType, connection: RoomConnection) -> void:
 	if connection == null or run_controller == null:

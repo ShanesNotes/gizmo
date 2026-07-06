@@ -40,8 +40,8 @@ func present(offers: Array[BoonDef]) -> void:
 	_has_presented = true
 	_offers.clear()
 
-	if offers.size() != CARD_PATHS.size():
-		push_warning("BoonDraftUI expects exactly 3 offers; got %d." % offers.size())
+	if offers.size() > CARD_PATHS.size():
+		push_warning("BoonDraftUI can render at most 3 offers; got %d." % offers.size())
 
 	var offer_count := mini(offers.size(), _cards.size())
 	for i in range(offer_count):
