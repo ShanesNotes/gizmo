@@ -9,6 +9,7 @@ signal player_died()
 const RoomDoorScript := preload("res://scripts/room_graph/room_door.gd")
 const PlayerVitalsScript := preload("res://scripts/player/player_vitals.gd")
 const CombatResolversScript := preload("res://scripts/room_graph/combat_resolvers.gd")
+const CustodianBossScript := preload("res://scripts/room_graph/custodian_boss.gd")
 
 const SCRAP_REWARD_VALUE := 10
 const SPARKS_REWARD_VALUE := 5
@@ -18,6 +19,7 @@ const SPAWN_EDGE_CLEARANCE := 0.75
 const SPAWN_SEPARATION_DISTANCE := 1.1
 const ZONE_STATE_COMBAT: StringName = &"COMBAT"
 const ZONE_STATE_CLEARED: StringName = &"CLEARED"
+const BOSS_INTRO_HOLD_SECONDS := 1.0
 
 @export var auto_start: bool = true
 @export var biome_id: String = "hearth"
@@ -65,6 +67,7 @@ var scrap_earned: int = 0
 var sparks_earned: int = 0
 var active_run_bonuses: Dictionary = {}
 var combat_resolvers: CombatResolvers = null
+var current_boss = null
 
 var _rng: RandomNumberGenerator = null
 var _run_active := false
@@ -75,6 +78,7 @@ var _rewarded_exit_keys: Dictionary = {}
 var _claimed_fixture_keys: Dictionary = {}
 var _spawn_index_in_room: int = 0
 var _spawn_bounds_warning_room_ids: Dictionary = {}
+var _boss_intro_hold_remaining: float = 0.0
 
 func _ready() -> void:
 	_ensure_wiring()
@@ -87,6 +91,7 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	if _run_active and not _death_teardown_complete:
 		elapsed_seconds += maxf(delta, 0.0)
+	_tick_boss_intro(delta)
 
 func start_new_run(run_bonuses: Dictionary = {}) -> RoomGraph:
 	active_run_bonuses = run_bonuses.duplicate(true)
@@ -327,6 +332,7 @@ func _load_current_room() -> void:
 func _cleanup_current_room() -> void:
 	if combat_resolvers != null and is_instance_valid(combat_resolvers):
 		combat_resolvers.clear_for_room_cleanup(true)
+	_disconnect_current_boss()
 	_clear_spawned_enemies()
 	_disconnect_current_director()
 	if current_room_root != null and is_instance_valid(current_room_root):
@@ -336,7 +342,9 @@ func _cleanup_current_room() -> void:
 		current_room_root.queue_free()
 	current_room_root = null
 	current_director = null
+	current_boss = null
 	bound_doors.clear()
+	_boss_intro_hold_remaining = 0.0
 
 func _place_player_at_spawn(room_root: Node3D) -> void:
 	if player == null or room_root == null:
@@ -402,6 +410,12 @@ func _replace_with_room_door(area: Area3D) -> RoomDoor:
 
 func _start_room_director(room: RoomNode) -> void:
 	_disconnect_current_director()
+	_disconnect_current_boss()
+	if _room_is_boss(room):
+		current_director = null
+		_set_audio_zone_state(ZONE_STATE_COMBAT)
+		_start_boss_room()
+		return
 	if _room_clears_without_director(room):
 		current_director = null
 		_set_audio_zone_state(ZONE_STATE_CLEARED)
@@ -416,6 +430,78 @@ func _start_room_director(room: RoomNode) -> void:
 	current_director.room_cleared.connect(_on_director_room_cleared)
 	_set_audio_zone_state(ZONE_STATE_COMBAT)
 	current_director.start()
+
+func _room_is_boss(room: RoomNode) -> bool:
+	return room != null and room.template != null and room.template.room_type == RoomTemplate.RoomType.BOSS
+
+func _start_boss_room() -> void:
+	current_boss = _find_current_boss()
+	if current_boss == null:
+		push_error("RunOrchestrator: boss room is missing CustodianBoss.")
+		return
+	if not (current_boss is GreyboxEnemy):
+		push_error("RunOrchestrator: CustodianBoss must extend GreyboxEnemy for the combat snapshot seam.")
+		current_boss = null
+		return
+
+	var boss_enemy := current_boss as GreyboxEnemy
+	if boss_enemy.has_method("configure_boss"):
+		boss_enemy.call("configure_boss", "boss:custodian", _rng)
+	boss_enemy.set_chase_target(player)
+	_connect_boss_signal(boss_enemy.died, Callable(self, "_on_boss_died"))
+	_connect_boss_signal(boss_enemy.damage_event, Callable(self, "_on_enemy_damage_event"))
+	_connect_boss_signal(boss_enemy.damage_taken, Callable(self, "_on_enemy_damage_taken"))
+	if current_boss.has_signal("add_wave_requested"):
+		_connect_boss_signal(current_boss.add_wave_requested, Callable(self, "_on_boss_add_wave_requested"))
+
+	# Snapshot decision: the boss is a specialized GreyboxEnemy stored in
+	# spawned_enemies, so melee/special/cast/surge use the HZ-079 resolver's
+	# existing enemy-snapshot path and died(spawn_id) ledger contract.
+	spawned_enemies[boss_enemy.spawn_id] = boss_enemy
+	_start_boss_intro()
+
+func _find_current_boss():
+	if current_room_root == null:
+		return null
+	for boss in get_tree().get_nodes_in_group(&"boss"):
+		if boss is GreyboxEnemy and (boss == current_room_root or current_room_root.is_ancestor_of(boss)):
+			return boss
+	var boss := current_room_root.find_child("CustodianBoss", true, false)
+	if boss != null and boss.get_script() == CustodianBossScript:
+		return boss
+	return null
+
+func _connect_boss_signal(boss_signal: Signal, callback: Callable) -> void:
+	if not boss_signal.is_connected(callback):
+		boss_signal.connect(callback)
+
+func _start_boss_intro() -> void:
+	_boss_intro_hold_remaining = BOSS_INTRO_HOLD_SECONDS
+	if current_boss != null and is_instance_valid(current_boss):
+		if current_boss.has_method("show_nameplate"):
+			current_boss.call("show_nameplate", true)
+		if camera != null:
+			camera.target = current_boss
+
+func _tick_boss_intro(delta: float) -> void:
+	if _boss_intro_hold_remaining <= 0.0:
+		return
+	if not _run_active or _death_teardown_complete:
+		_finish_boss_intro(false)
+		return
+	_boss_intro_hold_remaining = maxf(0.0, _boss_intro_hold_remaining - maxf(delta, 0.0))
+	if _boss_intro_hold_remaining > 0.0:
+		return
+	_finish_boss_intro(true)
+
+func _finish_boss_intro(begin_fight: bool) -> void:
+	_boss_intro_hold_remaining = 0.0
+	if current_boss != null and is_instance_valid(current_boss) and current_boss.has_method("show_nameplate"):
+		current_boss.call("show_nameplate", false)
+	if begin_fight and current_boss != null and is_instance_valid(current_boss) and current_boss.has_method("begin_fight"):
+		current_boss.call("begin_fight")
+	if camera != null and camera.target == current_boss:
+		camera.target = player
 
 func _on_director_wave_requested(_wave_index: int, requests: Array[Dictionary]) -> void:
 	if not _run_active or _death_teardown_complete:
@@ -549,8 +635,35 @@ func _on_enemy_died(spawn_id: String) -> void:
 	if enemy != null and is_instance_valid(enemy):
 		enemy.queue_free()
 	spawned_enemies.erase(spawn_id)
-	if current_director != null:
-		current_director.notify_kill(spawn_id)
+	if current_director == null:
+		# Boss-room adds are pressure only: without a RoomDirector, add deaths
+		# must never clear the boss room or advance the run.
+		return
+	current_director.notify_kill(spawn_id)
+
+func _on_boss_died(spawn_id: String) -> void:
+	if not _run_active or _death_teardown_complete:
+		return
+	if combat_resolvers != null and is_instance_valid(combat_resolvers):
+		combat_resolvers.reclaim_cast_shards_for_spawn_id(spawn_id)
+	var boss := spawned_enemies.get(spawn_id) as Node
+	if boss != null and is_instance_valid(boss):
+		_clear_boss_telegraphs(boss)
+		boss.queue_free()
+	spawned_enemies.erase(spawn_id)
+	current_boss = null
+	_boss_intro_hold_remaining = 0.0
+	if camera != null:
+		camera.target = player
+	_set_audio_zone_state(ZONE_STATE_CLEARED)
+	if run_controller != null:
+		run_controller.notify_room_cleared()
+
+func _on_boss_add_wave_requested(requests: Array[Dictionary]) -> void:
+	if not _run_active or _death_teardown_complete:
+		return
+	for request in requests:
+		_spawn_from_request(request)
 
 func _on_enemy_damage_event(event: Dictionary) -> void:
 	if player_vitals == null:
@@ -684,15 +797,22 @@ func _on_player_vitals_died() -> void:
 		return
 	_run_active = false
 	_death_teardown_complete = true
+	_boss_intro_hold_remaining = 0.0
 	_disconnect_current_director()
 	for enemy in spawned_enemies.values():
 		if enemy is GreyboxEnemy and is_instance_valid(enemy):
 			(enemy as GreyboxEnemy).clear_chase_target()
+			_clear_boss_telegraphs(enemy as Node)
+	if current_boss != null and is_instance_valid(current_boss) and current_boss.has_method("show_nameplate"):
+		current_boss.call("show_nameplate", false)
+	if camera != null and camera.target == current_boss:
+		camera.target = player
 	player_died.emit()
 
 func _on_run_controller_completed() -> void:
 	_run_active = false
 	_disconnect_current_director()
+	_disconnect_current_boss()
 	_clear_spawned_enemies()
 	run_completed.emit()
 
@@ -753,8 +873,10 @@ func _set_audio_zone_state(state: StringName) -> void:
 func _clear_spawned_enemies() -> void:
 	for enemy in spawned_enemies.values():
 		if enemy is Node and is_instance_valid(enemy):
+			_clear_boss_telegraphs(enemy as Node)
 			(enemy as Node).queue_free()
 	spawned_enemies.clear()
+	current_boss = null
 
 func _disconnect_current_director() -> void:
 	if current_director == null:
@@ -763,6 +885,34 @@ func _disconnect_current_director() -> void:
 		current_director.wave_requested.disconnect(_on_director_wave_requested)
 	if current_director.room_cleared.is_connected(_on_director_room_cleared):
 		current_director.room_cleared.disconnect(_on_director_room_cleared)
+
+func _disconnect_current_boss() -> void:
+	if current_boss == null or not is_instance_valid(current_boss):
+		current_boss = null
+		return
+	var boss_enemy := current_boss as GreyboxEnemy
+	if boss_enemy != null:
+		var died_callback := Callable(self, "_on_boss_died")
+		var damage_event_callback := Callable(self, "_on_enemy_damage_event")
+		var damage_taken_callback := Callable(self, "_on_enemy_damage_taken")
+		if boss_enemy.died.is_connected(died_callback):
+			boss_enemy.died.disconnect(died_callback)
+		if boss_enemy.damage_event.is_connected(damage_event_callback):
+			boss_enemy.damage_event.disconnect(damage_event_callback)
+		if boss_enemy.damage_taken.is_connected(damage_taken_callback):
+			boss_enemy.damage_taken.disconnect(damage_taken_callback)
+	if current_boss.has_signal("add_wave_requested"):
+		var add_wave_callback := Callable(self, "_on_boss_add_wave_requested")
+		if current_boss.add_wave_requested.is_connected(add_wave_callback):
+			current_boss.add_wave_requested.disconnect(add_wave_callback)
+	if current_boss.has_method("show_nameplate"):
+		current_boss.call("show_nameplate", false)
+	_clear_boss_telegraphs(current_boss)
+	current_boss = null
+
+func _clear_boss_telegraphs(candidate: Node) -> void:
+	if candidate != null and is_instance_valid(candidate) and candidate.has_method("clear_telegraph_markers"):
+		candidate.call("clear_telegraph_markers")
 
 func _render_hud_payloads() -> void:
 	if hud == null:

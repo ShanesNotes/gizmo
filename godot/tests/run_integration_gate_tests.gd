@@ -36,6 +36,9 @@ func _run_tests() -> void:
 	await _test_live_enemy_ttk_texture_uses_real_attack_scale()
 	await _test_real_cast_kill_cycles_ammo_and_hud_count()
 	await _test_real_elite_room_clears_through_live_attack_dps()
+	await _test_boss_room_ttk_and_victory_ceremony()
+	await _test_boss_add_death_never_clears_nil_director_room()
+	await _test_boss_fight_death_tears_down_to_loss_summary()
 	await _test_rest_reward_runtime_fixture_traversal()
 	await _test_victory_run_returns_to_hub_with_summary_and_persisted_scrap()
 	await _test_death_run_returns_to_hub_with_summary_and_persisted_scrap()
@@ -264,6 +267,142 @@ func _test_real_elite_room_clears_through_live_attack_dps() -> void:
 	_check("RunController marks the elite room cleared", elite_room != null and elite_room.state == RoomNode.State.CLEARED)
 	await _cleanup_app(app, save_path)
 
+func _test_boss_room_ttk_and_victory_ceremony() -> void:
+	var save_path := _new_save_path("boss_victory")
+	_remove_save(save_path)
+	var app := await _new_app(save_path)
+	if app == null:
+		return
+
+	var run: Variant = await _start_real_run_from_hub(app)
+	if run == null:
+		await _cleanup_app(app, save_path)
+		return
+
+	var graph: RoomGraph = run.run_controller.graph
+	var boss_room_id := _first_room_id_by_type(graph, RoomTemplate.RoomType.BOSS)
+	_check("boss integration graph includes a BOSS room", boss_room_id != "")
+	if boss_room_id == "":
+		await _cleanup_app(app, save_path)
+		return
+
+	var gate := _new_gate_state(run)
+	var reached_boss := await _drive_to_room(run, boss_room_id, gate)
+	_check("boss integration drive reaches the BOSS room", reached_boss)
+	if not reached_boss:
+		await _cleanup_app(app, save_path)
+		return
+
+	var boss := run.get("current_boss") as GreyboxEnemy
+	_check("boss integration room registers current_boss", boss != null and boss.spawn_id == "boss:custodian")
+	if boss == null:
+		await _cleanup_app(app, save_path)
+		return
+
+	var ttk := await _kill_boss_with_dps_model(run, boss)
+	_check_between("Custodian 2400 HP TTK under 110 DPS model", ttk, 10.0, 60.0)
+	await _flush_frames(3)
+
+	var returned_hub := _current_hub(app)
+	var screen := _summary_screen(app)
+	_check("boss victory returns content to hub", returned_hub != null)
+	_check("boss victory shows summary overlay", _summary_visible(screen))
+	_check_eq("boss victory summary is victory", app.last_run_summary.get("victory", false), true)
+	_check("boss victory clears at least the boss room", int(app.last_run_summary.get("rooms_cleared", 0)) >= 1)
+	_assert_summary_labels(screen, app.last_run_summary, "boss victory")
+	await _cleanup_app(app, save_path)
+
+func _test_boss_add_death_never_clears_nil_director_room() -> void:
+	var save_path := _new_save_path("boss_add_death")
+	_remove_save(save_path)
+	var app := await _new_app(save_path)
+	if app == null:
+		return
+
+	var run: Variant = await _start_real_run_from_hub(app)
+	if run == null:
+		await _cleanup_app(app, save_path)
+		return
+
+	var boss_room_id := _first_room_id_by_type(run.run_controller.graph, RoomTemplate.RoomType.BOSS)
+	var gate := _new_gate_state(run)
+	var reached_boss := await _drive_to_room(run, boss_room_id, gate)
+	_check("boss add-death drive reaches the BOSS room", reached_boss)
+	if not reached_boss:
+		await _cleanup_app(app, save_path)
+		return
+
+	var boss := run.get("current_boss") as GreyboxEnemy
+	var boss_room: RoomNode = run.run_controller.graph.get_room(run.run_controller.current_room_id)
+	_check("boss add-death test has the Custodian", boss != null)
+	_check_eq("boss add-death test has no RoomDirector", run.current_director, null)
+	if boss == null:
+		await _cleanup_app(app, save_path)
+		return
+
+	boss.take_damage(650.0)
+	await _flush_frames(2)
+	var adds := _boss_room_adds(run, boss.spawn_id)
+	_check("boss threshold damage spawns real adds", not adds.is_empty())
+	if adds.is_empty():
+		await _cleanup_app(app, save_path)
+		return
+
+	var add := adds[0]
+	var add_spawn_id := add.spawn_id
+	add.take_damage(maxf(add.hp, add.max_hp))
+	await _flush_frames(2)
+
+	_check("boss add death removes only that add from bookkeeping", not run.spawned_enemies.has(add_spawn_id))
+	_check("boss add death leaves the run active", is_instance_valid(run) and run._run_active)
+	_check_eq("boss add death does not create a RoomDirector", run.current_director, null)
+	_check("boss add death does not clear the boss room", boss_room != null and boss_room.state != RoomNode.State.CLEARED)
+	_check("boss add death leaves the boss fight alive", is_instance_valid(boss) and not boss.is_dead() and run.get("current_boss") == boss)
+	await _cleanup_app(app, save_path)
+
+func _test_boss_fight_death_tears_down_to_loss_summary() -> void:
+	var save_path := _new_save_path("boss_death")
+	_remove_save(save_path)
+	var app := await _new_app(save_path)
+	if app == null:
+		return
+
+	var run: Variant = await _start_real_run_from_hub(app)
+	if run == null:
+		await _cleanup_app(app, save_path)
+		return
+
+	var boss_room_id := _first_room_id_by_type(run.run_controller.graph, RoomTemplate.RoomType.BOSS)
+	var gate := _new_gate_state(run)
+	var reached_boss := await _drive_to_room(run, boss_room_id, gate)
+	_check("boss death drive reaches the BOSS room", reached_boss)
+	if not reached_boss:
+		await _cleanup_app(app, save_path)
+		return
+
+	var boss := run.get("current_boss") as GreyboxEnemy
+	_check("boss death test has the Custodian", boss != null)
+	if boss == null:
+		await _cleanup_app(app, save_path)
+		return
+
+	var lethal_damage := int(run.player_vitals.guard) + int(run.player_vitals.hp)
+	boss.damage_event.emit({
+		"damage": lethal_damage,
+		"spawn_id": boss.spawn_id,
+		"archetype": boss.archetype,
+		"attack_id": "boss_death_probe",
+		"source_position": boss.global_position,
+	})
+	await _flush_frames(3)
+
+	_check("boss-fight death returns content to hub", _current_hub(app) != null)
+	_check("boss-fight death removes the run surface", _current_run(app) == null)
+	_check("boss-fight death shows summary overlay", _summary_visible(_summary_screen(app)))
+	_check_eq("boss-fight death records a loss", app.last_run_summary.get("victory", true), false)
+	_assert_summary_labels(_summary_screen(app), app.last_run_summary, "boss death")
+	await _cleanup_app(app, save_path)
+
 func _test_rest_reward_runtime_fixture_traversal() -> void:
 	var save_path := _new_save_path("rest_reward_runtime")
 	_remove_save(save_path)
@@ -467,6 +606,18 @@ func _drive_until_scrap_reward(run, gate: Dictionary) -> void:
 func _clear_current_room_by_enemy_deaths(run, gate: Dictionary) -> void:
 	var room_id := String(run.run_controller.current_room_id)
 	var graph: RoomGraph = run.run_controller.graph
+	var boss := run.get("current_boss") as GreyboxEnemy
+	if boss != null and is_instance_valid(boss):
+		boss.take_damage(maxf(boss.hp, boss.max_hp))
+		await process_frame
+		var boss_room: RoomNode = graph.get_room(room_id)
+		_check("boss room clears through boss death path", boss_room != null and boss_room.state == RoomNode.State.CLEARED)
+		if boss_room != null and boss_room.state == RoomNode.State.CLEARED and not (gate["cleared_room_ids"] as Array).has(room_id):
+			(gate["cleared_room_ids"] as Array).append(room_id)
+		if is_instance_valid(run):
+			_check_eq("orchestrator rooms_cleared counter tracks boss clear", run.rooms_cleared, (gate["cleared_room_ids"] as Array).size())
+		return
+
 	var safety := 0
 	while is_instance_valid(run) and run.current_director != null and not run.current_director.is_room_cleared() and safety < 24:
 		var enemies := _live_spawned_enemies(run)
@@ -482,6 +633,17 @@ func _clear_current_room_by_enemy_deaths(run, gate: Dictionary) -> void:
 		(gate["cleared_room_ids"] as Array).append(room_id)
 	if is_instance_valid(run):
 		_check_eq("orchestrator rooms_cleared counter tracks driven clears", run.rooms_cleared, (gate["cleared_room_ids"] as Array).size())
+
+func _kill_boss_with_dps_model(run, boss: GreyboxEnemy) -> float:
+	if boss == null:
+		return INF
+	var elapsed := 0.0
+	var dt := 0.25
+	while is_instance_valid(run) and is_instance_valid(boss) and not boss.is_dead() and elapsed < 90.0:
+		boss.take_damage(110.0 * dt)
+		elapsed += dt
+		await process_frame
+	return elapsed
 
 func _take_exit(run, connection: RoomConnection, gate: Dictionary) -> void:
 	var reward_type: int = run.run_controller.exit_reward_type(connection)
@@ -863,6 +1025,13 @@ func _live_spawned_enemies(run) -> Array[GreyboxEnemy]:
 		if enemy is GreyboxEnemy and is_instance_valid(enemy):
 			enemies.append(enemy as GreyboxEnemy)
 	return enemies
+
+func _boss_room_adds(run, boss_spawn_id: String) -> Array[GreyboxEnemy]:
+	var adds: Array[GreyboxEnemy] = []
+	for enemy in _live_spawned_enemies(run):
+		if enemy.spawn_id != boss_spawn_id:
+			adds.append(enemy)
+	return adds
 
 func _clear_current_room_by_real_attack_dps(run) -> Dictionary:
 	var kit: AbilityComponent = run._player_ability_kit()

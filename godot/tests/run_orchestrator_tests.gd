@@ -12,6 +12,9 @@ const RoomDoorScript := preload("res://scripts/room_graph/room_door.gd")
 const AttackAbilityScript := preload("res://scripts/abilities/attack_ability.gd")
 const BoonDef := preload("res://scripts/boons/boon_def.gd")
 const GreyboxEnemyScene := preload("res://scenes/enemies/greybox_enemy.tscn")
+const CustodianBossScript := preload("res://scripts/room_graph/custodian_boss.gd")
+const TelegraphMarkerScript := preload("res://scripts/room_graph/telegraph_marker.gd")
+const BossArenaScene := preload("res://scenes/rooms/boss_arena.tscn")
 
 const SURVIVAL_DT := 0.05
 const SURVIVAL_RETREAT_SPEED := 4.0
@@ -96,6 +99,12 @@ func _run_tests() -> void:
 	await _test_physics_frame_door_exit_defers_room_swap()
 	await _test_two_doors_same_physics_frame_runs_one_transition()
 	await _test_full_boon_exit_cycle_reaches_boss_and_completes_run()
+	await _test_boss_room_spawns_custodian_and_uses_boss_clear_path()
+	await _test_boss_intro_hold_gates_attacks_and_repositioning()
+	await _test_boss_death_and_player_death_clear_active_telegraphs()
+	await _test_boss_lookup_prefers_group_before_name_fallback()
+	await _test_player_death_during_boss_intro_tears_down_ceremony()
+	await _test_boss_is_damageable_by_all_player_resolvers()
 	await _test_enemy_damage_flows_through_guard_hp_and_stops_spawning_on_death()
 	await _test_real_attack_damages_front_enemy_only_and_charges_spark()
 	await _test_special_resolver_heavy_wide_arc_skips_windup_and_charges_spark()
@@ -565,6 +574,187 @@ func _test_full_boon_exit_cycle_reaches_boss_and_completes_run() -> void:
 	_check_eq("boss clear emits run_completed once", completed_events.size(), 1)
 	_check_eq("boss room is CLEARED, not REWARDED", graph.get_room(next_room_id).state, RoomNode.State.CLEARED)
 	_check_eq("boss clear opens no additional doors", opened_batches.size(), 1)
+	await _cleanup_run(run)
+
+func _test_boss_room_spawns_custodian_and_uses_boss_clear_path() -> void:
+	var run = await _new_run()
+	var completed_events: Array[bool] = []
+	var opened_batches: Array[Array] = []
+	run.run_completed.connect(func() -> void:
+		completed_events.append(true)
+	)
+	run.doors_bound.connect(func(connections: Array[RoomConnection]) -> void:
+		opened_batches.append(connections)
+	)
+
+	var graph: RoomGraph = run.start_run("hearth", _empty_template_pool(), 1, _seeded_rng(75))
+	await process_frame
+	var room: RoomNode = graph.get_room(run.run_controller.current_room_id)
+	var boss := run.get("current_boss") as GreyboxEnemy
+	var door := run.bound_doors.get("RoomExit") as RoomDoor
+
+	_check("single-room boss test enters a BOSS room", room != null and room.template != null and room.template.room_type == RoomTemplate.RoomType.BOSS)
+	_check_eq("boss room does not start a RoomDirector", run.current_director, null)
+	_check("boss room registers a Custodian boss", boss != null and boss.get_script() == CustodianBossScript)
+	_check("boss is present in the spawned_enemies snapshot", boss != null and run.spawned_enemies.get("boss:custodian") == boss)
+	_check("boss room door is bound", door != null)
+	if door != null:
+		_check_eq("boss room keeps the exit sealed before boss death", door.state, RoomDoor.State.SEALED)
+		door.emit_signal(&"body_entered", run.player)
+		await process_frame
+		_check_eq("sealed boss door emits no exit/open event", opened_batches.size(), 0)
+
+	if boss != null:
+		boss.take_damage(maxf(boss.hp, boss.max_hp))
+		await process_frame
+
+	_check_eq("boss death completes the run exactly once", completed_events.size(), 1)
+	_check("boss room state is CLEARED after boss death", room != null and room.state == RoomNode.State.CLEARED)
+	_check_eq("boss clear opens no reward doors", opened_batches.size(), 0)
+	await _cleanup_run(run)
+
+func _test_boss_intro_hold_gates_attacks_and_repositioning() -> void:
+	var run = await _new_run()
+	run.start_run("hearth", _empty_template_pool(), 1, _seeded_rng(75))
+	await process_frame
+
+	var boss := run.get("current_boss") as GreyboxEnemy
+	_check("intro gate test has the Custodian", boss != null)
+	if boss == null:
+		await _cleanup_run(run)
+		return
+
+	var start_position := boss.global_position
+	_check("boss intro starts with camera hold on the boss", run.camera.target == boss)
+	_check("boss fight is not active during intro hold", boss.has_method("is_fight_started") and not bool(boss.call("is_fight_started")))
+
+	boss._physics_process(0.95)
+	await process_frame
+
+	_check_almost("intro hold blocks boss repositioning before begin_fight", _xz_distance(boss.global_position, start_position), 0.0, 0.001)
+	_check_eq("intro hold blocks boss telegraph spawning", _boss_marker_count(run), 0)
+	_check_eq("intro hold leaves boss brain idle", _boss_brain_state(boss), "idle")
+
+	run._process(1.0)
+	await process_frame
+	_check("intro completion begins the boss fight", boss.has_method("is_fight_started") and bool(boss.call("is_fight_started")))
+	_check("intro completion returns camera to the player", run.camera.target == run.player)
+	boss._physics_process(0.01)
+	_check("boss can begin attacks after intro completion", _boss_marker_count(run) > 0 or _boss_brain_state(boss) == "windup")
+	await _cleanup_run(run)
+
+func _test_boss_death_and_player_death_clear_active_telegraphs() -> void:
+	var boss_death_run = await _new_run()
+	boss_death_run.start_run("hearth", _empty_template_pool(), 1, _seeded_rng(76))
+	await process_frame
+	var boss := boss_death_run.get("current_boss") as GreyboxEnemy
+	_check("boss marker-death test has the Custodian", boss != null)
+	if boss != null:
+		if boss.has_method("begin_fight"):
+			boss.call("begin_fight")
+		boss._physics_process(0.01)
+		_check("boss death test starts with an active telegraph", _boss_marker_count(boss_death_run) > 0)
+		boss.take_damage(maxf(boss.hp, boss.max_hp))
+		await process_frame
+		_check_eq("boss death clears boss-owned telegraphs", _boss_marker_count(boss_death_run), 0)
+	await _cleanup_run(boss_death_run)
+
+	var player_death_run = await _new_run()
+	player_death_run.start_run("hearth", _empty_template_pool(), 1, _seeded_rng(77))
+	await process_frame
+	var active_boss := player_death_run.get("current_boss") as GreyboxEnemy
+	_check("player-death marker test has the Custodian", active_boss != null)
+	if active_boss != null:
+		if active_boss.has_method("begin_fight"):
+			active_boss.call("begin_fight")
+		active_boss._physics_process(0.01)
+		_check("player death test starts with an active boss telegraph", _boss_marker_count(player_death_run) > 0)
+		player_death_run.player_vitals.apply_damage(player_death_run.player_vitals.max_guard + player_death_run.player_vitals.max_hp)
+		await process_frame
+		_check_eq("player death teardown clears boss-owned telegraphs", _boss_marker_count(player_death_run), 0)
+	await _cleanup_run(player_death_run)
+
+func _test_boss_lookup_prefers_group_before_name_fallback() -> void:
+	var run = await _new_run()
+	var room_root := BossArenaScene.instantiate() as Node3D
+	run.rooms_root.add_child(room_root)
+	run.current_room_root = room_root
+	await process_frame
+
+	var boss := room_root.find_child("CustodianBoss", true, false) as GreyboxEnemy
+	_check("boss group lookup fixture has a boss node", boss != null)
+	if boss != null:
+		boss.name = "RenamedCustodian"
+		boss.add_to_group(&"boss")
+		_check_eq("orchestrator finds a group-tagged boss after node rename", run._find_current_boss(), boss)
+	await _cleanup_run(run)
+
+func _test_player_death_during_boss_intro_tears_down_ceremony() -> void:
+	var run = await _new_run()
+	run.start_run("hearth", _empty_template_pool(), 1, _seeded_rng(78))
+	await process_frame
+
+	var boss := run.get("current_boss") as GreyboxEnemy
+	_check("intro death test has the Custodian", boss != null)
+	if boss == null:
+		await _cleanup_run(run)
+		return
+	var nameplate := boss.get_node_or_null("Nameplate") as Label3D
+	_check("intro death test starts during the boss camera hold", float(run.get("_boss_intro_hold_remaining")) > 0.0 and run.camera.target == boss)
+	_check("intro death test shows the boss nameplate", nameplate != null and nameplate.visible)
+
+	run.player_vitals.apply_damage(run.player_vitals.max_guard + run.player_vitals.max_hp)
+	await process_frame
+
+	_check("player death during intro deactivates the run", not run.get("_run_active"))
+	_check_eq("player death during intro clears the hold timer", float(run.get("_boss_intro_hold_remaining")), 0.0)
+	_check("player death during intro releases the boss camera target", run.camera.target != boss)
+	_check("player death during intro hides the nameplate", nameplate == null or not nameplate.visible)
+	await _cleanup_run(run)
+
+func _test_boss_is_damageable_by_all_player_resolvers() -> void:
+	var run = await _new_run()
+	run.start_run("hearth", _empty_template_pool(), 1, _seeded_rng(76))
+	await process_frame
+
+	var boss := run.get("current_boss") as GreyboxEnemy
+	var kit: AbilityComponent = run._player_ability_kit()
+	_check("boss resolver test has the Custodian", boss != null)
+	_check("boss resolver test has the player kit", kit != null)
+	if boss == null or kit == null:
+		await _cleanup_run(run)
+		return
+
+	_ready_enemy_for_player_attack(run, boss, _player_forward(run) * 1.1)
+	var before_attack := boss.hp
+	_check("melee activates against boss", kit.try_activate(&"attack"))
+	await process_frame
+	_check("melee resolver damages boss through spawned_enemies snapshot", boss.hp < before_attack)
+	kit.tick(1.0)
+
+	kit.set_resource(&"spark_charge", 100.0)
+	_ready_enemy_for_player_attack(run, boss, _player_forward(run) * 2.2)
+	var before_special := boss.hp
+	_check("special activates against boss", kit.try_activate(&"special"))
+	await process_frame
+	_check("special resolver damages boss through spawned_enemies snapshot", boss.hp < before_special)
+	kit.tick(2.0)
+
+	_ready_enemy_for_player_attack(run, boss, _player_forward(run) * 4.0)
+	var before_cast := boss.hp
+	_check("cast activates against boss", kit.try_activate(&"cast"))
+	await process_frame
+	_check("cast resolver damages boss through spawned_enemies snapshot", boss.hp < before_cast)
+	kit.tick(1.0)
+
+	run.player_vitals.set("spark_surge_charge_max", 100.0)
+	run.player_vitals.call("set_spark_surge_charge", 100.0)
+	_ready_enemy_for_player_attack(run, boss, Vector3(3.0, 0.0, 0.0))
+	var before_surge := boss.hp
+	_check("Spark Surge activates against boss", kit.try_activate(&"surge"))
+	await process_frame
+	_check("Spark Surge resolver damages boss through spawned_enemies snapshot", boss.hp < before_surge)
+	_check("Spark Surge staggers boss through the normal enemy interface", boss.is_staggered())
 	await _cleanup_run(run)
 
 func _test_enemy_damage_flows_through_guard_hp_and_stops_spawning_on_death() -> void:
@@ -1441,6 +1631,13 @@ func _vital_total(run) -> int:
 	return run.player_vitals.hp + run.player_vitals.guard
 
 func _clear_current_room_by_enemy_deaths(run) -> void:
+	var boss := run.get("current_boss") as GreyboxEnemy
+	if boss != null and is_instance_valid(boss):
+		boss.take_damage(maxf(boss.hp, boss.max_hp))
+		await process_frame
+		_check("boss room clears through boss death path", not run._run_active or run.run_controller.graph.get_room(run.run_controller.current_room_id).state == RoomNode.State.CLEARED)
+		return
+
 	var safety := 0
 	while run.current_director != null and not run.current_director.is_room_cleared() and safety < 20:
 		var enemies := _live_spawned_enemies(run)
@@ -1608,6 +1805,30 @@ func _first_spawned_enemy(run) -> GreyboxEnemy:
 		if enemy is GreyboxEnemy:
 			return enemy as GreyboxEnemy
 	return null
+
+func _boss_marker_count(run) -> int:
+	if run == null or run.current_room_root == null:
+		return 0
+	return _telegraph_markers_under(run.current_room_root).size()
+
+func _telegraph_markers_under(parent: Node) -> Array:
+	var markers: Array = []
+	_collect_telegraph_markers(parent, markers)
+	return markers
+
+func _collect_telegraph_markers(node: Node, markers: Array) -> void:
+	if node != null and node.get_script() == TelegraphMarkerScript and not node.is_queued_for_deletion():
+		markers.append(node)
+	for child in node.get_children():
+		_collect_telegraph_markers(child, markers)
+
+func _boss_brain_state(boss: GreyboxEnemy) -> String:
+	if boss == null:
+		return ""
+	var brain = boss.get("boss_brain")
+	if brain == null or not brain.has_method("execution_state"):
+		return ""
+	return String(brain.call("execution_state"))
 
 func _live_spawned_enemies(run) -> Array[GreyboxEnemy]:
 	var enemies: Array[GreyboxEnemy] = []
