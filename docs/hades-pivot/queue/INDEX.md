@@ -110,6 +110,7 @@ Rubric: Opus = seam-shaping/cross-system judgment; Sonnet = specified single-fil
 | HZ-013 | special ability implementation | Sonnet | HP-6 | done | 010 |
 | HZ-014 | cast ability implementation | Sonnet | HP-6 | done | 010 |
 | HZ-015 | gizmo ability input wiring (actions → kit) | Sonnet | HP-6 | done | 011–014 |
+| HZ-016 | Gizmo player entity scene (CharacterBody3D + AbilityComponent + AbilityInputRouter + placeholder mesh) | Opus | HP-6 | ready-for-agent | 015 |
 | HZ-020 | `BoonDef` resource model (authored boon table; run-scoped ranks) | Opus | HP-7 | done | — |
 | HZ-021 | boon draft roller + apply logic (between-room offers) | Opus | HP-8 | done | 020 |
 | HZ-022 | `boon_draft.tscn` UI (3-card choice; signal contract) | Sonnet | HP-9 | done | 021 |
@@ -150,4 +151,7 @@ Rubric: Opus = seam-shaping/cross-system judgment; Sonnet = specified single-fil
 - No ticket revives waves/countdown/beacon-rekindle win; HZ-050/062 carry explicit ABSENCE assertions.
 - `ability-kit.md` landed (with `godot/scripts/abilities/`): HZ-015 and the HUD tickets cite it as authority; Phaser dash constants remain salvage-by-value reference only.
 - Room graph scaffold exists but has **zero tests** — HZ-001 is the cold-start entry, not a re-scaffold.
+- Wave-2 audit (2026-07-05): HZ-015's router is headless-only by design — HZ-016 (added) owns scene
+  integration; HZ-051 and HZ-061 should treat 016 as a prerequisite. Hub door entry is tested via
+  simulated body_entered signals, not real physics overlap — accepted; the HZ-061 live gate covers it.
 - No ready-for-human labels emitted; open calls are decided in design anchors above.
