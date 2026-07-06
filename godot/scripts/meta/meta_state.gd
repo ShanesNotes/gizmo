@@ -17,6 +17,7 @@ const STAT_GRADE_PRICES: Array[int] = [50, 100]
 @export var schema_version: int = CURRENT_SCHEMA_VERSION
 @export var scrap_banked: int = 0
 @export var sparks_banked: int = 0
+@export var last_return_was_victory: bool = false
 @export var unlocked_boon_ids: Array[StringName] = []
 @export var stat_grades: Dictionary = {}
 
@@ -68,6 +69,7 @@ func save_to_path(path: String = DEFAULT_SAVE_PATH) -> Error:
 	config.set_value("meta", "schema_version", schema_version)
 	config.set_value("currency", "scrap_banked", scrap_banked)
 	config.set_value("currency", "sparks_banked", sparks_banked)
+	config.set_value("run_history", "last_return_was_victory", last_return_was_victory)
 	config.set_value("unlocks", "boon_ids", _string_name_array_to_strings(unlocked_boon_ids))
 	_ensure_stat_grades()
 	for key in STAT_GRADE_KEYS:
@@ -95,6 +97,7 @@ static func load_from_path(path: String = DEFAULT_SAVE_PATH) -> Resource:
 	state.schema_version = CURRENT_SCHEMA_VERSION
 	state.scrap_banked = maxi(0, int(config.get_value("currency", "scrap_banked", 0)))
 	state.sparks_banked = maxi(0, int(config.get_value("currency", "sparks_banked", 0)))
+	state.last_return_was_victory = bool(config.get_value("run_history", "last_return_was_victory", false))
 	state.unlocked_boon_ids = _variant_to_string_name_array(config.get_value("unlocks", "boon_ids", []))
 	state._ensure_stat_grades()
 	for key in STAT_GRADE_KEYS:

@@ -42,6 +42,7 @@ var spawned_enemies: Dictionary = {}
 var _rng: RandomNumberGenerator = null
 var _run_active := false
 var _transitioning := false
+var _death_teardown_complete := false
 
 func _ready() -> void:
 	_ensure_wiring()
@@ -81,6 +82,7 @@ func start_run(
 	var graph := run_controller.start_run(active_biome, active_pool, active_room_count, _rng)
 	_run_active = graph != null and run_controller.current_room_id != ""
 	_transitioning = false
+	_death_teardown_complete = false
 	if _run_active:
 		_load_current_room()
 	_render_hud_payloads()
@@ -177,7 +179,11 @@ func _load_current_room() -> void:
 
 func _cleanup_current_room() -> void:
 	_clear_spawned_enemies()
+	_disconnect_current_director()
 	if current_room_root != null and is_instance_valid(current_room_root):
+		var parent := current_room_root.get_parent()
+		if parent != null:
+			parent.remove_child(current_room_root)
 		current_room_root.queue_free()
 	current_room_root = null
 	current_director = null
@@ -246,13 +252,14 @@ func _replace_with_room_door(area: Area3D) -> RoomDoor:
 	return door
 
 func _start_room_director(room: RoomNode) -> void:
+	_disconnect_current_director()
 	current_director = RoomDirector.new(room.difficulty_tier, _rng)
 	current_director.wave_requested.connect(_on_director_wave_requested)
 	current_director.room_cleared.connect(_on_director_room_cleared)
 	current_director.start()
 
 func _on_director_wave_requested(_wave_index: int, requests: Array[Dictionary]) -> void:
-	if not _run_active:
+	if not _run_active or _death_teardown_complete:
 		return
 	for request in requests:
 		_spawn_from_request(request)
@@ -289,12 +296,14 @@ func _spawn_position_for(index: int) -> Vector3:
 	return center + Vector3(cos(angle) * radius, 0.1, sin(angle) * radius)
 
 func _on_enemy_died(spawn_id: String) -> void:
-	if current_director != null:
-		current_director.notify_kill(spawn_id)
+	if not _run_active or _death_teardown_complete:
+		return
 	var enemy := spawned_enemies.get(spawn_id) as Node
 	if enemy != null and is_instance_valid(enemy):
 		enemy.queue_free()
 	spawned_enemies.erase(spawn_id)
+	if current_director != null:
+		current_director.notify_kill(spawn_id)
 
 func _on_enemy_damage_event(event: Dictionary) -> void:
 	if player_vitals == null:
@@ -303,8 +312,10 @@ func _on_enemy_damage_event(event: Dictionary) -> void:
 	_render_hud_payloads()
 
 func _on_director_room_cleared() -> void:
+	if not _run_active or _death_teardown_complete:
+		return
 	_clear_spawned_enemies()
-	if _run_active and run_controller != null:
+	if run_controller != null:
 		run_controller.notify_room_cleared()
 
 func _on_doors_opened(connections: Array[RoomConnection]) -> void:
@@ -332,8 +343,8 @@ func _on_player_vitals_died() -> void:
 	if not _run_active:
 		return
 	_run_active = false
-	if current_director != null:
-		current_director.wave_requested.disconnect(_on_director_wave_requested)
+	_death_teardown_complete = true
+	_disconnect_current_director()
 	for enemy in spawned_enemies.values():
 		if enemy is GreyboxEnemy and is_instance_valid(enemy):
 			(enemy as GreyboxEnemy).clear_chase_target()
@@ -341,6 +352,7 @@ func _on_player_vitals_died() -> void:
 
 func _on_run_controller_completed() -> void:
 	_run_active = false
+	_disconnect_current_director()
 	_clear_spawned_enemies()
 	run_completed.emit()
 
@@ -349,6 +361,14 @@ func _clear_spawned_enemies() -> void:
 		if enemy is Node and is_instance_valid(enemy):
 			(enemy as Node).queue_free()
 	spawned_enemies.clear()
+
+func _disconnect_current_director() -> void:
+	if current_director == null:
+		return
+	if current_director.wave_requested.is_connected(_on_director_wave_requested):
+		current_director.wave_requested.disconnect(_on_director_wave_requested)
+	if current_director.room_cleared.is_connected(_on_director_room_cleared):
+		current_director.room_cleared.disconnect(_on_director_room_cleared)
 
 func _render_hud_payloads() -> void:
 	if hud == null:

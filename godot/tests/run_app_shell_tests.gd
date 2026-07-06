@@ -23,6 +23,14 @@ class StubRunSurface:
 		start_call_count += 1
 		received_bonuses = run_bonuses.duplicate(true)
 
+class MissingRunSignalsSurface:
+	extends Node
+
+	var start_call_count := 0
+
+	func start_run(_run_bonuses: Dictionary) -> void:
+		start_call_count += 1
+
 var _passed := 0
 var _failed := 0
 var _surface_index := 0
@@ -34,8 +42,12 @@ func _initialize() -> void:
 func _run_tests() -> void:
 	await _test_boots_into_hub_with_loaded_meta_state()
 	await _test_hub_run_request_swaps_to_run_surface_with_bonuses()
+	await _test_running_phase_ignores_reentrant_run_request()
+	await _test_malformed_run_surface_is_rejected_without_leaving_hub()
 	await _test_player_death_banks_saves_and_returns_to_hub()
 	await _test_victory_returns_to_hub_and_persists_outcome_flag()
+	await _test_double_death_same_frame_banks_once()
+	await _test_double_victory_same_frame_banks_once()
 	await _test_meta_persists_across_app_restart()
 	print("")
 	if _failed == 0 and _passed > 0:
@@ -63,6 +75,11 @@ func _make_stub_run_surface() -> Node:
 	_surface_index += 1
 	var surface := StubRunSurface.new()
 	surface.name = "StubRunSurface%d" % _surface_index
+	return surface
+
+func _make_missing_signal_surface() -> Node:
+	var surface := MissingRunSignalsSurface.new()
+	surface.name = "MissingRunSignalsSurface"
 	return surface
 
 func _new_save_path(test_name: String) -> String:
@@ -160,6 +177,46 @@ func _test_hub_run_request_swaps_to_run_surface_with_bonuses() -> void:
 
 	await _cleanup_app(app, save_path)
 
+func _test_running_phase_ignores_reentrant_run_request() -> void:
+	var save_path := _new_save_path("reentrant")
+	_remove_save(save_path)
+	var app := await _new_app(save_path)
+	if app == null:
+		return
+	var hub := _current_hub(app)
+
+	hub.run_requested.emit()
+	var surface := _current_surface(app)
+	app.lifecycle.add_run_currency(9, 0)
+	hub.run_requested.emit()
+	await _flush_free_queue()
+
+	_check("reentrant run request keeps the active run surface", is_instance_valid(surface) and _current_content(app) == surface)
+	if is_instance_valid(surface):
+		_check_eq("reentrant run request does not restart the surface", surface.start_call_count, 1)
+	_check_eq("reentrant run request does not reset live run scrap", app.lifecycle.run_scrap, 9)
+	_check_eq("reentrant run request leaves lifecycle RUNNING", app.lifecycle.phase, RunLifecycle.Phase.RUNNING)
+
+	await _cleanup_app(app, save_path)
+
+func _test_malformed_run_surface_is_rejected_without_leaving_hub() -> void:
+	var save_path := _new_save_path("missing_run_signals")
+	_remove_save(save_path)
+	var app := await _new_app(save_path)
+	if app == null:
+		return
+	app.run_surface_factory = Callable(self, "_make_missing_signal_surface")
+	var hub := _current_hub(app)
+
+	hub.run_requested.emit()
+	await _flush_free_queue()
+
+	_check("malformed run surface keeps the original hub active", is_instance_valid(hub) and _current_content(app) == hub)
+	_check_eq("malformed run surface leaves lifecycle in HUB phase", app.lifecycle.phase, RunLifecycle.Phase.HUB)
+	_check_eq("malformed run surface keeps one content child", app.get_node("ContentSlot").get_child_count(), 1)
+
+	await _cleanup_app(app, save_path)
+
 func _test_player_death_banks_saves_and_returns_to_hub() -> void:
 	var save_path := _new_save_path("death")
 	_remove_save(save_path)
@@ -186,6 +243,10 @@ func _test_player_death_banks_saves_and_returns_to_hub() -> void:
 	_check_eq("returned hub scrap label reflects banked scrap", scrap_label.text, "SCRAP 27")
 	_check_eq("death save persists banked scrap", loaded.scrap_banked, 27)
 	_check_eq("death records non-victory outcome in save", _saved_victory_flag(save_path), false)
+	_check_eq("death return save has bank and outcome in one file", _saved_return_snapshot(save_path), {
+		"scrap_banked": 27,
+		"last_return_was_victory": false,
+	})
 
 	await _cleanup_app(app, save_path)
 
@@ -211,6 +272,56 @@ func _test_victory_returns_to_hub_and_persists_outcome_flag() -> void:
 	_check_eq("victory return persists banked scrap through the shared return path", loaded.scrap_banked, 11)
 	_check_eq("AppShell records last return as victory", app.last_return_was_victory, true)
 	_check_eq("victory flag is persisted beside the meta save", _saved_victory_flag(save_path), true)
+	_check_eq("victory return save has bank and outcome in one file", _saved_return_snapshot(save_path), {
+		"scrap_banked": 11,
+		"last_return_was_victory": true,
+	})
+
+	await _cleanup_app(app, save_path)
+
+func _test_double_death_same_frame_banks_once() -> void:
+	var save_path := _new_save_path("double_death")
+	_remove_save(save_path)
+	var app := await _new_app(save_path)
+	if app == null:
+		return
+	_current_hub(app).run_requested.emit()
+	await _flush_free_queue()
+	var surface := _current_surface(app)
+	app.lifecycle.add_run_currency(13, 0)
+
+	surface.player_died.emit()
+	surface.player_died.emit()
+	await _flush_free_queue()
+	var loaded: MetaState = MetaState.load_from_path(save_path)
+
+	_check_eq("double death banks run scrap once", app.meta_state.scrap_banked, 13)
+	_check_eq("double death save persists one bank", loaded.scrap_banked, 13)
+	_check_eq("double death leaves lifecycle HUB", app.lifecycle.phase, RunLifecycle.Phase.HUB)
+	_check_eq("double death records non-victory outcome", _saved_victory_flag(save_path), false)
+
+	await _cleanup_app(app, save_path)
+
+func _test_double_victory_same_frame_banks_once() -> void:
+	var save_path := _new_save_path("double_victory")
+	_remove_save(save_path)
+	var app := await _new_app(save_path)
+	if app == null:
+		return
+	_current_hub(app).run_requested.emit()
+	await _flush_free_queue()
+	var surface := _current_surface(app)
+	app.lifecycle.add_run_currency(17, 0)
+
+	surface.run_completed.emit()
+	surface.run_completed.emit()
+	await _flush_free_queue()
+	var loaded: MetaState = MetaState.load_from_path(save_path)
+
+	_check_eq("double victory banks run scrap once", app.meta_state.scrap_banked, 17)
+	_check_eq("double victory save persists one bank", loaded.scrap_banked, 17)
+	_check_eq("double victory leaves lifecycle HUB", app.lifecycle.phase, RunLifecycle.Phase.HUB)
+	_check_eq("double victory records victory outcome", _saved_victory_flag(save_path), true)
 
 	await _cleanup_app(app, save_path)
 
@@ -247,3 +358,13 @@ func _saved_victory_flag(path: String) -> bool:
 	if load_error != OK:
 		return false
 	return bool(cfg.get_value("run_history", "last_return_was_victory", false))
+
+func _saved_return_snapshot(path: String) -> Dictionary:
+	var cfg := ConfigFile.new()
+	var load_error := cfg.load(path)
+	if load_error != OK:
+		return {}
+	return {
+		"scrap_banked": int(cfg.get_value("currency", "scrap_banked", -1)),
+		"last_return_was_victory": bool(cfg.get_value("run_history", "last_return_was_victory", false)),
+	}

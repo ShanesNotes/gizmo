@@ -22,6 +22,7 @@ func _run_tests() -> void:
 	await _test_run_scene_instantiates_and_enters_room()
 	await _test_full_boon_exit_cycle_reaches_boss_and_completes_run()
 	await _test_enemy_damage_flows_through_guard_hp_and_stops_spawning_on_death()
+	await _test_player_death_disconnects_director_and_ignores_posthumous_enemy_deaths()
 	print("")
 	if _failed == 0 and _passed > 0:
 		print("PASS - %d checks" % _passed)
@@ -104,10 +105,12 @@ func _test_run_scene_instantiates_and_enters_room() -> void:
 func _test_full_boon_exit_cycle_reaches_boss_and_completes_run() -> void:
 	var run = await _new_run()
 	var loaded_room_ids: Array[String] = []
+	var room_child_counts_at_load: Array[int] = []
 	var opened_batches: Array[Array] = []
 	var completed_events: Array[bool] = []
 	run.room_loaded.connect(func(room: RoomNode, _room_root: Node3D) -> void:
 		loaded_room_ids.append(room.room_id)
+		room_child_counts_at_load.append(run.rooms_root.get_child_count())
 	)
 	run.doors_bound.connect(func(connections: Array[RoomConnection]) -> void:
 		opened_batches.append(connections)
@@ -118,9 +121,10 @@ func _test_full_boon_exit_cycle_reaches_boss_and_completes_run() -> void:
 
 	var graph = _start_run_with_first_boon_exit(run)
 	loaded_room_ids.clear()
+	room_child_counts_at_load.clear()
 	loaded_room_ids.append(run.run_controller.current_room_id)
 	var start_room_id: String = run.run_controller.current_room_id
-	await _clear_current_room_by_director_kills(run)
+	await _clear_current_room_by_enemy_deaths(run)
 
 	_check_eq("first room becomes CLEARED after director kills", graph.get_room(start_room_id).state, RoomNode.State.CLEARED)
 	_check_eq("doors open once after first clear", opened_batches.size(), 1)
@@ -151,11 +155,15 @@ func _test_full_boon_exit_cycle_reaches_boss_and_completes_run() -> void:
 	_check_eq("BOON choice advances the controller", run.run_controller.current_room_id, next_room_id)
 	_check_eq("destination room is ENTERED", graph.get_room(next_room_id).state, RoomNode.State.ENTERED)
 	_check("old room was replaced after exit completion", run.current_room_root != previous_room_root)
+	var immediate_room_count := -1
+	if not room_child_counts_at_load.is_empty():
+		immediate_room_count = room_child_counts_at_load[room_child_counts_at_load.size() - 1]
+	_check_eq("rooms root has exactly one room child immediately after exit completion", immediate_room_count, 1)
 	_check("boon draft records the picked boon", run.boon_draft.picked_boons.size() == 1)
 	_check_eq("loaded rooms include entry and destination", loaded_room_ids, [start_room_id, next_room_id])
 	_check_eq("destination template is boss for this small cycle", graph.get_room(next_room_id).template.room_type, RoomTemplate.RoomType.BOSS)
 
-	await _clear_current_room_by_director_kills(run)
+	await _clear_current_room_by_enemy_deaths(run)
 
 	_check_eq("boss clear emits run_completed once", completed_events.size(), 1)
 	_check_eq("boss room is CLEARED, not REWARDED", graph.get_room(next_room_id).state, RoomNode.State.CLEARED)
@@ -202,6 +210,47 @@ func _test_enemy_damage_flows_through_guard_hp_and_stops_spawning_on_death() -> 
 	_check("dead player leaves the run inactive", not run._run_active)
 	await _cleanup_run(run)
 
+func _test_player_death_disconnects_director_and_ignores_posthumous_enemy_deaths() -> void:
+	var run = await _new_run()
+	var graph: RoomGraph = null
+	for seed in range(1, 120):
+		graph = run.start_run("hearth", _empty_template_pool(), 2, _seeded_rng(seed))
+		await process_frame
+		if run.current_director != null and run.current_director.wave_count == 1 and run.spawned_enemy_count() > 0:
+			break
+
+	var director: RoomDirector = run.current_director
+	_check("posthumous death test found a one-wave director", director != null and director.wave_count == 1)
+	_check("posthumous death test has spawned enemies", run.spawned_enemy_count() > 0)
+	if director == null or director.wave_count != 1 or run.spawned_enemy_count() == 0:
+		await _cleanup_run(run)
+		return
+
+	var director_clears: Array[bool] = []
+	var controller_clears: Array[RoomNode] = []
+	director.room_cleared.connect(func() -> void:
+		director_clears.append(true)
+	)
+	run.run_controller.room_cleared.connect(func(room: RoomNode) -> void:
+		controller_clears.append(room)
+	)
+
+	var lethal_damage: int = int(run.player_vitals.max_guard) + int(run.player_vitals.max_hp)
+	run.player_vitals.apply_damage(lethal_damage)
+	await process_frame
+	_check("posthumous death test leaves run inactive", not run._run_active)
+
+	for enemy in _live_spawned_enemies(run):
+		enemy.take_damage(maxf(enemy.hp, enemy.max_hp))
+	await process_frame
+
+	_check_eq("posthumous enemy deaths do not clear the stale director", director_clears.size(), 0)
+	_check("stale director remains uncleared after ignored posthumous deaths", not director.is_room_cleared())
+	_check_eq("posthumous enemy deaths do not notify run controller room_cleared", controller_clears.size(), 0)
+	_check("posthumous enemy deaths do not crash the run", is_instance_valid(run))
+	_check("posthumous death test kept graph alive for inspection", graph != null)
+	await _cleanup_run(run)
+
 func _start_run_with_first_boon_exit(run) -> RoomGraph:
 	for seed in range(1, 80):
 		var graph: RoomGraph = run.start_run("hearth", _empty_template_pool(), 2, _seeded_rng(seed))
@@ -212,16 +261,18 @@ func _start_run_with_first_boon_exit(run) -> RoomGraph:
 	_check("found a seed whose first exit telegraphs BOON", false)
 	return run.run_controller.graph
 
-func _clear_current_room_by_director_kills(run) -> void:
+func _clear_current_room_by_enemy_deaths(run) -> void:
 	var safety := 0
 	while run.current_director != null and not run.current_director.is_room_cleared() and safety < 20:
-		var ids: Array[String] = run.current_director.remaining_spawn_ids()
-		_check("current director exposes spawn ids to kill", not ids.is_empty())
-		for spawn_id in ids:
-			_check("notify_kill accepts %s" % spawn_id, run.current_director.notify_kill(spawn_id))
+		var enemies := _live_spawned_enemies(run)
+		_check("current room exposes spawned enemies to kill", not enemies.is_empty())
+		for enemy in enemies:
+			enemy.take_damage(maxf(enemy.hp, enemy.max_hp))
 		await process_frame
 		safety += 1
 	_check("room cleared within safety limit", run.current_director == null or run.current_director.is_room_cleared())
+	if run.current_director != null and run.current_director.is_room_cleared():
+		_check_eq("spawned enemy bookkeeping is empty after room clear", run.spawned_enemy_count(), 0)
 
 func _first_open_boon_connection(run, connections: Array) -> RoomConnection:
 	for connection in connections:
@@ -250,3 +301,10 @@ func _first_spawned_enemy(run) -> GreyboxEnemy:
 		if enemy is GreyboxEnemy:
 			return enemy as GreyboxEnemy
 	return null
+
+func _live_spawned_enemies(run) -> Array[GreyboxEnemy]:
+	var enemies: Array[GreyboxEnemy] = []
+	for enemy in run.spawned_enemies.values():
+		if enemy is GreyboxEnemy and is_instance_valid(enemy):
+			enemies.append(enemy as GreyboxEnemy)
+	return enemies
