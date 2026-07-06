@@ -17,6 +17,8 @@ const RoomConnection := preload("res://scripts/room_graph/room_connection.gd")
 const EXPECTED_MAIN_SCENE := "res://scenes/app.tscn"
 const EXPECTED_RUN_SCENE := "res://scenes/run.tscn"
 const SCRAP_REWARD_VALUE := 10
+const SPAWN_SEPARATION_DISTANCE := 1.1
+const TEST_SAVE_SUBDIR := "saves"
 
 var _passed := 0
 var _failed := 0
@@ -26,6 +28,7 @@ func _initialize() -> void:
 	call_deferred("_run_tests")
 
 func _run_tests() -> void:
+	_test_save_root_is_user_scoped()
 	await _test_empty_boon_pool_replacement_reward_in_real_run()
 	await _test_victory_run_returns_to_hub_with_summary_and_persisted_scrap()
 	await _test_death_run_returns_to_hub_with_summary_and_persisted_scrap()
@@ -50,6 +53,13 @@ func _check(desc: String, condition: bool) -> void:
 
 func _check_eq(desc: String, actual: Variant, expected: Variant) -> void:
 	_check("%s (got %s, expected %s)" % [desc, actual, expected], actual == expected)
+
+func _test_save_root_is_user_scoped() -> void:
+	_ensure_test_save_root()
+	var save_root := _test_save_root()
+	var user_data_dir := _requested_user_data_dir()
+	_check("integration test save root is absolute", save_root.is_absolute_path())
+	_check("integration test save root resolves under the requested user data dir", save_root.begins_with(user_data_dir))
 
 func _test_victory_run_returns_to_hub_with_summary_and_persisted_scrap() -> void:
 	var save_path := _new_save_path("victory")
@@ -310,6 +320,7 @@ func _take_exit(run, connection: RoomConnection, gate: Dictionary) -> void:
 
 	_check("HUD survives room transitions", run.hud == hud_reference)
 	_check("current room remains loaded after accepted exit", run.current_room_root != null)
+	_assert_spawned_enemies_inside_current_room_bounds(run, "integration accepted exit")
 
 func _select_progress_connection(run, need_boon: bool, need_scrap: bool) -> RoomConnection:
 	var graph: RoomGraph = run.run_controller.graph
@@ -379,6 +390,7 @@ func _assert_hud_matches_run_start(run) -> void:
 	_check_eq("HUD HP label reflects player vitals", _hp_label_text(run.hud), "%d / %d" % [run.player_vitals.hp, run.player_vitals.max_hp])
 	_check("HUD guard pips are visible from player vitals", _guard_pips_visible(run.hud))
 	_check("HUD ability bar renders the kit", _ability_bar_count(run.hud) >= 4)
+	_assert_spawned_enemies_inside_current_room_bounds(run, "integration run start")
 
 func _assert_summary_labels(screen: EndScreen, summary: Dictionary, prefix: String) -> void:
 	_check_eq("%s summary result label" % prefix, _summary_label(screen, "ResultValue"), "COMPLETE" if bool(summary.get("victory", false)) else "LOST")
@@ -461,11 +473,93 @@ func _live_spawned_enemies(run) -> Array[GreyboxEnemy]:
 			enemies.append(enemy as GreyboxEnemy)
 	return enemies
 
+func _assert_spawned_enemies_inside_current_room_bounds(run, prefix: String) -> void:
+	if run.current_director == null:
+		return
+	var anchor := run.current_room_root.find_child("CameraAnchor", true, false) as Marker3D if run.current_room_root != null else null
+	_check("%s has a room CameraAnchor" % prefix, anchor != null)
+	if anchor == null:
+		return
+	var half_x := float(anchor.get_meta("camera_half_extent_x", 0.0))
+	var half_z := float(anchor.get_meta("camera_half_extent_z", 0.0))
+	_check("%s has positive camera spawn extents" % prefix, half_x > 0.0 and half_z > 0.0)
+	var enemies := _live_spawned_enemies(run)
+	_check("%s has live spawned enemies" % prefix, not enemies.is_empty())
+	for enemy in enemies:
+		var position := enemy.global_position
+		var inside_bounds := (
+			absf(position.x - anchor.global_position.x) <= half_x + 0.001
+			and absf(position.z - anchor.global_position.z) <= half_z + 0.001
+			and position.y > 0.0
+		)
+		_check(
+			"%s keeps %s inside camera extents and above floor at %s"
+			% [prefix, enemy.spawn_id, position],
+			inside_bounds
+		)
+	_assert_spawned_enemies_pairwise_separated(run, prefix, anchor, half_x, half_z, enemies)
+
+func _assert_spawned_enemies_pairwise_separated(
+	run,
+	prefix: String,
+	_anchor: Marker3D,
+	half_x: float,
+	half_z: float,
+	enemies: Array[GreyboxEnemy]
+) -> void:
+	if not _room_can_satisfy_spawn_separation(half_x, half_z, enemies.size(), SPAWN_SEPARATION_DISTANCE):
+		return
+	for a in range(enemies.size()):
+		for b in range(a + 1, enemies.size()):
+			var distance := _xz_distance(enemies[a].global_position, enemies[b].global_position)
+			_check(
+				"%s keeps %s and %s at least %.1fm apart"
+				% [prefix, enemies[a].spawn_id, enemies[b].spawn_id, SPAWN_SEPARATION_DISTANCE],
+				distance + 0.001 >= SPAWN_SEPARATION_DISTANCE
+			)
+
+func _room_can_satisfy_spawn_separation(half_x: float, half_z: float, enemy_count: int, separation_distance: float) -> bool:
+	if enemy_count <= 1:
+		return false
+	if separation_distance <= 0.0:
+		return false
+	var width := half_x * 2.0
+	var depth := half_z * 2.0
+	if width < separation_distance or depth < separation_distance:
+		return false
+	return width * depth >= float(enemy_count) * separation_distance * separation_distance
+
+func _xz_distance(a: Vector3, b: Vector3) -> float:
+	return Vector2(a.x, a.z).distance_to(Vector2(b.x, b.z))
+
 func _new_save_path(test_name: String) -> String:
-	return "user://saves/run_integration_gate_%s.cfg" % test_name
+	_ensure_test_save_root()
+	return _test_save_root().path_join("run_integration_gate_%s.cfg" % test_name)
+
+func _ensure_test_save_root() -> void:
+	var absolute_root := _test_save_root()
+	var error := DirAccess.make_dir_recursive_absolute(absolute_root)
+	if error != OK and error != ERR_ALREADY_EXISTS:
+		_check("integration test save root is creatable", false)
+
+func _test_save_root() -> String:
+	return _requested_user_data_dir().path_join(TEST_SAVE_SUBDIR)
+
+func _requested_user_data_dir() -> String:
+	var args := OS.get_cmdline_args()
+	for index in range(args.size()):
+		var arg := String(args[index])
+		if arg.begins_with("--user-data-dir="):
+			return arg.substr("--user-data-dir=".length()).simplify_path()
+		if arg == "--user-data-dir" and index + 1 < args.size():
+			return String(args[index + 1]).simplify_path()
+	var env_dir := OS.get_environment("GODOT_USER_DATA_DIR")
+	if env_dir != "":
+		return env_dir.simplify_path()
+	return OS.get_user_data_dir().simplify_path()
 
 func _remove_save(path: String) -> void:
-	var absolute := ProjectSettings.globalize_path(path)
+	var absolute := path if path.is_absolute_path() else ProjectSettings.globalize_path(path)
 	if FileAccess.file_exists(absolute):
 		DirAccess.remove_absolute(absolute)
 
