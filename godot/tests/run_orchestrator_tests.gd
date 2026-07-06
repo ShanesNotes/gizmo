@@ -1646,14 +1646,15 @@ func _test_cast_during_transition_is_gated_with_ammo_intact() -> void:
 	cast.cast_time = 0.0
 	cast.recovery_time = 0.05
 	var ammo_before := kit.cast_ammo()
-	var shards_before: int = run._cast_shards_by_key.size()
+	var resolver: CombatResolvers = run.combat_resolvers
+	var shards_before: int = resolver._cast_shards_by_key.size()
 
 	run.set("_transitioning", true)
 	kit.cast_started.emit(25.0)
 	await process_frame
 	run.set("_transitioning", false)
 
-	_check_eq("gated cast leaves shard registry untouched", run._cast_shards_by_key.size(), shards_before)
+	_check_eq("gated cast leaves shard registry untouched", resolver._cast_shards_by_key.size(), shards_before)
 	_check_eq("gated cast leaves ammo intact (refunded)", kit.cast_ammo(), ammo_before)
 	await _cleanup_run(run)
 
@@ -1672,7 +1673,8 @@ func _test_failed_shard_reclaim_converts_to_ownerless_pickup() -> void:
 	victim.max_hp = 200.0
 	victim.hp = 200.0
 	var victim_spawn_id: String = victim.spawn_id
-	var shard_key: String = run._register_cast_shard(victim_spawn_id, victim.global_position)
+	var resolver: CombatResolvers = run.combat_resolvers
+	var shard_key: String = resolver._register_cast_shard(victim_spawn_id, victim.global_position)
 	# Ammo is already at max, so reclaim_cast_ammo(1) will return 0 → the
 	# lodged shard cannot be banked on victim death.
 	_check("orphan test precondition: ammo already full", kit.cast_ammo() >= 1)
@@ -1680,9 +1682,9 @@ func _test_failed_shard_reclaim_converts_to_ownerless_pickup() -> void:
 	victim.take_damage(999.0, false)
 	await process_frame
 
-	var record: Dictionary = run._cast_shards_by_key.get(shard_key, {})
+	var record: Dictionary = resolver._cast_shards_by_key.get(shard_key, {})
 	_check("failed reclaim keeps the shard record (walk-over recoverable)", not record.is_empty())
 	_check_eq("failed reclaim clears the dead spawn_id from the record", String(record.get("spawn_id", "missing")), "")
 	_check("failed reclaim keeps a live pickup", is_instance_valid(record.get("pickup")))
-	_check("failed reclaim leaves no dangling spawn-id mapping", not run._cast_shard_keys_by_spawn_id.has(victim_spawn_id))
+	_check("failed reclaim leaves no dangling spawn-id mapping", not resolver._cast_shard_keys_by_spawn_id.has(victim_spawn_id))
 	await _cleanup_run(run)
