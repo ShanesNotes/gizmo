@@ -7,6 +7,7 @@ extends SceneTree
 var _passed := 0
 var _failed := 0
 
+const Ability := preload("res://scripts/abilities/ability.gd")
 const BoonDef := preload("res://scripts/boons/boon_def.gd")
 const Hud := preload("res://scripts/hud.gd")
 const HudScene := preload("res://scenes/hud.tscn")
@@ -40,6 +41,7 @@ func _initialize() -> void:
 	_test_retired_source_tokens_absent()
 	await _test_guard_pips()
 	await _test_boon_loadout()
+	await _test_ability_bar()
 	print("")
 	if _failed == 0 and _passed > 0:
 		print("PASS — %d checks" % _passed)
@@ -251,5 +253,68 @@ func _test_boon_loadout() -> void:
 		_row_name_label(_boon_loadout_row(hud, 0)).get_theme_color("font_color"),
 		_rarity_tint(BoonDef.Rarity.EPIC),
 	)
+
+	await _cleanup_hud(hud)
+
+
+func _ability_bar_slot(hud: Hud, index: int) -> PanelContainer:
+	var bar: HBoxContainer = hud.get_node("%AbilityBar") as HBoxContainer
+	return bar.get_child(index) as PanelContainer
+
+
+func _ability_slot_label(panel: PanelContainer) -> Label:
+	var col: VBoxContainer = panel.get_child(0).get_child(0) as VBoxContainer
+	return col.get_child(0) as Label
+
+
+func _ability_status_label(panel: PanelContainer) -> Label:
+	var col: VBoxContainer = panel.get_child(0).get_child(0) as VBoxContainer
+	return col.get_child(1) as Label
+
+
+func _test_ability_bar() -> void:
+	var hud := await _instantiate_hud()
+	var bar: HBoxContainer = hud.get_node("%AbilityBar") as HBoxContainer
+	_check_eq("ability bar hidden by default", bar.visible, false)
+	_check_eq("ability bar empty by default", bar.get_child_count(), 0)
+
+	hud.render_abilities([])
+	_check_eq("render_abilities([]) hides AbilityBar", bar.visible, false)
+	_check_eq("render_abilities([]) clears slots", bar.get_child_count(), 0)
+
+	var four_states: Array = [
+		{"kind": Ability.AbilityKind.DASH, "ready": true, "count": 2},
+		{"kind": Ability.AbilityKind.ATTACK, "ready": true, "count": -1},
+		{"kind": Ability.AbilityKind.SPECIAL, "ready": false, "count": -1},
+		{"kind": Ability.AbilityKind.CAST, "ready": true, "count": 5},
+	]
+	hud.render_abilities(four_states)
+	_check_eq("render_abilities(4) shows AbilityBar", bar.visible, true)
+	_check_eq("render_abilities(4) creates 4 slots", bar.get_child_count(), 4)
+
+	var dash_slot := _ability_bar_slot(hud, 0)
+	var attack_slot := _ability_bar_slot(hud, 1)
+	var special_slot := _ability_bar_slot(hud, 2)
+	var cast_slot := _ability_bar_slot(hud, 3)
+	_check_eq("slot 0 kind label", _ability_slot_label(dash_slot).text, "DASH")
+	_check_eq("slot 1 kind label", _ability_slot_label(attack_slot).text, "ATTACK")
+	_check_eq("slot 2 kind label", _ability_slot_label(special_slot).text, "SPECIAL")
+	_check_eq("slot 3 kind label", _ability_slot_label(cast_slot).text, "CAST")
+	_check_eq("ready slot modulate alpha", is_equal_approx(dash_slot.modulate.a, 1.0), true)
+	_check_eq("not-ready slot dims (alpha 0.4)", is_equal_approx(special_slot.modulate.a, 0.4), true)
+	_check_eq("count >= 0 shows status text", _ability_status_label(dash_slot).text, "2")
+	_check_eq("count >= 0 status visible", _ability_status_label(dash_slot).visible, true)
+	_check_eq("count -1 hides status label", _ability_status_label(attack_slot).visible, false)
+	_check_eq("cast ammo count", _ability_status_label(cast_slot).text, "5")
+
+	var second_states: Array = [
+		{"kind": Ability.AbilityKind.ATTACK, "ready": false, "count": 1},
+	]
+	hud.render_abilities(second_states)
+	_check_eq("re-render replaces slots (count)", bar.get_child_count(), 1)
+	var rerendered := _ability_bar_slot(hud, 0)
+	_check_eq("re-render slot 0 kind label", _ability_slot_label(rerendered).text, "ATTACK")
+	_check_eq("re-render slot 0 count", _ability_status_label(rerendered).text, "1")
+	_check_eq("re-render not-ready dims", is_equal_approx(rerendered.modulate.a, 0.4), true)
 
 	await _cleanup_hud(hud)

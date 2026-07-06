@@ -18,7 +18,7 @@ rings = 8
 albedo_color = Color(0.45, 0.72, 0.68, 1)
 roughness = 0.9
 
-[node name="GizmoPlayer" type="CharacterBody3D"]
+[node name="GizmoPlayer" type="CharacterBody3D" groups=["player"]]
 script = ExtResource("1_player")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="."]

@@ -10,12 +10,14 @@ extends CanvasLayer
 const GUARD_PIP_MAX := 4
 const GUARD_PIP_BRASS := Color(0.7882, 0.5647, 0.4196, 1.0)
 const GUARD_PIP_EMPTY_ALPHA := 0.25
+const ABILITY_SLOT_DIM_ALPHA := 0.4
 
 @onready var _guard_pips: HBoxContainer = %GuardPips
 @onready var _hp_bar: ProgressBar = %HpBar
 @onready var _hp_label: Label = %HpLabel
 @onready var _sparks_label: Label = %SparksLabel
 @onready var _boon_loadout: VBoxContainer = %BoonLoadout
+@onready var _ability_bar: HBoxContainer = %AbilityBar
 
 
 ## Push one frame of Simulation state into every widget. Typed because this is
@@ -61,6 +63,79 @@ func render_boons(picked: Array[BoonDef]) -> void:
 		if boon == null:
 			continue
 		_boon_loadout.add_child(_make_boon_row(boon))
+
+
+## Payload-driven ability bar slots (HZ-051). Controller passes per-slot runtime
+## state when the player kit is active; clears and repopulates on each call.
+func render_abilities(states: Array) -> void:
+	if states.is_empty():
+		_ability_bar.visible = false
+		return
+
+	_ability_bar.visible = true
+	for child in _ability_bar.get_children():
+		child.free()
+
+	for state in states:
+		if typeof(state) != TYPE_DICTIONARY:
+			continue
+		_ability_bar.add_child(_make_ability_slot(state))
+
+
+func _make_ability_slot(state: Dictionary) -> PanelContainer:
+	var panel := PanelContainer.new()
+	panel.custom_minimum_size = Vector2(96, 52)
+
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 8)
+	margin.add_theme_constant_override("margin_top", 4)
+	margin.add_theme_constant_override("margin_right", 8)
+	margin.add_theme_constant_override("margin_bottom", 4)
+	panel.add_child(margin)
+
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 2)
+	margin.add_child(col)
+
+	var kind: int = int(state.get("kind", Ability.AbilityKind.ATTACK))
+	var ready: bool = bool(state.get("ready", true))
+	var count: int = int(state.get("count", -1))
+
+	var slot_label := Label.new()
+	slot_label.theme_type_variation = &"CapsLabel"
+	slot_label.text = _ability_kind_label(kind)
+	slot_label.add_theme_font_size_override("font_size", 11)
+	slot_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	col.add_child(slot_label)
+
+	var status_label := Label.new()
+	status_label.theme_type_variation = &"NumericLabel"
+	status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	status_label.add_theme_font_size_override("font_size", 14)
+	if count >= 0:
+		status_label.text = str(count)
+		status_label.visible = true
+	else:
+		status_label.text = ""
+		status_label.visible = false
+	col.add_child(status_label)
+
+	panel.modulate = Color(1.0, 1.0, 1.0, 1.0 if ready else ABILITY_SLOT_DIM_ALPHA)
+	return panel
+
+
+func _ability_kind_label(kind: int) -> String:
+	match kind:
+		Ability.AbilityKind.DASH:
+			return "DASH"
+		Ability.AbilityKind.ATTACK:
+			return "ATTACK"
+		Ability.AbilityKind.SPECIAL:
+			return "SPECIAL"
+		Ability.AbilityKind.CAST:
+			return "CAST"
+		_:
+			return "ATTACK"
 
 
 func _make_boon_row(boon: BoonDef) -> HBoxContainer:
