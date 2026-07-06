@@ -44,13 +44,12 @@ FRONTIER (ready-for-agent, pick up cold):
 - HZ-015 gizmo ability input wiring [Sonnet] — unblocked (011–014 done)
 - HZ-022 boon_draft UI scene [Sonnet] — unblocked (021 done)
 - HZ-041 hub scene [Opus] — unblocked (040 done)
-- HZ-043 meta bonuses at run start [Sonnet] — unblocked (021, 040 done)
 - HZ-050 HUD retire Path A chrome [Sonnet] — no blockers
 - HZ-053 HUD guard-over-HP carry-forward [Sonnet] — parallel; ADR 0007 unchanged
 
 COMPLETED (2026-07-05 pivot bootstrap + spec-§7 corrections; verified: 160+46+42 headless checks pass):
 - HZ-001 room_graph tests · HZ-010 ability data model · HZ-011–014 dash/attack/special/cast
-- HZ-020 BoonDef model · HZ-021 draft roller + apply · HZ-040 meta_state save/load
+- HZ-020 BoonDef model · HZ-021 draft roller + apply · HZ-040 meta_state save/load · HZ-043 meta bonuses at run start
 - HZ-042 partial: `run_lifecycle.gd` covers the death→bank→hub→new-run *logic*; scene wiring remains with 041
 - Spec-§7 corrections (HADES-PARITY-SPEC.md): cast → ammo-with-reclaim; dash-cancel out of
   attack/special/cast recovery; `RoomNode.reward_type` assigned at generation; branch/rejoin
@@ -121,7 +120,7 @@ Rubric: Opus = seam-shaping/cross-system judgment; Sonnet = specified single-fil
 | HZ-040 | `meta_state.gd` save/load (Sparks/Scrap meta, schema_version) | Sonnet | HP-12 | done | — |
 | HZ-041 | hub scene (death return; codex/Brass Sphere frame) | Opus | HP-13 | ready-for-agent | 040 |
 | HZ-042 | death → hub → new run flow | Sonnet | HP-13 | blocked:HZ-002,040,041 | 002,040,041 |
-| HZ-043 | meta bonuses injected at run start | Sonnet | HP-8 | ready-for-agent | 021,040 |
+| HZ-043 | meta bonuses injected at run start | Sonnet | HP-8 | done | 021,040 |
 | HZ-050 | HUD retire Path A chrome (beacon, level, XP bar) | Sonnet | HP-14 | done | — |
 | HZ-051 | HUD ability bar (dash/attack/special/cast) | Sonnet | HP-14 | blocked:HZ-015 | 015 |
 | HZ-052 | HUD boon loadout display | Sonnet | HP-14 | ready-for-agent | 021 |
