@@ -31,6 +31,12 @@ func notify_room_cleared() -> void:
 	var room := _current_room()
 	if room == null:
 		return
+	if room.state != RoomNode.State.ENTERED:
+		push_error(
+			"RunController: notify_room_cleared requires current room '%s' to be ENTERED, got state %d"
+			% [room.room_id, room.state]
+		)
+		return
 
 	room.state = RoomNode.State.CLEARED
 	room_cleared.emit(room)
@@ -65,15 +71,41 @@ func choose_exit(connection: RoomConnection) -> bool:
 	var current_room := _current_room()
 	if current_room == null:
 		return false
+	if current_room.state != RoomNode.State.CLEARED:
+		push_error(
+			"RunController: rejected exit '%s' because current room '%s' is not CLEARED"
+			% [connection.door_name, current_room.room_id]
+		)
+		return false
 
 	var destination := graph.get_room(connection.to_room_id)
 	if destination == null:
 		push_error("RunController: rejected exit to missing room '%s'" % connection.to_room_id)
 		return false
+	if destination.state != RoomNode.State.AVAILABLE:
+		push_error(
+			"RunController: rejected exit '%s' because destination room '%s' is not AVAILABLE"
+			% [connection.door_name, destination.room_id]
+		)
+		return false
 
 	current_room.state = RoomNode.State.REWARDED
 	_enter_room(destination.room_id)
 	return true
+
+func exit_reward_type(connection: RoomConnection) -> RoomNode.RewardType:
+	if graph == null:
+		push_error("RunController: exit_reward_type called before start_run")
+		return RoomNode.RewardType.BOON
+	if connection == null:
+		push_error("RunController: exit_reward_type called with null connection")
+		return RoomNode.RewardType.BOON
+
+	var destination := graph.get_room(connection.to_room_id)
+	if destination == null:
+		push_error("RunController: exit_reward_type could not find destination room '%s'" % connection.to_room_id)
+		return RoomNode.RewardType.BOON
+	return destination.reward_type
 
 func _enter_room(room_id: String) -> bool:
 	if graph == null:
