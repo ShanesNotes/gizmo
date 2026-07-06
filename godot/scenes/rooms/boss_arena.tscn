@@ -1,4 +1,6 @@
-[gd_scene load_steps=6 format=3]
+[gd_scene load_steps=10 format=3]
+
+[ext_resource type="Script" path="res://scripts/room_graph/custodian_boss.gd" id="1_custodian"]
 
 [sub_resource type="Environment" id="Env_res"]
 background_mode = 1
@@ -23,8 +25,25 @@ emission = Color(0.4, 0.2, 0.06, 1)
 emission_energy_multiplier = 0.65
 roughness = 0.82
 
+[sub_resource type="StandardMaterial3D" id="Mat_boss"]
+albedo_color = Color(0.55, 0.5, 0.62, 1)
+emission_enabled = true
+emission = Color(0.24, 0.18, 0.32, 1)
+emission_energy_multiplier = 0.42
+roughness = 0.86
+
 [sub_resource type="BoxShape3D" id="DoorShapeNorth"]
 size = Vector3(4.2, 2.4, 1.4)
+
+[sub_resource type="CapsuleShape3D" id="BossShape"]
+radius = 0.85
+height = 2.4
+
+[sub_resource type="CapsuleMesh" id="BossMesh"]
+radius = 0.85
+height = 2.4
+radial_segments = 24
+rings = 8
 
 [node name="BossArena" type="Node3D"]
 
@@ -93,6 +112,32 @@ metadata/camera_half_extent_z = 10.0
 
 [node name="SpawnMarker" type="Marker3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 15.0)
+
+[node name="BossAnchor" type="Marker3D" parent="."]
+
+[node name="CustodianBoss" type="CharacterBody3D" parent="." groups=["boss"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.1, 0)
+script = ExtResource("1_custodian")
+spawn_id = "boss:custodian"
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="CustodianBoss"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.2, 0)
+shape = SubResource("BossShape")
+
+[node name="VisualPivot" type="Node3D" parent="CustodianBoss"]
+
+[node name="Body" type="MeshInstance3D" parent="CustodianBoss/VisualPivot"]
+transform = Transform3D(1.15, 0, 0, 0, 1.15, 0, 0, 0, 1.15, 0, 1.2, 0)
+mesh = SubResource("BossMesh")
+material_override = SubResource("Mat_boss")
+
+[node name="Nameplate" type="Label3D" parent="CustodianBoss"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.1, 0)
+visible = false
+modulate = Color(1, 0.78, 0.36, 1)
+billboard = 1
+text = "THE CUSTODIAN"
+font_size = 42
 
 [node name="RoomExit" type="Area3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.2, -18.8)

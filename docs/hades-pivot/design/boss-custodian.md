@@ -43,9 +43,13 @@ deliberately).
 2. **`BossBrain` is an attack-selection layer above the windup/recovery idiom** — a new
    script (not an EnemyBrain replacement): phase machine (HP thresholds) → attack picker
    (weights/cooldowns/no-repeat) → per-attack execution states reusing windup→commit→recover
-   timing. Boss body = new `custodian_boss.gd` (CharacterBody3D; not GreyboxEnemy — different
-   vitals scale, no chase-contact), but it reports kills through the SAME `died(spawn_id)` /
-   ledger contract so orchestrator bookkeeping is unchanged.
+   timing. Boss body = `custodian_boss.gd`. *(Amended 2026-07-06 after implementation
+   review: the body EXTENDS GreyboxEnemy — the original "not GreyboxEnemy" clause named a
+   mechanism where it meant invariants. The binding invariants are: boss-scale vitals
+   (2400 HP), NO contact-chase damage (repositioning only), and kill reporting through the
+   same `died(spawn_id)` ledger. Inheritance satisfies all three while reusing the
+   damage-snapshot path for every player ability; the subclass must suppress the base
+   chase-contact loop, and tests pin that suppression.)*
 3. **Reflex-punish placement:** Decoy Ping at 50%, per research ("introduced only after
    fundamentals are proven").
 4. **HP 2,400** with the phase splits above.
