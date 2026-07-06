@@ -122,7 +122,7 @@ Rubric: Opus = seam-shaping/cross-system judgment; Sonnet = specified single-fil
 | HZ-041 | hub scene (death return; codex/Brass Sphere frame) | Opus | HP-13 | ready-for-agent | 040 |
 | HZ-042 | death → hub → new run flow | Sonnet | HP-13 | blocked:HZ-002,040,041 | 002,040,041 |
 | HZ-043 | meta bonuses injected at run start | Sonnet | HP-8 | ready-for-agent | 021,040 |
-| HZ-050 | HUD retire Path A chrome (beacon, level, XP bar) | Sonnet | HP-14 | ready-for-agent | — |
+| HZ-050 | HUD retire Path A chrome (beacon, level, XP bar) | Sonnet | HP-14 | done | — |
 | HZ-051 | HUD ability bar (dash/attack/special/cast) | Sonnet | HP-14 | blocked:HZ-015 | 015 |
 | HZ-052 | HUD boon loadout display | Sonnet | HP-14 | ready-for-agent | 021 |
 | HZ-053 | HUD guard-over-HP carry-forward | Sonnet | HP-14 | ready-for-agent | — |

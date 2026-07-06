@@ -63,6 +63,11 @@ reward → player chooses → repeat.** The consequential structure:
 4. **Mid-biome fixtures:** each Hades biome has one shop (Charon) and one
    mini-boss/elite chamber minimum per run pass. Generator must guarantee
    placement, not leave it to weighted chance (Hades guarantees them too).
+5. **Boss chambers end the loop, not the grammar.** Clearing a BOSS room emits
+   run-completion instead of the reward/doors step; the boss room never reaches
+   REWARDED. Victory rewards and the return-to-hub ceremony are the death/victory
+   flow's job (HZ-042/HZ-062), not the room grammar's. (Resolved 2026-07-05
+   during the HZ-002 audit — previously undocumented.)
 
 ## 3. The kit (numbers are law until tuned in-engine)
 
