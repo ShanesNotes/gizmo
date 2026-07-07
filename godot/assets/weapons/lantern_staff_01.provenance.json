@@ -1,0 +1,26 @@
+{
+  "asset_id": "lantern_staff_01",
+  "asset": "lantern_staff_01.glb",
+  "asset_class": "weapon",
+  "generator_script": "tools/props/build_lantern_staff.py",
+  "blender_version": "5.1.2",
+  "date": "2026-07-07",
+  "method": "procedural-bpy zero-spend",
+  "source_brief": "Brief B - Lantern-staff weapon: procedural bpy model + wrapper",
+  "output": "godot/assets/weapons/lantern_staff_01.glb",
+  "triangles": 1720,
+  "texture_policy": "none; flat procedural PBR materials only",
+  "materials": [
+    "aged_brass",
+    "worn_brass_edges",
+    "deep_bronze_shadow",
+    "dark_gouache_wash",
+    "warm_ivory_emissive_core"
+  ],
+  "orientation": "raw local -X is crown direction; Godot wrapper rotates raw -X to +Y",
+  "grip_origin": "0,0,0 at balance grip",
+  "render_proofs": {
+    "front": "/tmp/lantern-staff-renders/lantern_staff_01_front.png",
+    "three_quarter_high": "/tmp/lantern-staff-renders/lantern_staff_01_3q_high.png"
+  }
+}

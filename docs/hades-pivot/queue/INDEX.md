@@ -206,3 +206,4 @@ Rubric: Opus = seam-shaping/cross-system judgment; Sonnet = specified single-fil
 | HZ-106B | wire-next from asset lab: beacon HearthLight state, sanctuary relief zone, gear_gate open state; hub sky one-liner; room-clear sting playback; bridge_arch kit-bash | any | world | ready-for-agent | 34 |
 | HZ-107B | deflake stochastic contact-damage balance check (~50% flap, flagged by asset lab + 2 ship batteries) | codex | tests | ready-for-agent | 34 |
 | HZ-108B | design-sweep follow-ups: world-state palette tinting in-engine; region voice dialects into room identity | FABLE | look/lore | backlog | 34 |
+| HZ-110 | weapon family 2 groundwork: lantern_staff_01 (procedural bpy, zero-spend) — mesh+wrapper+grip proof installed at godot/assets/weapons/; CORE LANE: wire kit mechanics (moveset/boons) when ready — wrapper is the interface, grip proof in ceremony/assets/2026-07-07-lantern-staff-grip-*.png | night/assets → core | assets | handoff-ready | — |

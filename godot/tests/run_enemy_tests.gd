@@ -773,7 +773,12 @@ func _test_rigged_archetypes_carry_animation_controller() -> void:
 						"%s clip contract resolves '%s'" % [archetype, clip_name],
 						String(controller.call("_library_key", StringName(clip_name))) != ""
 					)
-				_check("%s starts in idle" % archetype, player.assigned_animation.ends_with("idle"))
+				# Night pass 2026-07-07: rigged GLBs carry an authored spawn
+				# materialize — it is the entry clip when present, else idle.
+				_check(
+					"%s starts in spawn materialize (or idle)" % archetype,
+					player.assigned_animation.ends_with("spawn") or player.assigned_animation.ends_with("idle")
+				)
 		await _cleanup(enemy)
 
 	# Chaff stays unrigged and procedural: no controller.
