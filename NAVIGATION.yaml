@@ -19,7 +19,7 @@ authority:
     - godot/ project, scenes, scripts, and its five test suites
     - active mechanics port (game-src-phaser/src/game/simulation.ts -> godot/scripts/simulation.gd)
     - Path A build target (docs/path-a-shattered-meridian-spec.md)
-    - locked decisions (docs/adr/0001-0010)
+    - locked decisions (docs/adr/0001-0013)
     - acceptance of all sibling handoffs (theme, assets, audio, level data, copy)
   defers: {narrative: gizmo-lore, visual: gizmo-design-system, spatial: gizmo-level-design, sonic: gizmo-audio-canon, raw_soundtrack_sources: gizmo-soundtrack, asset_production: gizmo-asset-pipeline}
 read_order:
@@ -28,7 +28,7 @@ read_order:
     - {path: CONTEXT.md, why: orientation keystone - the game, the loop (Path A beacon-rekindle), v1 scope, truth map; wins doc conflicts, cost: M}
     - {path: CLAUDE.md, why: Claude agent-development memory - skills routing, GodotPrompter grounding, Godot rules, commands/gates, teaching contract (explicit /teach only), cost: M}
   tier1_per_task:
-    - {path: docs/adr/, why: locked decisions 0001-0010 (0001 Sparks/HP/Spark-of-Humanity distinct; 0003 director-not-waves; 0005 beacon-rekindle replaces timer; 0006 spatial pressure zones; 0007 guard-over-HP; 0009 Godot 4.7; 0010 hades-clone pivot), cost: M, task: any design decision}
+    - {path: docs/adr/, why: locked decisions 0001-0013 (0001 Sparks/HP/Spark-of-Humanity distinct; 0003 director-not-waves; 0005 beacon-rekindle replaces timer; 0006 spatial pressure zones; 0007 guard-over-HP; 0009 Godot 4.7; 0010 hades-clone pivot; 0011 ability-input-router; 0012 spark-surge-meter; 0013 benefactor-seam-role-ids), cost: M, task: any design decision}
     - {path: docs/path-a-shattered-meridian-spec.md, why: the active v1 build target (traverse a wounded island, rekindle a cold Beacon), cost: M, task: building Path A}
     - {path: godot/scripts/simulation.gd, why: the ported headless simulation (518 lines) - the live rules, cost: M, task: mechanics work}
     - {path: game-src-phaser/src/game/simulation.ts, why: mechanics source of truth (1746 lines) - port/parity anchor, cost: L, task: porting or checking parity}
@@ -53,7 +53,7 @@ modules:
   - {path: godot/, purpose: active Godot 4.7 project - scripts/ (simulation, gizmo, camera_rig, game_controller, hud, end_screen), scenes/ (main, hud, enemy, gizmo, spark, end_screen + hud_theme.tres), tests/ (5 runners), assets/ (fonts + gizmo.glb), cost: M, when: every slice}
   - {path: game-src-phaser/, purpose: Phaser+TS seed - src/game/simulation.ts is the mechanics source of truth, cost: L, when: porting / parity}
   - {path: design-handoff/, purpose: art direction + premise - NARRATIVE.md, ART_DIRECTION.md, gizmo-hud.png, cost: L, when: look or premise questions}
-  - {path: docs/, purpose: adr/ (0001-0010), path-a-shattered-meridian-spec.md, afk/queue current local tracker, reference/region-graph, _archive/ logs, cost: M, when: decisions / spec / ticket pickup}
+  - {path: docs/, purpose: adr/ (0001-0013), path-a-shattered-meridian-spec.md, afk/queue current local tracker, reference/region-graph, _archive/ logs, cost: M, when: decisions / spec / ticket pickup}
   - {path: tools/, purpose: godot/run_all_checks.sh gate; blender/ island+glb tooling; audio/ sfx generation, cost: S, when: verify / asset gen}
   - {path: ../gizmo-audio-canon/, purpose: sonic canon, AudioContract, cue maps, conversion/import handoff law; owns audio meaning and runtime-ready derivative rules, cost: M, when: soundtrack / ambience / SFX work}
   - {path: ../gizmo-soundtrack/, purpose: raw soundtrack source pack (61 MP4 cue files plus composition/map docs); source material only, not Godot-ready runtime audio, cost: L, when: locating soundtrack media}
