@@ -51,6 +51,20 @@ const VOICE_LINE_MANIFEST := {
 	&"saint_company_meeting": 1,
 	&"saint_company_offer": 3,
 	&"saint_company_threshold": 1,
+	# Threshold address sweep (scripts: voice-scripts-v3-thresholds.md;
+	# batch 2026-07-07-threshold-batch).
+	&"pattern_door": 2,
+	&"margin_region_hearth": 1,
+	&"margin_region_brass": 1,
+	&"margin_region_verdant": 1,
+	&"margin_region_prism": 1,
+	&"margin_region_tempest": 1,
+	&"margin_region_null": 1,
+	&"margin_region_rust": 1,
+	&"margin_region_ash": 1,
+	&"margin_flawless": 1,
+	&"margin_near_death": 1,
+	&"margin_attract": 1,
 }
 
 const V2_CUE_MAP_PATH := "res://audio/music/soundtrack_v2/cue_map.json"
