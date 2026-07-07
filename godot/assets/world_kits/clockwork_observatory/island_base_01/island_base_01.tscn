@@ -1,0 +1,30 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="PackedScene" path="res://assets/world_kits/clockwork_observatory/island_base_01/island_base_01.glb" id="1_glb"]
+
+[sub_resource type="CylinderShape3D" id="col1"]
+radius = 8.79
+height = 1.0
+
+[node name="IslandBase01" type="Node3D"]
+metadata/asset_id = "island_base_01"
+metadata/asset_class = "world_kit"
+metadata/source_brief = "gizmo-asset-pipeline/briefs/world_kits/island_base_01.brief.yaml"
+metadata/source_candidate_task_id = "019f3ac0-db1e-716f-aeab-985fe55734a0"
+metadata/promotion_report = "gizmo-asset-pipeline/runs/2026-07-06-world-beauty/promotion-report-island_base_01.md"
+metadata/scale = "10.0 (meshy ~1.9m normalized -> 17.4m tall, 19.1m wide)"
+metadata/collision_policy = "topcyl (wrapper-owned primitive)"
+metadata/material_override_policy = "meshy texture as generated (gouache-brief guided, 1K capped)"
+metadata/surface = "stone"
+metadata/camera_readability_status = "proofed at fixed Diablo camera 2026-07-06 (see promotion report)"
+metadata/performance_status = "19260 tris, 1 material(s)"
+metadata/verdict = "promoted"
+
+[node name="Model" parent="." instance=ExtResource("1_glb")]
+transform = Transform3D(-10.0, 0, 0, 0, 10.0, 0, 0, 0, -10.0, 0, 0, 0)
+
+[node name="Collision" type="StaticBody3D" parent="."]
+
+[node name="Shape" type="CollisionShape3D" parent="Collision"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 16.92, 0)
+shape = SubResource("col1")

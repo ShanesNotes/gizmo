@@ -1,0 +1,10 @@
+{
+  "notice": "derived from asset pipeline canon; do not edit as source",
+  "asset_id": "beacon_01",
+  "asset_class": "landmark",
+  "meshy_task_id": "019f3b1c-bb76-79a5-8803-07cf49af1d99",
+  "clean_glb_sha256": "528d511868c1c6f3b7baa3aeaee4cbc2016c992d0c7a5e8454e4642d0e8f1d9c",
+  "triangles": 37107,
+  "cleanup_report": "gizmo-asset-pipeline/generated/beacon_01/cleanup.json",
+  "run": "2026-07-06-world-beauty"
+}

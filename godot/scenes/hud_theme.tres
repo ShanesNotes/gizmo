@@ -1,0 +1,70 @@
+[gd_resource type="Theme" load_steps=8 format=3 uid="uid://ben316v544clg"]
+
+; derived from canon package; do not edit as source
+; DERIVED from the canon package (tokens/tokens.json) via tools/gen_godot_theme.py.
+; Do NOT hand-edit — edit tokens.json then re-run the generator.
+; Dark brass cartouche HUD: cool.void panels, brass frame, parchment ink, manuscript fonts.
+
+[ext_resource type="FontFile" uid="uid://bqanpi8n8thsr" path="res://assets/fonts/EBGaramond.ttf" id="f_body"]
+[ext_resource type="FontFile" uid="uid://cj0yf7ffhr23" path="res://assets/fonts/IMFellEnglishSC.ttf" id="f_title"]
+[ext_resource type="FontFile" uid="uid://byr1lxyxv5k14" path="res://assets/fonts/Cinzel.ttf" id="f_caps"]
+[ext_resource type="FontFile" uid="uid://mfm60u3mmpff" path="res://assets/fonts/Spectral-Regular.ttf" id="f_num"]
+
+[sub_resource type="StyleBoxFlat" id="sb_panel"]
+bg_color = Color(0.1098, 0.1216, 0.1373, 0.82)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.7412, 0.5176, 0.4078, 1.0)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+shadow_color = Color(0, 0, 0, 0.45)
+shadow_size = 6
+[sub_resource type="StyleBoxFlat" id="sb_bar_bg"]
+bg_color = Color(0.1098, 0.1216, 0.1373, 0.92)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.5098, 0.4000, 0.3059, 1.0)
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
+[sub_resource type="StyleBoxFlat" id="sb_bar_fill"]
+bg_color = Color(0.7882, 0.5647, 0.4196, 1.0)
+border_width_left = 0
+border_width_top = 0
+border_width_right = 0
+border_width_bottom = 0
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[resource]
+default_font = ExtResource("f_body")
+default_font_size = 16
+Label/colors/font_color = Color(0.9922, 0.9373, 0.8706, 1.0)
+Label/colors/font_outline_color = Color(0.1098, 0.0902, 0.0980, 0.85)
+Label/constants/outline_size = 3
+PanelContainer/styles/panel = SubResource("sb_panel")
+ProgressBar/styles/background = SubResource("sb_bar_bg")
+ProgressBar/styles/fill = SubResource("sb_bar_fill")
+TitleLabel/base_type = &"Label"
+TitleLabel/fonts/font = ExtResource("f_title")
+TitleLabel/font_sizes/font_size = 48
+TitleLabel/colors/font_color = Color(0.8784, 0.7569, 0.4784, 1.0)
+TitleLabel/colors/font_outline_color = Color(0.1098, 0.0902, 0.0980, 0.9)
+TitleLabel/constants/outline_size = 4
+CapsLabel/base_type = &"Label"
+CapsLabel/fonts/font = ExtResource("f_caps")
+CapsLabel/font_sizes/font_size = 14
+CapsLabel/colors/font_color = Color(0.8784, 0.7569, 0.4784, 1.0)
+NumericLabel/base_type = &"Label"
+NumericLabel/fonts/font = ExtResource("f_num")
+NumericLabel/font_sizes/font_size = 20
+NumericLabel/colors/font_color = Color(0.9922, 0.9373, 0.8706, 1.0)

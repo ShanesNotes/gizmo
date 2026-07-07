@@ -1,0 +1,28 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="PackedScene" path="res://assets/landmarks/sanctuary_01/sanctuary_01.glb" id="1_glb"]
+
+[node name="Sanctuary01" type="Node3D"]
+metadata/asset_id = "sanctuary_01"
+metadata/asset_class = "landmark"
+metadata/source_brief = "gizmo-asset-pipeline/briefs/landmarks/sanctuary_01.brief.yaml"
+metadata/source_candidate_task_id = "019f3b1c-c80f-79a5-8422-09ac656e2e06"
+metadata/promotion_report = "gizmo-asset-pipeline/runs/2026-07-06-world-beauty/promotion-report-sanctuary_01.md"
+metadata/scale = "2.1 (meshy ~1.9m normalized -> 1.7m tall, 4.0m wide)"
+metadata/collision_policy = "none (wrapper-owned primitive)"
+metadata/material_override_policy = "meshy texture as generated (gouache-brief guided, 1K capped)"
+metadata/surface = "stone"
+metadata/camera_readability_status = "proofed at fixed Diablo camera 2026-07-06 (see promotion report)"
+metadata/performance_status = "36246 tris, 1 material(s)"
+metadata/verdict = "promoted"
+metadata/sanctuary_relief_zone = "game wires Guard-recovery relief area here; radius suggestion 3.5m from EmberLight"
+
+[node name="Model" parent="." instance=ExtResource("1_glb")]
+transform = Transform3D(-2.1, 0, 0, 0, 2.1, 0, 0, 0, -2.1, 0, 0, 0)
+
+[node name="EmberLight" type="OmniLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.8, 0)
+light_color = Color(1, 0.62, 0.32, 1)
+light_energy = 2.2
+omni_range = 6.0
+shadow_enabled = true

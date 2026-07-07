@@ -1,0 +1,80 @@
+[gd_scene load_steps=9 format=3 uid="uid://marginkeeper1"]
+
+[ext_resource type="Script" path="res://scripts/npcs/margin_keeper.gd" id="1_margin"]
+
+[sub_resource type="CylinderShape3D" id="shape_reach"]
+radius = 2.2
+height = 2.4
+
+[sub_resource type="StandardMaterial3D" id="mat_veil"]
+albedo_color = Color(0.82, 0.8, 0.86, 0.92)
+transparency = 1
+roughness = 0.9
+
+[sub_resource type="StandardMaterial3D" id="mat_robe"]
+albedo_color = Color(0.45, 0.42, 0.55, 1)
+roughness = 0.85
+
+[sub_resource type="StandardMaterial3D" id="mat_wing"]
+albedo_color = Color(0.9, 0.87, 0.78, 0.55)
+transparency = 1
+emission_enabled = true
+emission = Color(0.85, 0.78, 0.6, 1)
+emission_energy_multiplier = 0.15
+
+[sub_resource type="CylinderMesh" id="mesh_robe"]
+top_radius = 0.12
+bottom_radius = 0.42
+height = 1.5
+
+[sub_resource type="SphereMesh" id="mesh_head"]
+radius = 0.17
+height = 0.34
+
+[sub_resource type="QuadMesh" id="mesh_wing"]
+size = Vector2(0.55, 1.0)
+
+[node name="MarginKeeper" type="Area3D"]
+script = ExtResource("1_margin")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.2, 0)
+shape = SubResource("shape_reach")
+
+[node name="Placeholder" type="Node3D" parent="."]
+
+[node name="Robe" type="MeshInstance3D" parent="Placeholder"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.75, 0)
+mesh = SubResource("mesh_robe")
+surface_material_override/0 = SubResource("mat_robe")
+
+[node name="Head" type="MeshInstance3D" parent="Placeholder"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.62, 0)
+mesh = SubResource("mesh_head")
+surface_material_override/0 = SubResource("mat_veil")
+
+[node name="WingLeft" type="MeshInstance3D" parent="Placeholder"]
+transform = Transform3D(0.94, 0, 0.34, 0.06, 0.98, -0.17, -0.34, 0.18, 0.92, -0.3, 1.1, -0.12)
+mesh = SubResource("mesh_wing")
+surface_material_override/0 = SubResource("mat_wing")
+
+[node name="WingRight" type="MeshInstance3D" parent="Placeholder"]
+transform = Transform3D(0.94, 0, -0.34, -0.06, 0.98, -0.17, 0.34, 0.18, 0.92, 0.3, 1.1, -0.12)
+mesh = SubResource("mesh_wing")
+surface_material_override/0 = SubResource("mat_wing")
+
+[node name="CandleLight" type="OmniLight3D" parent="Placeholder"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.35, 1.0, 0.3)
+light_color = Color(1, 0.83, 0.55, 1)
+light_energy = 0.7
+omni_range = 3.0
+
+[node name="ModelSocket" type="Node3D" parent="."]
+
+[node name="PromptLabel" type="Label3D" parent="."]
+unique_name_in_owner = true
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.1, 0)
+billboard = 1
+pixel_size = 0.004
+modulate = Color(0.93, 0.87, 0.72, 1)
+text = "speak"

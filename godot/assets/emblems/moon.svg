@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><!-- Gizmo emblem · moon (M6 night). Harvested, recoloured to /tokens. PACING ARC REMOVED (G5: no timing device). Living night adds a face; the hollowing voids it (socket+fracture). Night != evil. derived from canon package; do not edit as source. -->
+<g fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <g transform="translate(1.1 0.9)" opacity="0.65"><path d="M36 8 a17.5 17.5 0 1 0 10 30 a14 14 0 0 1 -10 -30 Z" fill="#2a4468"/></g>
+  <path d="M36 8 a17.5 17.5 0 1 0 10 30 a14 14 0 0 1 -10 -30 Z" stroke="#352c2b" stroke-width="1.7"/>
+  <path d="M30 13.5 a13 13 0 0 0 -6 8 M28.5 33 a14 14 0 0 0 5 3.4" stroke="#352c2b" stroke-width="0.6"/>
+  <g stroke="#352c2b" stroke-width="1"><path d="M50 12 v6 M47 15 h6"/><path d="M54 26 v4.4 M51.8 28.2 h4.4"/><path d="M45 42 v4.4 M42.8 44.2 h4.4"/></g>
+</g></svg>

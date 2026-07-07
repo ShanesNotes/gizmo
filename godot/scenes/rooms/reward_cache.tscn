@@ -1,0 +1,191 @@
+[gd_scene load_steps=10 format=3]
+
+[ext_resource type="Script" path="res://scripts/room_graph/room_fixture.gd" id="1_fixture"]
+[ext_resource type="Sky" path="res://assets/sky/gizmo_cosmos_sky_procedural.tres" id="sky_cosmos"]
+
+[sub_resource type="Environment" id="Env_res"]
+background_mode = 2
+sky = ExtResource("sky_cosmos")
+sky_rotation = Vector3(0, -1.6, 0)
+background_energy_multiplier = 0.9
+ambient_light_source = 2
+ambient_light_color = Color(0.82, 0.66, 0.38, 1)
+ambient_light_energy = 0.8
+tonemap_mode = 2
+glow_enabled = true
+glow_intensity = 0.4
+glow_blend_mode = 2
+fog_enabled = true
+fog_light_color = Color(0.878, 0.757, 0.478, 1)
+fog_light_energy = 1.0
+fog_density = 0.005
+fog_sky_affect = 0.0
+adjustment_enabled = true
+adjustment_contrast = 1.04
+adjustment_saturation = 1.05
+
+[sub_resource type="StandardMaterial3D" id="Mat_floor"]
+albedo_color = Color(0.23, 0.23, 0.25, 1)
+roughness = 0.95
+
+[sub_resource type="StandardMaterial3D" id="Mat_obstacle"]
+albedo_color = Color(0.32, 0.32, 0.36, 1)
+roughness = 0.9
+
+[sub_resource type="StandardMaterial3D" id="Mat_exit"]
+albedo_color = Color(0.78, 0.86, 0.92, 1)
+emission_enabled = true
+emission = Color(0.26, 0.32, 0.38, 1)
+emission_energy_multiplier = 0.45
+roughness = 0.82
+
+[sub_resource type="StandardMaterial3D" id="Mat_fixture"]
+albedo_color = Color(0.88, 0.80, 0.58, 1)
+emission_enabled = true
+emission = Color(0.34, 0.26, 0.10, 1)
+emission_energy_multiplier = 0.45
+roughness = 0.78
+
+[sub_resource type="StandardMaterial3D" id="Mat_aisle"]
+albedo_color = Color(0.3, 0.29, 0.27, 1)
+roughness = 0.92
+
+[sub_resource type="BoxShape3D" id="DoorShapeNorth"]
+size = Vector3(3, 2.2, 1.2)
+
+[sub_resource type="BoxShape3D" id="RewardShape"]
+size = Vector3(2.2, 1.6, 1.7)
+
+[node name="RewardCache" type="Node3D"]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Env_res")
+
+[node name="KeyLight" type="DirectionalLight3D" parent="."]
+rotation_degrees = Vector3(-50, -8, 0)
+light_color = Color(1, 0.86, 0.48, 1)
+light_energy = 1.55
+shadow_enabled = true
+sky_mode = 1
+
+[node name="Geometry" type="Node3D" parent="."]
+
+[node name="Floor" type="CSGBox3D" parent="Geometry"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.15, 0)
+use_collision = true
+size = Vector3(38, 0.3, 32)
+material = SubResource("Mat_floor")
+
+[node name="ProcessionalAisle" type="CSGBox3D" parent="Geometry"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.01, 3)
+size = Vector3(4.5, 0.04, 18)
+material = SubResource("Mat_aisle")
+
+[node name="ObstaclePillarW1" type="CSGBox3D" parent="Geometry"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.5, 1.0, 6.0)
+use_collision = true
+size = Vector3(1.6, 2.0, 1.6)
+material = SubResource("Mat_obstacle")
+
+[node name="ObstaclePillarW2" type="CSGBox3D" parent="Geometry"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.5, 1.0, 1.0)
+use_collision = true
+size = Vector3(1.6, 2.0, 1.6)
+material = SubResource("Mat_obstacle")
+
+[node name="ObstaclePillarE1" type="CSGBox3D" parent="Geometry"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.5, 1.0, 6.0)
+use_collision = true
+size = Vector3(1.6, 2.0, 1.6)
+material = SubResource("Mat_obstacle")
+
+[node name="ObstaclePillarE2" type="CSGBox3D" parent="Geometry"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.5, 1.0, 1.0)
+use_collision = true
+size = Vector3(1.6, 2.0, 1.6)
+material = SubResource("Mat_obstacle")
+
+[node name="ObstacleScreenWall" type="CSGBox3D" parent="Geometry"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.75, -6.5)
+use_collision = true
+size = Vector3(7.0, 1.5, 1.2)
+material = SubResource("Mat_obstacle")
+
+[node name="RewardFixture" type="Area3D" parent="Geometry"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.55, -3.0)
+script = ExtResource("1_fixture")
+scrap_amount = 10
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Geometry/RewardFixture"]
+shape = SubResource("RewardShape")
+
+[node name="RewardVisual" type="CSGBox3D" parent="Geometry/RewardFixture"]
+use_collision = true
+size = Vector3(1.8, 1.1, 1.3)
+material = SubResource("Mat_fixture")
+
+[node name="RewardLamp" type="OmniLight3D" parent="Geometry/RewardFixture"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.2, 0)
+light_color = Color(1, 0.86, 0.5, 1)
+light_energy = 1.2
+omni_range = 8.0
+
+[node name="RoomExitPad" type="CSGBox3D" parent="Geometry"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.04, -15.0)
+size = Vector3(3.5, 0.08, 1.4)
+material = SubResource("Mat_exit")
+
+[node name="DressingVariantA" type="Node3D" parent="."]
+
+[node name="WestReliquaryBlock" type="CSGBox3D" parent="DressingVariantA"]
+transform = Transform3D(0.965926, 0, 0.258819, 0, 1, 0, -0.258819, 0, 0.965926, -7.0, 0.55, -3.2)
+use_collision = true
+size = Vector3(2.2, 1.1, 1.2)
+material = SubResource("Mat_obstacle")
+
+[node name="EastReliquaryBlock" type="CSGBox3D" parent="DressingVariantA"]
+transform = Transform3D(0.965926, 0, -0.258819, 0, 1, 0, 0.258819, 0, 0.965926, 7.0, 0.55, -3.2)
+use_collision = true
+size = Vector3(2.2, 1.1, 1.2)
+material = SubResource("Mat_obstacle")
+
+[node name="WestVotiveBowl" type="CSGCylinder3D" parent="DressingVariantA"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8.2, 0.16, 5.2)
+use_collision = false
+radius = 0.75
+height = 0.32
+sides = 12
+material = SubResource("Mat_fixture")
+
+[node name="DressingVariantB" type="Node3D" parent="."]
+
+[node name="BackScreenLeft" type="CSGBox3D" parent="DressingVariantB"]
+transform = Transform3D(0.984808, 0, 0.173648, 0, 1, 0, -0.173648, 0, 0.984808, -6.0, 0.55, -8.5)
+use_collision = true
+size = Vector3(3.0, 1.1, 1.0)
+material = SubResource("Mat_obstacle")
+
+[node name="BackScreenRight" type="CSGBox3D" parent="DressingVariantB"]
+transform = Transform3D(0.984808, 0, -0.173648, 0, 1, 0, 0.173648, 0, 0.984808, 6.0, 0.55, -8.5)
+use_collision = true
+size = Vector3(3.0, 1.1, 1.0)
+material = SubResource("Mat_obstacle")
+
+[node name="EastLowOfferingTray" type="CSGBox3D" parent="DressingVariantB"]
+transform = Transform3D(0.906308, 0, -0.422618, 0, 1, 0, 0.422618, 0, 0.906308, 8.2, 0.18, 4.6)
+use_collision = false
+size = Vector3(2.0, 0.36, 1.0)
+material = SubResource("Mat_aisle")
+
+[node name="CameraAnchor" type="Marker3D" parent="."]
+metadata/camera_half_extent_x = 8.0
+metadata/camera_half_extent_z = 6.5
+
+[node name="SpawnMarker" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 11.5)
+
+[node name="RoomExit" type="Area3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1, -15.7)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="RoomExit"]
+shape = SubResource("DoorShapeNorth")

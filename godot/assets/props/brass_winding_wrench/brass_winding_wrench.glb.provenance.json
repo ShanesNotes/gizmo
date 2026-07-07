@@ -1,0 +1,14 @@
+{
+  "asset": "brass_winding_wrench.glb",
+  "asset_class": "prop",
+  "source": "meshy.ai text-to-3d (meshy-6) preview + refine",
+  "meshy_preview_task_id": "019f3a68-b47e-7a83-86a9-c21b6980f3f9",
+  "meshy_refine_task_id": "019f3a6d-9d80-7bf0-b29e-a49cfe7de0ac",
+  "credits": 30,
+  "brief": "gizmo-asset-pipeline/briefs/props/brass_winding_wrench.brief.yaml",
+  "promotion_report": "gizmo-asset-pipeline/runs/2026-07-06-fable-animation-pass/promotion-report-brass_winding_wrench.md",
+  "wrapper": "brass_winding_wrench.tscn (game interface; never instance the raw GLB)",
+  "intended_use": "player melee weapon on WeaponMount BoneAttachment3D (Bone_024), mounted by gizmo_animation_controller.gd",
+  "date": "2026-07-06",
+  "produced_by": "Fable asset & animation principal (strike team)"
+}

@@ -1,0 +1,20 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="PackedScene" path="res://assets/world_kits/clockwork_observatory/debris_cluster_01/debris_cluster_01.glb" id="1_glb"]
+
+[node name="DebrisCluster01" type="Node3D"]
+metadata/asset_id = "debris_cluster_01"
+metadata/asset_class = "world_kit"
+metadata/source_brief = "gizmo-asset-pipeline/briefs/world_kits/debris_cluster_01.brief.yaml"
+metadata/source_candidate_task_id = "019f3b03-17fa-75ba-951a-a8c7ab33869b"
+metadata/promotion_report = "gizmo-asset-pipeline/runs/2026-07-06-world-beauty/promotion-report-debris_cluster_01.md"
+metadata/scale = "1.6 (meshy ~1.9m normalized -> 2.9m tall, 3.0m wide)"
+metadata/collision_policy = "none (wrapper-owned primitive)"
+metadata/material_override_policy = "meshy texture as generated (gouache-brief guided, 1K capped)"
+metadata/surface = "stone"
+metadata/camera_readability_status = "proofed at fixed Diablo camera 2026-07-06 (see promotion report)"
+metadata/performance_status = "12389 tris, 1 material(s)"
+metadata/verdict = "promoted"
+
+[node name="Model" parent="." instance=ExtResource("1_glb")]
+transform = Transform3D(-1.6, 0, 0, 0, 1.6, 0, 0, 0, -1.6, 0, 0, 0)

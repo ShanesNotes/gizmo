@@ -1,0 +1,16 @@
+{
+  "asset": "elite_enforcer_rigged.glb",
+  "source": "meshy_rig on refine task 019f39eb-5b46-7312-86f8-f21ef82689a8 (rig task 019f3aba-4956-7994-ae98-8c0cfdef14da) + locally authored clips — Blender 5.1.2 headless, tools/animation/author_enemy_clips.py",
+  "base_model": "godot/assets/enemies/elite_enforcer.glb (meshy.ai origin, unrigged; untouched)",
+  "rig": "Meshy 24-bone standard humanoid; rig honesty verified at camera before acceptance (mesh + skinning intact)",
+  "clips": ["walk", "run", "idle", "attack", "hit", "death"],
+  "clip_sources": "walk/run: free with meshy_rig; idle/attack/hit/death: hand-keyed in Blender (zero credits)",
+  "content": "full GLB: skinned mesh + rig + NLA clip tracks; consumed by scripts/enemies/enemy_animation_controller.gd (two-tier: these clips supersede, code poses guarantee). Locomotion stays the procedural dead-level glide (idle stance while moving); walk/run ship unused for now",
+  "meshy_task_id": "019f3aba-4956-7994-ae98-8c0cfdef14da",
+  "credits": 5,
+  "credits_note": "rig only; custom clips authored locally — see docs/asset-lab/animation-ledger.md enemy lane",
+  "date": "2026-07-06",
+  "authored_by": "fable enemy-animation principal",
+  "motion_language": "the thesis made flesh — 1.05s frozen-apex blade windup matching enemy_brain, single-frame thrust, no follow-through; death is a power-cut fold then a hard off-axis list",
+  "verification": "per-pose stills rendered via --render-dir and visually reviewed at Diablo camera angle"
+}

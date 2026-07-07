@@ -1,0 +1,23 @@
+[gd_scene load_steps=3 format=3]
+
+; Intentional PLACEHOLDER (2026-06-21 art refactor). The rigged Nibbler visual
+; (enemy_visual.gd + nibbler GLB + styler) is quarantined under
+; godot/_quarantine/. The Simulation positions this node; the mesh is mock-up only.
+
+[sub_resource type="CapsuleMesh" id="CapsuleMesh_ph"]
+radius = 0.5
+height = 1.6
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_ph"]
+; canon: the hollowed read DRAINED, not crimson. exposure.drain_light #6e7a72.
+; (gate G9 — crimson is acute-contact punctuation, applied as a hit-flash later,
+; never the swarm's field colour.)
+albedo_color = Color(0.4314, 0.4784, 0.4471, 1)
+roughness = 0.85
+
+[node name="Enemy" type="Node3D"]
+
+[node name="Mesh" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.8, 0)
+mesh = SubResource("CapsuleMesh_ph")
+surface_material_override/0 = SubResource("StandardMaterial3D_ph")

@@ -1,0 +1,24 @@
+[gd_resource type="Sky" load_steps=3 format=3]
+
+; Gizmo cosmos sky (procedural fallback) — derived from design canon; do not edit as source.
+; Token values set below: cool.void / cool.night_blue / accent.enchant_plum / ink.deep /
+; exposure.ember / metal.gold_lit (gizmo-design-system/tokens/tokens.json).
+
+[ext_resource type="Shader" path="res://assets/sky/gizmo_cosmos_sky.gdshader" id="1_sky_shader"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMat_cosmos"]
+shader = ExtResource("1_sky_shader")
+shader_parameter/zenith_color = Color(0.110, 0.122, 0.137, 1)
+shader_parameter/mid_color = Color(0.165, 0.267, 0.408, 1)
+shader_parameter/horizon_color = Color(0.341, 0.251, 0.451, 1)
+shader_parameter/under_color = Color(0.110, 0.090, 0.098, 1)
+shader_parameter/ember_color = Color(0.878, 0.275, 0.118, 1)
+shader_parameter/star_color = Color(0.878, 0.757, 0.478, 1)
+shader_parameter/ember_azimuth = 0.0
+shader_parameter/ember_strength = 0.65
+shader_parameter/ember_focus = 5.0
+shader_parameter/star_density = 22.0
+shader_parameter/star_amount = 0.1
+
+[resource]
+sky_material = SubResource("ShaderMat_cosmos")

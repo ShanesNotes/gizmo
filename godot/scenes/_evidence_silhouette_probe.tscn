@@ -1,0 +1,71 @@
+[gd_scene format=3 uid="uid://0fg0kgi5x353"]
+
+; EVIDENCE HARNESS — NOT a shipping scene (canon validation pass, 2026-06-21).
+; Reproduces main.tscn's Diablo camera (offset 0,12,10 / 50deg pitch / fov 50) and
+; its greybox environment VERBATIM, but with NO game_controller, NO enemies, NO
+; death sim — so Gizmo's silhouette/eye/proportions can be screenshotted cleanly at
+; gameplay scale. Derived witness for /extraction; delete when the evidence note is filed.
+
+[ext_resource type="PackedScene" uid="uid://dmb5im2cxyxu8" path="res://scenes/gizmo.tscn" id="2_giz"]
+
+[sub_resource type="ProceduralSkyMaterial" id="Sky_mat"]
+sky_top_color = Color(0.09, 0.07, 0.2, 1)
+sky_horizon_color = Color(0.28, 0.18, 0.32, 1)
+ground_bottom_color = Color(0.05, 0.04, 0.1, 1)
+ground_horizon_color = Color(0.16, 0.11, 0.2, 1)
+
+[sub_resource type="Sky" id="Sky_res"]
+sky_material = SubResource("Sky_mat")
+
+[sub_resource type="Environment" id="Env_res"]
+background_mode = 2
+sky = SubResource("Sky_res")
+ambient_light_source = 3
+tonemap_mode = 2
+
+[sub_resource type="BoxMesh" id="Floor_mesh"]
+size = Vector3(44, 0.4, 44)
+
+[sub_resource type="StandardMaterial3D" id="Floor_mat"]
+albedo_color = Color(0.22, 0.2, 0.26, 1)
+roughness = 0.95
+
+[sub_resource type="CylinderMesh" id="Beacon_mesh"]
+top_radius = 0.6
+bottom_radius = 0.9
+height = 4.0
+
+[sub_resource type="StandardMaterial3D" id="Beacon_mat"]
+albedo_color = Color(0.2, 0.8, 0.85, 1)
+emission_enabled = true
+emission = Color(0.2, 0.8, 0.85, 1)
+emission_energy_multiplier = 1.5
+
+[node name="ProbeMain" type="Node3D"]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Env_res")
+
+[node name="Sun" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.8660254, 0.35355338, -0.35355338, 0, 0.70710677, 0.70710677, 0.5, -0.6123724, 0.6123724, 0, 0, 0)
+light_color = Color(1, 0.82, 0.58, 1)
+light_energy = 1.35
+shadow_enabled = true
+sky_mode = 1
+
+[node name="GreyboxFloor" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.2, 0)
+mesh = SubResource("Floor_mesh")
+surface_material_override/0 = SubResource("Floor_mat")
+
+[node name="BeaconPlaceholder" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, -13)
+mesh = SubResource("Beacon_mesh")
+surface_material_override/0 = SubResource("Beacon_mat")
+
+[node name="Gizmo" parent="." instance=ExtResource("2_giz")]
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.64278764, 0.76604444, 0, -0.76604444, 0.64278764, 0, 12, 10)
+current = true
+fov = 50.0

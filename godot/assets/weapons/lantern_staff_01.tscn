@@ -1,0 +1,22 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="PackedScene" path="res://assets/weapons/lantern_staff_01.glb" id="1_staff_glb"]
+
+[node name="LanternStaff01" type="Node3D"]
+metadata/asset_id = "lantern_staff_01"
+metadata/asset_class = "weapon"
+metadata/source_brief = "Brief B - Lantern-staff weapon: procedural bpy model + wrapper"
+metadata/generator_script = "tools/props/build_lantern_staff.py"
+metadata/source_candidate_task_id = "none - procedural-bpy zero-spend"
+metadata/promotion_report = "codex-lantern-staff-REPORT.md"
+metadata/scale = "1.0 (procedural metric, ~1.1m end to end)"
+metadata/origin_policy = "root origin is the balance grip; crown points +Y after Model transform"
+metadata/collision_policy = "none - cosmetic weapon prop"
+metadata/material_override_policy = "procedural flat PBR materials; emissive spark-glass core"
+metadata/surface = "aged brass, deep bronze, warm ivory emissive core"
+metadata/camera_readability_status = "proofed with front and high 3/4 renders in /tmp/lantern-staff-renders/"
+metadata/performance_status = "1,720 tris, no textures"
+metadata/verdict = "candidate"
+
+[node name="Model" parent="." instance=ExtResource("1_staff_glb")]
+transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0)

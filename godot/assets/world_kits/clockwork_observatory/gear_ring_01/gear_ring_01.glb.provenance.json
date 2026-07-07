@@ -1,0 +1,10 @@
+{
+  "notice": "derived from asset pipeline canon; do not edit as source",
+  "asset_id": "gear_ring_01",
+  "asset_class": "world_kit",
+  "meshy_task_id": "019f3ac0-fba7-7ac9-9d34-5471d20a546e",
+  "clean_glb_sha256": "205fd8e6171e1e2d7f9f9ca512da6e218094d527d9e13cfb03688a6373c010ac",
+  "triangles": 19189,
+  "cleanup_report": "gizmo-asset-pipeline/generated/gear_ring_01/cleanup.json",
+  "run": "2026-07-06-world-beauty"
+}

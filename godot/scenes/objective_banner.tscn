@@ -1,0 +1,45 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/objective_banner.gd" id="1_banner"]
+
+[node name="ObjectiveBanner" type="CanvasLayer"]
+layer = 3
+script = ExtResource("1_banner")
+
+[node name="Root" type="Control" parent="."]
+unique_name_in_owner = true
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="OverlineLabel" type="Label" parent="Root"]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_top = 46.0
+offset_bottom = 66.0
+grow_horizontal = 2
+text = "THE VIGIL"
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(0.7569, 0.6667, 0.5686, 0.85)
+theme_override_font_sizes/font_size = 14
+
+[node name="ObjectiveLabel" type="Label" parent="Root"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_top = 66.0
+offset_bottom = 110.0
+grow_horizontal = 2
+text = "Carry the Spark to the Beacon"
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(0.8784, 0.7569, 0.4784, 1.0)
+theme_override_colors/font_shadow_color = Color(0.0, 0.0, 0.0, 0.6)
+theme_override_constants/shadow_offset_x = 1
+theme_override_constants/shadow_offset_y = 2
+theme_override_font_sizes/font_size = 30

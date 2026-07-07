@@ -1,0 +1,10 @@
+{
+  "notice": "derived from asset pipeline canon; do not edit as source",
+  "asset_id": "gear_gate_01",
+  "asset_class": "world_kit",
+  "meshy_task_id": "019f3ac1-4db7-7aa8-885a-caabdf4e15f0",
+  "clean_glb_sha256": "13957ff249fed32d431cf5a125330f68de772898123ac99760c6488876e437c8",
+  "triangles": 19604,
+  "cleanup_report": "gizmo-asset-pipeline/generated/gear_gate_01/cleanup.json",
+  "run": "2026-07-06-world-beauty"
+}

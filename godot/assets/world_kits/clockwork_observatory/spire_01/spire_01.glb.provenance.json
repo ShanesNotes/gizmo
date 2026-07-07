@@ -1,0 +1,10 @@
+{
+  "notice": "derived from asset pipeline canon; do not edit as source",
+  "asset_id": "spire_01",
+  "asset_class": "world_kit",
+  "meshy_task_id": "019f3ac1-0879-7aca-a020-f0aa380bc97f",
+  "clean_glb_sha256": "59c015f86f6db234e46b889e83940859001ba32f9e7a2def6bc99860f47d5ed4",
+  "triangles": 19147,
+  "cleanup_report": "gizmo-asset-pipeline/generated/spire_01/cleanup.json",
+  "run": "2026-07-06-world-beauty"
+}

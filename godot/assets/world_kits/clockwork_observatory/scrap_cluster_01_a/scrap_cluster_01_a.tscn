@@ -1,0 +1,20 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="PackedScene" path="res://assets/world_kits/clockwork_observatory/scrap_cluster_01_a/scrap_cluster_01_a.glb" id="1_glb"]
+
+[node name="ScrapCluster01A" type="Node3D"]
+metadata/asset_id = "scrap_cluster_01_a"
+metadata/asset_class = "world_kit"
+metadata/source_brief = "gizmo-asset-pipeline/briefs/world_kits/scrap_cluster_01.brief.yaml"
+metadata/source_candidate_task_id = "019f3b0b-b4a9-7788-8e51-31d08e1a73f9"
+metadata/promotion_report = "gizmo-asset-pipeline/runs/2026-07-06-world-beauty/promotion-report-scrap_cluster_01_a.md"
+metadata/scale = "0.6 (meshy ~1.9m normalized -> 0.3m tall, 1.1m wide)"
+metadata/collision_policy = "none (wrapper-owned primitive)"
+metadata/material_override_policy = "meshy texture as generated (gouache-brief guided, 1K capped)"
+metadata/surface = "brass_tile"
+metadata/camera_readability_status = "proofed at fixed Diablo camera 2026-07-06 (see promotion report)"
+metadata/performance_status = "13092 tris, 1 material(s)"
+metadata/verdict = "promoted"
+
+[node name="Model" parent="." instance=ExtResource("1_glb")]
+transform = Transform3D(-0.6, 0, 0, 0, 0.6, 0, 0, 0, -0.6, 0, 0, 0)

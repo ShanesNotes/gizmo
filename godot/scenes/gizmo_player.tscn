@@ -1,0 +1,34 @@
+[gd_scene load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://scripts/player/gizmo_player.gd" id="1_player"]
+[ext_resource type="Script" path="res://scripts/abilities/ability_component.gd" id="2_ability_component"]
+[ext_resource type="Script" path="res://scripts/abilities/ability_input_router.gd" id="3_input_router"]
+[ext_resource type="Script" path="res://scripts/player/gizmo_visual.gd" id="4_visual"]
+[ext_resource type="PackedScene" uid="uid://qa2ralfsy66q" path="res://assets/gizmo.glb" id="5_gizmo_glb"]
+[ext_resource type="Script" path="res://scripts/player/gizmo_animation_controller.gd" id="6_animation_controller"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_player"]
+radius = 0.38
+height = 1.1
+
+[node name="GizmoPlayer" type="CharacterBody3D" groups=["player"]]
+script = ExtResource("1_player")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.875, 0)
+shape = SubResource("CapsuleShape3D_player")
+
+[node name="VisualPivot" type="Node3D" parent="."]
+script = ExtResource("4_visual")
+
+[node name="Model" type="Node3D" parent="VisualPivot" instance=ExtResource("5_gizmo_glb")]
+transform = Transform3D(-0.875, 0, 0, 0, 0.875, 0, 0, 0, -0.875, 0, 0, 0)
+
+[node name="AnimationController" type="Node" parent="."]
+script = ExtResource("6_animation_controller")
+
+[node name="AbilityComponent" type="Node" parent="."]
+script = ExtResource("2_ability_component")
+
+[node name="AbilityInputRouter" type="Node" parent="."]
+script = ExtResource("3_input_router")

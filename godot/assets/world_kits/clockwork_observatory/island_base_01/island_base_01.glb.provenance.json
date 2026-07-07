@@ -1,0 +1,10 @@
+{
+  "notice": "derived from asset pipeline canon; do not edit as source",
+  "asset_id": "island_base_01",
+  "asset_class": "world_kit",
+  "meshy_task_id": "019f3ac0-db1e-716f-aeab-985fe55734a0",
+  "clean_glb_sha256": "591abea05975acffdfc1da96849288c2006f9574407b61ab1da8b537b92efc30",
+  "triangles": 19260,
+  "cleanup_report": "gizmo-asset-pipeline/generated/island_base_01/cleanup.json",
+  "run": "2026-07-06-world-beauty"
+}

@@ -1,0 +1,16 @@
+{
+  "asset": "bruiser_unit_rigged.glb",
+  "source": "meshy_rig on refine task 019f39ea-ebfd-7dd0-b85b-02087b47de17 (rig task 019f3ab6-6155-792a-afeb-93e2100079fa) + locally authored clips — Blender 5.1.2 headless, tools/animation/author_enemy_clips.py",
+  "base_model": "godot/assets/enemies/bruiser_unit.glb (meshy.ai origin, unrigged; untouched)",
+  "rig": "Meshy 24-bone standard humanoid; rig honesty verified at camera before acceptance (mesh + skinning intact)",
+  "clips": ["walk", "run", "idle", "attack", "hit", "death"],
+  "clip_sources": "walk/run: free with meshy_rig; idle/attack/hit/death: hand-keyed in Blender (zero credits)",
+  "content": "full GLB: skinned mesh + rig + NLA clip tracks; consumed by scripts/enemies/enemy_animation_controller.gd (two-tier: these clips supersede, code poses guarantee)",
+  "meshy_task_id": "019f3ab6-6155-792a-afeb-93e2100079fa",
+  "credits": 5,
+  "credits_note": "rig only; custom clips authored locally — see docs/asset-lab/animation-ledger.md enemy lane",
+  "date": "2026-07-06",
+  "authored_by": "fable enemy-animation principal",
+  "motion_language": "hyperscaler thesis — frictionless, economical, wrong; telegraph is slow and total (0.85s windup matching enemy_brain), strike instant, death a forward timber",
+  "verification": "per-pose stills rendered via --render-dir and visually reviewed; attack apex/strike, hit, death, walk checked at Diablo camera angle"
+}

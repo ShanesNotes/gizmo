@@ -1,0 +1,20 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="PackedScene" path="res://assets/world_kits/clockwork_observatory/gear_ring_01/gear_ring_01.glb" id="1_glb"]
+
+[node name="GearRing01" type="Node3D"]
+metadata/asset_id = "gear_ring_01"
+metadata/asset_class = "world_kit"
+metadata/source_brief = "gizmo-asset-pipeline/briefs/world_kits/gear_ring_01.brief.yaml"
+metadata/source_candidate_task_id = "019f3ac0-fba7-7ac9-9d34-5471d20a546e"
+metadata/promotion_report = "gizmo-asset-pipeline/runs/2026-07-06-world-beauty/promotion-report-gear_ring_01.md"
+metadata/scale = "15.7 (meshy ~1.9m normalized -> 30.0m tall, 29.1m wide)"
+metadata/collision_policy = "none (wrapper-owned primitive)"
+metadata/material_override_policy = "meshy texture as generated (gouache-brief guided, 1K capped)"
+metadata/surface = "brass"
+metadata/camera_readability_status = "proofed at fixed Diablo camera 2026-07-06 (see promotion report)"
+metadata/performance_status = "19189 tris, 1 material(s)"
+metadata/verdict = "promoted"
+
+[node name="Model" parent="." instance=ExtResource("1_glb")]
+transform = Transform3D(-15.7, 0, 0, 0, 15.7, 0, 0, 0, -15.7, 0, 0, 0)

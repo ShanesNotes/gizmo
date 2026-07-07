@@ -1,0 +1,10 @@
+{
+  "notice": "derived from asset pipeline canon; do not edit as source",
+  "asset_id": "sanctuary_01",
+  "asset_class": "landmark",
+  "meshy_task_id": "019f3b1c-c80f-79a5-8422-09ac656e2e06",
+  "clean_glb_sha256": "d4d77ebab3758f8953af4b046e607a6c6b3b965ed5b398947ee9fd30685cebe2",
+  "triangles": 36246,
+  "cleanup_report": "gizmo-asset-pipeline/generated/sanctuary_01/cleanup.json",
+  "run": "2026-07-06-world-beauty"
+}

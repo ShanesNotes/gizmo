@@ -1,0 +1,10 @@
+{
+  "notice": "derived from asset pipeline canon; do not edit as source",
+  "asset_id": "orrery_altar_01",
+  "asset_class": "world_kit",
+  "meshy_task_id": "019f3ac1-178b-7aa2-a92f-65370dc77908",
+  "clean_glb_sha256": "f2df0fe388aa8107da26ea68a8ab24b8a4e2bf0c5ee94079891fb9e5088794cd",
+  "triangles": 19237,
+  "cleanup_report": "gizmo-asset-pipeline/generated/orrery_altar_01/cleanup.json",
+  "run": "2026-07-06-world-beauty"
+}

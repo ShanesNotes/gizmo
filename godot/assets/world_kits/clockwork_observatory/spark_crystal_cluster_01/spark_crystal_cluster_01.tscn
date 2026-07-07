@@ -1,0 +1,30 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="PackedScene" path="res://assets/world_kits/clockwork_observatory/spark_crystal_cluster_01/spark_crystal_cluster_01.glb" id="1_glb"]
+
+[sub_resource type="CylinderShape3D" id="col1"]
+radius = 0.24
+height = 2.0
+
+[node name="SparkCrystalCluster01" type="Node3D"]
+metadata/asset_id = "spark_crystal_cluster_01"
+metadata/asset_class = "world_kit"
+metadata/source_brief = "gizmo-asset-pipeline/briefs/world_kits/spark_crystal_cluster_01.brief.yaml"
+metadata/source_candidate_task_id = "019f3ac1-3278-7aa7-bf25-f86df6000296"
+metadata/promotion_report = "gizmo-asset-pipeline/runs/2026-07-06-world-beauty/promotion-report-spark_crystal_cluster_01.md"
+metadata/scale = "0.8 (meshy ~1.9m normalized -> 1.5m tall, 0.9m wide)"
+metadata/collision_policy = "basecyl (wrapper-owned primitive)"
+metadata/material_override_policy = "meshy texture as generated (gouache-brief guided, 1K capped)"
+metadata/surface = "stone"
+metadata/camera_readability_status = "proofed at fixed Diablo camera 2026-07-06 (see promotion report)"
+metadata/performance_status = "14469 tris, 1 material(s)"
+metadata/verdict = "promoted"
+
+[node name="Model" parent="." instance=ExtResource("1_glb")]
+transform = Transform3D(-0.8, 0, 0, 0, 0.8, 0, 0, 0, -0.8, 0, 0, 0)
+
+[node name="Collision" type="StaticBody3D" parent="."]
+
+[node name="Shape" type="CollisionShape3D" parent="Collision"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.00, 0)
+shape = SubResource("col1")

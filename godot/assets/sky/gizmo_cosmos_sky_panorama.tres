@@ -1,0 +1,16 @@
+[gd_resource type="Sky" load_steps=3 format=3]
+
+; Gizmo cosmos sky (panorama hero) — derived from design canon; do not edit as source.
+; Mounts assets/sky/gizmo_cosmos_panorama.jpg as a PanoramaSkyMaterial.
+; Aim the composition with Environment.sky_rotation (fixed camera never yaws,
+; so rotate the moon + ember horizon into the visible sector).
+
+[ext_resource type="Texture2D" path="res://assets/sky/gizmo_cosmos_panorama.jpg" id="1_pano"]
+
+[sub_resource type="PanoramaSkyMaterial" id="PanoMat_cosmos"]
+panorama = ExtResource("1_pano")
+filter = true
+energy_multiplier = 1.0
+
+[resource]
+sky_material = SubResource("PanoMat_cosmos")

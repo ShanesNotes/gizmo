@@ -1,0 +1,14 @@
+[gd_resource type="Resource" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/room_graph/room_template.gd" id="1_template"]
+[ext_resource type="PackedScene" path="res://scenes/rooms/combat_large.tscn" id="2_scene"]
+
+[resource]
+script = ExtResource("1_template")
+template_id = "combat_large"
+biome_id = "hearth"
+room_type = 0
+scene = ExtResource("2_scene")
+min_exits = 1
+max_exits = 2
+tags = Array[String](["combat", "large", "arena", "branch"])
