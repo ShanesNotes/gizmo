@@ -449,6 +449,21 @@ transform = Transform3D(0.92388, 0, 0.382683, 0, 1, 0, -0.382683, 0, 0.92388, -2
 saint_role = &"hearthguard"
 display_title = "the Hearthguard - Saint Demetrios"
 
+[node name="ShrineSwordbearer" parent="." instance=ExtResource("5_saint_shrine")]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, -4.3, 0, -2)
+saint_role = &"swordbearer"
+display_title = "the Swordbearer - Saint Mercurius"
+
+[node name="ShrineMarksman" parent="." instance=ExtResource("5_saint_shrine")]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, -4.3, 0, 0.2)
+saint_role = &"marksman"
+display_title = "the Marksman - Saint Theodore"
+
+[node name="ShrineCompany" parent="." instance=ExtResource("5_saint_shrine")]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, -4.3, 0, 2.4)
+saint_role = &"company"
+display_title = "the Company - Forty Martyrs of Sebaste"
+
 [node name="CodexBook" parent="." instance=ExtResource("6_codex_book")]
 transform = Transform3D(0.707107, 0, 0.707107, 0, 1, 0, -0.707107, 0, 0.707107, 4.3, 0.55, -1.5)
 
