@@ -26,6 +26,7 @@ func _initialize() -> void:
 	await _test_stagger_suppresses_movement_and_attack_until_window()
 	await _test_take_damage_emits_died_once()
 	await _test_scene_instantiates_headless()
+	await _test_scene_visual_models_follow_configured_archetype()
 	await _test_spawn_windup_blocks_movement_and_contact_until_elapsed()
 	await _test_scene_stagger_ticks_down_during_spawn_windup()
 	await _test_scene_chase_emits_damage_event_data_without_player_wiring()
@@ -69,6 +70,23 @@ func _new_enemy():
 	root.add_child(enemy)
 	await process_frame
 	return enemy
+
+func _new_configured_enemy(archetype: String, spawn_id: String):
+	var enemy = GreyboxEnemyScene.instantiate()
+	var collision := enemy.get_node_or_null("CollisionShape3D") as CollisionShape3D
+	var collision_shape := collision.shape as CapsuleShape3D if collision != null else null
+	var collision_radius := collision_shape.radius if collision_shape != null else -1.0
+	var collision_height := collision_shape.height if collision_shape != null else -1.0
+	var collision_transform := collision.transform if collision != null else Transform3D.IDENTITY
+	root.add_child(enemy)
+	enemy.configure(archetype, spawn_id)
+	await process_frame
+	return {
+		"enemy": enemy,
+		"collision_radius": collision_radius,
+		"collision_height": collision_height,
+		"collision_transform": collision_transform,
+	}
 
 func _cleanup(node: Node) -> void:
 	node.queue_free()
@@ -255,8 +273,10 @@ func _test_take_damage_emits_died_once() -> void:
 	_check_almost("configured bruiser starts at bruiser hp", enemy.hp, 140.0)
 	_check_almost("partial damage returns remaining hp", enemy.take_damage(40.0), 100.0)
 	_check_eq("partial damage does not emit died", death_ids.size(), 0)
+	var enemy_death_before := _audio_event_count(&"enemy_death")
 	_check_almost("lethal damage floors hp at zero", enemy.take_damage(999.0), 0.0)
 	_check_eq("lethal damage emits died once", death_ids, ["w0:bruiser:7"])
+	_check_eq("lethal damage notifies enemy_death once", _audio_event_count(&"enemy_death"), enemy_death_before + 1)
 	_check_eq("enemy reports dead after lethal damage", enemy.is_dead(), true)
 	_check_almost("repeated damage after death keeps hp zero", enemy.take_damage(99.0), 0.0)
 	_check_eq("repeated damage after death does not re-emit died", death_ids, ["w0:bruiser:7"])
@@ -283,6 +303,76 @@ func _test_scene_instantiates_headless() -> void:
 	_check_almost("configure applies bruiser speed", enemy.move_speed, 1.65)
 
 	await _cleanup(enemy)
+
+func _test_scene_visual_models_follow_configured_archetype() -> void:
+	var cases := [
+		{"archetype": "chaff", "node": "ChaffDroneModel", "scale": 0.9},
+		{"archetype": "bruiser", "node": "BruiserUnitModel", "scale": 1.35},
+		{"archetype": "elite", "node": "EliteEnforcerModel", "scale": 1.75},
+	]
+	for visual_case in cases:
+		var fixture: Dictionary = await _new_configured_enemy(
+			String(visual_case["archetype"]),
+			"visual:%s" % String(visual_case["archetype"])
+		)
+		var enemy = fixture["enemy"]
+		var pivot := enemy.get_node_or_null("VisualPivot") as Node3D
+		var capsule := pivot.get_node_or_null("Capsule") as MeshInstance3D if pivot != null else null
+		var model := pivot.get_node_or_null(String(visual_case["node"])) as Node3D if pivot != null else null
+		var collision := enemy.get_node_or_null("CollisionShape3D") as CollisionShape3D
+		var collision_shape := collision.shape as CapsuleShape3D if collision != null else null
+
+		_check("%s GLB visual node is instanced under VisualPivot" % String(visual_case["archetype"]), model != null)
+		_check("%s keeps Capsule node hidden as the fallback" % String(visual_case["archetype"]), capsule != null and not capsule.visible)
+		if model != null:
+			var expected_scale := float(visual_case["scale"])
+			_check_vec3_almost(
+				"%s model local scale matches HZ-091 scale table" % String(visual_case["archetype"]),
+				model.scale,
+				Vector3.ONE * expected_scale,
+				0.001
+			)
+			_check("%s GLB exposes a MeshInstance3D for combat effects" % String(visual_case["archetype"]), _first_mesh_under(model) != null)
+		if String(visual_case["archetype"]) == "chaff" and pivot != null and model != null:
+			var mesh := _first_mesh_under(pivot)
+			_check("CombatEffects finds the GLB mesh before the hidden capsule", mesh != null and mesh != capsule)
+			if mesh != null:
+				_check_eq("GLB mesh starts without a hit-flash override", mesh.material_override, null)
+				enemy.take_damage(1.0)
+				_check("hit flash applies material_override to the GLB mesh", mesh.material_override != null)
+		if collision_shape != null:
+			_check_almost(
+				"%s visual swap leaves collision radius untouched" % String(visual_case["archetype"]),
+				collision_shape.radius,
+				float(fixture["collision_radius"])
+			)
+			_check_almost(
+				"%s visual swap leaves collision height untouched" % String(visual_case["archetype"]),
+				collision_shape.height,
+				float(fixture["collision_height"])
+			)
+		if collision != null:
+			_check_eq(
+				"%s visual swap leaves collision transform untouched" % String(visual_case["archetype"]),
+				collision.transform,
+				fixture["collision_transform"]
+			)
+
+		await _cleanup(enemy)
+
+	var fallback_fixture: Dictionary = await _new_configured_enemy("chaff", "visual:unknown")
+	var fallback_enemy = fallback_fixture["enemy"]
+	fallback_enemy.archetype = "unknown"
+	var fallback_pivot := fallback_enemy.get_node_or_null("VisualPivot") as Node3D
+	if fallback_pivot != null and fallback_pivot.has_method("refresh_visual"):
+		fallback_pivot.call("refresh_visual")
+	await process_frame
+	var fallback_capsule := fallback_pivot.get_node_or_null("Capsule") as MeshInstance3D if fallback_pivot != null else null
+	_check("unknown visual archetype keeps the Capsule fallback visible", fallback_capsule != null and fallback_capsule.visible)
+	_check("unknown visual archetype does not keep a chaff GLB model", fallback_pivot != null and fallback_pivot.get_node_or_null("ChaffDroneModel") == null)
+	_check("unknown visual archetype does not keep a bruiser GLB model", fallback_pivot != null and fallback_pivot.get_node_or_null("BruiserUnitModel") == null)
+	_check("unknown visual archetype does not keep an elite GLB model", fallback_pivot != null and fallback_pivot.get_node_or_null("EliteEnforcerModel") == null)
+	await _cleanup(fallback_enemy)
 
 func _test_spawn_windup_blocks_movement_and_contact_until_elapsed() -> void:
 	var enemy = await _new_enemy()
@@ -469,3 +559,20 @@ func _object_has_property(object: Object, property_name: String) -> bool:
 		if str(property.get("name", "")) == property_name:
 			return true
 	return false
+
+func _first_mesh_under(node: Node) -> MeshInstance3D:
+	if node is MeshInstance3D:
+		return node
+	for child in node.get_children():
+		var found := _first_mesh_under(child)
+		if found != null:
+			return found
+	return null
+
+func _audio_event_count(event: StringName) -> int:
+	var director := root.get_node_or_null("AudioDirector")
+	if director == null or not director.has_method(&"describe"):
+		return 0
+	var desc: Dictionary = director.describe()
+	var counts: Dictionary = desc.get("sfx_event_counts", {})
+	return int(counts.get(String(event), 0))

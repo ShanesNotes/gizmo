@@ -208,6 +208,8 @@ func _spawn_telegraphs_for_attack(attack: Dictionary) -> void:
 	_clear_committed_markers()
 	_current_attack_context = attack.duplicate(true)
 	var attack_id := String(attack.get("id", ""))
+	if attack_id != "":
+		_notify_audio_event(&"boss_telegraph")
 	match attack_id:
 		BossBrainScript.ATTACK_AUDIT_SWEEP:
 			_spawn_line_marker(_current_attack_context)
@@ -358,6 +360,13 @@ func _point_distance_to_segment_xz(point: Vector3, a: Vector3, b: Vector3) -> fl
 		return p.distance_to(start)
 	var t := clampf((p - start).dot(segment) / length_sq, 0.0, 1.0)
 	return p.distance_to(start + segment * t)
+
+func _notify_audio_event(event: StringName) -> void:
+	if not is_inside_tree():
+		return
+	var director := get_node_or_null("/root/AudioDirector")
+	if director != null and director.has_method(&"notify_event"):
+		director.call(&"notify_event", event)
 
 func _xz_distance(a: Vector3, b: Vector3) -> float:
 	return Vector2(a.x, a.z).distance_to(Vector2(b.x, b.z))

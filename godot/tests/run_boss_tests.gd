@@ -8,6 +8,7 @@ const BossBrainScript := preload("res://scripts/room_graph/boss_brain.gd")
 const TelegraphMarkerScript := preload("res://scripts/room_graph/telegraph_marker.gd")
 const CustodianBossScript := preload("res://scripts/room_graph/custodian_boss.gd")
 const RoomDirectorScript := preload("res://scripts/room_graph/room_director.gd")
+const BossArenaScene := preload("res://scenes/rooms/boss_arena.tscn")
 
 const BOSS_HP := 2400.0
 const DPS_MODEL := 110.0
@@ -30,6 +31,7 @@ func _run_tests() -> void:
 	await _test_custodian_live_dps_ttk_crosses_all_phases()
 	await _test_custodian_contact_suppression_and_ledger_invariants()
 	await _test_custodian_is_snapshot_damageable_enemy()
+	await _test_boss_arena_uses_custodian_model()
 	print("")
 	if _failed == 0 and _passed > 0:
 		print("PASS - %d checks" % _passed)
@@ -244,6 +246,7 @@ func _test_custodian_surge_interrupts_windup_and_clears_markers() -> void:
 	boss.set_chase_target(player)
 	if boss.has_method("begin_fight"):
 		boss.call("begin_fight")
+	var telegraph_before := _audio_event_count(&"boss_telegraph")
 	boss._physics_process(0.01)
 	var committed_attacks: Array[String] = []
 	boss.boss_brain.attack_committed.connect(func(attack: Dictionary) -> void:
@@ -252,6 +255,7 @@ func _test_custodian_surge_interrupts_windup_and_clears_markers() -> void:
 
 	_check_eq("Custodian starts the probe attack in windup", boss.boss_brain.execution_state(), BossBrainScript.STATE_WINDUP)
 	_check("Custodian windup owns telegraph markers before Surge", _telegraph_markers_under(fixture).size() > 0)
+	_check_eq("Custodian telegraph start notifies boss_telegraph once", _audio_event_count(&"boss_telegraph"), telegraph_before + 1)
 
 	boss.stagger(0.35)
 	_check_eq("Spark Surge interrupt moves an active windup to recovery", boss.boss_brain.execution_state(), BossBrainScript.STATE_RECOVERY)
@@ -356,6 +360,27 @@ func _test_custodian_is_snapshot_damageable_enemy() -> void:
 	boss.queue_free()
 	await process_frame
 
+func _test_boss_arena_uses_custodian_model() -> void:
+	var arena := BossArenaScene.instantiate()
+	root.add_child(arena)
+	await process_frame
+	var boss := arena.get_node_or_null("CustodianBoss") as CharacterBody3D
+	var pivot := boss.get_node_or_null("VisualPivot") as Node3D if boss != null else null
+	var model := pivot.get_node_or_null("CustodianBossModel") as Node3D if pivot != null else null
+	var placeholder := pivot.get_node_or_null("Body") as MeshInstance3D if pivot != null else null
+
+	_check("boss arena keeps CustodianBoss body", boss != null)
+	_check("boss arena keeps CustodianBoss collision", boss != null and boss.get_node_or_null("CollisionShape3D") is CollisionShape3D)
+	_check("boss arena keeps CustodianBoss group", boss != null and boss.is_in_group("boss"))
+	_check("boss arena keeps Custodian nameplate", boss != null and boss.get_node_or_null("Nameplate") is Label3D)
+	_check("boss arena instances the Custodian GLB model", model != null)
+	_check("boss arena hides or removes the greybox boss placeholder", placeholder == null or not placeholder.visible)
+	if model != null:
+		_check_between("Custodian model reads big at roughly 3-4x player scale", model.scale.y, 3.0, 4.25)
+		_check("Custodian model exposes a MeshInstance3D for combat effects", _first_mesh_under(model) != null)
+	arena.queue_free()
+	await process_frame
+
 func _new_custodian_fixture(parent: Node, rng: RandomNumberGenerator):
 	var boss = CustodianBossScript.new()
 	boss.name = "CustodianBoss"
@@ -412,6 +437,15 @@ func _unique_count(values: Array[String]) -> int:
 		seen[value] = true
 	return seen.size()
 
+func _first_mesh_under(node: Node) -> MeshInstance3D:
+	if node is MeshInstance3D:
+		return node
+	for child in node.get_children():
+		var found := _first_mesh_under(child)
+		if found != null:
+			return found
+	return null
+
 func _assert_requests_eq(desc: String, actual: Array, expected: Array) -> void:
 	_check_eq(desc, _normalize_requests(actual), _normalize_requests(expected))
 
@@ -428,3 +462,11 @@ func _normalize_requests(requests: Array) -> Array:
 		return String(a.get("archetype", "")) < String(b.get("archetype", ""))
 	)
 	return normalized
+
+func _audio_event_count(event: StringName) -> int:
+	var director := root.get_node_or_null("AudioDirector")
+	if director == null or not director.has_method(&"describe"):
+		return 0
+	var desc: Dictionary = director.describe()
+	var counts: Dictionary = desc.get("sfx_event_counts", {})
+	return int(counts.get(String(event), 0))

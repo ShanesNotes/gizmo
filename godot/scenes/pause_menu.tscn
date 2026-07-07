@@ -1,7 +1,8 @@
-[gd_scene load_steps=6 format=3]
+[gd_scene load_steps=7 format=3]
 
 [ext_resource type="Script" path="res://scripts/ui/pause_menu.gd" id="1_pause"]
 [ext_resource type="Theme" path="res://scenes/hud_theme.tres" id="2_theme"]
+[ext_resource type="PackedScene" path="res://scenes/settings_panel.tscn" id="3_settings"]
 
 [sub_resource type="StyleBoxFlat" id="sb_btn_normal"]
 bg_color = Color(0.1098, 0.1216, 0.1373, 1.0)
@@ -130,6 +131,18 @@ theme_override_styles/hover = SubResource("sb_btn_hover")
 theme_override_styles/pressed = SubResource("sb_btn_pressed")
 text = "RESUME"
 
+[node name="SettingsButton" type="Button" parent="Root/Center/Panel/Margin/VBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(180, 44)
+layout_mode = 2
+size_flags_horizontal = 4
+focus_mode = 2
+theme_override_font_sizes/font_size = 18
+theme_override_styles/normal = SubResource("sb_btn_normal")
+theme_override_styles/hover = SubResource("sb_btn_hover")
+theme_override_styles/pressed = SubResource("sb_btn_pressed")
+text = "SETTINGS"
+
 [node name="AbandonButton" type="Button" parent="Root/Center/Panel/Margin/VBox"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(180, 44)
@@ -141,3 +154,6 @@ theme_override_styles/normal = SubResource("sb_btn_normal")
 theme_override_styles/hover = SubResource("sb_btn_hover")
 theme_override_styles/pressed = SubResource("sb_btn_pressed")
 text = "ABANDON RUN"
+
+[node name="SettingsPanel" parent="." instance=ExtResource("3_settings")]
+unique_name_in_owner = true

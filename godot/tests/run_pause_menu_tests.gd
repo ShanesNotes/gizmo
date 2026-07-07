@@ -45,6 +45,7 @@ func _run_tests() -> void:
 	await _test_ui_cancel_toggles_pause_and_visibility()
 	await _test_overlay_visibility_tracks_external_pause_state()
 	await _test_resume_button_unpauses_tree()
+	await _test_settings_button_opens_shared_panel()
 	await _test_pause_guard_rejects_inactive_run_surface()
 	await _test_real_app_shell_parented_end_screen_blocks_pause_guard()
 	await _test_real_paused_death_teardown_unpauses_and_cancel_stays_blocked()
@@ -126,6 +127,12 @@ func _resume_button(menu: Node) -> Button:
 
 func _abandon_button(menu: Node) -> Button:
 	return menu.get_node("Root/Center/Panel/Margin/VBox/AbandonButton") as Button
+
+func _settings_button(menu: Node) -> Button:
+	return menu.get_node("Root/Center/Panel/Margin/VBox/SettingsButton") as Button
+
+func _settings_panel(menu: Node) -> Node:
+	return menu.get_node("SettingsPanel")
 
 func _new_save_path(test_name: String) -> String:
 	return "%s/pause_menu_%s.cfg" % [TEST_SAVE_ROOT, test_name]
@@ -230,6 +237,27 @@ func _test_resume_button_unpauses_tree() -> void:
 
 	_check("resume button unpauses the tree", not paused)
 	_check("resume button hides the overlay", not menu.is_overlay_visible())
+
+	await _cleanup_harness(harness)
+
+func _test_settings_button_opens_shared_panel() -> void:
+	var harness := await _new_harness()
+	var menu := harness["menu"] as Node
+
+	await _send_cancel(menu)
+	_check("settings button exists", _settings_button(menu) is Button)
+	_check("settings panel exists", _settings_panel(menu) != null)
+
+	_settings_button(menu).emit_signal(&"pressed")
+	await process_frame
+
+	var panel := _settings_panel(menu)
+	_check("settings button opens settings panel", panel.has_method(&"is_open") and bool(panel.call(&"is_open")))
+	_check("opening settings preserves pause state", paused)
+	_check("opening settings preserves pause overlay", menu.is_overlay_visible())
+
+	if panel.has_method(&"close"):
+		panel.call(&"close")
 
 	await _cleanup_harness(harness)
 

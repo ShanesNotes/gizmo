@@ -160,6 +160,7 @@ func take_damage(amount: float, charges_spark: bool = true) -> float:
 		_dead = true
 		velocity = Vector3.ZERO
 		died.emit(spawn_id)
+		_notify_audio_event(&"enemy_death")
 	return hp
 
 func is_dead() -> bool:
@@ -195,3 +196,10 @@ func _tick_spawn_windup(delta: float) -> void:
 	_spawn_windup_remaining = maxf(0.0, _spawn_windup_remaining - maxf(delta, 0.0))
 	if _spawn_windup_remaining <= 0.00001:
 		_spawn_windup_remaining = 0.0
+
+func _notify_audio_event(event: StringName) -> void:
+	if not is_inside_tree():
+		return
+	var director := get_node_or_null("/root/AudioDirector")
+	if director != null and director.has_method(&"notify_event"):
+		director.call(&"notify_event", event)

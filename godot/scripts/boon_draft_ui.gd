@@ -70,6 +70,7 @@ func choose_offer(index: int) -> bool:
 	_selection_locked = true
 	for card in _cards:
 		card.disabled = true
+	_notify_audio_event(&"boon_pickup")
 	boon_chosen.emit(boon)
 	visible = false
 	return true
@@ -130,6 +131,9 @@ func _wire_focus_neighbors() -> void:
 		card.focus_neighbor_bottom = next.get_path()
 
 func _on_card_pressed(index: int) -> void:
+	if _selection_locked:
+		return
+	_notify_audio_event(&"ui_click")
 	choose_offer(index)
 
 func _populate_card(card: Button, boon: BoonDef) -> void:
@@ -244,3 +248,10 @@ func _make_card_style(background: Color, border: Color, border_width: int) -> St
 	style.shadow_color = Color(0, 0, 0, 0.45)
 	style.shadow_size = 8
 	return style
+
+func _notify_audio_event(event: StringName) -> void:
+	if not is_inside_tree():
+		return
+	var director := get_node_or_null("/root/AudioDirector")
+	if director != null and director.has_method(&"notify_event"):
+		director.call(&"notify_event", event)
