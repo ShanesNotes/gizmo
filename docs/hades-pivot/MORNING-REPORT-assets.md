@@ -12,13 +12,21 @@ SwingTiming contacts land on exact frames):
 - Contact-true swing combo `attack_1/2/3` (0.10/0.10/0.14s) + `special`
   (0.22s) — the code-owned-swings ruling is superseded; code poses remain the
   guarantee tier. Weapon mount follows the authored swing arm (Bone_019).
-- `spark_cast` (release 0.15s, wired to `cast_started`), `hit`, `death`,
-  `victory`, run/dash refresh.
+- `spark_cast` (release 0.15s), `hit`, `death`, `victory`, run/dash refresh.
+  [wave 3: `cast_started` now actually routes to `spark_cast` — it was still
+  reusing the `attack` swing when this line was first written.]
 - Personality: `idle_fidget_key` (winds his own key) + `idle_fidget_chirp`
-  (head-tilt, bobs at 0.50/0.70s for the audio lane) — 7s alternating idle
-  scheduler in the controller.
+  (head-tilt, bobs at 0.50/0.70s for the audio lane). [wave 3: the 7s
+  alternating standing-idle scheduler that fires them now exists in
+  `gizmo_animator.gd` — the clips were authored in wave 1 but no driver played
+  them until wave 3.]
 - **Lore lane: the campfire cinematic clip is named `campfire_sit`** (3.2s
-  seated loop). Note: the WeaponMount stays visible — hide it for the shot.
+  seated loop). Drive it via **`GizmoAnimator.play_campfire_sit()`** — it
+  deactivates the blend tree so the looping seat pose owns the skeleton; call
+  `resume_locomotion()` to hand control back. [wave 3: the clip was authored in
+  wave 1 but had no takeover method until wave 3 — a direct `ClipPlayer.play`
+  would have been overridden by the active AnimationTree.] Note: the WeaponMount
+  stays visible — hide it for the shot.
 
 **2. Enemy roster clips** (bruiser + elite rigged GLBs):
 - `attack` strikes keyed EXACTLY to brain windups (0.85s / 1.05s; key-readback
@@ -45,6 +53,34 @@ real per-attack telegraphs instead of my briefed 1.05s guess. Playback wired
 through CustodianVisual (composes with the presiding procedural layer).
 **Decimation debt settled**: 1.35M → 140k faces, texture capped 2048→1024,
 44MB → ~8MB.
+
+## Wave 3 (night revival — closing the wiring gap)
+
+The lane was revived mid-night. Audit finding: waves 1-2 **authored** every
+backlog-#1 clip into `gizmo_clips.glb` (verified — re-running
+`tools/animation/author_gizmo_clips.py` produces a byte-identical GLB) but three
+were never **wired** into the controller, while this report already described
+them as shipped. Wave 3 makes the report true. All wiring lives in
+`godot/scripts/player/gizmo_animator.gd` (fence-clean; no swing-timing or
+resolver edits):
+
+- **`spark_cast`** — `cast_started` now fires the dedicated underhand-lob clip
+  (added as a 5th one-shot slot) instead of reusing the `attack` swing.
+- **`campfire_sit`** — new `play_campfire_sit()` takeover for the lore lane (see
+  the corrected note above); the clip's loop mode is now preserved through the
+  library builder so the seated pose actually loops.
+- **Idle fidgets** — a 7s standing-idle alternating scheduler
+  (`_tick_idle_fidget`) fires `idle_fidget_key` / `idle_fidget_chirp` in turn;
+  resets on movement, any combat one-shot, or while a cinematic/death owns
+  playback.
+- Provenance sidecar refreshed (was listing 8 of the 15 authored clips).
+- Coverage: `run_animation_tests.gd` 61 → 78 checks (spark_cast route, campfire
+  takeover, fidget logic + wiring). Full battery green (orchestrator
+  contact-damage flake reran clean at 457, per protocol).
+
+Still owed (noted, not blocking): formal `promotion.yaml` for bruiser/elite
+lab-side (codex REPORT scratch covers informally); in-engine fixed-camera
+capture of `play_campfire_sit()` (the clip's Blender proof already exists).
 
 ## Evidence
 - `docs/hades-pivot/ceremony/assets/2026-07-07-*` (gizmo clip proofs, enemy
