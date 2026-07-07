@@ -129,6 +129,9 @@ func _run_tests() -> void:
 	await _test_dash_audio_hook_follows_ability_signal()
 	await _test_real_attack_damages_front_enemy_only_and_charges_spark()
 	await _test_special_resolver_heavy_wide_arc_skips_windup_and_charges_spark()
+	await _test_attack_soft_lock_snaps_commit_facing_to_nearby_enemy()
+	await _test_attack_soft_lock_ignores_targets_outside_angle()
+	await _test_attack_soft_lock_can_be_disabled()
 	await _test_swing_damage_lands_on_animation_contact_frame()
 	await _test_cast_resolver_hits_first_target_consumes_ammo_and_charges_spark()
 	await _test_cast_shards_reclaim_on_victim_death_and_walkover_pickup()
@@ -1148,6 +1151,103 @@ func _test_special_resolver_heavy_wide_arc_skips_windup_and_charges_spark() -> v
 	_check_eq("special hit notifies melee_hit once", _audio_event_count(&"melee_hit"), melee_hit_before + 1)
 	await _cleanup_run(run)
 
+func _test_attack_soft_lock_snaps_commit_facing_to_nearby_enemy() -> void:
+	var run = await _new_run()
+	run.start_run("hearth", _empty_template_pool(), 2, _seeded_rng(41))
+	await process_frame
+
+	var kit: AbilityComponent = run._player_ability_kit()
+	var motor = run.player.get("motor") if run.player != null else null
+	_check("soft-lock snap test has an AbilityComponent", kit != null)
+	_check("soft-lock snap test has a player motor", motor is Object)
+	if kit == null or not (motor is Object):
+		await _cleanup_run(run)
+		return
+
+	_park_live_enemies_far_from_player(run)
+	var starting_facing := Vector3(0.0, 0.0, -1.0)
+	(motor as Object).set("facing_direction", starting_facing)
+	var target_direction := _rotated_xz(starting_facing, deg_to_rad(25.0))
+	var target := _spawn_fixture_enemy(
+		run,
+		"soft_lock_snap_probe",
+		run.player.global_position + target_direction * (run.combat_resolvers.melee_range * 0.90)
+	)
+	_check("soft-lock snap test spawns a live target", target != null)
+	if target == null:
+		await _cleanup_run(run)
+		return
+
+	_check("soft-lock snap test attack activates", kit.try_activate(&"attack"))
+	var snapped_facing := Vector3((motor as Object).get("facing_direction")).normalized()
+	_check("soft-lock snaps facing toward the 25-degree target", snapped_facing.dot(target_direction) > 0.99)
+	await _cleanup_run(run)
+
+func _test_attack_soft_lock_ignores_targets_outside_angle() -> void:
+	var run = await _new_run()
+	run.start_run("hearth", _empty_template_pool(), 2, _seeded_rng(42))
+	await process_frame
+
+	var kit: AbilityComponent = run._player_ability_kit()
+	var motor = run.player.get("motor") if run.player != null else null
+	_check("soft-lock angle test has an AbilityComponent", kit != null)
+	_check("soft-lock angle test has a player motor", motor is Object)
+	if kit == null or not (motor is Object):
+		await _cleanup_run(run)
+		return
+
+	_park_live_enemies_far_from_player(run)
+	var starting_facing := Vector3(0.0, 0.0, -1.0)
+	(motor as Object).set("facing_direction", starting_facing)
+	var target_direction := _rotated_xz(starting_facing, deg_to_rad(90.0))
+	var target := _spawn_fixture_enemy(
+		run,
+		"soft_lock_angle_probe",
+		run.player.global_position + target_direction * (run.combat_resolvers.melee_range * 0.90)
+	)
+	_check("soft-lock angle test spawns a live target", target != null)
+	if target == null:
+		await _cleanup_run(run)
+		return
+
+	_check("soft-lock angle test attack activates", kit.try_activate(&"attack"))
+	var facing_after_attack := Vector3((motor as Object).get("facing_direction")).normalized()
+	_check("soft-lock ignores the 90-degree target", facing_after_attack.dot(starting_facing) > 0.99)
+	await _cleanup_run(run)
+
+func _test_attack_soft_lock_can_be_disabled() -> void:
+	var run = await _new_run()
+	run.start_run("hearth", _empty_template_pool(), 2, _seeded_rng(43))
+	await process_frame
+
+	var kit: AbilityComponent = run._player_ability_kit()
+	var motor = run.player.get("motor") if run.player != null else null
+	_check("soft-lock disabled test has an AbilityComponent", kit != null)
+	_check("soft-lock disabled test has a player motor", motor is Object)
+	if kit == null or not (motor is Object):
+		await _cleanup_run(run)
+		return
+
+	run.combat_resolvers.configure({"soft_lock_enabled": false})
+	_park_live_enemies_far_from_player(run)
+	var starting_facing := Vector3(0.0, 0.0, -1.0)
+	(motor as Object).set("facing_direction", starting_facing)
+	var target_direction := _rotated_xz(starting_facing, deg_to_rad(25.0))
+	var target := _spawn_fixture_enemy(
+		run,
+		"soft_lock_disabled_probe",
+		run.player.global_position + target_direction * (run.combat_resolvers.melee_range * 0.90)
+	)
+	_check("soft-lock disabled test spawns a live target", target != null)
+	if target == null:
+		await _cleanup_run(run)
+		return
+
+	_check("soft-lock disabled test attack activates", kit.try_activate(&"attack"))
+	var facing_after_attack := Vector3((motor as Object).get("facing_direction")).normalized()
+	_check("soft_lock_enabled=false leaves facing unchanged", facing_after_attack.dot(starting_facing) > 0.99)
+	await _cleanup_run(run)
+
 ## Animation-led melee (playtest 2): swing damage lands on the clip's contact
 ## frame, not on input. The resolver holds a pending swing for the SwingTiming
 ## contact delay; a dash-cancel before contact drops the hit (Hades rule).
@@ -2103,6 +2203,20 @@ func _ready_enemy_for_player_attack(run, enemy: GreyboxEnemy, offset: Vector3) -
 		enemy.tick_chase(run.player.global_position, maxf(enemy.spawn_windup_remaining(), 0.1))
 	enemy.global_position = run.player.global_position + offset
 	enemy.velocity = Vector3.ZERO
+
+func _park_live_enemies_far_from_player(run) -> void:
+	if run == null or run.player == null:
+		return
+	var index := 0
+	for enemy in _live_spawned_enemies(run):
+		if enemy == null or not is_instance_valid(enemy):
+			continue
+		enemy.clear_chase_target()
+		while enemy.is_spawning():
+			enemy.tick_chase(run.player.global_position, maxf(enemy.spawn_windup_remaining(), 0.1))
+		enemy.global_position = run.player.global_position + Vector3(30.0 + float(index), 0.0, 30.0)
+		enemy.velocity = Vector3.ZERO
+		index += 1
 
 func _player_forward(run) -> Vector3:
 	var default_forward := Vector3(0.0, 0.0, -1.0)

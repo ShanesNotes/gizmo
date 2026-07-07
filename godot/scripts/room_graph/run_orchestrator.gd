@@ -1420,8 +1420,10 @@ func _default_boon_pool() -> Array[BoonDef]:
 	pool.append(spark_attack)
 
 	var gear_dash := _make_default_boon(&"gear_dash", "Gyre Step", BoonDef.Rarity.RARE, BoonDef.Slot.DASH, &"bearer",
-		"A step learned from one who carried others. The dash bears Gizmo through what would break him.")
+		"A step learned from one who carried others. Held beside a passive keepsake, the gyre turns sooner.")
 	gear_dash.ability_modifiers.append(_pool_modifier(&"gear_dash_recharge", &"dash", 1.0, 0.75, 1.0, 1.15))
+	gear_dash.synergy_with_slot = BoonDef.Slot.PASSIVE
+	gear_dash.synergy_ability_modifiers.append(_pool_modifier(&"gear_dash_synergy", &"dash", 1.0, 0.85))
 	pool.append(gear_dash)
 
 	var core_special := _make_default_boon(&"core_special", "Brass Overdrive", BoonDef.Rarity.EPIC, BoonDef.Slot.SPECIAL, &"swordbearer",
@@ -1441,8 +1443,10 @@ func _default_boon_pool() -> Array[BoonDef]:
 	pool.append(humanity_guard)
 
 	var ember_attack := _make_default_boon(&"ember_attack", "Ember Teeth", BoonDef.Rarity.RARE, BoonDef.Slot.ATTACK, &"swordbearer",
-		"The strike bites, and the bite keeps burning. A stubborn ember refuses the cold the last word.")
+		"The strike bites, and the bite keeps burning. Held beside a cast keepsake, the teeth take a brighter edge.")
 	ember_attack.ability_modifiers.append(_pool_modifier(&"ember_attack_damage", &"attack", 1.20))
+	ember_attack.synergy_with_slot = BoonDef.Slot.CAST
+	ember_attack.synergy_ability_modifiers.append(_pool_modifier(&"ember_attack_synergy", &"attack", 1.20))
 	pool.append(ember_attack)
 
 	var brass_dash := _make_default_boon(&"brass_dash", "Brass Wake", BoonDef.Rarity.COMMON, BoonDef.Slot.DASH, &"bearer",
@@ -1480,9 +1484,29 @@ func _default_boon_pool() -> Array[BoonDef]:
 	spring_special.max_guard_delta = -2
 	pool.append(spring_special)
 
+	var pattern_bargain := _make_default_boon(&"pattern_bargain", "The Pattern's Bargain", BoonDef.Rarity.LEGENDARY, BoonDef.Slot.PASSIVE, &"company",
+		"A counterfeit clause, stamped in brass and ash. Gizmo strikes a deal with what the Pattern left behind; the guard keeps the debt.")
+	pattern_bargain.ability_modifiers.append(_pool_modifier(&"pattern_bargain_attack", &"attack", 1.50))
+	pattern_bargain.ability_modifiers.append(_pool_modifier(&"pattern_bargain_special", &"special", 1.50))
+	pattern_bargain.max_guard_delta = -3
+	pool.append(pattern_bargain)
+
+	var counterfeit_cast := _make_default_boon(&"counterfeit_cast", "Counterfeit Shard", BoonDef.Rarity.RARE, BoonDef.Slot.CAST, &"marksman",
+		"A record-splinter signed in a hand no saint would keep. The Pattern's false order lends two bright shards; the guard stirs late to answer.")
+	counterfeit_cast.ability_modifiers.append(_pool_modifier(&"counterfeit_cast_damage", &"cast", 1.25))
+	counterfeit_cast.bonus_cast_ammo = 2
+	counterfeit_cast.guard_recharge_delay_multiplier = 1.35
+	pool.append(counterfeit_cast)
+
+	var borrowed_dash := _make_default_boon(&"borrowed_dash", "Borrowed Interval", BoonDef.Rarity.EPIC, BoonDef.Slot.DASH, &"bearer",
+		"A brass second stolen from a broken schedule. The dash arrives quick and bright, but the surge gathers under the cold clock the Pattern left ticking.")
+	borrowed_dash.ability_modifiers.append(_pool_modifier(&"borrowed_dash_recharge", &"dash", 1.0, 0.60, 1.0, 1.20))
+	borrowed_dash.surge_charge_rate_multiplier = 0.7
+	pool.append(borrowed_dash)
+
 	# Synergy: the cast catches fire from a held attack keepsake.
 	var volley_cast := _make_default_boon(&"volley_cast", "Kindled Volley", BoonDef.Rarity.RARE, BoonDef.Slot.CAST, &"marksman",
-		"A shard that remembers the strike that lit it. Held beside a sword-warmed keepsake, it burns brighter.")
+		"A shard that remembers the strike that lit it. Held beside an attack keepsake, it burns brighter.")
 	volley_cast.ability_modifiers.append(_pool_modifier(&"volley_cast_damage", &"cast", 1.15))
 	volley_cast.synergy_with_slot = BoonDef.Slot.ATTACK
 	volley_cast.synergy_ability_modifiers.append(_pool_modifier(&"volley_cast_synergy", &"cast", 1.30))
@@ -1490,7 +1514,7 @@ func _default_boon_pool() -> Array[BoonDef]:
 
 	# Synergy: the company fights harder for a keeper who keeps moving.
 	var company_passive := _make_default_boon(&"company_passive", "Sworn Company", BoonDef.Rarity.EPIC, BoonDef.Slot.PASSIVE, &"company",
-		"The kept stand closer when the keeper will not stand still. Carry a way through, and they lend the arm.")
+		"The kept stand closer when the keeper will not stand still. Held beside a dash keepsake, they lend the arm.")
 	company_passive.guard_recharge_rate_multiplier = 1.15
 	company_passive.synergy_with_slot = BoonDef.Slot.DASH
 	company_passive.synergy_ability_modifiers.append(_pool_modifier(&"company_passive_synergy", &"attack", 1.20))

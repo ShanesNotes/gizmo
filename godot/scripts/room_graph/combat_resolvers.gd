@@ -13,6 +13,8 @@ const CastShardPickupScript := preload("res://scripts/abilities/cast_shard_picku
 const SwingTimingScript := preload("res://scripts/room_graph/swing_timing.gd")
 const CAST_HAND_OFFSET := Vector3(0.0, 1.2, 0.0)
 const CAST_IMPACT_OFFSET := Vector3(0.0, 1.1, 0.0)
+const SOFT_LOCK_RANGE_MULTIPLIER: float = 1.15
+const SOFT_LOCK_HALF_ANGLE_DEGREES: float = 60.0
 
 var melee_range: float = 2.0
 var melee_arc_degrees: float = 120.0
@@ -20,6 +22,7 @@ var special_range: float = 2.75
 var special_arc_degrees: float = 160.0
 var cast_range: float = 8.0
 var cast_arc_degrees: float = 20.0
+var soft_lock_enabled: bool = true
 
 var _player_provider: Callable = Callable()
 var _ability_kit_provider: Callable = Callable()
@@ -42,6 +45,7 @@ func configure(context: Dictionary) -> void:
 	special_arc_degrees = float(context.get("special_arc_degrees", special_arc_degrees))
 	cast_range = float(context.get("cast_range", cast_range))
 	cast_arc_degrees = float(context.get("cast_arc_degrees", cast_arc_degrees))
+	soft_lock_enabled = bool(context.get("soft_lock_enabled", soft_lock_enabled))
 	_player_provider = context.get("player_provider", _player_provider) as Callable
 	_ability_kit_provider = context.get("ability_kit_provider", _ability_kit_provider) as Callable
 	_enemy_snapshot_provider = context.get("enemy_snapshot_provider", _enemy_snapshot_provider) as Callable
@@ -174,6 +178,7 @@ func _on_player_attack_started(step: int, damage: float) -> void:
 	if not _combat_input_allowed():
 		return
 	var contact_delay := SwingTimingScript.melee_contact_delay(step)
+	_soft_lock_player_facing(melee_range)
 	_spawn_swing_read(melee_range, melee_arc_degrees, contact_delay, -1.0 if step == 2 else 1.0)
 	_apply_melee_lunge()
 	_schedule_swing(damage, melee_range, melee_arc_degrees, contact_delay, _damage_pop_opts(&"attack", damage, step))
@@ -204,6 +209,7 @@ func _on_player_special_started(potency: float) -> void:
 	if not _combat_input_allowed():
 		return
 	var contact_delay := SwingTimingScript.special_contact_delay()
+	_soft_lock_player_facing(special_range)
 	_spawn_swing_read(special_range, special_arc_degrees, contact_delay, 1.0)
 	_schedule_swing(potency, special_range, special_arc_degrees, contact_delay, _damage_pop_opts(&"special", potency))
 
@@ -256,6 +262,45 @@ func _spawn_swing_read(swing_range: float, arc_degrees: float, sweep_seconds: fl
 		sweep_seconds,
 		sweep_sign
 	)
+
+func _soft_lock_player_facing(ability_range: float) -> void:
+	if not soft_lock_enabled:
+		return
+	var active_player := _player()
+	if active_player == null:
+		return
+	var motor = active_player.get("motor")
+	if not (motor is Object):
+		return
+	var current_forward := _player_facing_direction(active_player)
+	var target_direction := _soft_lock_direction_to_nearest_enemy(
+		active_player.global_position,
+		current_forward,
+		ability_range * SOFT_LOCK_RANGE_MULTIPLIER
+	)
+	if target_direction == Vector3.ZERO:
+		return
+	(motor as Object).set("facing_direction", target_direction)
+
+func _soft_lock_direction_to_nearest_enemy(center: Vector3, forward: Vector3, max_range: float) -> Vector3:
+	if max_range <= 0.0:
+		return Vector3.ZERO
+	var flat_forward := _flat_forward_or_default(forward)
+	var minimum_dot := cos(deg_to_rad(SOFT_LOCK_HALF_ANGLE_DEGREES))
+	var best_direction := Vector3.ZERO
+	var best_distance := INF
+	for enemy in _damageable_enemy_snapshot():
+		var offset := Vector3(enemy.global_position.x - center.x, 0.0, enemy.global_position.z - center.z)
+		var distance := offset.length()
+		if distance <= 0.000001 or distance > max_range:
+			continue
+		var direction := offset / distance
+		if flat_forward.dot(direction) < minimum_dot:
+			continue
+		if distance < best_distance:
+			best_distance = distance
+			best_direction = direction
+	return best_direction
 
 func _resolve_player_arc_damage(
 	damage: float,

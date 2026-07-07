@@ -8,6 +8,8 @@ const BoonDef := preload("res://scripts/boons/boon_def.gd")
 
 signal draft_offered(room: RoomNode, next_room_ids: Array[String], offers: Array[BoonDef])
 signal boon_accepted(boon: BoonDef)
+signal bargain_offered(boon: BoonDef)
+signal offer_flare(best_rarity: int)
 signal draft_reset()
 
 const DEFAULT_OFFER_COUNT: int = 3
@@ -15,10 +17,14 @@ const COMMON_WEIGHT: float = 60.0
 const RARE_WEIGHT: float = 25.0
 const EPIC_WEIGHT: float = 10.0
 const LEGENDARY_WEIGHT: float = 3.0
+const PITY_WEIGHT_STEP: float = 0.6
+const HARD_PITY_STREAK: int = 3
+const BARGAIN_CHANCE: float = 0.25
 
 var picked_boons: Array[BoonDef] = []
 var picked_boon_ids: Array[StringName] = []
 var picked_boons_by_slot: Dictionary = {}
+var pity_streak: int = 0
 var _installed_ability_kit: AbilityComponent
 var _installed_runtime_modifiers: Array[AbilityModifier] = []
 ## Pre-draft snapshots of the exported params boons may touch, so slot
@@ -57,6 +63,9 @@ func offer_between_rooms(
 
 	var offers := roll_offer(pool, offer_count, rng, picked_boon_ids)
 	draft_offered.emit(room, next_room_ids, offers)
+	var best_rarity := _best_rarity(offers)
+	if best_rarity >= BoonDef.Rarity.EPIC:
+		offer_flare.emit(best_rarity)
 	return offers
 
 func roll_offer(
@@ -75,11 +84,40 @@ func roll_offer(
 		active_rng.randomize()
 
 	var candidates := _eligible_unique_pool(pool, already_picked_ids)
-	while offers.size() < offer_count and not candidates.is_empty():
+	if candidates.is_empty():
+		return offers
+
+	var bargain_roll := active_rng.randf()
+	var should_offer_bargain := bargain_roll < BARGAIN_CHANCE \
+		and not _bargain_candidates(candidates).is_empty()
+
+	if pity_streak >= HARD_PITY_STREAK:
+		var epic_candidates := _epic_or_better_candidates(candidates)
+		if not epic_candidates.is_empty():
+			var selected_epic := epic_candidates[_pick_weighted_index(epic_candidates, active_rng)]
+			offers.append(selected_epic)
+			candidates.erase(selected_epic)
+
+	var reserved_bargain: BoonDef = null
+	if should_offer_bargain and offers.size() < offer_count:
+		var remaining_bargain_candidates := _bargain_candidates(candidates)
+		if not remaining_bargain_candidates.is_empty():
+			reserved_bargain = remaining_bargain_candidates[
+				_pick_weighted_index(remaining_bargain_candidates, active_rng)
+			]
+			candidates.erase(reserved_bargain)
+
+	var normal_offer_count := offer_count - (1 if reserved_bargain != null else 0)
+	while offers.size() < normal_offer_count and not candidates.is_empty():
 		var selected_index := _pick_weighted_index(candidates, active_rng)
 		var boon := candidates[selected_index]
 		offers.append(boon)
 		candidates.remove_at(selected_index)
+	if reserved_bargain != null and offers.size() < offer_count:
+		offers.append(reserved_bargain)
+		bargain_offered.emit(reserved_bargain)
+	if not offers.is_empty():
+		_update_pity_streak(offers)
 	return offers
 
 func accept_boon(boon: BoonDef, ability_kit: AbilityComponent) -> bool:
@@ -109,6 +147,7 @@ func reset_run() -> void:
 	picked_boons.clear()
 	picked_boon_ids.clear()
 	picked_boons_by_slot.clear()
+	pity_streak = 0
 	draft_reset.emit()
 
 ## True while `boon` has a picked partner (a different boon) in its synergy slot.
@@ -243,14 +282,53 @@ func _eligible_unique_pool(
 func _pick_weighted_index(candidates: Array[BoonDef], rng: RandomNumberGenerator) -> int:
 	var total_weight := 0.0
 	for boon in candidates:
-		total_weight += rarity_weight_for(boon.rarity)
+		total_weight += _effective_weight_for(boon)
 	if total_weight <= 0.0:
 		return rng.randi_range(0, candidates.size() - 1)
 
 	var roll := rng.randf() * total_weight
 	var cursor := 0.0
 	for i in range(candidates.size()):
-		cursor += rarity_weight_for(candidates[i].rarity)
+		cursor += _effective_weight_for(candidates[i])
 		if roll <= cursor:
 			return i
 	return candidates.size() - 1
+
+func _effective_weight_for(boon: BoonDef) -> float:
+	if boon == null:
+		return 0.0
+	var weight := rarity_weight_for(boon.rarity)
+	if _is_epic_or_better(boon):
+		weight *= 1.0 + PITY_WEIGHT_STEP * float(pity_streak)
+	return weight
+
+func _update_pity_streak(offers: Array[BoonDef]) -> void:
+	for boon in offers:
+		if _is_epic_or_better(boon):
+			pity_streak = 0
+			return
+	pity_streak += 1
+
+func _best_rarity(offers: Array[BoonDef]) -> int:
+	var best := -1
+	for boon in offers:
+		if boon != null:
+			best = maxi(best, int(boon.rarity))
+	return best
+
+func _is_epic_or_better(boon: BoonDef) -> bool:
+	return boon != null and boon.rarity >= BoonDef.Rarity.EPIC
+
+func _epic_or_better_candidates(candidates: Array[BoonDef]) -> Array[BoonDef]:
+	var epic_candidates: Array[BoonDef] = []
+	for boon in candidates:
+		if _is_epic_or_better(boon):
+			epic_candidates.append(boon)
+	return epic_candidates
+
+func _bargain_candidates(candidates: Array[BoonDef]) -> Array[BoonDef]:
+	var bargains: Array[BoonDef] = []
+	for boon in candidates:
+		if boon != null and boon.rarity >= BoonDef.Rarity.RARE and boon.has_cost():
+			bargains.append(boon)
+	return bargains
