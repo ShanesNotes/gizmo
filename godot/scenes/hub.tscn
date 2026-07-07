@@ -5,6 +5,9 @@
 [ext_resource type="PackedScene" uid="uid://qa2ralfsy66q" path="res://assets/gizmo.glb" id="3_gizmo_glb"]
 [ext_resource type="Shader" path="res://shaders/gouache_grade.gdshader" id="4_grade_shader"]
 [ext_resource type="Script" path="res://scripts/ui/look_grade.gd" id="5_look_grade"]
+[ext_resource type="PackedScene" path="res://scenes/npcs/saint_shrine.tscn" id="5_saint_shrine"]
+[ext_resource type="PackedScene" path="res://scenes/npcs/codex_book.tscn" id="6_codex_book"]
+[ext_resource type="PackedScene" path="res://scenes/npcs/margin_keeper.tscn" id="7_margin_keeper"]
 
 [sub_resource type="ProceduralSkyMaterial" id="Sky_mat"]
 sky_top_color = Color(0.09, 0.07, 0.16, 1)
@@ -439,3 +442,17 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
+
+[node name="ShrineBearer" parent="." instance=ExtResource("5_saint_shrine")]
+transform = Transform3D(0.92388, 0, -0.382683, 0, 1, 0, 0.382683, 0, 0.92388, 2.4, 0, -4.5)
+
+[node name="ShrineHearthguard" parent="." instance=ExtResource("5_saint_shrine")]
+transform = Transform3D(0.92388, 0, 0.382683, 0, 1, 0, -0.382683, 0, 0.92388, -2.4, 0, -4.5)
+saint_role = &"hearthguard"
+display_title = "the Hearthguard - Saint Demetrios"
+
+[node name="CodexBook" parent="." instance=ExtResource("6_codex_book")]
+transform = Transform3D(0.707107, 0, 0.707107, 0, 1, 0, -0.707107, 0, 0.707107, 4.3, 0.55, -1.5)
+
+[node name="MarginKeeper" parent="." instance=ExtResource("7_margin_keeper")]
+transform = Transform3D(-0.5, 0, 0.866025, 0, 1, 0, -0.866025, 0, -0.5, 5.2, 0, -0.7)
