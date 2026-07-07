@@ -11,6 +11,9 @@ const AppSceneDefault := preload("res://scenes/app.tscn")
 @onready var _settings_panel: Node = %SettingsPanel
 
 func _ready() -> void:
+	var director := get_node_or_null("/root/AudioDirector")
+	if director != null and director.has_method(&"play_ui_context"):
+		director.call(&"play_ui_context", &"main_menu")
 	_start_button.pressed.connect(_on_start_pressed)
 	_settings_button.pressed.connect(_on_settings_pressed)
 	_quit_button.pressed.connect(quit_game)

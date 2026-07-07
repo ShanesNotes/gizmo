@@ -21,3 +21,22 @@ Requests for the canon canvas:
    asset drop-in by cue_id starts after the vocabulary rev.
 
 Game-side seam files: `godot/scripts/audio/`, tests `godot/tests/run_audio_director_tests.gd`.
+
+## Audition-pending zone assignments (soundtrack v2 live wiring, 2026-07-06 night)
+Game-side provisional mapping (Fable), honoring the polarity note — every row is the
+audio lab's to overturn in the audition pass:
+| pivot state | cue-map zone | rationale |
+|---|---|---|
+| HUB | SANCTUARY (AMB_02) | the Brass Sphere IS the sanctuary |
+| COMBAT rooms | ROAM (SEG_02) | its variant rule is pressure-driven — combat intensity emerges from live pressure |
+| SHOP rooms | SCRAP_MERCHANT (AMB_04) | direct match |
+| REST/REWARD rooms | SANCTUARY via REST alias | breather fiction |
+| BOSS room | REKINDLE_SIEGE (SEG_11) | immediate-cut entry per spec |
+| title screen | main_menu ui (SEG_01 ORCH) | per ui_contexts |
+| defeat | defeat_reflection (2.5s silence → SEG_06 ORCH once) | per ui_contexts |
+| victory | victory_sequence (SEG_12 ORCH) | per ui_contexts |
+| critical vitals | AMB_03 overlay (variant follows active) | trigger: guard broken AND hp ≤ 1/3 |
+Deferred (recorded): AudioStreamInteractive bar-sync .tres authoring (crossfade
+approximation shipped); BRG bridge cues on menu→run/defeat→hub edges beyond the three
+implemented ui sequences; loudness gates. Pressure scalar = tier-weighted live enemies
+(chaff .15 / bruiser .35 / elite .8 / boss .9, clamped 0..1).

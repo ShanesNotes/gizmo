@@ -821,7 +821,9 @@ func _assert_noncombat_room_ready(
 	_check("%s room uses expected authored template" % label, room != null and room.template != null and room.template.room_type == room_type)
 	_check_eq("%s room auto-clears at entry" % label, room.state if room != null else RoomNode.State.LOCKED, RoomNode.State.CLEARED)
 	_check("%s room has no director" % label, run.current_director == null)
-	_check_eq("%s room requests CLEARED audio zone" % label, _audio_requested_zone_state(), "CLEARED")
+	# Soundtrack v2: non-combat rooms request the REST zone (sanctuary music)
+	# instead of the retired CLEARED zone request.
+	_check_eq("%s room requests the REST audio zone" % label, _audio_requested_zone_state(), "REST")
 	var door := _bound_door_for(run, exit_connection)
 	_check("%s room opens its exit door at entry" % label, door != null and door.state == RoomDoorScript.State.OPEN)
 

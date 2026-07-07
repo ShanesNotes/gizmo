@@ -129,6 +129,11 @@ func start_run(
 
 	var graph := run_controller.start_run(active_biome, active_pool, active_room_count, _rng)
 	_run_active = graph != null and run_controller.current_room_id != ""
+	if _run_active:
+		if audio_director == null or not is_instance_valid(audio_director):
+			audio_director = get_node_or_null("/root/AudioDirector")
+		if audio_director != null and audio_director.has_method(&"begin_run_silence"):
+			audio_director.call(&"begin_run_silence")
 	_transitioning = false
 	_death_teardown_complete = false
 	if _run_active:
@@ -416,12 +421,13 @@ func _start_room_director(room: RoomNode) -> void:
 	_disconnect_current_boss()
 	if _room_is_boss(room):
 		current_director = null
-		_set_audio_zone_state(ZONE_STATE_COMBAT)
+		_set_audio_zone_state(&"BOSS")
 		_start_boss_room()
 		return
 	if _room_clears_without_director(room):
 		current_director = null
-		_set_audio_zone_state(ZONE_STATE_CLEARED)
+		_set_audio_room_zone(room)
+		_set_audio_pressure()
 		if run_controller != null:
 			run_controller.notify_room_cleared()
 		return
@@ -431,8 +437,9 @@ func _start_room_director(room: RoomNode) -> void:
 	current_director = RoomDirector.new(room.difficulty_tier, _rng, room_kind)
 	current_director.wave_requested.connect(_on_director_wave_requested)
 	current_director.room_cleared.connect(_on_director_room_cleared)
-	_set_audio_zone_state(ZONE_STATE_COMBAT)
+	_set_audio_room_zone(room)
 	current_director.start()
+	_set_audio_pressure()
 
 func _room_is_boss(room: RoomNode) -> bool:
 	return room != null and room.template != null and room.template.room_type == RoomTemplate.RoomType.BOSS
@@ -507,6 +514,7 @@ func _finish_boss_intro(begin_fight: bool) -> void:
 		camera.target = player
 
 func _on_director_wave_requested(_wave_index: int, requests: Array[Dictionary]) -> void:
+	call_deferred(&"_set_audio_pressure")
 	if not _run_active or _death_teardown_complete:
 		return
 	if _wave_index > 0 and inter_wave_delay > 0.0:
@@ -663,6 +671,7 @@ func _on_enemy_died(spawn_id: String) -> void:
 		else:
 			enemy.queue_free()
 	spawned_enemies.erase(spawn_id)
+	_set_audio_pressure()
 	if current_director == null:
 		# Boss-room adds are pressure only: without a RoomDirector, add deaths
 		# must never clear the boss room or advance the run.
@@ -700,6 +709,7 @@ func _on_enemy_damage_event(event: Dictionary) -> void:
 	if player_vitals == null:
 		return
 	player_vitals.apply_damage(int(event.get("damage", 0)))
+	_notify_audio_vitals()
 	_render_hud_payloads()
 
 func _on_enemy_damage_taken(_spawn_id: String, amount: float, charges_spark: bool) -> void:
@@ -713,6 +723,7 @@ func _on_director_room_cleared() -> void:
 		return
 	_clear_spawned_enemies()
 	_set_audio_zone_state(ZONE_STATE_CLEARED)
+	_set_audio_pressure()
 	if run_controller != null:
 		run_controller.notify_room_cleared()
 
@@ -894,6 +905,43 @@ func _room_clears_without_director(room: RoomNode) -> bool:
 		RoomTemplate.RoomType.REST,
 		RoomTemplate.RoomType.REWARD,
 	].has(room.template.room_type)
+
+func _set_audio_room_zone(room: RoomNode) -> void:
+	## Provisional pivot→cue-map zone table (audition-pending; handoff note).
+	var zone: StringName = &"COMBAT"
+	if room != null and room.template != null:
+		match room.template.room_type:
+			RoomTemplate.RoomType.SHOP:
+				zone = &"SHOP"
+			RoomTemplate.RoomType.REST:
+				zone = &"REST"
+			RoomTemplate.RoomType.REWARD:
+				zone = &"REST"
+	_set_audio_zone_state(zone)
+
+func _set_audio_pressure() -> void:
+	var weights := {"chaff": 0.15, "bruiser": 0.35, "elite": 0.8}
+	var total := 0.0
+	for enemy in spawned_enemies.values():
+		if enemy is GreyboxEnemy and is_instance_valid(enemy) and not enemy.is_dead():
+			total += float(weights.get(String(enemy.archetype), 0.2))
+	if current_boss != null and is_instance_valid(current_boss):
+		total += 0.9
+	var level := clampf(total, 0.0, 1.0)
+	if audio_director == null or not is_instance_valid(audio_director):
+		audio_director = get_node_or_null("/root/AudioDirector")
+	if audio_director != null and audio_director.has_method(&"set_pressure"):
+		audio_director.call(&"set_pressure", level)
+
+func _notify_audio_vitals() -> void:
+	if player_vitals == null:
+		return
+	if audio_director == null or not is_instance_valid(audio_director):
+		audio_director = get_node_or_null("/root/AudioDirector")
+	if audio_director != null and audio_director.has_method(&"notify_vitals"):
+		audio_director.call(&"notify_vitals",
+			float(player_vitals.guard), float(player_vitals.max_guard),
+			float(player_vitals.hp), float(player_vitals.max_hp))
 
 func _set_audio_zone_state(state: StringName) -> void:
 	if audio_director == null or not is_instance_valid(audio_director):
