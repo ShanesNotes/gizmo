@@ -2,6 +2,7 @@ class_name AbilityComponent
 extends Node
 
 const SurgeAbilityScript := preload("res://scripts/abilities/surge_ability.gd")
+const BUFFER_WINDOW: float = 0.12
 
 ## CharacterBody3D-attachable runtime owner for the Hades-pivot player kit.
 ## It grants abilities, spends resources, starts cooldowns, tracks cast ammo,
@@ -42,6 +43,7 @@ var _cast_ammo_lodged: int = 0
 var _cast_max_ammo_seen: int = -1
 var _dash_charges: int = -1
 var _dash_bonus_charges: int = 0
+var _buffered_attack_remaining: float = 0.0
 
 func _ready() -> void:
 	_ensure_state_machine()
@@ -87,6 +89,8 @@ func try_activate(ability_id: StringName, direction: Vector3 = Vector3.ZERO) -> 
 	var ability := _runtime_ability(base_ability, caster)
 	if _uses_cooldown(ability) and _cooldowns.has(ability.ability_id) \
 			and not _cooldown_bypassed_by_dash_charge(ability):
+		if _attack_failure_can_buffer(ability):
+			_buffer_attack()
 		ability_failed.emit(ability, "on_cooldown")
 		return false
 	if not _has_resource_for(ability):
@@ -101,6 +105,8 @@ func try_activate(ability_id: StringName, direction: Vector3 = Vector3.ZERO) -> 
 
 	var machine := _ensure_state_machine()
 	if not machine.can_start_ability(ability):
+		if _attack_failure_can_buffer(ability):
+			_buffer_attack()
 		ability_failed.emit(ability, "busy")
 		return false
 	if not ability.can_activate(caster):
@@ -110,6 +116,8 @@ func try_activate(ability_id: StringName, direction: Vector3 = Vector3.ZERO) -> 
 	if not _flare_spark_surge_charge_for(ability):
 		ability_failed.emit(ability, "spark_not_ready")
 		return false
+	if ability.kind == Ability.AbilityKind.DASH or ability.ability_id == &"attack":
+		_clear_attack_buffer()
 	_spend_resource_for(ability)
 	_consume_cast_ammo_for(ability)
 	_start_ability_effect(ability, direction)
@@ -124,10 +132,12 @@ func bind_player_vitals(vitals: PlayerVitals) -> void:
 	player_vitals = vitals
 
 func tick(delta: float) -> void:
-	_tick_state(delta)
-	_tick_cooldowns(delta)
-	_tick_iframes(delta)
-	_tick_combo(delta)
+	var safe_delta := maxf(delta, 0.0)
+	_tick_state(safe_delta)
+	_tick_cooldowns(safe_delta)
+	_tick_iframes(safe_delta)
+	_tick_combo(safe_delta)
+	_tick_attack_buffer(safe_delta)
 
 func set_resource(resource_key: StringName, amount: float) -> void:
 	_resources[resource_key] = maxf(0.0, amount)
@@ -194,6 +204,9 @@ func combo_step() -> int:
 
 func current_action_state() -> PlayerActionStateMachine.ActionState:
 	return _ensure_state_machine().current_state
+
+func has_buffered_attack() -> bool:
+	return _buffered_attack_remaining > 0.0
 
 func _runtime_ability(ability: Ability, caster: Node) -> Ability:
 	var runtime := ability.runtime_copy()
@@ -370,6 +383,74 @@ func _tick_combo(delta: float) -> void:
 	if _combo_window_remaining <= 0.0:
 		_combo_step = 0
 		combo_step_changed.emit(_combo_step)
+
+func _tick_attack_buffer(delta: float) -> void:
+	if not has_buffered_attack():
+		return
+	_buffered_attack_remaining = maxf(0.0, _buffered_attack_remaining - delta)
+	if _buffered_attack_remaining <= 0.0:
+		_clear_attack_buffer()
+		return
+	if _buffered_attack_can_fire():
+		_clear_attack_buffer()
+		try_activate(&"attack")
+		return
+	if not _attack_buffer_waiting_for_blocker():
+		_clear_attack_buffer()
+
+func _buffer_attack() -> void:
+	_buffered_attack_remaining = BUFFER_WINDOW
+
+func _clear_attack_buffer() -> void:
+	_buffered_attack_remaining = 0.0
+
+func _attack_failure_can_buffer(ability: Ability) -> bool:
+	if ability == null or ability.ability_id != &"attack":
+		return false
+	if not _has_resource_for(ability):
+		return false
+	if not _has_cast_ammo_for(ability):
+		return false
+	if not _has_spark_surge_charge_for(ability):
+		return false
+	if not ability.can_activate(get_parent()):
+		return false
+	var machine := _ensure_state_machine()
+	if machine.current_state == PlayerActionStateMachine.ActionState.ATTACK \
+			or machine.current_state == PlayerActionStateMachine.ActionState.SPECIAL:
+		return true
+	return machine.current_state == PlayerActionStateMachine.ActionState.IDLE \
+		and _uses_cooldown(ability) \
+		and _cooldowns.has(ability.ability_id)
+
+func _buffered_attack_can_fire() -> bool:
+	var base_ability := get_ability(&"attack")
+	if base_ability == null:
+		return false
+	var caster := get_parent()
+	var ability := _runtime_ability(base_ability, caster)
+	if _uses_cooldown(ability) and _cooldowns.has(ability.ability_id):
+		return false
+	if not _has_resource_for(ability):
+		return false
+	if not _has_cast_ammo_for(ability):
+		return false
+	if not _has_spark_surge_charge_for(ability):
+		return false
+	if not _ensure_state_machine().can_start_ability(ability):
+		return false
+	return ability.can_activate(caster)
+
+func _attack_buffer_waiting_for_blocker() -> bool:
+	var machine := _ensure_state_machine()
+	if machine.current_state == PlayerActionStateMachine.ActionState.ATTACK \
+			or machine.current_state == PlayerActionStateMachine.ActionState.SPECIAL:
+		return true
+	var base_ability := get_ability(&"attack")
+	if base_ability == null:
+		return false
+	var ability := _runtime_ability(base_ability, get_parent())
+	return _uses_cooldown(ability) and _cooldowns.has(ability.ability_id)
 
 func _set_iframe_remaining(duration: float) -> void:
 	var was_invulnerable := is_invulnerable()

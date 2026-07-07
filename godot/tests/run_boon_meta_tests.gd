@@ -30,10 +30,17 @@ func _initialize() -> void:
 	_test_default_pool_carries_tradeoffs_and_synergies()
 	_test_effect_lines_surface_numbers_for_every_pool_entry()
 	_test_rarity_weighted_draft_offers_unique_between_rooms()
+	_test_pity_streak_increments_and_resets()
+	_test_hard_pity_guarantees_epic_plus_offer()
+	_test_bargain_slot_forces_last_costed_rare_plus_offer()
+	_test_offer_flare_signal_only_for_epic_plus()
+	_test_reset_run_clears_pity_streak()
+	_test_default_bargain_keepsakes_validate()
 	await _test_boon_modifiers_apply_to_target_ability_kit()
 	await _test_attack_rarity_ladder_shrinks_ttk()
 	await _test_tradeoff_keepsake_pays_a_real_vitals_cost()
 	await _test_synergy_modifiers_activate_only_with_partner_slot()
+	await _test_reciprocal_synergy_pair_activates_both_sides()
 	await _test_damage_keepsakes_compound_multiplicatively()
 	await _test_cast_ammo_keepsake_grants_and_reverts()
 	await _test_vitals_keepsake_reverts_on_reset()
@@ -115,6 +122,9 @@ func _test_default_boon_pool_is_fully_tagged_with_valid_benefactors() -> void:
 		&"codex_passive": &"hearthguard",
 		&"flame_attack": &"swordbearer",
 		&"spring_special": &"swordbearer",
+		&"pattern_bargain": &"company",
+		&"counterfeit_cast": &"marksman",
+		&"borrowed_dash": &"bearer",
 		&"volley_cast": &"marksman",
 		&"company_passive": &"company",
 		&"maker_attack": &"swordbearer",
@@ -129,7 +139,7 @@ func _test_default_boon_pool_is_fully_tagged_with_valid_benefactors() -> void:
 	}
 	var seen: Dictionary = {}
 
-	_check_eq("default boon pool keeps sixteen keepsakes", pool.size(), 16)
+	_check_eq("default boon pool keeps nineteen keepsakes", pool.size(), 19)
 	for boon in pool:
 		seen[boon.boon_id] = boon.benefactor
 		_check("%s has a benefactor role-id" % boon.boon_id, boon.benefactor != &"")
@@ -230,6 +240,114 @@ func _test_rarity_weighted_draft_offers_unique_between_rooms() -> void:
 	]
 	var replacement_offers := draft.roll_offer(occupied_slot_pool, 2, _make_rng(21), [&"old_special_slot"])
 	_check_eq("occupied-slot replacement boon remains eligible", _boon_ids(replacement_offers), [&"new_special_slot"])
+
+func _test_pity_streak_increments_and_resets() -> void:
+	var draft: BoonDraft = BoonDraft.new()
+	var dry_pool: Array[BoonDef] = [
+		_make_boon(&"dry_common", BoonDef.Rarity.COMMON),
+		_make_boon(&"dry_rare", BoonDef.Rarity.RARE),
+	]
+	var first_dry := draft.roll_offer(dry_pool, 2, _make_rng(101))
+	_check_eq("dry offer produces two keepsakes", first_dry.size(), 2)
+	_check_eq("pity streak increments after no epic+ offer", draft.pity_streak, 1)
+
+	draft.roll_offer(dry_pool, 1, _make_rng(102))
+	_check_eq("pity streak keeps counting consecutive dry offers", draft.pity_streak, 2)
+
+	var epic_pool: Array[BoonDef] = [_make_boon(&"pity_reset_epic", BoonDef.Rarity.EPIC)]
+	var epic_offer := draft.roll_offer(epic_pool, 1, _make_rng(103))
+	_check("epic+ offer is produced for pity reset", not epic_offer.is_empty() and epic_offer[0].rarity >= BoonDef.Rarity.EPIC)
+	_check_eq("pity streak resets after an epic+ offer", draft.pity_streak, 0)
+
+func _test_hard_pity_guarantees_epic_plus_offer() -> void:
+	var draft: BoonDraft = BoonDraft.new()
+	draft.pity_streak = 3
+	var pool: Array[BoonDef] = [
+		_make_boon(&"common_a", BoonDef.Rarity.COMMON),
+		_make_boon(&"common_b", BoonDef.Rarity.COMMON),
+		_make_boon(&"common_c", BoonDef.Rarity.COMMON),
+		_make_boon(&"hard_pity_epic", BoonDef.Rarity.EPIC),
+	]
+
+	var offers := draft.roll_offer(pool, 3, _make_rng(1))
+	_check_eq("hard pity still offers requested count", offers.size(), 3)
+	_check("hard pity places an epic+ in the first slot", offers[0].rarity >= BoonDef.Rarity.EPIC)
+	_check("hard pity offer contains the eligible epic", _boon_ids(offers).has(&"hard_pity_epic"))
+	_check_eq("hard pity resets after landing epic+", draft.pity_streak, 0)
+
+func _make_bargain_test_pool() -> Array[BoonDef]:
+	var pool: Array[BoonDef] = []
+	pool.append(_make_boon(&"plain_common_a", BoonDef.Rarity.COMMON))
+	pool.append(_make_boon(&"plain_common_b", BoonDef.Rarity.COMMON))
+	pool.append(_make_boon(&"plain_rare", BoonDef.Rarity.RARE))
+	pool.append(_make_boon(&"plain_epic", BoonDef.Rarity.EPIC))
+	var cost_rare := _make_boon(&"cost_rare", BoonDef.Rarity.RARE)
+	cost_rare.max_guard_delta = -1
+	pool.append(cost_rare)
+	return pool
+
+func _costed_rare_plus_count(offers: Array[BoonDef]) -> int:
+	var count := 0
+	for boon in offers:
+		if boon != null and boon.rarity >= BoonDef.Rarity.RARE and boon.has_cost():
+			count += 1
+	return count
+
+func _test_bargain_slot_forces_last_costed_rare_plus_offer() -> void:
+	var triggering_draft: BoonDraft = BoonDraft.new()
+	var triggered_bargains: Array[StringName] = []
+	triggering_draft.bargain_offered.connect(func(boon: BoonDef) -> void:
+		triggered_bargains.append(boon.boon_id)
+	)
+	var triggered_offers := triggering_draft.roll_offer(_make_bargain_test_pool(), 3, _make_rng(13))
+	_check_eq("bargain-trigger seed pins offer ids", _boon_ids(triggered_offers), [&"plain_common_b", &"plain_common_a", &"cost_rare"])
+	_check_eq("bargain trigger emits exactly one signal", triggered_bargains, [&"cost_rare"])
+	_check_eq("bargain trigger keeps exactly one costed rare+ offer", _costed_rare_plus_count(triggered_offers), 1)
+	_check(
+		"bargain trigger forces the costed rare+ offer into the last slot",
+		triggered_offers[triggered_offers.size() - 1].boon_id == &"cost_rare"
+	)
+
+	var quiet_draft: BoonDraft = BoonDraft.new()
+	var quiet_bargains: Array[StringName] = []
+	quiet_draft.bargain_offered.connect(func(boon: BoonDef) -> void:
+		quiet_bargains.append(boon.boon_id)
+	)
+	var quiet_offers := quiet_draft.roll_offer(_make_bargain_test_pool(), 3, _make_rng(1))
+	_check_eq("non-trigger seed pins new roller ids after trigger roll", _boon_ids(quiet_offers), [&"plain_common_a", &"plain_rare", &"cost_rare"])
+	_check_eq("non-trigger seed does not emit bargain signal", quiet_bargains, [])
+
+func _test_offer_flare_signal_only_for_epic_plus() -> void:
+	var graph := _make_between_room_graph()
+	var rare_draft: BoonDraft = BoonDraft.new()
+	var rare_events: Array[String] = []
+	rare_draft.draft_offered.connect(func(_room, _next_ids, _offers) -> void:
+		rare_events.append("draft")
+	)
+	rare_draft.offer_flare.connect(func(best_rarity: int) -> void:
+		rare_events.append("flare:%d" % best_rarity)
+	)
+	var rare_pool: Array[BoonDef] = [_make_boon(&"rare_only", BoonDef.Rarity.RARE)]
+	rare_draft.offer_between_rooms(graph, "room_00", rare_pool, _make_rng(31), 1)
+	_check_eq("rare-best offer does not emit flare", rare_events, ["draft"])
+
+	var epic_draft: BoonDraft = BoonDraft.new()
+	var epic_events: Array[String] = []
+	epic_draft.draft_offered.connect(func(_room, _next_ids, _offers) -> void:
+		epic_events.append("draft")
+	)
+	epic_draft.offer_flare.connect(func(best_rarity: int) -> void:
+		epic_events.append("flare:%d" % best_rarity)
+	)
+	var epic_pool: Array[BoonDef] = [_make_boon(&"epic_only", BoonDef.Rarity.EPIC)]
+	epic_draft.offer_between_rooms(graph, "room_00", epic_pool, _make_rng(32), 1)
+	_check_eq("epic-best offer emits flare right after draft", epic_events, ["draft", "flare:%d" % BoonDef.Rarity.EPIC])
+
+func _test_reset_run_clears_pity_streak() -> void:
+	var draft: BoonDraft = BoonDraft.new()
+	draft.pity_streak = 3
+	draft.reset_run()
+	_check_eq("reset_run clears pity streak", draft.pity_streak, 0)
 
 func _new_ability_kit() -> Dictionary:
 	var body := CharacterBody3D.new()
@@ -357,6 +475,39 @@ func _test_effect_lines_surface_numbers_for_every_pool_entry() -> void:
 			_check("%s trade-off surfaces its cost line" % boon.boon_id, not boon.cost_lines().is_empty())
 	orchestrator.free()
 
+func _test_default_bargain_keepsakes_validate() -> void:
+	var bundle := _default_pool_with_orchestrator()
+	var orchestrator: RunOrchestrator = bundle[0]
+	var pool: Array[BoonDef] = bundle[1]
+	var bargain_ids: Array[StringName] = [&"pattern_bargain", &"counterfeit_cast", &"borrowed_dash"]
+	for boon_id in bargain_ids:
+		var boon := _pool_boon(pool, boon_id)
+		_check("%s exists in default bargain pool" % boon_id, boon != null)
+		if boon == null:
+			continue
+		_check("%s benefactor role-id validates" % boon_id, boon.validate_benefactor())
+		_check("%s uses a valid benefactor role-id" % boon_id, BoonDef.VALID_BENEFACTOR_IDS.has(boon.benefactor))
+		_check("%s is recognized as a costed keepsake" % boon_id, boon.has_cost())
+		_check("%s surfaces effect lines" % boon_id, not boon.effect_lines().is_empty())
+		_check("%s surfaces cost lines" % boon_id, not boon.cost_lines().is_empty())
+
+	var pattern := _pool_boon(pool, &"pattern_bargain")
+	if pattern != null:
+		_check_eq("Pattern bargain is legendary passive", [pattern.rarity, pattern.slot], [BoonDef.Rarity.LEGENDARY, BoonDef.Slot.PASSIVE])
+		_check_eq("Pattern bargain trims max guard by three", pattern.max_guard_delta, -3)
+		_check_eq("Pattern bargain carries two damage modifiers", pattern.ability_modifiers.size(), 2)
+
+	var cast_bargain := _pool_boon(pool, &"counterfeit_cast")
+	if cast_bargain != null:
+		_check_eq("cast bargain grants two shards", cast_bargain.bonus_cast_ammo, 2)
+		_check("cast bargain delays guard recharge", cast_bargain.guard_recharge_delay_multiplier > 1.0)
+
+	var dash_bargain := _pool_boon(pool, &"borrowed_dash")
+	if dash_bargain != null:
+		_check("dash bargain slows surge charge", dash_bargain.surge_charge_rate_multiplier < 1.0)
+		_check("dash bargain has one dash modifier", dash_bargain.ability_modifiers.size() == 1)
+	orchestrator.free()
+
 func _attack_damage_with_boon(kit: AbilityComponent, draft: BoonDraft, boon: BoonDef) -> float:
 	if boon != null:
 		draft.accept_boon(boon, kit)
@@ -367,6 +518,16 @@ func _attack_damage_with_boon(kit: AbilityComponent, draft: BoonDraft, boon: Boo
 	kit.try_activate(&"attack")
 	kit.attack_started.disconnect(handler)
 	draft.reset_run()
+	return damages[0] if not damages.is_empty() else -1.0
+
+func _current_attack_damage(kit: AbilityComponent) -> float:
+	var damages: Array[float] = []
+	var handler := func(_step: int, damage: float) -> void:
+		damages.append(damage)
+	kit.attack_started.connect(handler)
+	kit.try_activate(&"attack")
+	kit.attack_started.disconnect(handler)
+	kit.tick(5.0)
 	return damages[0] if not damages.is_empty() else -1.0
 
 ## Red-first probe for Shane's "number go up": the attack-slot rarity ladder must
@@ -484,6 +645,50 @@ func _test_synergy_modifiers_activate_only_with_partner_slot() -> void:
 	_check(
 		"attack-slot partner wakes the synergy block (%.1f > %.1f)" % [paired_cast, solo_cast],
 		paired_cast > solo_cast + 0.001
+	)
+	draft.reset_run()
+	orchestrator.free()
+	await _cleanup(body)
+
+func _test_reciprocal_synergy_pair_activates_both_sides() -> void:
+	var bundle := _default_pool_with_orchestrator()
+	var orchestrator: RunOrchestrator = bundle[0]
+	var pool: Array[BoonDef] = bundle[1]
+	var harness := await _new_ability_kit()
+	var body: Node = harness["body"]
+	var kit: AbilityComponent = harness["kit"]
+	var draft: BoonDraft = BoonDraft.new()
+
+	var ember := _pool_boon(pool, &"ember_attack")
+	var volley := _pool_boon(pool, &"volley_cast")
+	var gear := _pool_boon(pool, &"gear_dash")
+	_check("reciprocal probe finds ember_attack", ember != null)
+	_check("reciprocal probe finds volley_cast", volley != null)
+	_check("gear_dash mirrors company_passive through passive slot", gear != null and gear.synergy_with_slot == BoonDef.Slot.PASSIVE)
+	if ember == null or volley == null:
+		orchestrator.free()
+		await _cleanup(body)
+		return
+	_check_eq("ember_attack listens for cast keepsake", ember.synergy_with_slot, BoonDef.Slot.CAST)
+	_check_eq("volley_cast listens for attack keepsake", volley.synergy_with_slot, BoonDef.Slot.ATTACK)
+
+	var base_attack := _current_attack_damage(kit)
+	var base_cast := _cast_potency(kit)
+	draft.accept_boon(ember, kit)
+	draft.accept_boon(volley, kit)
+	_check("ember synergy is active with volley held", draft.synergy_active_for(ember))
+	_check("volley synergy is active with ember held", draft.synergy_active_for(volley))
+	_check_eq("reciprocal pair installs base plus both synergy modifiers", kit.ability_modifiers.size(), 4)
+
+	var paired_attack := _current_attack_damage(kit)
+	var paired_cast := _cast_potency(kit)
+	_check(
+		"ember attack damage includes its base and cast-partner synergy",
+		absf(paired_attack - base_attack * 1.20 * 1.20) <= 0.01
+	)
+	_check(
+		"volley cast damage includes its base and attack-partner synergy",
+		absf(paired_cast - base_cast * 1.15 * 1.30) <= 0.01
 	)
 	draft.reset_run()
 	orchestrator.free()

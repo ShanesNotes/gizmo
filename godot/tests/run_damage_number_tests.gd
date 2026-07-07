@@ -99,6 +99,10 @@ func _test_pool_cap_drops_overflow() -> void:
 		_pop(fx, Vector3(float(i), 0.0, 2.0), 1.0)
 	_check_eq("sixty rapid pops never allocate past pool cap", _total_count(fx), 48)
 	_check_eq("overflow pops are dropped while cap labels remain active", _in_use_count(fx), 48)
+	# Perf gate (HZ-107B stretch): the scene tree itself stays bounded — the pool
+	# cap must hold at the tree level, not just in the pool's own ledger.
+	var tree_nodes := PerfProbe.count_nodes(fx)
+	_check("pop flood keeps the fx subtree at or under cap + host (got %d)" % tree_nodes, tree_nodes <= 49)
 	await _cleanup(fx)
 
 func _test_merge_window_sums_same_origin() -> void:
