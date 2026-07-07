@@ -125,23 +125,22 @@ func render_spark(charge: float, charge_max: float) -> void:
 const REGION_TOAST_HOLD_SECONDS := 2.2
 const REGION_TOAST_FADE_SECONDS := 0.6
 
-var _region_toast_panel: PanelContainer = null
-var _region_toast_label: Label = null
+var _region_toast: Label = null
 var _region_toast_tween: Tween = null
 
 func render_region_toast(text: String) -> void:
 	if text.strip_edges() == "":
 		return
-	if _region_toast_panel == null or not is_instance_valid(_region_toast_panel):
+	if _region_toast == null or not is_instance_valid(_region_toast):
 		_build_region_toast()
 	if _region_toast_tween != null and _region_toast_tween.is_valid():
 		_region_toast_tween.kill()
-	_region_toast_label.text = text
-	_region_toast_panel.modulate = Color(1.0, 1.0, 1.0, 1.0)
-	_region_toast_panel.visible = true
-	_region_toast_tween = _region_toast_panel.create_tween()
+	_region_toast.text = text
+	_region_toast.modulate = Color(1.0, 1.0, 1.0, 1.0)
+	_region_toast.visible = true
+	_region_toast_tween = _region_toast.create_tween()
 	_region_toast_tween.tween_interval(REGION_TOAST_HOLD_SECONDS)
-	_region_toast_tween.tween_property(_region_toast_panel, "modulate:a", 0.0, REGION_TOAST_FADE_SECONDS)
+	_region_toast_tween.tween_property(_region_toast, "modulate:a", 0.0, REGION_TOAST_FADE_SECONDS)
 
 
 ## Payload-driven boon loadout rows (HZ-052). Controller passes picked boons when the
@@ -383,33 +382,35 @@ func _spark_lit_count(charge: float, charge_max: float) -> int:
 
 
 func _build_region_toast() -> void:
-	_region_toast_panel = PanelContainer.new()
-	_region_toast_panel.name = "RegionToast"
-	_region_toast_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_region_toast_panel.add_theme_stylebox_override("panel", _make_parchment_stylebox())
-	_root.add_child(_region_toast_panel)
-	_region_toast_panel.set_anchors_preset(Control.PRESET_CENTER_TOP)
-	_region_toast_panel.offset_left = -280.0
-	_region_toast_panel.offset_top = 38.0
-	_region_toast_panel.offset_right = 280.0
-	_region_toast_panel.offset_bottom = 92.0
+	# A single Label styled as a parchment caption-bar: the orchestrator
+	# contract wants a Label named "RegionToast" as a direct HUD child,
+	# so the parchment panel lives in the label's own stylebox.
+	_region_toast = Label.new()
+	_region_toast.name = "RegionToast"
+	_region_toast.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_region_toast.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_region_toast.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_region_toast.add_theme_stylebox_override("normal", _make_region_toast_stylebox())
+	_region_toast.add_theme_font_size_override("font_size", 30)
+	_region_toast.add_theme_color_override("font_color", PARCHMENT_INK)
+	_region_toast.add_theme_color_override("font_outline_color", Color(0.8784, 0.7569, 0.4784, 0.5))
+	_region_toast.add_theme_constant_override("outline_size", 1)
+	add_child(_region_toast)
+	_region_toast.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	_region_toast.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_region_toast.offset_left = -280.0
+	_region_toast.offset_top = 38.0
+	_region_toast.offset_right = 280.0
+	_region_toast.offset_bottom = 92.0
 
-	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 18)
-	margin.add_theme_constant_override("margin_top", 8)
-	margin.add_theme_constant_override("margin_right", 18)
-	margin.add_theme_constant_override("margin_bottom", 8)
-	_region_toast_panel.add_child(margin)
 
-	_region_toast_label = Label.new()
-	_region_toast_label.name = "RegionToastLabel"
-	_region_toast_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_region_toast_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_region_toast_label.add_theme_font_size_override("font_size", 30)
-	_region_toast_label.add_theme_color_override("font_color", PARCHMENT_INK)
-	_region_toast_label.add_theme_color_override("font_outline_color", Color(0.8784, 0.7569, 0.4784, 0.5))
-	_region_toast_label.add_theme_constant_override("outline_size", 1)
-	margin.add_child(_region_toast_label)
+func _make_region_toast_stylebox() -> StyleBoxFlat:
+	var style := _make_parchment_stylebox()
+	style.content_margin_left = 18
+	style.content_margin_right = 18
+	style.content_margin_top = 8
+	style.content_margin_bottom = 8
+	return style
 
 
 func _make_spark_pip_style(lit: bool) -> StyleBoxFlat:
