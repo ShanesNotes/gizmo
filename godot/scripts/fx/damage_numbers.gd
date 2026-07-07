@@ -11,6 +11,7 @@ const MERGE_RADIUS_XZ := 0.6
 const NORMAL_FONT_SIZE := 64
 const BOOSTED_FONT_SIZE := 84
 const CRIT_FONT_SIZE := 110
+const SHIELDED_FONT_SIZE := 54
 const NORMAL_SECONDS := CombatEffectsScript.DAMAGE_NUMBER_SECONDS
 const CRIT_SECONDS := 0.72
 const NORMAL_RISE := CombatEffectsScript.DAMAGE_NUMBER_RISE
@@ -20,6 +21,7 @@ const TIER_NORMAL := 0
 const TIER_BOOSTED := 1
 const TIER_CRIT := 2
 const TIER_PLAYER_HIT := 3
+const TIER_SHIELDED := 4
 
 var _pool: NodePool = null
 var _active_labels: Dictionary = {}
@@ -39,7 +41,7 @@ func pop(origin: Vector3, amount: float, opts: Dictionary = {}) -> void:
 		return
 	_flush_expired_merges()
 	var tier := _tier_for_opts(opts)
-	var merge_key := _find_merge_key(origin)
+	var merge_key := _find_merge_key(origin, tier)
 	if merge_key != "":
 		_merge_into_label(merge_key, origin, amount, tier)
 		return
@@ -94,7 +96,12 @@ func _merge_into_label(key: String, origin: Vector3, amount: float, tier: int) -
 	var label := record.get("label") as Label3D
 	if label == null or not is_instance_valid(label):
 		_merge_records.erase(key)
-		pop(origin, amount, {"crit": tier == TIER_CRIT, "boosted": tier == TIER_BOOSTED, "player_hit": tier == TIER_PLAYER_HIT})
+		pop(origin, amount, {
+			"crit": tier == TIER_CRIT,
+			"boosted": tier == TIER_BOOSTED,
+			"player_hit": tier == TIER_PLAYER_HIT,
+			"shielded": tier == TIER_SHIELDED,
+		})
 		return
 
 	var merged_amount := float(record.get("amount", 0.0)) + amount
@@ -112,7 +119,7 @@ func _merge_into_label(key: String, origin: Vector3, amount: float, tier: int) -
 	_schedule_merge_expiry(key, _merge_token)
 	_start_motion(label, label.global_position, merged_tier)
 
-func _find_merge_key(origin: Vector3) -> String:
+func _find_merge_key(origin: Vector3, tier: int) -> String:
 	var cell := _quantize_origin(origin)
 	var now := _now_msec()
 	for x_offset in range(-1, 2):
@@ -128,10 +135,15 @@ func _find_merge_key(origin: Vector3) -> String:
 			if label == null or not is_instance_valid(label):
 				_merge_records.erase(key)
 				continue
+			if not _can_merge_tiers(int(record.get("tier", TIER_NORMAL)), tier):
+				continue
 			var record_origin: Vector3 = record.get("origin", origin)
 			if _xz_distance(record_origin, origin) <= MERGE_RADIUS_XZ:
 				return key
 	return ""
+
+func _can_merge_tiers(a: int, b: int) -> bool:
+	return (a == TIER_SHIELDED) == (b == TIER_SHIELDED)
 
 func _flush_expired_merges() -> void:
 	var now := _now_msec()
@@ -225,6 +237,8 @@ func _apply_tier(label: Label3D, tier: int) -> void:
 	label.outline_modulate = Color(0.08, 0.05, 0.02, 0.9)
 
 func _tier_for_opts(opts: Dictionary) -> int:
+	if bool(opts.get("shielded", false)):
+		return TIER_SHIELDED
 	if bool(opts.get("player_hit", false)):
 		return TIER_PLAYER_HIT
 	if bool(opts.get("crit", false)):
@@ -235,6 +249,8 @@ func _tier_for_opts(opts: Dictionary) -> int:
 
 func _font_size_for_tier(tier: int) -> int:
 	match tier:
+		TIER_SHIELDED:
+			return SHIELDED_FONT_SIZE
 		TIER_CRIT:
 			return CRIT_FONT_SIZE
 		TIER_BOOSTED:
@@ -244,6 +260,8 @@ func _font_size_for_tier(tier: int) -> int:
 
 func _color_for_tier(tier: int) -> Color:
 	match tier:
+		TIER_SHIELDED:
+			return CombatEffectsScript.SHIELDED_NUMBER_COLOR
 		TIER_PLAYER_HIT:
 			return CombatEffectsScript.PLAYER_HIT_NUMBER_COLOR
 		TIER_CRIT:

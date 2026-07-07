@@ -9,6 +9,12 @@ const ATTACK_AUDIT_SWEEP := "audit_sweep"
 const ATTACK_COMPLIANCE_RING := "compliance_ring"
 const ATTACK_OVERREACH_SLAM := "overreach_slam"
 const ATTACK_DECOY_PING := "decoy_ping"
+const ATTACK_PROTOCOL_QUARANTINE := "protocol_quarantine"
+
+const QUADRANT_NORTH_WEST := "north_west"
+const QUADRANT_NORTH_EAST := "north_east"
+const QUADRANT_SOUTH_WEST := "south_west"
+const QUADRANT_SOUTH_EAST := "south_east"
 
 const PHASE_TWO_THRESHOLD := 0.75
 const PHASE_THREE_THRESHOLD := 0.50
@@ -70,6 +76,7 @@ func unlocked_attack_ids() -> Array[String]:
 		ids.append(ATTACK_OVERREACH_SLAM)
 	if _phase >= 3:
 		ids.append(ATTACK_DECOY_PING)
+		ids.append(ATTACK_PROTOCOL_QUARANTINE)
 	return ids
 
 func attack_definition(attack_id: String) -> Dictionary:
@@ -180,6 +187,7 @@ func _spawn_request(archetype: String, count: int, prefix: String) -> Dictionary
 		"archetype": archetype,
 		"count": count,
 		"spawn_ids": spawn_ids,
+		"affix": "",
 	}
 
 func _base_attack_definition(attack_id: String) -> Dictionary:
@@ -235,8 +243,72 @@ func _base_attack_definition(attack_id: String) -> Dictionary:
 				"decoy_count": 3,
 				"real_index": 1,
 			}
+		ATTACK_PROTOCOL_QUARANTINE:
+			return {
+				"id": ATTACK_PROTOCOL_QUARANTINE,
+				"display_name": "PROTOCOL: QUARANTINE",
+				"shape": "quarantine",
+				"telegraph_seconds": 1.1,
+				"recovery_seconds": 0.45,
+				"cooldown_seconds": 8.0,
+				"damage": 1,
+				"weight": 0.7,
+				"wall_seconds": 6.0,
+				"tick_seconds": 0.75,
+				"boundary_distance": 0.8,
+				"line_width": 0.8,
+			}
 		_:
 			return {}
+
+static func quarantine_layout_for_player(
+	player_position: Vector3,
+	arena_center: Vector3,
+	half_extents: Vector2
+) -> Dictionary:
+	var safe_half := Vector2(maxf(absf(half_extents.x), 0.001), maxf(absf(half_extents.y), 0.001))
+	var east := player_position.x >= arena_center.x
+	var south := player_position.z >= arena_center.z
+	var quadrant_id := ""
+	if south:
+		quadrant_id = QUADRANT_SOUTH_EAST if east else QUADRANT_SOUTH_WEST
+	else:
+		quadrant_id = QUADRANT_NORTH_EAST if east else QUADRANT_NORTH_WEST
+
+	var min_x := arena_center.x - safe_half.x
+	var max_x := arena_center.x + safe_half.x
+	var min_z := arena_center.z - safe_half.y
+	var max_z := arena_center.z + safe_half.y
+	var vertical_end_z := max_z if south else min_z
+	var horizontal_end_x := max_x if east else min_x
+	var center := Vector3(arena_center.x, arena_center.y, arena_center.z)
+	var segments: Array[Dictionary] = [
+		{
+			"from": center,
+			"to": Vector3(arena_center.x, arena_center.y, vertical_end_z),
+		},
+		{
+			"from": center,
+			"to": Vector3(horizontal_end_x, arena_center.y, arena_center.z),
+		},
+	]
+	return {
+		"quadrant_id": quadrant_id,
+		"segments": segments,
+		"center": center,
+		"half_extents": safe_half,
+	}
+
+static func point_distance_to_segment_xz(point: Vector3, a: Vector3, b: Vector3) -> float:
+	var p := Vector2(point.x, point.z)
+	var start := Vector2(a.x, a.z)
+	var end := Vector2(b.x, b.z)
+	var segment := end - start
+	var length_sq := segment.length_squared()
+	if length_sq <= 0.000001:
+		return p.distance_to(start)
+	var t := clampf((p - start).dot(segment) / length_sq, 0.0, 1.0)
+	return p.distance_to(start + segment * t)
 
 func _pick_attack() -> Dictionary:
 	var unlocked := unlocked_attack_ids()
