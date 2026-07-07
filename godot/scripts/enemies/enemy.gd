@@ -9,6 +9,13 @@ const EnemyArchetypesScript := preload("res://scripts/enemies/enemy_archetypes.g
 const CombatEffectsScript := preload("res://scripts/room_graph/combat_effects.gd")
 const EnemyBrainScript := preload("res://scripts/enemies/enemy_brain.gd")
 
+const SHIELDED_OVERSHIELD_FRACTION := 0.35
+const FRENZIED_SPEED_MULTIPLIER := 1.4
+const FRENZIED_WINDUP_MULTIPLIER := 0.75
+const FRENZIED_HP_MULTIPLIER := 0.8
+const WARDED_RADIUS_METERS := 6.0
+const WARDED_DAMAGE_MULTIPLIER := 0.5
+
 @export var archetype: String = EnemyArchetypesScript.ARCHETYPE_CHAFF
 @export var spawn_id: String = ""
 @export_range(0.0, 5.0, 0.05) var spawn_windup: float = 0.8
@@ -18,6 +25,9 @@ const EnemyBrainScript := preload("res://scripts/enemies/enemy_brain.gd")
 
 var max_hp: float = 0.0
 var hp: float = 0.0
+var affix: StringName = EnemyArchetypesScript.AFFIX_NONE
+var max_overshield: float = 0.0
+var overshield: float = 0.0
 var move_speed: float = 0.0
 var contact_radius: float = 1.0
 var attack_release_radius: float = 1.25
@@ -33,6 +43,7 @@ var _current_stats: Dictionary = {}
 var _spawn_windup_remaining: float = 0.0
 
 func _enter_tree() -> void:
+	add_to_group(&"enemies")
 	set_physics_process(true)
 
 func _exit_tree() -> void:
@@ -69,11 +80,17 @@ func _physics_process(delta: float) -> void:
 	_face_direction(Vector3(result["direction"]), delta)
 
 func configure(p_archetype: String, p_spawn_id: String) -> void:
-	_current_stats = EnemyArchetypesScript.stats_for(p_archetype)
+	configure_from_stats(EnemyArchetypesScript.stats_for(p_archetype), p_spawn_id)
+
+func configure_from_stats(stats: Dictionary, p_spawn_id: String) -> void:
+	_current_stats = _stats_with_affix_deltas(stats)
 	archetype = String(_current_stats["archetype"])
 	spawn_id = String(p_spawn_id)
 	max_hp = float(_current_stats["max_hp"])
 	hp = max_hp
+	affix = EnemyArchetypesScript.normalize_affix(StringName(String(_current_stats.get("affix", ""))))
+	max_overshield = max_hp * SHIELDED_OVERSHIELD_FRACTION if affix == EnemyArchetypesScript.AFFIX_SHIELDED else 0.0
+	overshield = max_overshield
 	move_speed = float(_current_stats["move_speed"])
 	contact_radius = float(_current_stats["contact_radius"])
 	attack_release_radius = float(_current_stats["attack_release_radius"])
@@ -98,6 +115,8 @@ func clear_chase_target() -> void:
 	brain.reset_attack()
 
 func stagger(duration: float) -> void:
+	if affix == EnemyArchetypesScript.AFFIX_SHIELDED and overshield > 0.0:
+		return
 	brain.stagger(duration)
 	velocity = Vector3.ZERO
 	CombatEffectsScript.apply_stagger_read(self, visual_pivot, duration)
@@ -157,8 +176,27 @@ func take_damage(amount: float, charges_spark: bool = true, opts: Dictionary = {
 	if _dead or amount <= 0.0:
 		return hp
 
+	var incoming := _modified_incoming_damage(amount)
+	if incoming <= 0.0:
+		return hp
+	var hp_damage := incoming
+	if overshield > 0.0:
+		var absorbed := minf(overshield, hp_damage)
+		overshield = maxf(0.0, overshield - absorbed)
+		hp_damage -= absorbed
+		if absorbed > 0.0:
+			_spawn_damage_pop(
+				global_position + Vector3(0.0, 2.15, 0.0),
+				absorbed,
+				_shielded_pop_opts(opts)
+			)
+		if overshield <= 0.00001:
+			_break_overshield()
+		if hp_damage <= 0.00001:
+			return hp
+
 	var before := hp
-	hp = maxf(0.0, hp - amount)
+	hp = maxf(0.0, hp - hp_damage)
 	var applied := before - hp
 	if applied > 0.0:
 		damage_taken.emit(spawn_id, applied, charges_spark)
@@ -196,6 +234,61 @@ func _apply_visuals() -> void:
 		return
 	var visual_scale := float(_current_stats.get("visual_scale", 1.0))
 	visual_pivot.scale = Vector3.ONE * visual_scale
+	_set_visual_affix(affix)
+
+func _stats_with_affix_deltas(stats: Dictionary) -> Dictionary:
+	var result := stats.duplicate(true)
+	var normalized_archetype := EnemyArchetypesScript.normalize_archetype(String(result.get("archetype", archetype)))
+	result["archetype"] = normalized_archetype
+	var normalized_affix := EnemyArchetypesScript.normalize_affix(StringName(String(result.get("affix", ""))))
+	if normalized_archetype != EnemyArchetypesScript.ARCHETYPE_ELITE:
+		normalized_affix = EnemyArchetypesScript.AFFIX_NONE
+	result["affix"] = String(normalized_affix)
+	match normalized_affix:
+		EnemyArchetypesScript.AFFIX_FRENZIED:
+			result["max_hp"] = float(result.get("max_hp", 0.0)) * FRENZIED_HP_MULTIPLIER
+			result["move_speed"] = float(result.get("move_speed", 0.0)) * FRENZIED_SPEED_MULTIPLIER
+			result["attack_windup"] = float(result.get("attack_windup", 0.0)) * FRENZIED_WINDUP_MULTIPLIER
+		_:
+			pass
+	return result
+
+func _modified_incoming_damage(amount: float) -> float:
+	var incoming := amount
+	if affix == EnemyArchetypesScript.AFFIX_WARDED and _has_living_ward_neighbor():
+		incoming *= WARDED_DAMAGE_MULTIPLIER
+	return incoming
+
+func _has_living_ward_neighbor() -> bool:
+	if not is_inside_tree():
+		return false
+	for candidate in get_tree().get_nodes_in_group(&"enemies"):
+		if candidate == self:
+			continue
+		if not (candidate is GreyboxEnemy):
+			continue
+		var enemy := candidate as GreyboxEnemy
+		if not is_instance_valid(enemy) or enemy.is_dead():
+			continue
+		if _xz_distance(global_position, enemy.global_position) <= WARDED_RADIUS_METERS:
+			return true
+	return false
+
+func _break_overshield() -> void:
+	overshield = 0.0
+	max_overshield = 0.0
+	_set_visual_affix(EnemyArchetypesScript.AFFIX_NONE)
+	CombatEffectsScript.spawn_surge_shockwave(get_parent(), global_position, 1.2)
+	_notify_audio_event(&"elite_shield_break")
+
+func _shielded_pop_opts(opts: Dictionary) -> Dictionary:
+	var shield_opts := opts.duplicate(true)
+	shield_opts["shielded"] = true
+	return shield_opts
+
+func _set_visual_affix(affix_id: StringName) -> void:
+	if visual_pivot != null and visual_pivot.has_method(&"apply_affix_visual"):
+		visual_pivot.call(&"apply_affix_visual", affix_id)
 
 func _face_direction(direction: Vector3, delta: float) -> void:
 	if visual_pivot == null:
@@ -230,6 +323,8 @@ func _spawn_damage_pop(origin: Vector3, amount: float, opts: Dictionary = {}) ->
 	)
 
 func _damage_pop_fallback_color(opts: Dictionary) -> Color:
+	if bool(opts.get("shielded", false)):
+		return CombatEffectsScript.SHIELDED_NUMBER_COLOR
 	if bool(opts.get("player_hit", false)):
 		return CombatEffectsScript.PLAYER_HIT_NUMBER_COLOR
 	if bool(opts.get("crit", false)):
@@ -237,6 +332,9 @@ func _damage_pop_fallback_color(opts: Dictionary) -> Color:
 	if bool(opts.get("boosted", false)):
 		return CombatEffectsScript.FX_IDENTITY_RIM
 	return CombatEffectsScript.DAMAGE_NUMBER_COLOR
+
+func _xz_distance(a: Vector3, b: Vector3) -> float:
+	return Vector2(a.x, a.z).distance_to(Vector2(b.x, b.z))
 
 func _notify_audio_event(event: StringName) -> void:
 	if not is_inside_tree():

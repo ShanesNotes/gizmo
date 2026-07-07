@@ -8,6 +8,7 @@ const BossBrainScript := preload("res://scripts/room_graph/boss_brain.gd")
 const TelegraphMarkerScript := preload("res://scripts/room_graph/telegraph_marker.gd")
 const CustodianBossScript := preload("res://scripts/room_graph/custodian_boss.gd")
 const RoomDirectorScript := preload("res://scripts/room_graph/room_director.gd")
+const PlayerVitalsScript := preload("res://scripts/player/player_vitals.gd")
 const BossArenaScene := preload("res://scenes/rooms/boss_arena.tscn")
 
 const BOSS_HP := 2400.0
@@ -22,11 +23,15 @@ func _initialize() -> void:
 
 func _run_tests() -> void:
 	_test_telegraph_marker_lifecycle_and_shapes()
+	_test_quarantine_quadrant_helper_pure_math()
 	_test_boss_brain_phase_ladder_unlocks_and_add_waves_once()
+	_test_boss_brain_quarantine_phase_three_rotation()
 	_test_boss_brain_attack_roster_timing_and_damage_contract()
 	_test_boss_brain_seeded_selection_is_no_repeat_with_cooldowns()
 	_test_boss_brain_windup_commit_recovery_lifecycle()
 	_test_boss_brain_single_large_hit_emits_skipped_thresholds_in_order()
+	await _test_protocol_quarantine_ticks_adds_lifts_and_cleans()
+	await _test_protocol_quarantine_lifts_on_boss_death()
 	await _test_custodian_surge_interrupts_windup_and_clears_markers()
 	await _test_custodian_live_dps_ttk_crosses_all_phases()
 	await _test_custodian_contact_suppression_and_ledger_invariants()
@@ -109,6 +114,37 @@ func _test_telegraph_marker_lifecycle_and_shapes() -> void:
 	_check("line marker queues itself for cleanup on explicit commit", line_marker.is_queued_for_deletion())
 	line_marker.queue_free()
 
+func _test_quarantine_quadrant_helper_pure_math() -> void:
+	var center := Vector3.ZERO
+	var extents := Vector2(10.0, 8.0)
+	var cases := [
+		{"pos": Vector3(-2.0, 0.0, -3.0), "id": BossBrainScript.QUADRANT_NORTH_WEST, "x": -10.0, "z": -8.0},
+		{"pos": Vector3(2.0, 0.0, -3.0), "id": BossBrainScript.QUADRANT_NORTH_EAST, "x": 10.0, "z": -8.0},
+		{"pos": Vector3(-2.0, 0.0, 3.0), "id": BossBrainScript.QUADRANT_SOUTH_WEST, "x": -10.0, "z": 8.0},
+		{"pos": Vector3(2.0, 0.0, 3.0), "id": BossBrainScript.QUADRANT_SOUTH_EAST, "x": 10.0, "z": 8.0},
+	]
+	for item in cases:
+		var layout := BossBrainScript.quarantine_layout_for_player(Vector3(item["pos"]), center, extents)
+		var segments: Array = layout.get("segments", [])
+		_check_eq("quarantine helper picks %s" % String(item["id"]), String(layout.get("quadrant_id", "")), String(item["id"]))
+		_check_eq("quarantine helper returns two boundary segments for %s" % String(item["id"]), segments.size(), 2)
+		if segments.size() == 2:
+			var vertical: Dictionary = segments[0]
+			var horizontal: Dictionary = segments[1]
+			_check_eq("vertical segment starts at arena center", Vector3(vertical.get("from", Vector3(999.0, 999.0, 999.0))), center)
+			_check_eq("horizontal segment starts at arena center", Vector3(horizontal.get("from", Vector3(999.0, 999.0, 999.0))), center)
+			_check_almost("vertical segment reaches quadrant z boundary", Vector3(vertical.get("to", Vector3.ZERO)).z, float(item["z"]))
+			_check_almost("horizontal segment reaches quadrant x boundary", Vector3(horizontal.get("to", Vector3.ZERO)).x, float(item["x"]))
+			_check_almost(
+				"point distance helper measures quarantine boundary",
+				BossBrainScript.point_distance_to_segment_xz(
+					Vector3(0.5, 0.0, float(item["z"]) * 0.5),
+					Vector3(vertical.get("from", Vector3.ZERO)),
+					Vector3(vertical.get("to", Vector3.ZERO))
+				),
+				0.5
+			)
+
 func _test_boss_brain_phase_ladder_unlocks_and_add_waves_once() -> void:
 	var brain = _new_brain(75)
 	var add_waves: Array[Array] = []
@@ -130,7 +166,7 @@ func _test_boss_brain_phase_ladder_unlocks_and_add_waves_once() -> void:
 
 	brain.update_health(1200.0, BOSS_HP)
 	_check_eq("50 percent threshold enters phase 3", brain.current_phase(), 3)
-	_check_eq("phase 3 unlocks Decoy Ping", brain.unlocked_attack_ids(), ["audit_sweep", "compliance_ring", "overreach_slam", "decoy_ping"])
+	_check_eq("phase 3 unlocks Decoy Ping and quarantine", brain.unlocked_attack_ids(), ["audit_sweep", "compliance_ring", "overreach_slam", "decoy_ping", "protocol_quarantine"])
 	_assert_requests_eq("50 percent add wave is exactly 1 chaff + 1 bruiser", add_waves[1], [
 		{"archetype": RoomDirectorScript.ARCHETYPE_CHAFF, "count": 1, "spawn_ids": ["boss50:chaff:0"]},
 		{"archetype": RoomDirectorScript.ARCHETYPE_BRUISER, "count": 1, "spawn_ids": ["boss50:bruiser:0"]},
@@ -146,6 +182,22 @@ func _test_boss_brain_phase_ladder_unlocks_and_add_waves_once() -> void:
 	brain.update_health(600.0, BOSS_HP)
 	_check_eq("threshold add waves are emitted exactly once", add_waves.size(), 3)
 
+func _test_boss_brain_quarantine_phase_three_rotation() -> void:
+	var brain = _new_brain(75)
+	brain.update_health(2400.0, BOSS_HP)
+	_check("quarantine is absent from phase 1 rotation", not brain.unlocked_attack_ids().has(BossBrainScript.ATTACK_PROTOCOL_QUARANTINE))
+	brain.update_health(1800.0, BOSS_HP)
+	_check("quarantine is absent from phase 2 rotation", not brain.unlocked_attack_ids().has(BossBrainScript.ATTACK_PROTOCOL_QUARANTINE))
+	brain.update_health(1200.0, BOSS_HP)
+	_check("quarantine appears in phase 3 rotation", brain.unlocked_attack_ids().has(BossBrainScript.ATTACK_PROTOCOL_QUARANTINE))
+
+	var attack: Dictionary = brain.attack_definition(BossBrainScript.ATTACK_PROTOCOL_QUARANTINE)
+	_check_eq("quarantine uses cooldown-table attack id", String(attack.get("id", "")), BossBrainScript.ATTACK_PROTOCOL_QUARANTINE)
+	_check_almost("quarantine windup is 1.1 seconds", float(attack.get("telegraph_seconds", 0.0)), 1.1)
+	_check_almost("quarantine wall lasts six seconds", float(attack.get("wall_seconds", 0.0)), 6.0)
+	_check_almost("quarantine ticks at 0.75s cadence", float(attack.get("tick_seconds", 0.0)), 0.75)
+	_check_almost("quarantine phase-3 cooldown outlasts the wall", float(attack.get("cooldown_seconds", 0.0)), 8.0)
+
 func _test_boss_brain_attack_roster_timing_and_damage_contract() -> void:
 	var brain = _new_brain(75)
 	var expected := {
@@ -153,6 +205,7 @@ func _test_boss_brain_attack_roster_timing_and_damage_contract() -> void:
 		"compliance_ring": {"telegraph_seconds": 0.8, "damage": 1, "shape": "disc"},
 		"overreach_slam": {"telegraph_seconds": 1.2, "damage": 2, "shape": "disc"},
 		"decoy_ping": {"telegraph_seconds": 1.4, "damage": 2, "shape": "decoy_discs"},
+		"protocol_quarantine": {"telegraph_seconds": 1.1, "damage": 1, "shape": "quarantine"},
 	}
 	for attack_id in expected.keys():
 		var attack: Dictionary = brain.attack_definition(String(attack_id))
@@ -233,6 +286,88 @@ func _test_boss_brain_single_large_hit_emits_skipped_thresholds_in_order() -> vo
 		])
 	brain.update_health(100.0, BOSS_HP)
 	_check_eq("large-hit threshold ladder never duplicates earlier waves", add_waves.size(), 3)
+
+func _test_protocol_quarantine_ticks_adds_lifts_and_cleans() -> void:
+	var fixture := Node3D.new()
+	fixture.name = "QuarantineFixture"
+	root.add_child(fixture)
+	_add_camera_anchor(fixture, Vector2(10.0, 8.0))
+	var boss = _new_custodian_fixture(fixture, _seeded_rng(21))
+	var player := CharacterBody3D.new()
+	player.name = "PlayerProbe"
+	var vitals := PlayerVitalsScript.new() as PlayerVitals
+	vitals.name = "PlayerVitals"
+	player.add_child(vitals)
+	fixture.add_child(player)
+	player.global_position = Vector3(0.2, 0.1, -4.0)
+	await process_frame
+	vitals.damage_lockout = 0.0
+	boss.set_chase_target(player)
+	boss.damage_event.connect(func(event: Dictionary) -> void:
+		vitals.apply_damage(int(event.get("damage", 0)))
+	)
+	var add_batches: Array[Array] = []
+	boss.add_wave_requested.connect(func(requests: Array[Dictionary]) -> void:
+		add_batches.append(requests.duplicate(true))
+	)
+
+	var attack := _quarantine_attack_for_player(player.global_position, Vector2(10.0, 8.0))
+	boss.call("_commit_quarantine", attack)
+	_check("quarantine commit creates active wall state", bool(boss.call("is_quarantine_active")))
+	_check_eq("quarantine commit creates two wall nodes", int(boss.call("active_quarantine_wall_count")), 2)
+	_assert_requests_eq("quarantine commit requests one chaff pair", add_batches[0], [
+		{"archetype": RoomDirectorScript.ARCHETYPE_CHAFF, "count": 2, "spawn_ids": ["boss_quarantine_1:chaff:0", "boss_quarantine_1:chaff:1"], "affix": ""},
+	])
+
+	var guard_before: int = vitals.guard
+	boss.call("_tick_quarantine", 0.01)
+	_check_eq("quarantine overlap ticks player vitals immediately", vitals.guard, guard_before - 1)
+	boss.call("_tick_quarantine", 0.74)
+	_check_eq("quarantine wall does not tick before 0.75s cadence", vitals.guard, guard_before - 1)
+	boss.call("_tick_quarantine", 0.02)
+	_check_eq("quarantine wall ticks again after cadence elapses", vitals.guard, guard_before - 2)
+
+	boss.call("_commit_quarantine", attack)
+	_check_eq("quarantine cannot overlap itself with duplicate walls", int(boss.call("active_quarantine_wall_count")), 2)
+	_check_eq("quarantine duplicate commit does not request another add pair", add_batches.size(), 1)
+
+	boss.call("_tick_quarantine", 6.0)
+	_check("quarantine lift clears active wall state on expiry", not bool(boss.call("is_quarantine_active")))
+	_check_eq("quarantine expiry prunes wall ledger", int(boss.call("active_quarantine_wall_count")), 0)
+	await process_frame
+	_check_eq("quarantine expiry leaves no wall nodes under room", _quarantine_walls_under(fixture).size(), 0)
+
+	boss.call("_spawn_telegraphs_for_attack", attack)
+	_check("quarantine windup creates telegraph markers", _telegraph_markers_under(fixture).size() > 0)
+	boss.call("clear_telegraph_markers")
+	await process_frame
+	_check_eq("room cleanup clears quarantine telegraph markers", _telegraph_markers_under(fixture).size(), 0)
+
+	boss.call("_commit_quarantine", attack)
+	_check("room cleanup fixture has active quarantine walls", _quarantine_walls_under(fixture).size() > 0)
+	boss.call("clear_telegraph_markers")
+	await process_frame
+	_check_eq("room cleanup clears quarantine wall nodes", _quarantine_walls_under(fixture).size(), 0)
+
+	fixture.queue_free()
+	await process_frame
+
+func _test_protocol_quarantine_lifts_on_boss_death() -> void:
+	var fixture := Node3D.new()
+	fixture.name = "QuarantineDeathFixture"
+	root.add_child(fixture)
+	_add_camera_anchor(fixture, Vector2(10.0, 8.0))
+	var boss = _new_custodian_fixture(fixture, _seeded_rng(22))
+	var attack := _quarantine_attack_for_player(Vector3(0.2, 0.1, -4.0), Vector2(10.0, 8.0))
+	boss.call("_commit_quarantine", attack)
+	_check("death-lift fixture starts with active quarantine", bool(boss.call("is_quarantine_active")))
+	boss.take_damage(BOSS_HP * 2.0, false)
+	await process_frame
+	_check("boss death lifts active quarantine explicitly", not bool(boss.call("is_quarantine_active")))
+	_check_eq("boss death prunes quarantine wall ledger", int(boss.call("active_quarantine_wall_count")), 0)
+	_check_eq("boss death leaves no quarantine wall nodes", _quarantine_walls_under(fixture).size(), 0)
+	fixture.queue_free()
+	await process_frame
 
 func _test_custodian_surge_interrupts_windup_and_clears_markers() -> void:
 	var fixture := Node3D.new()
@@ -476,6 +611,24 @@ func _new_custodian_fixture(parent: Node, rng: RandomNumberGenerator):
 	boss.global_position = Vector3.ZERO
 	return boss
 
+func _add_camera_anchor(parent: Node, half_extents: Vector2) -> Marker3D:
+	var anchor := Marker3D.new()
+	anchor.name = "CameraAnchor"
+	anchor.set_meta("camera_half_extent_x", half_extents.x)
+	anchor.set_meta("camera_half_extent_z", half_extents.y)
+	parent.add_child(anchor)
+	return anchor
+
+func _quarantine_attack_for_player(player_position: Vector3, half_extents: Vector2) -> Dictionary:
+	var brain = _new_brain(33)
+	brain.update_health(1200.0, BOSS_HP)
+	var attack: Dictionary = brain.attack_definition(BossBrainScript.ATTACK_PROTOCOL_QUARANTINE)
+	var layout := BossBrainScript.quarantine_layout_for_player(player_position, Vector3.ZERO, half_extents)
+	attack["quarantine_quadrant"] = String(layout.get("quadrant_id", ""))
+	var segments: Array = layout.get("segments", [])
+	attack["quarantine_segments"] = segments.duplicate(true)
+	return attack
+
 func _telegraph_markers_under(parent: Node) -> Array:
 	var markers: Array = []
 	_collect_telegraph_markers(parent, markers)
@@ -486,6 +639,17 @@ func _collect_telegraph_markers(node: Node, markers: Array) -> void:
 		markers.append(node)
 	for child in node.get_children():
 		_collect_telegraph_markers(child, markers)
+
+func _quarantine_walls_under(parent: Node) -> Array:
+	var walls: Array = []
+	_collect_quarantine_walls(parent, walls)
+	return walls
+
+func _collect_quarantine_walls(node: Node, walls: Array) -> void:
+	if node != null and String(node.name).begins_with("ProtocolQuarantineWall") and not node.is_queued_for_deletion():
+		walls.append(node)
+	for child in node.get_children():
+		_collect_quarantine_walls(child, walls)
 
 func _new_brain(seed: int):
 	var brain = BossBrainScript.new()
@@ -534,6 +698,8 @@ func _normalize_requests(requests: Array) -> Array:
 	var normalized: Array = []
 	for request in requests:
 		var item: Dictionary = (request as Dictionary).duplicate(true)
+		if not item.has("affix"):
+			item["affix"] = ""
 		if item.has("spawn_ids"):
 			var spawn_ids: Array = item["spawn_ids"]
 			spawn_ids.sort()
