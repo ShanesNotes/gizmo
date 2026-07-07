@@ -46,10 +46,28 @@ keepsake depth, Keeper Rank meta, input feel, elite/boss mechanics, HZ-107B.
 - Sheriff 04:05 uid ruling: complied; also carried the missing sidecars for lore
   lane's `codex_book.gd` / `_probe_lantern_grip_proof.gd`.
 
-## IN FLIGHT / QUEUED
-- Brief 5 (elite affixes shielded/frenzied/warded + "PROTOCOL: QUARANTINE" Pattern
-  phase-3 arena mechanic) — Codex building now; wave 3 on green + ceremony shots.
-- Backlog 8 (TTK balance pass incl. affixed-elite bands) — after brief 5 lands.
+### Wave 3 — PR #45
+- **Elite affixes** (backlog 6): seeded one-affix roll on elite spawns.
+  Shielded (35% overshield, absorbs first, no stagger while up, break pop +
+  `elite_shield_break` cue, muted grey-blue absorb pops) / Frenzied (+40% speed,
+  −25% windup, −20% hp, warm pulse) / Warded (half damage while a living ally is
+  within 6m — target-priority puzzle, violet). Proof:
+  `ceremony/core/wave3-elite-affix-tints.png` (all three tints on the real model).
+- **PROTOCOL: QUARANTINE** (backlog 6): THE PATTERN phase 3+ seals the player's
+  arena quadrant behind telegraphed damage boundaries for 6s + a chaff-pair add
+  wave; pure quadrant math, lifts on expiry/boss death/teardown. Cues:
+  `pattern_quarantine_seal`, `pattern_quarantine_lift`.
+
+### Wave 4 — final
+- **Affixed-elite TTK gates** (backlog 8): real-melee-kit TTK bands now assert
+  shielded 7.7s / frenzied 4.4s / warded-isolated 5.56s inside the elite 3–10s
+  band, warded-under-ward ≤15s sponge ceiling, and the frenzied<base<shielded
+  ordering. A careless retune of kit damage or elite hp trips red.
+
+## BACKLOG STATE
+All eight night-backlog items landed (1–8). HZ-107B fully closed: integration-gate
+frame-pacing flake + the survivability-probe margin flake (median-of-3) + both
+Grok stretch items.
 
 ## NEEDS SHANE
 - Mirror currency: shards added as a PARALLEL purchase path (scrap untouched).
