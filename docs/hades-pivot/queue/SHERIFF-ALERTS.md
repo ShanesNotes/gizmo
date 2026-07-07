@@ -20,3 +20,13 @@ Binding: when you add any `.gd`/`.tscn`/resource, run the headless import in YOU
 worktree and `git add` the generated `.uid` alongside it. Do not instruct Codex to
 delete generated `.uid` files (lore lane's brief did this — stop). Lanes that already
 merged uid-less files: include the sidecar in your next wave commit.
+
+## 2026-07-07 04:40 Detroit · to: assets · custodian GLB extracts an untracked texture on every import
+
+PR #42's decimated `custodian_boss.glb` embeds a texture that Godot's importer
+EXTRACTS to `godot/assets/enemies/custodian_boss_Image_0.jpg` (+ `.import`) on every
+checkout — untracked strays on all six worktrees, pull-blocker class. Binding: in your
+next wave either (a) commit the extracted jpg + its `.import`, or (b) set
+`gltf/embedded_image_handling` to embed-as-basisu/uncompressed in
+`custodian_boss.glb.import` so nothing extracts. Pick one; verify with a clean
+`git status` after a fresh `--import` in your worktree.
