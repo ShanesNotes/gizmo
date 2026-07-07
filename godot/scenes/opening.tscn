@@ -1,9 +1,10 @@
-[gd_scene load_steps=19 format=3]
+[gd_scene load_steps=20 format=3]
 
 [ext_resource type="Script" path="res://scripts/ui/opening_sequence.gd" id="1_opening"]
 [ext_resource type="PackedScene" uid="uid://qa2ralfsy66q" path="res://assets/gizmo.glb" id="2_gizmo"]
 [ext_resource type="PackedScene" path="res://scenes/controls_card.tscn" id="3_card"]
 [ext_resource type="FontFile" path="res://assets/fonts/EBGaramond-Italic.ttf" id="4_garamond_italic"]
+[ext_resource type="Script" path="res://scripts/player/gizmo_animation_controller.gd" id="5_gizmo_anim"]
 
 [sub_resource type="Environment" id="env_opening"]
 background_mode = 1
@@ -169,6 +170,10 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.35, 1, 0.3)
 light_color = Color(1, 0.83, 0.55, 1)
 light_energy = 0.7
 omni_range = 3.0
+
+[node name="GizmoAnimator" type="Node" parent="."]
+script = ExtResource("5_gizmo_anim")
+skeleton_path = NodePath("../Gizmo/UniRigArmature/Skeleton3D")
 
 [node name="Ui" type="CanvasLayer" parent="."]
 

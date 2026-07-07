@@ -129,6 +129,7 @@ var title_sting_path := TITLE_STING_PATH
 @onready var _title_card: Control = %TitleCard
 @onready var _title_sting_player: AudioStreamPlayer = %TitleStingPlayer
 @onready var _margin_figure: Node3D = get_node_or_null("MarginFigure")
+@onready var _gizmo_animator: Node = get_node_or_null("GizmoAnimator")
 
 static var replay_requested := false
 
@@ -169,8 +170,17 @@ func _ready() -> void:
 	_title_card.modulate.a = 0.0
 	_load_portrait()
 	_controls_block.visible = false
+	_seat_gizmo_at_fire()
 	_register_voice_lines()
 	_advance_beat()
+
+## Gizmo is discovered small beside the fire — seat him with the campfire_sit
+## pose and hold it for the whole cinematic (the shipped animation controller's
+## lore seam; no-op if its authored clip is absent). The scene tears down into
+## the hub afterward, so no resume is needed.
+func _seat_gizmo_at_fire() -> void:
+	if _gizmo_animator != null and _gizmo_animator.has_method(&"play_campfire_sit"):
+		_gizmo_animator.call(&"play_campfire_sit")
 
 func _process(delta: float) -> void:
 	_flicker_fire(delta)
