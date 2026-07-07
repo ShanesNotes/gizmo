@@ -16,6 +16,7 @@ func _initialize() -> void:
 	await _test_hub_scene_instantiates_with_required_nodes()
 	await _test_hub_hosts_all_five_saint_shrines()
 	await _test_hub_identity_visual_nameplates_and_blocker()
+	await _test_hub_uses_promoted_world_kit_dressing()
 	await _test_run_surface_failure_label_api()
 	await _test_scrap_label_reflects_injected_meta_state()
 	await _test_run_requested_emits_once_per_door_entry()
@@ -149,6 +150,70 @@ func _test_hub_identity_visual_nameplates_and_blocker() -> void:
 
 	await _cleanup(hub)
 
+func _test_hub_uses_promoted_world_kit_dressing() -> void:
+	var hub := await _instantiate_hub()
+
+	_check_promoted_wrapper(hub, "Geometry/HubIslandBase", "island_base_01")
+	_check_promoted_wrapper(hub, "Geometry/CentralBeacon", "beacon_01")
+	_check_promoted_wrapper(hub, "Geometry/MirrorPlatform", "platform_small_01")
+	_check_promoted_wrapper(hub, "Geometry/MirrorSpire", "spire_01")
+	_check_promoted_wrapper(hub, "Geometry/CodexPlatform", "platform_small_01")
+	_check_promoted_wrapper(hub, "Geometry/RunDoorPlatform", "platform_small_01")
+	_check_promoted_wrapper(hub, "Geometry/RunGateFixture", "gear_gate_01")
+	_check_promoted_wrapper(hub, "Geometry/Campfire/HearthSanctuary", "sanctuary_01")
+	_check_promoted_wrapper(hub, "Geometry/Campfire/HearthSeatPlatformA", "platform_small_01")
+	_check_promoted_wrapper(hub, "Geometry/Campfire/HearthSeatPlatformB", "platform_small_01")
+	_check_promoted_wrapper(hub, "Geometry/Campfire/HearthDebrisCluster", "debris_cluster_01")
+	_check_promoted_wrapper(hub, "Geometry/Campfire/HearthScrapCluster", "scrap_cluster_01_a")
+	_check_promoted_wrapper(hub, "Geometry/ThresholdSpireWest", "spire_01")
+	_check_promoted_wrapper(hub, "Geometry/ThresholdSpireEast", "spire_01")
+
+	var hearth_light := hub.get_node_or_null("Geometry/CentralBeacon/HearthLight") as OmniLight3D
+	_check("central beacon wrapper ships as the visible hub hearth", hearth_light != null and hearth_light.light_energy > 1.0)
+	var gate_collision := hub.get_node_or_null("Geometry/RunGateFixture/Collision") as StaticBody3D
+	_check(
+		"run gate fixture collision body is isolated from gameplay physics",
+		gate_collision != null and gate_collision.collision_layer == 0 and gate_collision.collision_mask == 0
+	)
+
+	for path in [
+		"Geometry/Floor",
+		"Geometry/WestWall",
+		"Geometry/EastWall",
+		"Geometry/SouthWall",
+		"Geometry/NorthWallLeft",
+		"Geometry/NorthWallRight",
+		"Geometry/NorthDoorHeader",
+		"Geometry/BrassSphereBase",
+		"Geometry/BrassSphere",
+		"Geometry/MirrorPlinth",
+		"Geometry/CodexPlinth",
+		"Geometry/RunDoorPad",
+		"Geometry/Campfire/FireRing",
+		"Geometry/Campfire/FireEmbers",
+		"Geometry/Campfire/SeatStoneA",
+		"Geometry/Campfire/SeatStoneB",
+		"Geometry/BrazierWest",
+		"Geometry/BrazierEast",
+	]:
+		_check_hidden_visual(hub, path)
+
+	for path in [
+		"Geometry/HubIslandBase/Collision/Shape",
+		"Geometry/CentralBeacon/Collision/Shape",
+		"Geometry/MirrorPlatform/Collision/Shape",
+		"Geometry/MirrorSpire/Collision/Shape",
+		"Geometry/CodexPlatform/Collision/Shape",
+		"Geometry/RunDoorPlatform/Collision/Shape",
+		"Geometry/Campfire/HearthSeatPlatformA/Collision/Shape",
+		"Geometry/Campfire/HearthSeatPlatformB/Collision/Shape",
+		"Geometry/ThresholdSpireWest/Collision/Shape",
+		"Geometry/ThresholdSpireEast/Collision/Shape",
+	]:
+		_check_disabled_collision_shape(hub, path)
+
+	await _cleanup(hub)
+
 func _test_run_surface_failure_label_api() -> void:
 	var hub := await _instantiate_hub()
 	var failure_label := hub.get_node_or_null("HubUi/Root/RunSurfaceFailureLabel") as Label
@@ -173,6 +238,30 @@ func _check_nameplate(hub: Node, path: String, expected_text: String, expected_c
 	_check("%s nameplate billboards to camera" % expected_text, label.billboard == BaseMaterial3D.BILLBOARD_ENABLED)
 	_check("%s nameplate stays readable over geometry" % expected_text, label.no_depth_test)
 	_check("%s nameplate font is readable at hub camera" % expected_text, label.font_size >= 36)
+
+func _check_promoted_wrapper(hub: Node, path: String, expected_asset_id: String) -> void:
+	var node := hub.get_node_or_null(path) as Node3D
+	_check("%s promoted wrapper exists" % path, node != null)
+	if node == null:
+		return
+	_check_eq(
+		"%s uses promoted asset id" % path,
+		String(node.get_meta(&"asset_id", "")),
+		expected_asset_id
+	)
+	_check("%s wrapper remains visible" % path, node.visible)
+
+func _check_hidden_visual(hub: Node, path: String) -> void:
+	var node := hub.get_node_or_null(path) as Node3D
+	_check("%s placeholder visual still exists for compatibility" % path, node != null)
+	if node != null:
+		_check("%s placeholder visual is hidden" % path, not node.visible)
+
+func _check_disabled_collision_shape(hub: Node, path: String) -> void:
+	var shape := hub.get_node_or_null(path) as CollisionShape3D
+	_check("%s wrapper collision shape exists" % path, shape != null)
+	if shape != null:
+		_check("%s wrapper collision is visual-only in hub" % path, shape.disabled)
 
 func _test_scrap_label_reflects_injected_meta_state() -> void:
 	var meta_state: MetaState = MetaState.new()

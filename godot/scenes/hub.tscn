@@ -12,6 +12,14 @@
 [ext_resource type="PackedScene" path="res://assets/world_kits/clockwork_observatory/gear_ring_01/gear_ring_01.tscn" id="6_gear_ring"]
 [ext_resource type="PackedScene" path="res://assets/world_kits/clockwork_observatory/orrery_altar_01/orrery_altar_01.tscn" id="7_orrery"]
 [ext_resource type="PackedScene" path="res://assets/world_kits/clockwork_observatory/spark_crystal_cluster_01/spark_crystal_cluster_01.tscn" id="8_crystals"]
+[ext_resource type="PackedScene" path="res://assets/world_kits/clockwork_observatory/island_base_01/island_base_01.tscn" id="9_island_base"]
+[ext_resource type="PackedScene" path="res://assets/world_kits/clockwork_observatory/platform_small_01/platform_small_01.tscn" id="10_platform"]
+[ext_resource type="PackedScene" path="res://assets/world_kits/clockwork_observatory/spire_01/spire_01.tscn" id="11_spire"]
+[ext_resource type="PackedScene" path="res://assets/world_kits/clockwork_observatory/gear_gate_01/gear_gate_01.tscn" id="12_gear_gate"]
+[ext_resource type="PackedScene" path="res://assets/world_kits/clockwork_observatory/debris_cluster_01/debris_cluster_01.tscn" id="13_debris"]
+[ext_resource type="PackedScene" path="res://assets/world_kits/clockwork_observatory/scrap_cluster_01_a/scrap_cluster_01_a.tscn" id="14_scrap"]
+[ext_resource type="PackedScene" path="res://assets/landmarks/beacon_01/beacon_01.tscn" id="15_beacon"]
+[ext_resource type="PackedScene" path="res://assets/landmarks/sanctuary_01/sanctuary_01.tscn" id="16_sanctuary"]
 
 [sub_resource type="StandardMaterial3D" id="Mat_fire_ring"]
 albedo_color = Color(0.3, 0.24, 0.2, 1)
@@ -187,78 +195,169 @@ sky_mode = 1
 
 [node name="Geometry" type="Node3D" parent="."]
 
+[node name="HubIslandBase" parent="Geometry" instance=ExtResource("9_island_base")]
+transform = Transform3D(0.63, 0, 0, 0, 0.63, 0, 0, 0, 0.63, 0, -10.72, 0)
+
+[node name="Collision" parent="Geometry/HubIslandBase" index="1"]
+collision_layer = 0
+collision_mask = 0
+
+[node name="Shape" parent="Geometry/HubIslandBase/Collision" index="0"]
+disabled = true
+
 [node name="Floor" type="MeshInstance3D" parent="Geometry"]
+visible = false
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.1, 0)
 mesh = SubResource("Floor_mesh")
 surface_material_override/0 = SubResource("Mat_floor")
 
 [node name="WestWall" type="MeshInstance3D" parent="Geometry"]
+visible = false
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 1.4, 0)
 mesh = SubResource("Wall_side_mesh")
 surface_material_override/0 = SubResource("Mat_wall")
 
 [node name="EastWall" type="MeshInstance3D" parent="Geometry"]
+visible = false
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 1.4, 0)
 mesh = SubResource("Wall_side_mesh")
 surface_material_override/0 = SubResource("Mat_wall")
 
 [node name="SouthWall" type="MeshInstance3D" parent="Geometry"]
+visible = false
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.4, 6)
 mesh = SubResource("Wall_back_mesh")
 surface_material_override/0 = SubResource("Mat_wall")
 
 [node name="NorthWallLeft" type="MeshInstance3D" parent="Geometry"]
+visible = false
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.9, 1.4, -6)
 mesh = SubResource("Wall_north_side_mesh")
 surface_material_override/0 = SubResource("Mat_wall")
 
 [node name="NorthWallRight" type="MeshInstance3D" parent="Geometry"]
+visible = false
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.9, 1.4, -6)
 mesh = SubResource("Wall_north_side_mesh")
 surface_material_override/0 = SubResource("Mat_wall")
 
 [node name="NorthDoorHeader" type="MeshInstance3D" parent="Geometry"]
+visible = false
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.5, -6)
 mesh = SubResource("Wall_north_header_mesh")
 surface_material_override/0 = SubResource("Mat_wall")
 
 [node name="BrassSphereBase" type="MeshInstance3D" parent="Geometry"]
+visible = false
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.15, 0)
 mesh = SubResource("Sphere_base_mesh")
 surface_material_override/0 = SubResource("Mat_brass")
 
 [node name="BrassSphere" type="MeshInstance3D" parent="Geometry"]
+visible = false
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.25, 0)
 mesh = SubResource("Brass_sphere_mesh")
 surface_material_override/0 = SubResource("Mat_brass")
 
+[node name="CentralBeacon" parent="Geometry" instance=ExtResource("15_beacon")]
+transform = Transform3D(0.18, 0, 0, 0, 0.18, 0, 0, 0, 0.18, 0, 0, 0)
+state = 2
+
+[node name="Collision" parent="Geometry/CentralBeacon" index="1"]
+collision_layer = 0
+collision_mask = 0
+
+[node name="Shape" parent="Geometry/CentralBeacon/Collision" index="0"]
+disabled = true
+
 [node name="MirrorPlinth" type="MeshInstance3D" parent="Geometry"]
+visible = false
 transform = Transform3D(0.707107, 0, -0.707107, 0, 1, 0, 0.707107, 0, 0.707107, -4.3, 0.25, -1.5)
 mesh = SubResource("Plinth_mesh")
 surface_material_override/0 = SubResource("Mat_teal")
 
+[node name="MirrorPlatform" parent="Geometry" instance=ExtResource("10_platform")]
+transform = Transform3D(0.19799, 0, -0.19799, 0, 0.28, 0, 0.19799, 0, 0.19799, -4.3, -1.16, -1.5)
+
+[node name="Collision" parent="Geometry/MirrorPlatform" index="1"]
+collision_layer = 0
+collision_mask = 0
+
+[node name="Shape" parent="Geometry/MirrorPlatform/Collision" index="0"]
+disabled = true
+
+[node name="MirrorSpire" parent="Geometry" instance=ExtResource("11_spire")]
+transform = Transform3D(0.155885, 0, -0.09, 0, 0.18, 0, 0.09, 0, 0.155885, -5.25, -0.04, -0.45)
+
+[node name="Collision" parent="Geometry/MirrorSpire" index="1"]
+collision_layer = 0
+collision_mask = 0
+
+[node name="Shape" parent="Geometry/MirrorSpire/Collision" index="0"]
+disabled = true
+
 [node name="CodexPlinth" type="MeshInstance3D" parent="Geometry"]
+visible = false
 transform = Transform3D(0.707107, 0, 0.707107, 0, 1, 0, -0.707107, 0, 0.707107, 4.3, 0.25, -1.5)
 mesh = SubResource("Plinth_mesh")
 surface_material_override/0 = SubResource("Mat_violet")
 
+[node name="CodexPlatform" parent="Geometry" instance=ExtResource("10_platform")]
+transform = Transform3D(0.19799, 0, 0.19799, 0, 0.28, 0, -0.19799, 0, 0.19799, 4.3, -1.16, -1.5)
+
+[node name="Collision" parent="Geometry/CodexPlatform" index="1"]
+collision_layer = 0
+collision_mask = 0
+
+[node name="Shape" parent="Geometry/CodexPlatform/Collision" index="0"]
+disabled = true
+
+[node name="CodexDebrisCluster" parent="Geometry" instance=ExtResource("13_debris")]
+transform = Transform3D(0.35, 0, 0, 0, 0.35, 0, 0, 0, 0.35, 5.2, 0, -0.65)
+
 [node name="RunDoorPad" type="MeshInstance3D" parent="Geometry"]
+visible = false
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.04, -5.25)
 mesh = SubResource("Door_pad_mesh")
 surface_material_override/0 = SubResource("Mat_door")
+
+[node name="RunDoorPlatform" parent="Geometry" instance=ExtResource("10_platform")]
+transform = Transform3D(0.26, 0, 0, 0, 0.18, 0, 0, 0, 0.18, 0, -0.84, -5.22)
+
+[node name="Collision" parent="Geometry/RunDoorPlatform" index="1"]
+collision_layer = 0
+collision_mask = 0
+
+[node name="Shape" parent="Geometry/RunDoorPlatform/Collision" index="0"]
+disabled = true
+
+[node name="RunGateFixture" parent="Geometry" instance=ExtResource("12_gear_gate")]
+transform = Transform3D(0.68, 0, 0, 0, 0.68, 0, 0, 0, 0.68, 0, -0.02, -6.42)
+
+[node name="Collision" parent="Geometry/RunGateFixture" index="1"]
+collision_layer = 0
+collision_mask = 0
+
+[node name="BodyShape" parent="Geometry/RunGateFixture/Collision" index="0"]
+disabled = true
 
 [node name="Campfire" type="Node3D" parent="Geometry"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.2, 0, 2.2)
 
 [node name="FireRing" type="MeshInstance3D" parent="Geometry/Campfire"]
+visible = false
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.2, 0)
 mesh = SubResource("Fire_ring_mesh")
 surface_material_override/0 = SubResource("Mat_fire_ring")
 
 [node name="FireEmbers" type="MeshInstance3D" parent="Geometry/Campfire"]
+visible = false
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.42, 0)
 mesh = SubResource("Fire_ember_mesh")
 surface_material_override/0 = SubResource("Mat_fire_ember")
+
+[node name="HearthSanctuary" parent="Geometry/Campfire" instance=ExtResource("16_sanctuary")]
+transform = Transform3D(0.62, 0, 0, 0, 0.62, 0, 0, 0, 0.62, 0, 0, 0)
 
 [node name="FireLight" type="OmniLight3D" parent="Geometry/Campfire"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.4, 0)
@@ -268,14 +367,42 @@ omni_range = 7.5
 shadow_enabled = true
 
 [node name="SeatStoneA" type="MeshInstance3D" parent="Geometry/Campfire"]
+visible = false
 transform = Transform3D(0.866025, 0, -0.5, 0, 1, 0, 0.5, 0, 0.866025, -1.7, 0.22, 0.6)
 mesh = SubResource("Seat_stone_mesh")
 surface_material_override/0 = SubResource("Mat_seat_stone")
 
 [node name="SeatStoneB" type="MeshInstance3D" parent="Geometry/Campfire"]
+visible = false
 transform = Transform3D(0.707107, 0, 0.707107, 0, 1, 0, -0.707107, 0, 0.707107, 1.5, 0.22, 1.1)
 mesh = SubResource("Seat_stone_mesh")
 surface_material_override/0 = SubResource("Mat_seat_stone")
+
+[node name="HearthSeatPlatformA" parent="Geometry/Campfire" instance=ExtResource("10_platform")]
+transform = Transform3D(0.155885, 0, -0.09, 0, 0.18, 0, 0.09, 0, 0.155885, -1.7, -0.82, 0.6)
+
+[node name="Collision" parent="Geometry/Campfire/HearthSeatPlatformA" index="1"]
+collision_layer = 0
+collision_mask = 0
+
+[node name="Shape" parent="Geometry/Campfire/HearthSeatPlatformA/Collision" index="0"]
+disabled = true
+
+[node name="HearthSeatPlatformB" parent="Geometry/Campfire" instance=ExtResource("10_platform")]
+transform = Transform3D(0.127279, 0, 0.127279, 0, 0.18, 0, -0.127279, 0, 0.127279, 1.5, -0.82, 1.1)
+
+[node name="Collision" parent="Geometry/Campfire/HearthSeatPlatformB" index="1"]
+collision_layer = 0
+collision_mask = 0
+
+[node name="Shape" parent="Geometry/Campfire/HearthSeatPlatformB/Collision" index="0"]
+disabled = true
+
+[node name="HearthDebrisCluster" parent="Geometry/Campfire" instance=ExtResource("13_debris")]
+transform = Transform3D(0.42, 0, 0, 0, 0.42, 0, 0, 0, 0.42, 1.65, 0, -1.0)
+
+[node name="HearthScrapCluster" parent="Geometry/Campfire" instance=ExtResource("14_scrap")]
+transform = Transform3D(1.2, 0, 0, 0, 1.2, 0, 0, 0, 1.2, -2.2, 0, -0.35)
 
 [node name="HearthCrystals" type="Node3D" parent="Geometry" instance=ExtResource("8_crystals")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.6, 0, 3.9)
@@ -302,9 +429,20 @@ omni_range = 5.0
 transform = Transform3D(0.12, 0, 0, 0, 0.12, 0, 0, 0, 0.12, 0, 2.9, -5.95)
 
 [node name="BrazierWest" type="MeshInstance3D" parent="Geometry"]
+visible = false
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.6, 0.25, -5.2)
 mesh = SubResource("Fire_ember_mesh")
 surface_material_override/0 = SubResource("Mat_fire_ember")
+
+[node name="ThresholdSpireWest" parent="Geometry" instance=ExtResource("11_spire")]
+transform = Transform3D(0.147224, 0, -0.085, 0, 0.17, 0, 0.085, 0, 0.147224, -3.6, -0.04, -5.2)
+
+[node name="Collision" parent="Geometry/ThresholdSpireWest" index="1"]
+collision_layer = 0
+collision_mask = 0
+
+[node name="Shape" parent="Geometry/ThresholdSpireWest/Collision" index="0"]
+disabled = true
 
 [node name="BrazierWestLight" type="OmniLight3D" parent="Geometry"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.6, 1.3, -5.0)
@@ -313,9 +451,20 @@ light_energy = 1.5
 omni_range = 5.5
 
 [node name="BrazierEast" type="MeshInstance3D" parent="Geometry"]
+visible = false
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.6, 0.25, -5.2)
 mesh = SubResource("Fire_ember_mesh")
 surface_material_override/0 = SubResource("Mat_fire_ember")
+
+[node name="ThresholdSpireEast" parent="Geometry" instance=ExtResource("11_spire")]
+transform = Transform3D(0.147224, 0, 0.085, 0, 0.17, 0, -0.085, 0, 0.147224, 3.6, -0.04, -5.2)
+
+[node name="Collision" parent="Geometry/ThresholdSpireEast" index="1"]
+collision_layer = 0
+collision_mask = 0
+
+[node name="Shape" parent="Geometry/ThresholdSpireEast/Collision" index="0"]
+disabled = true
 
 [node name="BrazierEastLight" type="OmniLight3D" parent="Geometry"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.6, 1.3, -5.0)
