@@ -19,10 +19,26 @@ const RIGHT_HAND_BONE := "Bone_024"
 ## are remapped onto this controller's skeleton on graft.
 const EXTERNAL_CLIPS_PATH := "res://assets/animations/gizmo_clips.glb"
 const EXTERNAL_CLIP_ALIASES := {&"hit_react": &"hit"}
-## Swing clips are code-owned (playtest 2): their strike poses are keyed to
-## SwingTiming's contact seconds so the damage frame matches the clip. An
-## authored GLB clip with unknown timing must never supersede them.
-const CODE_OWNED_CLIPS: Array[StringName] = [&"attack_1", &"attack_2", &"attack_3", &"special"]
+## Night-lane update 2026-07-07: the authored GLB now carries attack_1/2/3 and
+## special keyed CONTACT-TRUE to SwingTiming (authored at 50fps so 0.10/0.14/
+## 0.22s land on exact frames; strike keys verified at camera). The code-built
+## swings remain in CLIP_DATA as the guarantee tier — graft only replaces a
+## clip the GLB actually carries, so timing law still holds if the GLB is lost.
+## Clips beyond the state contract, grafted when the GLB carries them
+## (value = loop mode; NLA import drops loop flags so they are pinned here).
+## campfire_sit is the lore lane's cinematic clip — called by name.
+const EXTERNAL_EXTRA_CLIPS := {
+	&"spark_cast": false,
+	&"death": false,
+	&"victory": false,
+	&"campfire_sit": true,
+	&"idle_fidget_key": false,
+	&"idle_fidget_chirp": false,
+}
+## Personality fidgets: after this long of unbroken idle, one plays, then idle
+## resumes. Alternates between the two.
+const FIDGET_CLIPS: Array[StringName] = [&"idle_fidget_key", &"idle_fidget_chirp"]
+const FIDGET_IDLE_SECONDS := 7.0
 ## The authored clips swing the Bone_019-hand arm (audited at camera 2026-07-06);
 ## the code-built fallback clips swing the Bone_024-hand arm. The weapon mount
 ## follows whichever source won the attack clip so the wrench rides the swing.
@@ -57,6 +73,8 @@ var animation_player: AnimationPlayer = null
 var _skeleton: Skeleton3D = null
 var _current_clip: StringName = &""
 var _external_attack_grafted := false
+var _idle_seconds := 0.0
+var _next_fidget := 0
 
 ## Clip data: per-clip length/loop and keyframes. Each key holds per-bone euler
 ## rotation deltas (radians, applied on top of the bone rest pose) plus a root
@@ -442,10 +460,28 @@ func _ready() -> void:
 func _physics_process(delta: float) -> void:
 	update_animation(delta)
 
-func update_animation(_delta: float) -> void:
+func update_animation(delta: float) -> void:
 	if animation_player == null:
 		return
-	var desired := clip_for_state(_action_state(), _is_moving())
+	var state := _action_state()
+	var desired := clip_for_state(state, _is_moving())
+	if state == PlayerActionStateMachine.ActionState.CAST and _library_has(&"spark_cast"):
+		desired = &"spark_cast"
+	# Personality fidget layer: only ever replaces unbroken idle; any gameplay
+	# clip resets the timer.
+	if desired == &"idle":
+		if FIDGET_CLIPS.has(_current_clip) and animation_player.is_playing():
+			animation_player.speed_scale = 1.0
+			return  # let the fidget finish
+		_idle_seconds += delta
+		if _idle_seconds >= FIDGET_IDLE_SECONDS and _library_has(FIDGET_CLIPS[_next_fidget]):
+			var fidget := FIDGET_CLIPS[_next_fidget]
+			_next_fidget = (_next_fidget + 1) % FIDGET_CLIPS.size()
+			_idle_seconds = 0.0
+			_play_clip(fidget)
+			return
+	else:
+		_idle_seconds = 0.0
 	# Combo retriggers pick the exact swing variant; the state map only knows
 	# "an attack is happening" — never let it restart a variant mid-swing.
 	var both_attacks := String(desired).begins_with("attack_") and String(_current_clip).begins_with("attack_")
@@ -466,8 +502,6 @@ func _assemble_library() -> AnimationLibrary:
 	if external == null:
 		return library
 	for clip_name: StringName in CLIP_DATA:
-		if CODE_OWNED_CLIPS.has(clip_name):
-			continue
 		var source_name: StringName = clip_name
 		if not external.has_animation(source_name):
 			source_name = EXTERNAL_CLIP_ALIASES.get(clip_name, clip_name)
@@ -478,9 +512,22 @@ func _assemble_library() -> AnimationLibrary:
 		animation.loop_mode = library.get_animation(clip_name).loop_mode
 		library.remove_animation(clip_name)
 		library.add_animation(clip_name, animation)
-		if clip_name == &"attack":
+		if clip_name == &"attack_1":
 			_external_attack_grafted = true
+	for clip_name: StringName in EXTERNAL_EXTRA_CLIPS:
+		if not external.has_animation(clip_name):
+			continue
+		var animation: Animation = external.get_animation(clip_name).duplicate(true)
+		_remap_tracks_to_skeleton(animation)
+		animation.loop_mode = Animation.LOOP_LINEAR if bool(EXTERNAL_EXTRA_CLIPS[clip_name]) else Animation.LOOP_NONE
+		library.add_animation(clip_name, animation)
 	return library
+
+func _library_has(clip_name: StringName) -> bool:
+	if animation_player == null:
+		return false
+	var library := animation_player.get_animation_library(LIBRARY_NAME)
+	return library != null and library.has_animation(clip_name)
 
 func _load_external_library() -> AnimationLibrary:
 	if not ResourceLoader.exists(EXTERNAL_CLIPS_PATH, "PackedScene"):
@@ -528,6 +575,8 @@ func _connect_retriggers() -> void:
 		return
 	component.attack_started.connect(func(step: int, _damage: float) -> void: _play_clip(SwingTiming.melee_clip_name(step)))
 	component.special_started.connect(func(_potency: float) -> void: _play_clip(&"special"))
+	component.cast_started.connect(func(_potency: float) -> void:
+		_play_clip(&"spark_cast" if _library_has(&"spark_cast") else &"attack_1"))
 	component.dash_started.connect(func(_direction: Vector3, _speed: float, _duration: float) -> void: _play_clip(&"dash"))
 	component.surge_started.connect(func(_damage: float, _radius: float, _stagger: float) -> void: _play_clip(&"surge"))
 

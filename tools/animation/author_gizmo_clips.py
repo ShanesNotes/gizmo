@@ -14,14 +14,19 @@
 # anticipation, snap, overshoot, settle. Antenna (Bone_016) is the
 # follow-through voice. Never mocap-human-slick.
 import math
+import os
 import sys
 
 import bpy
 from mathutils import Quaternion, Vector
 
-GLB_IN = "/home/ark/gizmo-hades/godot/assets/gizmo.glb"
-GLB_OUT = "/home/ark/gizmo-hades/godot/assets/animations/gizmo_clips.glb"
-FPS = 30
+# Repo-relative (this script runs from any checkout/worktree of the game repo).
+REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+GLB_IN = os.path.join(REPO, "godot", "assets", "gizmo.glb")
+GLB_OUT = os.path.join(REPO, "godot", "assets", "animations", "gizmo_clips.glb")
+# 50fps so SwingTiming's contact seconds (0.10 / 0.14 / 0.22) land on EXACT
+# frames — the swing clips are contact-true to the damage frame by construction.
+FPS = 50
 
 argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
 RENDER_DIR = argv[argv.index("--render-dir") + 1] if "--render-dir" in argv else ""
@@ -177,64 +182,206 @@ def run_pass(right_planted):
     }
 
 author_clip("run", [
-    (0.0000, run_contact(True)),
-    (0.1333, run_pass(True)),
-    (0.2667, run_contact(False)),
-    (0.4000, run_pass(False)),
-    (0.5333, run_contact(True)),
+    (0.00, run_contact(True)),
+    (0.12, run_pass(True)),
+    (0.24, run_contact(False)),
+    (0.36, run_pass(False)),
+    (0.48, run_contact(True)),
 ], loop=True)
 
-# ATTACK — 0.4s wrench swing: big anticipation, snap strike, overshoot, settle.
-# Swings the Bone_023->019 arm chain: gizmo_animation_controller.gd mounts the
-# wrench on Bone_019 when these authored clips graft (EXTERNAL_WEAPON_BONE), so
-# the weapon rides the swinging hand. Keep clip arm and mount bone in lockstep.
-author_clip("attack", [
+# SWING COMBO — three distinct silhouettes, CONTACT-TRUE to SwingTiming
+# (godot/scripts/room_graph/swing_timing.gd, code-owned): strike keys sit on the
+# exact damage seconds — attack_1/2 contact 0.10s (len 0.40), attack_3 contact
+# 0.14s (len 0.50). Windup is tiny (Hades-instant); the meat is follow-through.
+# All three swing the Bone_023->019 arm chain: gizmo_animation_controller.gd
+# mounts the wrench on Bone_019 when authored clips graft (EXTERNAL_WEAPON_BONE),
+# so the weapon rides the swinging hand. Keep clip arm and mount bone in lockstep.
+
+# attack_1 — forehand sweep, right-to-left across the body.
+# (also exported under the legacy name "attack": gizmo_animator.gd's tree keeps
+# a base attack one-shot slot and run_animation_tests.gd pins that contract.)
+ATTACK_1_KEYS = [
     (0.00, {}),
-    (0.10, {  # windup: weapon arm cocked back+up, torso twisted away
-        R_ARM: R(70) + BANK(-15), R_FORE: R(20), R_CLAV: R(10),
-        SPINE: TWIST(-16) + R(4), HEAD: TWIST(10),
-        L_ARM: R(-12), ANTENNA: R(14), "ROOT_Z": 0.006,
+    (0.06, {  # micro-windup: arm cocked back-right, torso coiled away
+        R_ARM: R(55) + BANK(-30), R_FORE: R(18), R_CLAV: R(8),
+        SPINE: TWIST(-18) + R(3), HEAD: TWIST(12),
+        L_ARM: R(-10), ANTENNA: R(12), "ROOT_Z": 0.006,
     }),
-    (0.18, {  # strike: full-body snap forward
-        R_ARM: R(-85), R_FORE: R(-12), R_WRIST: R(-18), R_CLAV: R(-8),
-        SPINE: TWIST(20) + R(-12), HEAD: TWIST(-8),
-        L_ARM: R(18), ANTENNA: R(-18),
+    (0.10, {  # CONTACT: whip across to the left, full-body snap
+        R_ARM: R(-70) + BANK(35), R_FORE: R(-10), R_WRIST: R(-16), R_CLAV: R(-8),
+        SPINE: TWIST(22) + R(-12), HEAD: TWIST(-10),
+        L_ARM: R(16), ANTENNA: R(-18),
         R_THIGH: R(-10), L_THIGH: R(8), "ROOT_Z": -0.020,
     }),
-    (0.26, {  # follow-through overshoot
-        R_ARM: R(-98), R_FORE: R(-8), R_WRIST: R(-24),
-        SPINE: TWIST(24) + R(-14), HEAD: TWIST(-10),
-        L_ARM: R(22), ANTENNA: R(-26),
+    (0.20, {  # follow-through overshoot
+        R_ARM: R(-88) + BANK(42), R_FORE: R(-6), R_WRIST: R(-22),
+        SPINE: TWIST(26) + R(-14), HEAD: TWIST(-12),
+        L_ARM: R(20), ANTENNA: R(-26),
         R_THIGH: R(-10), L_THIGH: R(8), "ROOT_Z": -0.024,
     }),
-    (0.40, {}),  # mechanical settle back to rest
+    (0.40, {  # settle, weight still slightly left — feeds the backhand
+        SPINE: TWIST(8) + R(-4), R_ARM: R(-20) + BANK(12), ANTENNA: R(-6),
+    }),
+]
+author_clip("attack_1", ATTACK_1_KEYS)
+author_clip("attack", ATTACK_1_KEYS)  # legacy alias, same motion
+
+# attack_2 — backhand return, left-to-right (mirror wind from where _1 left off).
+author_clip("attack_2", [
+    (0.00, {  # starts pre-coiled left (combo flow from attack_1's settle)
+        SPINE: TWIST(10) + R(-2), R_ARM: R(-15) + BANK(20), ANTENNA: R(-4),
+    }),
+    (0.06, {  # micro-windup: arm pulled across the chest to the left
+        R_ARM: R(-30) + BANK(45), R_FORE: R(25), R_CLAV: R(-6),
+        SPINE: TWIST(20) + R(2), HEAD: TWIST(-10),
+        L_ARM: R(-8), ANTENNA: R(10), "ROOT_Z": 0.004,
+    }),
+    (0.10, {  # CONTACT: backhand whips out to the right
+        R_ARM: R(-55) + BANK(-45), R_FORE: R(-8), R_WRIST: R(20), R_CLAV: R(8),
+        SPINE: TWIST(-22) + R(-10), HEAD: TWIST(12),
+        L_ARM: R(14), ANTENNA: R(-16),
+        R_THIGH: R(8), L_THIGH: R(-10), "ROOT_Z": -0.018,
+    }),
+    (0.20, {  # overshoot wide right
+        R_ARM: R(-70) + BANK(-58), R_WRIST: R(26),
+        SPINE: TWIST(-28) + R(-12), HEAD: TWIST(14),
+        L_ARM: R(18), ANTENNA: R(-24),
+        R_THIGH: R(8), L_THIGH: R(-10), "ROOT_Z": -0.022,
+    }),
+    (0.40, {}),  # settle square — ready for the overhead
 ])
 
-# SPECIAL — 0.7s two-hand overhead slam: rise, hang, crash, crouch, recover.
+# attack_3 — overhead finisher, heavier: both hands, big drop, deep stick.
+author_clip("attack_3", [
+    (0.00, {}),
+    (0.08, {  # windup: wrench hauled high overhead, chest open
+        R_ARM: R(-150), L_ARM: R(-135), R_FORE: R(-15), L_FORE: R(-12),
+        SPINE: R(9), HEAD: R(7), ANTENNA: R(20), "ROOT_Z": 0.022,
+    }),
+    (0.14, {  # CONTACT: crash down-FORWARD — arms extended in front, visible
+        # past the dome at the high camera; shallower spine pitch so the strike
+        # reads as reach, not hunch.
+        R_ARM: R(-62), L_ARM: R(-52), R_FORE: R(-8), L_FORE: R(-6),
+        R_WRIST: R(-14),
+        SPINE: R(-14), HEAD: R(-6), ANTENNA: R(-32),
+        R_THIGH: R(-18), L_THIGH: R(-18), R_SHIN: R(28), L_SHIN: R(28),
+        "ROOT_Z": -0.070,
+    }),
+    (0.24, {  # overshoot: sink deeper, arms stay planted, antenna whips hard
+        R_ARM: R(-58), L_ARM: R(-48), R_FORE: R(-6), L_FORE: R(-4),
+        SPINE: R(-17), HEAD: R(-8), ANTENNA: R(-40),
+        R_THIGH: R(-20), L_THIGH: R(-20), R_SHIN: R(32), L_SHIN: R(32),
+        "ROOT_Z": -0.082,
+    }),
+    (0.50, {}),  # mechanical rise back to rest
+])
+
+# SPECIAL — two-hand overhead slam, CONTACT-TRUE: crash at 0.22s, length 0.60s
+# (SwingTiming.SPECIAL). Longer windup than the combo — it's the readable big one.
 author_clip("special", [
     (0.00, {}),
-    (0.20, {  # raise both arms overhead, chest proud
+    (0.12, {  # raise both arms overhead, chest proud
         R_ARM: R(-150), L_ARM: R(-150), R_FORE: R(-15), L_FORE: R(-15),
         SPINE: R(10), HEAD: R(6), ANTENNA: R(18), "ROOT_Z": 0.020,
     }),
-    (0.32, {  # apex hang (anticipation beat)
+    (0.18, {  # apex hang (anticipation beat)
         R_ARM: R(-160), L_ARM: R(-160), R_FORE: R(-18), L_FORE: R(-18),
         SPINE: R(12), HEAD: R(8), ANTENNA: R(24), "ROOT_Z": 0.026,
     }),
-    (0.42, {  # slam: arms crash down, body crouches into it
+    (0.22, {  # CONTACT: arms crash down, body crouches into it
         R_ARM: R(-20), L_ARM: R(-20), R_FORE: R(12), L_FORE: R(12),
         SPINE: R(-24), HEAD: R(-10), ANTENNA: R(-30),
         R_THIGH: R(-24), L_THIGH: R(-24), R_SHIN: R(36), L_SHIN: R(36),
         "ROOT_Z": -0.095,
     }),
-    (0.50, {  # overshoot: sink a hair deeper, antenna whips
+    (0.30, {  # overshoot: sink a hair deeper, antenna whips
         R_ARM: R(-8), L_ARM: R(-8),
         SPINE: R(-27), HEAD: R(-12), ANTENNA: R(-38),
         R_THIGH: R(-26), L_THIGH: R(-26), R_SHIN: R(40), L_SHIN: R(40),
         "ROOT_Z": -0.110,
     }),
-    (0.70, {}),
+    (0.60, {}),
 ])
+
+# SPARK CAST — 0.45s underhand lob: the spark is a gift thrown, not a bullet.
+# Release beat at 0.15s; body opens toward the throw.
+author_clip("spark_cast", [
+    (0.00, {}),
+    (0.08, {  # gather: right palm coiled to the chest, spine curls around it
+        R_ARM: R(-40) + BANK(30), R_FORE: R(55), R_WRIST: R(10),
+        SPINE: R(6) + TWIST(-10), HEAD: R(8) + TWIST(-6),
+        L_ARM: R(6), ANTENNA: R(16), "ROOT_Z": -0.010,
+    }),
+    (0.15, {  # release: arm sweeps up-and-out, chest opens, up on the toes
+        R_ARM: R(-115) + BANK(-12), R_FORE: R(-20), R_WRIST: R(-25),
+        SPINE: R(-8) + TWIST(14), HEAD: R(-6) + TWIST(6),
+        L_ARM: R(14), ANTENNA: R(-20),
+        R_THIGH: R(-6), L_THIGH: R(4), "ROOT_Z": 0.018,
+    }),
+    (0.26, {  # follow: hand hangs open where the spark left
+        R_ARM: R(-95), R_FORE: R(-12), R_WRIST: R(-18),
+        SPINE: R(-4) + TWIST(8), ANTENNA: R(-10), "ROOT_Z": 0.006,
+    }),
+    (0.45, {}),
+])
+
+# IDLE FIDGET 1 — 1.6s wind-up key turn: Gizmo reaches back and gives his own
+# key two crank pulses. Pure personality; plays rarely from long idle.
+crank_a = {
+    R_ARM: R(85) + BANK(-20), R_FORE: R(70), R_WRIST: R(25),
+    SPINE: TWIST(-14) + R(4), HEAD: TWIST(-18),
+    ANTENNA: R(10), "ROOT_Z": -0.006,
+}
+crank_b = {
+    R_ARM: R(80) + BANK(-24), R_FORE: R(88), R_WRIST: R(-30),
+    SPINE: TWIST(-16) + R(5), HEAD: TWIST(-20),
+    ANTENNA: R(-8), "ROOT_Z": -0.010,
+}
+author_clip("idle_fidget_key", [
+    (0.00, {}),
+    (0.30, crank_a),      # reach back, grip the key
+    (0.55, crank_b),      # crank one
+    (0.75, crank_a),
+    (0.95, crank_b),      # crank two
+    (1.20, {SPINE: R(2), ANTENNA: R(14), HEAD: R(-4), "ROOT_Z": 0.008}),  # satisfied straighten
+    (1.60, {}),
+])
+
+# IDLE FIDGET 2 — 1.2s head-tilt chirp: head cocks, antenna perks, double
+# bob synced for the audio lane's chirp (bobs at 0.50s and 0.70s).
+author_clip("idle_fidget_chirp", [
+    (0.00, {}),
+    (0.30, {HEAD: BANK(18) + TWIST(10), ANTENNA: R(-14), SPINE: TWIST(4)}),
+    (0.50, {HEAD: BANK(20) + TWIST(10) + R(6), ANTENNA: R(-22), SPINE: TWIST(4), "ROOT_Z": -0.006}),
+    (0.60, {HEAD: BANK(19) + TWIST(10), ANTENNA: R(-12), SPINE: TWIST(4)}),
+    (0.70, {HEAD: BANK(20) + TWIST(10) + R(6), ANTENNA: R(-22), SPINE: TWIST(4), "ROOT_Z": -0.006}),
+    (0.90, {HEAD: BANK(10) + TWIST(5), ANTENNA: R(-4)}),
+    (1.20, {}),
+])
+
+# CAMPFIRE SIT — 3.2s seated warmth loop for the lore lane's cinematic
+# (call it by clip name "campfire_sit"). Grounded sit: knees up, spine eased,
+# slow breathing bob, one head-turn toward the fire.
+sit_base = {
+    R_THIGH: R(-100), L_THIGH: R(-95), R_SHIN: R(112), L_SHIN: R(108),
+    R_ARM: R(-28) + BANK(8), L_ARM: R(-28) + BANK(-8),
+    R_FORE: R(45), L_FORE: R(45),
+    SPINE: R(-8), HEAD: R(4), "ROOT_Z": -0.360,
+}
+def sit(spine_extra=0.0, head_twist=0.0, ant=0.0, dz=0.0):
+    p = {k: list(v) for k, v in sit_base.items() if k != "ROOT_Z"}
+    p[SPINE] = R(-8 + spine_extra)
+    p[HEAD] = R(4) + TWIST(head_twist)
+    p[ANTENNA] = R(ant)
+    p["ROOT_Z"] = sit_base["ROOT_Z"] + dz
+    return p
+author_clip("campfire_sit", [
+    (0.0, sit(0.0, 0.0, 2)),
+    (0.8, sit(1.5, 0.0, 6, 0.004)),        # inhale
+    (1.6, sit(-0.5, 12.0, -2)),            # exhale, head drifts to the fire
+    (2.4, sit(1.0, 6.0, 5, 0.004)),
+    (3.2, sit(0.0, 0.0, 2)),
+], loop=True)
 
 # DASH — 0.3s forward lunge: instant lean, arms swept back, split stance.
 dash_hold = {
@@ -332,8 +479,15 @@ if RENDER_DIR:
     direction = center - cam.location
     cam.rotation_euler = direction.to_track_quat("-Z", "Y").to_euler()
 
-    shots = [("idle", 1.0), ("run", 0.0), ("run", 0.15), ("attack", 0.10),
-             ("attack", 0.18), ("special", 0.32), ("special", 0.5),
+    shots = [("idle", 1.0), ("run", 0.0), ("run", 0.12),
+             ("attack_1", 0.06), ("attack_1", 0.10), ("attack_1", 0.20),
+             ("attack_2", 0.06), ("attack_2", 0.10), ("attack_2", 0.20),
+             ("attack_3", 0.08), ("attack_3", 0.14), ("attack_3", 0.24),
+             ("special", 0.18), ("special", 0.22), ("special", 0.30),
+             ("spark_cast", 0.08), ("spark_cast", 0.15),
+             ("idle_fidget_key", 0.55), ("idle_fidget_key", 1.20),
+             ("idle_fidget_chirp", 0.50), ("campfire_sit", 0.0),
+             ("campfire_sit", 1.6),
              ("dash", 0.12), ("hit", 0.06), ("death", 1.2), ("victory", 0.45)]
     for track in ARM.animation_data.nla_tracks:
         track.mute = True

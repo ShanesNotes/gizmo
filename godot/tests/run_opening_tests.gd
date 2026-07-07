@@ -60,8 +60,11 @@ func _run_tests() -> void:
 	DirAccess.make_dir_recursive_absolute(TEST_ROOT)
 	await _test_seen_flag_helpers()
 	await _test_opening_beats_are_canon_shaped()
+	await _test_opening_cinematic_staging_rules()
 	await _test_opening_registers_and_speaks_ordered_lines()
 	await _test_opening_skip_finishes_once()
+	await _test_opening_skip_during_title_finishes_once()
+	await _test_opening_missing_title_sting_is_noop()
 	await _test_controls_card_teaches_every_control()
 	await _test_app_shell_first_boot_shows_opening_then_hub()
 	await _test_app_shell_seen_flag_boots_straight_to_hub()
@@ -112,6 +115,40 @@ func _new_opening(director: Node) -> Node:
 	await process_frame
 	return opening
 
+func _caption_index_containing(fragment: String) -> int:
+	var beats: Array = OpeningSequenceScript.BEATS
+	for index in range(beats.size()):
+		if String(beats[index].get("caption", "")).contains(fragment):
+			return index
+	return -1
+
+func _title_beat_index() -> int:
+	var beats: Array = OpeningSequenceScript.BEATS
+	for index in range(beats.size()):
+		if bool(beats[index].get("title_card", false)):
+			return index
+	return -1
+
+func _first_portrait_beat_index() -> int:
+	var beats: Array = OpeningSequenceScript.BEATS
+	for index in range(beats.size()):
+		if bool(beats[index].get("reveal_portrait", false)):
+			return index
+	return -1
+
+func _first_voice_beat_index() -> int:
+	var beats: Array = OpeningSequenceScript.BEATS
+	for index in range(beats.size()):
+		if beats[index].has("voice"):
+			return index
+	return -1
+
+func _advance_opening_to_beat(opening: Node, director: StubVoiceDirector, target_index: int) -> void:
+	while int(opening._beat_index) < target_index and not bool(opening._finished):
+		director.speaking = false
+		opening.advance_time(60.0)
+		await process_frame
+
 func _test_seen_flag_helpers() -> void:
 	var path := _seen_path("helpers")
 	_remove_file(path)
@@ -125,20 +162,53 @@ func _test_seen_flag_helpers() -> void:
 func _test_opening_beats_are_canon_shaped() -> void:
 	var beats: Array = OpeningSequenceScript.BEATS
 	_check("opening has at least four beats", beats.size() >= 4)
+	var spoken_count := 0
 	for beat in beats:
-		var caption := String(beat.get("caption", ""))
-		_check("beat caption is non-empty", not caption.is_empty())
-		var voice := StringName(beat.get("voice", &""))
-		_check(
-			"beat voice '%s' has a registered source" % voice,
-			OpeningSequenceScript.VOICE_SOURCES.has(voice)
-		)
+		if beat.has("caption"):
+			var caption := String(beat.get("caption", ""))
+			_check("captioned beat caption is non-empty", not caption.is_empty())
+		if beat.has("voice"):
+			spoken_count += 1
+			var voice := StringName(beat.get("voice", &""))
+			_check(
+				"beat voice '%s' has a registered source" % voice,
+				OpeningSequenceScript.VOICE_SOURCES.has(voice)
+			)
+	_check("opening still has at least four spoken beats", spoken_count >= 4)
 	var all_captions := ""
 	for beat in beats:
 		all_captions += String(beat.get("caption", "")) + " "
 	_check("beats name the guide (Margin/Marginalia)", all_captions.contains("Margin"))
 	_check("beats name the Spark", all_captions.contains("Spark"))
 	_check("beats name the Vigil", all_captions.contains("Vigil"))
+
+func _test_opening_cinematic_staging_rules() -> void:
+	var beats: Array = OpeningSequenceScript.BEATS
+	var poses: Dictionary = OpeningSequenceScript.CAMERA_POSES
+	var pre_beat: Dictionary = beats[0]
+	var keep_alive_index := _caption_index_containing("Keep it alive")
+	var title_index := _title_beat_index()
+	var portrait_index := _first_portrait_beat_index()
+
+	_check("pre-beat is first and has no caption", not pre_beat.has("caption"))
+	_check("pre-beat is first and has no voice", not pre_beat.has("voice"))
+	_check_eq("pre-beat starts on the ember close camera pose", StringName(pre_beat.get("camera_pose", &"")), &"ember_close")
+	_check("title beat exists", title_index >= 0)
+	if title_index >= 0:
+		var title_beat: Dictionary = beats[title_index]
+		_check("title beat has no voice key", not title_beat.has("voice"))
+	_check("keep-it-alive beat exists", keep_alive_index >= 0)
+	_check("title beat lands after keep it alive", keep_alive_index >= 0 and title_index == keep_alive_index + 1)
+	_check("portrait reveal happens after title", title_index >= 0 and portrait_index > title_index)
+
+	for beat in beats:
+		_check(
+			"no beat both reveals portrait and shows title",
+			not (bool(beat.get("reveal_portrait", false)) and bool(beat.get("title_card", false)))
+		)
+		if beat.has("camera_pose"):
+			var pose_name := StringName(beat.get("camera_pose", &""))
+			_check("camera pose '%s' exists" % pose_name, poses.has(pose_name))
 
 func _test_opening_registers_and_speaks_ordered_lines() -> void:
 	var director := StubVoiceDirector.new()
@@ -151,13 +221,30 @@ func _test_opening_registers_and_speaks_ordered_lines() -> void:
 			director.registered.has(voice_id)
 		)
 	_check("opening joins the opening_sequence group", opening.is_in_group(&"opening_sequence"))
-	_check_eq("opening speaks the first beat line on entry", director.played.front(), StringName(OpeningSequenceScript.BEATS[0].get("voice")))
+	_check_eq("opening starts silently on the ember pre-beat", director.played.size(), 0)
+
+	# Pre-beat finishes -> first spoken line plays.
+	director.speaking = false
+	opening.advance_time(60.0)
+	await process_frame
+	var first_voice_index := _first_voice_beat_index()
+	var first_played: StringName = director.played.front() if director.played.size() > 0 else &""
+	_check_eq(
+		"opening speaks the first spoken beat after the ember pre-beat",
+		first_played,
+		StringName(OpeningSequenceScript.BEATS[first_voice_index].get("voice"))
+	)
 
 	# Voice "finishes", minimum beat time passes -> next beat line plays.
 	director.speaking = false
 	opening.advance_time(60.0)
 	await process_frame
-	_check_eq("second beat line follows the first in order", director.played[1], StringName(OpeningSequenceScript.BEATS[1].get("voice")))
+	var second_played: StringName = director.played[1] if director.played.size() > 1 else &""
+	_check_eq(
+		"second spoken beat line follows the first in order",
+		second_played,
+		StringName(OpeningSequenceScript.BEATS[first_voice_index + 1].get("voice"))
+	)
 
 	await _cleanup(opening)
 	await _cleanup(director)
@@ -175,6 +262,44 @@ func _test_opening_skip_finishes_once() -> void:
 	opening.skip()
 	await process_frame
 	_check_eq("second skip does not re-emit finished", finish_count[0], 1)
+
+	await _cleanup(opening)
+	await _cleanup(director)
+
+func _test_opening_skip_during_title_finishes_once() -> void:
+	var director := StubVoiceDirector.new()
+	root.add_child(director)
+	var opening := await _new_opening(director)
+	var title_index := _title_beat_index()
+	await _advance_opening_to_beat(opening, director, title_index)
+
+	var finish_count := [0]
+	opening.finished.connect(func() -> void: finish_count[0] += 1)
+	opening.skip()
+	await process_frame
+	_check_eq("skip during title emits finished once", finish_count[0], 1)
+	opening.skip()
+	await process_frame
+	_check_eq("second skip during title does not re-emit finished", finish_count[0], 1)
+
+	await _cleanup(opening)
+	await _cleanup(director)
+
+func _test_opening_missing_title_sting_is_noop() -> void:
+	var director := StubVoiceDirector.new()
+	root.add_child(director)
+	var opening := await _new_opening(director)
+	opening.title_sting_path = "res://audio/music/__missing_opening_title_for_test.ogg"
+	var title_index := _title_beat_index()
+	await _advance_opening_to_beat(opening, director, title_index)
+	_check_eq("title beat starts with the missing sting path configured", int(opening._beat_index), title_index)
+
+	director.speaking = false
+	opening.advance_time(60.0)
+	await process_frame
+	var title_card := opening.find_child("TitleCard", true, false) as Control
+	_check("missing title sting does not block sequence advance", int(opening._beat_index) > title_index)
+	_check("title tween fast-forwards and hides the title card", title_card != null and not title_card.visible)
 
 	await _cleanup(opening)
 	await _cleanup(director)

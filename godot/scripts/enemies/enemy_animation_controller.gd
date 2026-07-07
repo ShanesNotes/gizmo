@@ -17,6 +17,17 @@ const CLIP_DEATH := &"death"
 const CONTRACT: Array[StringName] = [CLIP_IDLE, CLIP_WALK, CLIP_ATTACK, CLIP_HIT, CLIP_DEATH]
 const LOOPED := {CLIP_IDLE: true, CLIP_WALK: true}
 
+## Optional authored clips (night pass 2026-07-07): used only when the model
+## GLB carries them — no guarantee poses; the 5-clip contract stays the floor.
+## hit_front/hit_back pick by attacker side; stagger loops while the brain is
+## staggered; spawn plays once on setup (materialize).
+const CLIP_HIT_FRONT := &"hit_front"
+const CLIP_HIT_BACK := &"hit_back"
+const CLIP_STAGGER := &"stagger"
+const CLIP_SPAWN := &"spawn"
+const OPTIONAL_CLIPS: Array[StringName] = [CLIP_HIT_FRONT, CLIP_HIT_BACK, CLIP_STAGGER, CLIP_SPAWN]
+const OPTIONAL_LOOPED := {CLIP_STAGGER: true}
+
 ## Elite never walks — it glides (EnemyVisual banking) in its poised stance.
 const LOCOMOTION_CLIPS := {
 	EnemyVisual.ARCHETYPE_BRUISER: CLIP_WALK,
@@ -41,6 +52,7 @@ var _skeleton: Skeleton3D = null
 var _archetype: String = ""
 var _current_clip: StringName = &""
 var _hit_until: float = 0.0
+var _hit_clip: StringName = CLIP_HIT
 var _time: float = 0.0
 
 func setup(enemy: Node, model_instance: Node3D, archetype: String) -> void:
@@ -54,7 +66,10 @@ func setup(enemy: Node, model_instance: Node3D, archetype: String) -> void:
 	if _enemy.has_signal(&"damage_taken") \
 			and not _enemy.damage_taken.is_connected(_on_damage_taken):
 		_enemy.damage_taken.connect(_on_damage_taken)
-	_play_clip(CLIP_IDLE, BLEND_SECONDS)
+	if _library_key(CLIP_SPAWN) != "":
+		_play_clip(CLIP_SPAWN, 0.0)  # materialize, then _desired_clip takes over
+	else:
+		_play_clip(CLIP_IDLE, BLEND_SECONDS)
 
 func _physics_process(delta: float) -> void:
 	update_animation(delta)
@@ -74,12 +89,20 @@ func update_animation(delta: float) -> void:
 func _desired_clip() -> StringName:
 	if _is_dead():
 		return CLIP_DEATH
+	# Spawn materialize is cosmetic: it holds only while nothing gameplay-driven
+	# (movement, windup, hit, stagger) is demanded.
+	if _current_clip == CLIP_SPAWN and animation_player.is_playing() \
+			and not _is_moving() and _attack_state() != "windup" \
+			and not _is_staggered() and _time >= _hit_until:
+		return CLIP_SPAWN
+	if _is_staggered() and _library_key(CLIP_STAGGER) != "":
+		return CLIP_STAGGER
 	if _attack_state() == "windup":
 		return CLIP_ATTACK
 	if _current_clip == CLIP_ATTACK and animation_player.is_playing():
 		return CLIP_ATTACK  # let the strike/settle play through recovery
 	if _time < _hit_until:
-		return CLIP_HIT
+		return _hit_clip
 	if _is_moving():
 		return LOCOMOTION_CLIPS.get(_archetype, CLIP_WALK)
 	return CLIP_IDLE
@@ -101,9 +124,34 @@ func _library_key(clip_name: StringName) -> String:
 func _on_damage_taken(_spawn_id: String, _amount: float, _charges_spark: bool) -> void:
 	if _is_dead() or _attack_state() == "windup":
 		return
+	_hit_clip = _directional_hit_clip()
 	_hit_until = _time + 0.25
-	if _current_clip == CLIP_HIT:
-		_play_clip(CLIP_HIT, HIT_BLEND_SECONDS)  # retrigger from the top
+	if _current_clip == _hit_clip:
+		_play_clip(_hit_clip, HIT_BLEND_SECONDS)  # retrigger from the top
+
+## Damage overwhelmingly comes from the player: front if the enemy faces its
+## chase target, back otherwise. Cosmetic approximation — no resolver reads.
+func _directional_hit_clip() -> StringName:
+	if _library_key(CLIP_HIT_FRONT) == "" or not (_enemy is Node3D):
+		return CLIP_HIT
+	var target := _enemy.get("chase_target") as Node3D
+	if target == null:
+		return CLIP_HIT
+	var to_attacker := target.global_position - (_enemy as Node3D).global_position
+	to_attacker.y = 0.0
+	if to_attacker.length_squared() < 0.0001:
+		return CLIP_HIT
+	var forward := (_enemy as Node3D).global_transform.basis * Vector3(0.0, 0.0, 1.0)
+	forward.y = 0.0
+	if forward.length_squared() < 0.0001:
+		return CLIP_HIT
+	return CLIP_HIT_FRONT if forward.normalized().dot(to_attacker.normalized()) >= 0.0 else CLIP_HIT_BACK
+
+func _is_staggered() -> bool:
+	var brain: Variant = _enemy.get("brain")
+	if brain == null or not (brain as Object).has_method(&"is_staggered"):
+		return false
+	return bool(brain.is_staggered())
 
 ## ----------------------------------------------------------- parent reads
 func _is_dead() -> bool:
@@ -145,6 +193,12 @@ func _ensure_contract_clips() -> void:
 			fallback = AnimationLibrary.new()
 			animation_player.add_animation_library(&"guarantee", fallback)
 		fallback.add_animation(clip_name, _build_guarantee_clip(clip_name))
+	for clip_name in OPTIONAL_CLIPS:
+		var key := _library_key(clip_name)
+		if key == "":
+			continue
+		var animation := animation_player.get_animation(key)
+		animation.loop_mode = Animation.LOOP_LINEAR if OPTIONAL_LOOPED.get(clip_name, false) else Animation.LOOP_NONE
 
 func _build_guarantee_clip(clip_name: StringName) -> Animation:
 	var keys: Array = GUARANTEE_CLIP_DATA[clip_name]["keys"]

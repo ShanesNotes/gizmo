@@ -13,37 +13,77 @@ const GROUP_NAME: StringName = &"opening_sequence"
 const SILENCE_LINE: StringName = &"margin_opening_silence"
 const CAPTION_FADE_SECONDS := 0.8
 const PORTRAIT_FADE_SECONDS := 2.0
+const PRE_BEAT_FIRE_SCALE := 0.15
+const TITLE_FADE_SECONDS := 1.2
+const TITLE_STING_PATH := "res://audio/music/sting_opening_title.ogg"
 
-## The four movements: the world went quiet -> the Spark you carry -> keep it
-## safe, keep it alive -> Margin named, the Vigil begins. Captions mirror the
-## spoken lines (voice-scripts-v1 register; new lines ledgered in the audio
-## canon 2026-07-07-opening-lines batch).
+const CAMERA_POSES := {
+	&"ember_close": {
+		"position": Vector3(0.08, 0.54, 0.92),
+		"look_at": Vector3(0.0, 0.18, 0.0),
+		"push": 0.0,
+	},
+	&"fire_gizmo_reveal": {
+		"position": Vector3(-0.35, 1.12, 2.4),
+		"look_at": Vector3(-0.45, 0.34, 0.08),
+		"push": -0.2,
+	},
+	&"dark_horizon": {
+		"position": Vector3(-0.15, 2.2, 4.05),
+		"look_at": Vector3(-0.25, 0.85, -2.2),
+		"push": -0.3,
+	},
+	&"fire_portrait_side": {
+		"position": Vector3(0.75, 1.45, 3.1),
+		"look_at": Vector3(-0.32, 0.5, 0.04),
+		"push": 0.1,
+	},
+}
+
+## The movements: ember-dark -> the world went quiet -> the Spark you carry ->
+## keep it safe, keep it alive -> title downbeat -> Margin named, the Vigil
+## begins. Captions mirror the spoken lines (voice-scripts-v1 register; new
+## lines ledgered in the audio canon 2026-07-07-opening-lines batch).
 const BEATS: Array[Dictionary] = [
+	{
+		"min_seconds": 2.5,
+		"camera_pose": &"ember_close",
+	},
 	{
 		"caption": "The world went quiet. Long ago, and all at once.",
 		"voice": &"margin_opening_1",
 		"min_seconds": 4.5,
+		"camera_pose": &"ember_close",
 	},
 	{
 		"caption": "What glows in your keeping is the Spark — humanity, still warm.",
 		"voice": &"margin_opening_2",
 		"min_seconds": 5.0,
+		"camera_pose": &"fire_gizmo_reveal",
 	},
 	{
 		"caption": "You woke to two words, little keeper: keep it safe.",
 		"voice": &"margin_opening_keep_safe",
 		"min_seconds": 4.5,
+		"camera_pose": &"dark_horizon",
 	},
 	{
 		"caption": "Keep it alive. That is the whole of it.",
 		"voice": &"margin_opening_keep_alive",
 		"min_seconds": 4.0,
+		"camera_pose": &"dark_horizon",
+	},
+	{
+		"title_card": true,
+		"min_seconds": 4.5,
+		"camera_pose": &"fire_portrait_side",
 	},
 	{
 		"caption": "I am Marginalia — Margin, by this fire. The Vigil begins.",
 		"voice": &"margin_opening_3",
 		"min_seconds": 5.0,
 		"reveal_portrait": true,
+		"camera_pose": &"fire_portrait_side",
 	},
 ]
 
@@ -65,12 +105,27 @@ var _controls_shown := false
 var _finished := false
 var _fire_time := 0.0
 var _fire_base_energy := 1.0
+var _fire_energy_scale := 1.0
+var _fire_ramp_started := false
+var _camera_from_pose: Dictionary = {}
+var _camera_to_pose: Dictionary = {}
+var _camera_current_pose: Dictionary = {}
+var _caption_tween: Tween = null
+var _portrait_tween: Tween = null
+var _controls_tween: Tween = null
+var _camera_tween: Tween = null
+var _fire_ramp_tween: Tween = null
+var _title_tween: Tween = null
+var title_sting_path := TITLE_STING_PATH
 
 @onready var _caption_label: Label = %CaptionLabel
 @onready var _portrait_texture: TextureRect = %PortraitReveal
 @onready var _controls_block: Control = %ControlsBlock
 @onready var _skip_hint: Label = %SkipHintLabel
 @onready var _fire_light: OmniLight3D = %FireLight
+@onready var _camera: Camera3D = $Camera3D
+@onready var _title_card: Control = %TitleCard
+@onready var _title_sting_player: AudioStreamPlayer = %TitleStingPlayer
 
 static var replay_requested := false
 
@@ -99,7 +154,13 @@ func _ready() -> void:
 		audio_director = get_node_or_null("/root/AudioDirector")
 	if _fire_light != null:
 		_fire_base_energy = _fire_light.light_energy
+		_fire_energy_scale = PRE_BEAT_FIRE_SCALE
+		_apply_fire_energy(0.0)
+	if _camera != null and CAMERA_POSES.has(&"ember_close"):
+		_apply_camera_pose(CAMERA_POSES[&"ember_close"])
 	_portrait_texture.modulate.a = 0.0
+	_title_card.visible = false
+	_title_card.modulate.a = 0.0
 	_load_portrait()
 	_controls_block.visible = false
 	_register_voice_lines()
@@ -116,6 +177,7 @@ func _process(delta: float) -> void:
 ## Test hook: fast-forward the current beat clock without waiting real time.
 func advance_time(seconds: float) -> void:
 	_beat_elapsed += seconds
+	_advance_active_tweens(seconds)
 	if not _finished and not _controls_shown and _beat_ready_to_advance():
 		_advance_beat()
 
@@ -150,42 +212,148 @@ func _beat_ready_to_advance() -> bool:
 	return _beat_elapsed >= min_seconds and not _voice_speaking()
 
 func _advance_beat() -> void:
+	_kill_beat_tweens()
 	_beat_index += 1
 	_beat_elapsed = 0.0
 	if _beat_index >= BEATS.size():
 		_show_controls()
 		return
 	var beat := BEATS[_beat_index]
-	_show_caption(String(beat.get("caption", "")))
+	_start_camera_pose(StringName(beat.get("camera_pose", &"")), float(beat.get("min_seconds", 4.0)))
+	if bool(beat.get("title_card", false)):
+		_clear_caption()
+		_show_title_card(float(beat.get("min_seconds", 4.5)))
+		return
+	_hide_title_card()
+	if beat.has("caption"):
+		_show_caption(String(beat.get("caption", "")))
+	else:
+		_clear_caption()
 	if bool(beat.get("reveal_portrait", false)):
 		_reveal_portrait()
-	_speak(StringName(beat.get("voice", &"")))
+	if beat.has("voice"):
+		if not _fire_ramp_started:
+			_start_fire_ramp()
+		_speak(StringName(beat.get("voice", &"")))
 
 func _show_caption(text: String) -> void:
+	_kill_tween(_caption_tween)
 	_caption_label.text = text
 	_caption_label.modulate.a = 0.0
-	var tween := create_tween()
-	tween.tween_property(_caption_label, "modulate:a", 1.0, CAPTION_FADE_SECONDS)
+	_caption_tween = create_tween()
+	_caption_tween.tween_property(_caption_label, "modulate:a", 1.0, CAPTION_FADE_SECONDS)
+
+func _clear_caption() -> void:
+	_kill_tween(_caption_tween)
+	_caption_label.text = ""
+	_caption_label.modulate.a = 0.0
 
 func _reveal_portrait() -> void:
-	var tween := create_tween()
-	tween.tween_property(_portrait_texture, "modulate:a", 1.0, PORTRAIT_FADE_SECONDS)
+	_kill_tween(_portrait_tween)
+	_portrait_tween = create_tween()
+	_portrait_tween.tween_property(_portrait_texture, "modulate:a", 1.0, PORTRAIT_FADE_SECONDS)
 
 func _show_controls() -> void:
 	_controls_shown = true
 	_caption_label.text = ""
+	_hide_title_card()
 	_controls_block.visible = true
 	_controls_block.modulate.a = 0.0
 	_skip_hint.text = "press any key to keep"
-	var tween := create_tween()
-	tween.tween_property(_controls_block, "modulate:a", 1.0, CAPTION_FADE_SECONDS)
+	_controls_tween = create_tween()
+	_controls_tween.tween_property(_controls_block, "modulate:a", 1.0, CAPTION_FADE_SECONDS)
 
 func _finish() -> void:
 	if _finished:
 		return
 	_finished = true
+	_kill_all_tweens()
+	if _title_sting_player.playing:
+		_title_sting_player.stop()
+	_hide_title_card()
 	_interrupt_voice()
 	finished.emit()
+
+func _show_title_card(duration: float) -> void:
+	_kill_tween(_title_tween)
+	_title_card.visible = true
+	_title_card.modulate.a = 0.0
+	_play_title_sting()
+	var hold_seconds := maxf(0.0, duration - TITLE_FADE_SECONDS * 2.0)
+	_title_tween = create_tween()
+	_title_tween.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	_title_tween.tween_property(_title_card, "modulate:a", 1.0, TITLE_FADE_SECONDS)
+	_title_tween.tween_interval(hold_seconds)
+	_title_tween.tween_property(_title_card, "modulate:a", 0.0, TITLE_FADE_SECONDS)
+	_title_tween.tween_callback(_hide_title_card)
+
+func _hide_title_card() -> void:
+	_title_card.visible = false
+	_title_card.modulate.a = 0.0
+
+func _play_title_sting() -> void:
+	if _title_sting_player == null or not ResourceLoader.exists(title_sting_path):
+		return
+	_title_sting_player.stream = load(title_sting_path)
+	_title_sting_player.play()
+
+func _start_fire_ramp() -> void:
+	if _fire_ramp_started:
+		return
+	_fire_ramp_started = true
+	_kill_tween(_fire_ramp_tween)
+	_fire_ramp_tween = create_tween()
+	_fire_ramp_tween.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	_fire_ramp_tween.tween_property(self, "_fire_energy_scale", 1.0, _first_spoken_beats_duration(2))
+
+func _first_spoken_beats_duration(count: int) -> float:
+	var total := 0.0
+	var found := 0
+	for beat in BEATS:
+		if not beat.has("voice"):
+			continue
+		total += float(beat.get("min_seconds", 4.0))
+		found += 1
+		if found >= count:
+			break
+	return maxf(total, 0.1)
+
+func _start_camera_pose(pose_name: StringName, duration: float) -> void:
+	if _camera == null or not CAMERA_POSES.has(pose_name):
+		return
+	_kill_tween(_camera_tween)
+	_camera_from_pose = _camera_current_pose.duplicate()
+	_camera_to_pose = CAMERA_POSES[pose_name].duplicate()
+	_camera_tween = create_tween()
+	_camera_tween.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	_camera_tween.tween_method(_apply_camera_pose_weight, 0.0, 1.0, maxf(duration, 0.1))
+
+func _apply_camera_pose_weight(weight: float) -> void:
+	if _camera_from_pose.is_empty() or _camera_to_pose.is_empty():
+		return
+	var pose := {
+		"position": (_camera_from_pose["position"] as Vector3).lerp(_camera_to_pose["position"] as Vector3, weight),
+		"look_at": (_camera_from_pose["look_at"] as Vector3).lerp(_camera_to_pose["look_at"] as Vector3, weight),
+		"push": lerpf(float(_camera_from_pose.get("push", 0.0)), float(_camera_to_pose.get("push", 0.0)), weight),
+	}
+	_apply_camera_pose(pose)
+
+func _apply_camera_pose(pose: Dictionary) -> void:
+	if _camera == null:
+		return
+	var position := pose["position"] as Vector3
+	var look_at := pose["look_at"] as Vector3
+	var push := float(pose.get("push", 0.0))
+	var direction := (look_at - position).normalized()
+	if direction.length_squared() > 0.0:
+		position += direction * push
+	_camera.global_position = position
+	_camera.look_at(look_at, Vector3.UP)
+	_camera_current_pose = {
+		"position": pose["position"],
+		"look_at": pose["look_at"],
+		"push": push,
+	}
 
 func _load_portrait() -> void:
 	if _portrait_texture.texture != null:
@@ -235,4 +403,39 @@ func _flicker_fire(delta: float) -> void:
 		return
 	_fire_time += delta
 	var flicker := sin(_fire_time * 9.0) * 0.08 + sin(_fire_time * 23.0 + 1.7) * 0.06
-	_fire_light.light_energy = _fire_base_energy + flicker
+	_apply_fire_energy(flicker)
+
+func _apply_fire_energy(flicker: float) -> void:
+	if _fire_light == null:
+		return
+	_fire_light.light_energy = maxf(0.0, _fire_base_energy * _fire_energy_scale + flicker)
+
+func _advance_active_tweens(seconds: float) -> void:
+	_custom_step_tween(_caption_tween, seconds)
+	_custom_step_tween(_portrait_tween, seconds)
+	_custom_step_tween(_controls_tween, seconds)
+	_custom_step_tween(_camera_tween, seconds)
+	_custom_step_tween(_fire_ramp_tween, seconds)
+	_custom_step_tween(_title_tween, seconds)
+	_apply_fire_energy(0.0)
+
+func _custom_step_tween(tween: Tween, seconds: float) -> void:
+	if tween != null and tween.is_valid():
+		tween.custom_step(seconds)
+
+func _kill_beat_tweens() -> void:
+	_kill_tween(_caption_tween)
+	_kill_tween(_camera_tween)
+	_kill_tween(_title_tween)
+
+func _kill_all_tweens() -> void:
+	_kill_tween(_caption_tween)
+	_kill_tween(_portrait_tween)
+	_kill_tween(_controls_tween)
+	_kill_tween(_camera_tween)
+	_kill_tween(_fire_ramp_tween)
+	_kill_tween(_title_tween)
+
+func _kill_tween(tween: Tween) -> void:
+	if tween != null and tween.is_valid():
+		tween.kill()
