@@ -89,8 +89,8 @@ func is_spawning() -> bool:
 func spawn_windup_remaining() -> float:
 	return 0.0
 
-func take_damage(amount: float, charges_spark: bool = true) -> float:
-	var remaining := super.take_damage(amount, charges_spark)
+func take_damage(amount: float, charges_spark: bool = true, opts: Dictionary = {}) -> float:
+	var remaining := super.take_damage(amount, charges_spark, opts)
 	if not is_dead():
 		boss_brain.update_health(hp, max_hp)
 	return remaining

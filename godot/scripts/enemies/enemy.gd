@@ -146,15 +146,14 @@ func tick_chase(target_position: Vector3, delta: float) -> Dictionary:
 		event["source_position"] = global_position
 		damage_event.emit(event)
 		result["damage_event"] = event
-		CombatEffectsScript.spawn_damage_number(
-			get_parent(),
+		_spawn_damage_pop(
 			Vector3(target_position.x, target_position.y + 2.1, target_position.z),
 			float(event.get("damage", 0)),
-			CombatEffectsScript.PLAYER_HIT_NUMBER_COLOR
+			{"player_hit": true}
 		)
 	return result
 
-func take_damage(amount: float, charges_spark: bool = true) -> float:
+func take_damage(amount: float, charges_spark: bool = true, opts: Dictionary = {}) -> float:
 	if _dead or amount <= 0.0:
 		return hp
 
@@ -164,10 +163,10 @@ func take_damage(amount: float, charges_spark: bool = true) -> float:
 	if applied > 0.0:
 		damage_taken.emit(spawn_id, applied, charges_spark)
 		CombatEffectsScript.flash_hit(visual_pivot)
-		CombatEffectsScript.spawn_damage_number(
-			get_parent(),
+		_spawn_damage_pop(
 			global_position + Vector3(0.0, 1.9, 0.0),
-			applied
+			applied,
+			opts
 		)
 		CombatEffectsScript.hit_stop(self)
 	if hp <= 0.0 and not _dead:
@@ -216,6 +215,28 @@ func _tick_spawn_windup(delta: float) -> void:
 	_spawn_windup_remaining = maxf(0.0, _spawn_windup_remaining - maxf(delta, 0.0))
 	if _spawn_windup_remaining <= 0.00001:
 		_spawn_windup_remaining = 0.0
+
+func _spawn_damage_pop(origin: Vector3, amount: float, opts: Dictionary = {}) -> void:
+	if is_inside_tree():
+		var damage_numbers := get_tree().get_first_node_in_group("damage_numbers")
+		if damage_numbers != null and damage_numbers.has_method("pop"):
+			damage_numbers.call("pop", origin, amount, opts)
+			return
+	CombatEffectsScript.spawn_damage_number(
+		get_parent(),
+		origin,
+		amount,
+		_damage_pop_fallback_color(opts)
+	)
+
+func _damage_pop_fallback_color(opts: Dictionary) -> Color:
+	if bool(opts.get("player_hit", false)):
+		return CombatEffectsScript.PLAYER_HIT_NUMBER_COLOR
+	if bool(opts.get("crit", false)):
+		return CombatEffectsScript.FX_IDENTITY
+	if bool(opts.get("boosted", false)):
+		return CombatEffectsScript.FX_IDENTITY_RIM
+	return CombatEffectsScript.DAMAGE_NUMBER_COLOR
 
 func _notify_audio_event(event: StringName) -> void:
 	if not is_inside_tree():

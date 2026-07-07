@@ -4,7 +4,9 @@ extends Resource
 ## Persistent player meta-progression. This is save data, so it serializes to a
 ## ConfigFile rather than a Resource file loaded from user-controlled storage.
 
-const CURRENT_SCHEMA_VERSION: int = 2
+const KeeperRankScript := preload("res://scripts/meta/keeper_rank.gd")
+
+const CURRENT_SCHEMA_VERSION: int = 3
 const DEFAULT_SAVE_PATH: String = "user://saves/meta_state.cfg"
 const STAT_GRADE_KEYS: Array[String] = ["dash_charges", "guard_max", "draft_rerolls"]
 const STAT_GRADE_CAPS: Dictionary = {
@@ -13,6 +15,8 @@ const STAT_GRADE_CAPS: Dictionary = {
 	"draft_rerolls": 2,
 }
 const STAT_GRADE_PRICES: Array[int] = [50, 100]
+## Mirror grades can also be bought with Keeper spark-shards (KeeperRank tally).
+const STAT_GRADE_SHARD_PRICES: Array[int] = [100, 200]
 
 @export var schema_version: int = CURRENT_SCHEMA_VERSION
 @export var scrap_banked: int = 0
@@ -20,10 +24,41 @@ const STAT_GRADE_PRICES: Array[int] = [50, 100]
 @export var last_return_was_victory: bool = false
 @export var unlocked_boon_ids: Array[StringName] = []
 @export var stat_grades: Dictionary = {}
+## Keeper Rank ledger (schema v3): shards only ever accrue; spending them on
+## Mirror grades reduces spendable_spark_shards but never the lifetime total,
+## so rank never regresses.
+@export var lifetime_spark_shards: int = 0
+@export var spendable_spark_shards: int = 0
+@export var runs_finished: int = 0
 
 func bank_currency(scrap: int, sparks: int = 0) -> void:
 	scrap_banked = maxi(0, scrap_banked + maxi(0, scrap))
 	sparks_banked = maxi(0, sparks_banked + maxi(0, sparks))
+
+func bank_spark_shards(amount: int) -> void:
+	var gained := maxi(0, amount)
+	lifetime_spark_shards += gained
+	spendable_spark_shards += gained
+
+func record_run_finished() -> void:
+	runs_finished += 1
+
+func keeper_rank() -> int:
+	return KeeperRankScript.rank_for_lifetime(lifetime_spark_shards)
+
+func purchase_grade_with_shards(stat: String) -> bool:
+	_ensure_stat_grades()
+	if not STAT_GRADE_CAPS.has(stat):
+		return false
+	var current_rank := int(stat_grades.get(stat, 0))
+	if current_rank >= int(STAT_GRADE_CAPS[stat]) or current_rank >= STAT_GRADE_SHARD_PRICES.size():
+		return false
+	var cost := STAT_GRADE_SHARD_PRICES[current_rank]
+	if spendable_spark_shards < cost:
+		return false
+	spendable_spark_shards -= cost
+	stat_grades[stat] = current_rank + 1
+	return true
 
 func unlock_boon(boon_id: StringName) -> void:
 	if boon_id == &"" or unlocked_boon_ids.has(boon_id):
@@ -71,6 +106,9 @@ func save_to_path(path: String = DEFAULT_SAVE_PATH) -> Error:
 	config.set_value("currency", "sparks_banked", sparks_banked)
 	config.set_value("run_history", "last_return_was_victory", last_return_was_victory)
 	config.set_value("unlocks", "boon_ids", _string_name_array_to_strings(unlocked_boon_ids))
+	config.set_value("keeper", "lifetime_spark_shards", lifetime_spark_shards)
+	config.set_value("keeper", "spendable_spark_shards", spendable_spark_shards)
+	config.set_value("keeper", "runs_finished", runs_finished)
 	_ensure_stat_grades()
 	for key in STAT_GRADE_KEYS:
 		config.set_value("stat_grades", key, int(stat_grades.get(key, 0)))
@@ -99,6 +137,9 @@ static func load_from_path(path: String = DEFAULT_SAVE_PATH) -> Resource:
 	state.sparks_banked = maxi(0, int(config.get_value("currency", "sparks_banked", 0)))
 	state.last_return_was_victory = bool(config.get_value("run_history", "last_return_was_victory", false))
 	state.unlocked_boon_ids = _variant_to_string_name_array(config.get_value("unlocks", "boon_ids", []))
+	state.lifetime_spark_shards = maxi(0, int(config.get_value("keeper", "lifetime_spark_shards", 0)))
+	state.spendable_spark_shards = maxi(0, int(config.get_value("keeper", "spendable_spark_shards", 0)))
+	state.runs_finished = maxi(0, int(config.get_value("keeper", "runs_finished", 0)))
 	state._ensure_stat_grades()
 	for key in STAT_GRADE_KEYS:
 		state.stat_grades[key] = maxi(0, int(config.get_value("stat_grades", key, 0)))
