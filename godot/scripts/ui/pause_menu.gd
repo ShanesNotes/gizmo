@@ -4,6 +4,14 @@ extends CanvasLayer
 @export var run_surface_group: StringName = &"run_surface"
 @export var blocking_overlay_group: StringName = &"blocking_overlay"
 
+const INK_LEATHER := Color(0.1020, 0.0824, 0.0706, 0.92)
+const INK_LEATHER_DARK := Color(0.0706, 0.0549, 0.0941, 0.96)
+const DIM_VIOLET := Color(0.0706, 0.0549, 0.0941, 0.55)
+const BRASS := Color(0.6902, 0.5529, 0.3412, 1.0)
+const BRASS_LIT := Color(0.8784, 0.7569, 0.4784, 1.0)
+const PARCHMENT_LIGHT := Color(0.9922, 0.9373, 0.8706, 1.0)
+const PARCHMENT_DIM := Color(0.7569, 0.6667, 0.5686, 1.0)
+
 @onready var _root: Control = %Root
 @onready var _resume_button: Button = %ResumeButton
 @onready var _settings_button: Button = %SettingsButton
@@ -18,6 +26,7 @@ var _last_overlay_visible := false
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_root.visible = false
+	_apply_storybook_theme()
 	_resume_button.pressed.connect(_on_resume_pressed)
 	_settings_button.pressed.connect(_on_settings_pressed)
 	_how_to_keep_button.pressed.connect(_on_how_to_keep_pressed)
@@ -167,3 +176,80 @@ func _on_abandon_pressed() -> void:
 		return
 	if run_surface.has_signal(&"player_died"):
 		run_surface.emit_signal(&"player_died")
+
+func _apply_storybook_theme() -> void:
+	var dim := get_node_or_null("Root/Dim") as ColorRect
+	if dim != null:
+		dim.color = DIM_VIOLET
+
+	var panel := get_node_or_null("Root/Center/Panel") as PanelContainer
+	if panel != null:
+		panel.add_theme_stylebox_override(&"panel", _panel_style())
+
+	var title := get_node_or_null("Root/Center/Panel/Margin/VBox/TitleLabel") as Label
+	if title != null:
+		title.add_theme_color_override(&"font_color", BRASS_LIT)
+		title.add_theme_font_size_override(&"font_size", 48)
+
+	var flavor := get_node_or_null("Root/Center/Panel/Margin/VBox/FlavorLabel") as Label
+	if flavor != null:
+		flavor.add_theme_color_override(&"font_color", PARCHMENT_DIM)
+		flavor.add_theme_font_size_override(&"font_size", 18)
+
+	var buttons: Array[Button] = [
+		_resume_button,
+		_settings_button,
+		_how_to_keep_button,
+		_abandon_button,
+	]
+	for button in buttons:
+		_apply_storybook_button(button)
+
+func _panel_style() -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = INK_LEATHER
+	style.border_color = BRASS
+	style.border_width_left = 3
+	style.border_width_top = 3
+	style.border_width_right = 3
+	style.border_width_bottom = 3
+	style.corner_radius_top_left = 12
+	style.corner_radius_top_right = 12
+	style.corner_radius_bottom_right = 12
+	style.corner_radius_bottom_left = 12
+	style.shadow_color = Color(0.0, 0.0, 0.0, 0.55)
+	style.shadow_size = 12
+	return style
+
+func _apply_storybook_button(button: Button) -> void:
+	if button == null:
+		return
+	button.custom_minimum_size = Vector2(maxf(button.custom_minimum_size.x, 230.0), 48.0)
+	button.focus_mode = Control.FOCUS_ALL
+	button.add_theme_font_size_override(&"font_size", 20)
+	button.add_theme_color_override(&"font_color", PARCHMENT_LIGHT)
+	button.add_theme_color_override(&"font_hover_color", BRASS_LIT)
+	button.add_theme_color_override(&"font_focus_color", BRASS_LIT)
+	button.add_theme_color_override(&"font_pressed_color", PARCHMENT_LIGHT)
+	button.add_theme_stylebox_override(&"normal", _button_style(INK_LEATHER, BRASS, 2, 10))
+	button.add_theme_stylebox_override(&"hover", _button_style(Color(0.145, 0.112, 0.082, 0.96), BRASS_LIT, 2, 10))
+	button.add_theme_stylebox_override(&"pressed", _button_style(INK_LEATHER_DARK, BRASS, 2, 10))
+	button.add_theme_stylebox_override(&"focus", _button_style(Color(0.8784, 0.7569, 0.4784, 0.22), BRASS_LIT, 3, 10))
+
+func _button_style(bg_color: Color, border_color: Color, border_width: int, radius: int) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = bg_color
+	style.border_color = border_color
+	style.border_width_left = border_width
+	style.border_width_top = border_width
+	style.border_width_right = border_width
+	style.border_width_bottom = border_width
+	style.corner_radius_top_left = radius
+	style.corner_radius_top_right = radius
+	style.corner_radius_bottom_right = radius
+	style.corner_radius_bottom_left = radius
+	style.content_margin_left = 22.0
+	style.content_margin_top = 10.0
+	style.content_margin_right = 22.0
+	style.content_margin_bottom = 10.0
+	return style

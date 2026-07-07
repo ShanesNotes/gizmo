@@ -4,6 +4,7 @@
 [ext_resource type="Script" path="res://scripts/player/gizmo_visual.gd" id="2_visual"]
 [ext_resource type="PackedScene" uid="uid://qa2ralfsy66q" path="res://assets/gizmo.glb" id="3_gizmo_glb"]
 [ext_resource type="Shader" path="res://shaders/gouache_grade.gdshader" id="4_grade_shader"]
+[ext_resource type="Script" path="res://scripts/ui/look_grade.gd" id="5_look_grade"]
 [ext_resource type="PackedScene" path="res://scenes/npcs/saint_shrine.tscn" id="5_saint_shrine"]
 [ext_resource type="PackedScene" path="res://scenes/npcs/codex_book.tscn" id="6_codex_book"]
 [ext_resource type="PackedScene" path="res://scenes/npcs/margin_keeper.tscn" id="7_margin_keeper"]
@@ -433,6 +434,7 @@ layer = -1
 
 [node name="GradeRect" type="ColorRect" parent="GradeLayer"]
 material = SubResource("ShaderMat_grade")
+script = ExtResource("5_look_grade")
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0

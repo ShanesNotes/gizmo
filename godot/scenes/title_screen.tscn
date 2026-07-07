@@ -1,8 +1,9 @@
-[gd_scene load_steps=7 format=3 uid="uid://b092titlescn"]
+[gd_scene load_steps=8 format=3 uid="uid://b092titlescn"]
 
 [ext_resource type="Script" path="res://scripts/ui/title_screen.gd" id="1_title"]
 [ext_resource type="Theme" path="res://scenes/hud_theme.tres" id="2_theme"]
 [ext_resource type="PackedScene" path="res://scenes/settings_panel.tscn" id="3_settings"]
+[ext_resource type="Texture2D" path="res://assets/sky/gizmo_cosmos_panorama.jpg" id="4_backdrop"]
 
 [sub_resource type="StyleBoxFlat" id="sb_btn_normal"]
 bg_color = Color(0.1098, 0.1216, 0.1373, 1.0)
@@ -62,14 +63,25 @@ grow_vertical = 2
 theme = ExtResource("2_theme")
 script = ExtResource("1_title")
 
-[node name="Background" type="ColorRect" parent="."]
+[node name="Background" type="TextureRect" parent="."]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-color = Color(0.1098, 0.0902, 0.0980, 1.0)
+texture = ExtResource("4_backdrop")
+expand_mode = 1
+stretch_mode = 6
+
+[node name="CosmosWash" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.0706, 0.0549, 0.0941, 0.42)
 
 [node name="Center" type="CenterContainer" parent="."]
 layout_mode = 1
@@ -106,11 +118,11 @@ layout_mode = 2
 
 [node name="StartButton" type="Button" parent="Center/Menu"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(190, 44)
+custom_minimum_size = Vector2(260, 48)
 layout_mode = 2
 size_flags_horizontal = 4
 focus_mode = 2
-theme_override_font_sizes/font_size = 18
+theme_override_font_sizes/font_size = 20
 theme_override_styles/normal = SubResource("sb_btn_normal")
 theme_override_styles/hover = SubResource("sb_btn_hover")
 theme_override_styles/pressed = SubResource("sb_btn_pressed")
@@ -118,11 +130,11 @@ text = "START"
 
 [node name="ReplayOpeningButton" type="Button" parent="Center/Menu"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(190, 44)
+custom_minimum_size = Vector2(260, 48)
 layout_mode = 2
 size_flags_horizontal = 4
 focus_mode = 2
-theme_override_font_sizes/font_size = 18
+theme_override_font_sizes/font_size = 20
 theme_override_styles/normal = SubResource("sb_btn_normal")
 theme_override_styles/hover = SubResource("sb_btn_hover")
 theme_override_styles/pressed = SubResource("sb_btn_pressed")
@@ -130,11 +142,11 @@ text = "REPLAY THE CAMPFIRE"
 
 [node name="SettingsButton" type="Button" parent="Center/Menu"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(190, 44)
+custom_minimum_size = Vector2(260, 48)
 layout_mode = 2
 size_flags_horizontal = 4
 focus_mode = 2
-theme_override_font_sizes/font_size = 18
+theme_override_font_sizes/font_size = 20
 theme_override_styles/normal = SubResource("sb_btn_normal")
 theme_override_styles/hover = SubResource("sb_btn_hover")
 theme_override_styles/pressed = SubResource("sb_btn_pressed")
@@ -142,11 +154,11 @@ text = "SETTINGS"
 
 [node name="QuitButton" type="Button" parent="Center/Menu"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(190, 44)
+custom_minimum_size = Vector2(260, 48)
 layout_mode = 2
 size_flags_horizontal = 4
 focus_mode = 2
-theme_override_font_sizes/font_size = 18
+theme_override_font_sizes/font_size = 20
 theme_override_styles/normal = SubResource("sb_btn_normal")
 theme_override_styles/hover = SubResource("sb_btn_hover")
 theme_override_styles/pressed = SubResource("sb_btn_pressed")

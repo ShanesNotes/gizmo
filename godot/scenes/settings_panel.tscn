@@ -74,7 +74,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-color = Color(0.1098, 0.0902, 0.0980, 0.62)
+color = Color(0.0706, 0.0549, 0.0941, 0.62)
 
 [node name="Center" type="CenterContainer" parent="Root"]
 layout_mode = 1
@@ -117,6 +117,16 @@ theme_override_constants/h_separation = 18
 theme_override_constants/v_separation = 14
 columns = 2
 
+[node name="AudioHeader" type="Label" parent="Root/Center/Panel/Margin/VBox/SettingsGrid"]
+theme_type_variation = &"CapsLabel"
+layout_mode = 2
+text = "AUDIO"
+theme_override_colors/font_color = Color(0.8784, 0.7569, 0.4784, 1.0)
+theme_override_font_sizes/font_size = 16
+
+[node name="AudioHeaderSpacer" type="Control" parent="Root/Center/Panel/Margin/VBox/SettingsGrid"]
+layout_mode = 2
+
 [node name="MasterLabel" type="Label" parent="Root/Center/Panel/Margin/VBox/SettingsGrid"]
 theme_type_variation = &"CapsLabel"
 layout_mode = 2
@@ -127,7 +137,7 @@ theme_override_font_sizes/font_size = 15
 
 [node name="MasterSlider" type="HSlider" parent="Root/Center/Panel/Margin/VBox/SettingsGrid"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(300, 34)
+custom_minimum_size = Vector2(300, 40)
 layout_mode = 2
 size_flags_horizontal = 3
 focus_mode = 2
@@ -145,7 +155,7 @@ theme_override_font_sizes/font_size = 15
 
 [node name="MusicSlider" type="HSlider" parent="Root/Center/Panel/Margin/VBox/SettingsGrid"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(300, 34)
+custom_minimum_size = Vector2(300, 40)
 layout_mode = 2
 size_flags_horizontal = 3
 focus_mode = 2
@@ -163,13 +173,23 @@ theme_override_font_sizes/font_size = 15
 
 [node name="SFXSlider" type="HSlider" parent="Root/Center/Panel/Margin/VBox/SettingsGrid"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(300, 34)
+custom_minimum_size = Vector2(300, 40)
 layout_mode = 2
 size_flags_horizontal = 3
 focus_mode = 2
 max_value = 1.0
 step = 0.01
 value = 1.0
+
+[node name="DisplayHeader" type="Label" parent="Root/Center/Panel/Margin/VBox/SettingsGrid"]
+theme_type_variation = &"CapsLabel"
+layout_mode = 2
+text = "DISPLAY"
+theme_override_colors/font_color = Color(0.8784, 0.7569, 0.4784, 1.0)
+theme_override_font_sizes/font_size = 16
+
+[node name="DisplayHeaderSpacer" type="Control" parent="Root/Center/Panel/Margin/VBox/SettingsGrid"]
+layout_mode = 2
 
 [node name="FullscreenLabel" type="Label" parent="Root/Center/Panel/Margin/VBox/SettingsGrid"]
 theme_type_variation = &"CapsLabel"
@@ -181,7 +201,7 @@ theme_override_font_sizes/font_size = 15
 
 [node name="FullscreenToggle" type="CheckButton" parent="Root/Center/Panel/Margin/VBox/SettingsGrid"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(300, 34)
+custom_minimum_size = Vector2(300, 44)
 layout_mode = 2
 size_flags_horizontal = 3
 focus_mode = 2
@@ -196,7 +216,7 @@ theme_override_font_sizes/font_size = 15
 
 [node name="VSyncToggle" type="CheckButton" parent="Root/Center/Panel/Margin/VBox/SettingsGrid"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(300, 34)
+custom_minimum_size = Vector2(300, 44)
 layout_mode = 2
 size_flags_horizontal = 3
 focus_mode = 2
@@ -204,11 +224,11 @@ button_pressed = true
 
 [node name="DoneButton" type="Button" parent="Root/Center/Panel/Margin/VBox"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(160, 44)
+custom_minimum_size = Vector2(180, 48)
 layout_mode = 2
 size_flags_horizontal = 4
 focus_mode = 2
-theme_override_font_sizes/font_size = 18
+theme_override_font_sizes/font_size = 20
 theme_override_styles/normal = SubResource("sb_btn_normal")
 theme_override_styles/hover = SubResource("sb_btn_hover")
 theme_override_styles/pressed = SubResource("sb_btn_pressed")

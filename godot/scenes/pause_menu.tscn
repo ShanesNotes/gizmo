@@ -76,7 +76,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-color = Color(0.1098, 0.0902, 0.0980, 0.68)
+color = Color(0.0706, 0.0549, 0.0941, 0.55)
 
 [node name="Center" type="CenterContainer" parent="Root"]
 layout_mode = 1
@@ -87,7 +87,7 @@ grow_horizontal = 2
 grow_vertical = 2
 
 [node name="Panel" type="PanelContainer" parent="Root/Center"]
-custom_minimum_size = Vector2(360, 0)
+custom_minimum_size = Vector2(380, 0)
 layout_mode = 2
 
 [node name="Margin" type="MarginContainer" parent="Root/Center/Panel"]
@@ -122,11 +122,11 @@ layout_mode = 2
 
 [node name="ResumeButton" type="Button" parent="Root/Center/Panel/Margin/VBox"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(180, 44)
+custom_minimum_size = Vector2(230, 48)
 layout_mode = 2
 size_flags_horizontal = 4
 focus_mode = 2
-theme_override_font_sizes/font_size = 18
+theme_override_font_sizes/font_size = 20
 theme_override_styles/normal = SubResource("sb_btn_normal")
 theme_override_styles/hover = SubResource("sb_btn_hover")
 theme_override_styles/pressed = SubResource("sb_btn_pressed")
@@ -134,11 +134,11 @@ text = "RESUME"
 
 [node name="SettingsButton" type="Button" parent="Root/Center/Panel/Margin/VBox"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(180, 44)
+custom_minimum_size = Vector2(230, 48)
 layout_mode = 2
 size_flags_horizontal = 4
 focus_mode = 2
-theme_override_font_sizes/font_size = 18
+theme_override_font_sizes/font_size = 20
 theme_override_styles/normal = SubResource("sb_btn_normal")
 theme_override_styles/hover = SubResource("sb_btn_hover")
 theme_override_styles/pressed = SubResource("sb_btn_pressed")
@@ -146,11 +146,11 @@ text = "SETTINGS"
 
 [node name="HowToKeepButton" type="Button" parent="Root/Center/Panel/Margin/VBox"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(180, 44)
+custom_minimum_size = Vector2(230, 48)
 layout_mode = 2
 size_flags_horizontal = 4
 focus_mode = 2
-theme_override_font_sizes/font_size = 18
+theme_override_font_sizes/font_size = 20
 theme_override_styles/normal = SubResource("sb_btn_normal")
 theme_override_styles/hover = SubResource("sb_btn_hover")
 theme_override_styles/pressed = SubResource("sb_btn_pressed")
@@ -158,11 +158,11 @@ text = "HOW TO KEEP"
 
 [node name="AbandonButton" type="Button" parent="Root/Center/Panel/Margin/VBox"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(180, 44)
+custom_minimum_size = Vector2(230, 48)
 layout_mode = 2
 size_flags_horizontal = 4
 focus_mode = 2
-theme_override_font_sizes/font_size = 18
+theme_override_font_sizes/font_size = 20
 theme_override_styles/normal = SubResource("sb_btn_normal")
 theme_override_styles/hover = SubResource("sb_btn_hover")
 theme_override_styles/pressed = SubResource("sb_btn_pressed")
