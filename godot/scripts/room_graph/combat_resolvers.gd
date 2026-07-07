@@ -50,6 +50,7 @@ func bind_ability_kit(kit: AbilityComponent) -> void:
 	_bound_kit = kit
 	if _bound_kit == null:
 		return
+	_connect_ability_signal(_bound_kit.dash_started, Callable(self, "_on_player_dash_started"))
 	_connect_ability_signal(_bound_kit.attack_started, Callable(self, "_on_player_attack_started"))
 	_connect_ability_signal(_bound_kit.special_started, Callable(self, "_on_player_special_started"))
 	_connect_ability_signal(_bound_kit.cast_started, Callable(self, "_on_player_cast_started"))
@@ -82,6 +83,7 @@ func _connect_ability_signal(ability_signal: Signal, callback: Callable) -> void
 func _disconnect_ability_kit() -> void:
 	if _bound_kit == null:
 		return
+	_disconnect_ability_signal(_bound_kit.dash_started, Callable(self, "_on_player_dash_started"))
 	_disconnect_ability_signal(_bound_kit.attack_started, Callable(self, "_on_player_attack_started"))
 	_disconnect_ability_signal(_bound_kit.special_started, Callable(self, "_on_player_special_started"))
 	_disconnect_ability_signal(_bound_kit.cast_started, Callable(self, "_on_player_cast_started"))
@@ -92,17 +94,26 @@ func _disconnect_ability_signal(ability_signal: Signal, callback: Callable) -> v
 	if ability_signal.is_connected(callback):
 		ability_signal.disconnect(callback)
 
+func _on_player_dash_started(_direction: Vector3, _speed: float, _duration: float) -> void:
+	if not _combat_input_allowed():
+		return
+	_notify_audio_event(&"dash_whoosh")
+
 func _on_player_attack_started(_step: int, damage: float) -> void:
 	if not _combat_input_allowed():
 		return
 	_spawn_swing_read(melee_range)
-	_resolve_player_arc_damage(damage, melee_range, melee_arc_degrees)
+	var hits := _resolve_player_arc_damage(damage, melee_range, melee_arc_degrees)
+	if hits > 0:
+		_notify_audio_event(&"melee_hit")
 
 func _on_player_special_started(potency: float) -> void:
 	if not _combat_input_allowed():
 		return
 	_spawn_swing_read(special_range)
-	_resolve_player_arc_damage(potency, special_range, special_arc_degrees)
+	var hits := _resolve_player_arc_damage(potency, special_range, special_arc_degrees)
+	if hits > 0:
+		_notify_audio_event(&"melee_hit")
 
 func _on_player_cast_started(potency: float) -> void:
 	if not _combat_input_allowed():
@@ -110,6 +121,7 @@ func _on_player_cast_started(potency: float) -> void:
 		# the stone is silently stranded (HZ-074 audit HIGH).
 		_refund_cast_ammo()
 		return
+	_notify_audio_event(&"cast_shot")
 	_resolve_player_cast_damage(potency)
 
 func _on_player_cast_ammo_changed(_current_ammo: int, _max_ammo: int, _lodged_ammo: int) -> void:
@@ -121,6 +133,7 @@ func _on_player_surge_started(damage: float, radius: float, stagger_seconds: flo
 	var active_player := _player()
 	if active_player == null:
 		return
+	_notify_audio_event(&"surge_burst")
 	var center := active_player.global_position
 	CombatEffectsScript.spawn_burst_ring(_shard_parent(), center, radius)
 	var snapshot: Array = _enemy_snapshot()
@@ -427,6 +440,13 @@ func _run_state() -> Dictionary:
 func _render_hud() -> void:
 	if _render_hud_payloads.is_valid():
 		_render_hud_payloads.call()
+
+func _notify_audio_event(event: StringName) -> void:
+	if not is_inside_tree():
+		return
+	var director := get_node_or_null("/root/AudioDirector")
+	if director != null and director.has_method(&"notify_event"):
+		director.call(&"notify_event", event)
 
 func _player_facing_direction(active_player: CharacterBody3D) -> Vector3:
 	if active_player == null:

@@ -1,6 +1,7 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://scripts/enemies/enemy.gd" id="1_enemy"]
+[ext_resource type="Script" path="res://scripts/enemies/enemy_visual.gd" id="2_enemy_visual"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_enemy"]
 radius = 0.45
@@ -24,6 +25,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.6, 0)
 shape = SubResource("CapsuleShape3D_enemy")
 
 [node name="VisualPivot" type="Node3D" parent="."]
+script = ExtResource("2_enemy_visual")
 
 [node name="Capsule" type="MeshInstance3D" parent="VisualPivot"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.75, 0)

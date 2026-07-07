@@ -107,6 +107,7 @@ func _run_tests() -> void:
 	await _test_player_death_during_boss_intro_tears_down_ceremony()
 	await _test_boss_is_damageable_by_all_player_resolvers()
 	await _test_enemy_damage_flows_through_guard_hp_and_stops_spawning_on_death()
+	await _test_dash_audio_hook_follows_ability_signal()
 	await _test_real_attack_damages_front_enemy_only_and_charges_spark()
 	await _test_special_resolver_heavy_wide_arc_skips_windup_and_charges_spark()
 	await _test_cast_resolver_hits_first_target_consumes_ammo_and_charges_spark()
@@ -820,6 +821,7 @@ func _test_enemy_damage_flows_through_guard_hp_and_stops_spawning_on_death() -> 
 		return
 
 	var lethal_damage: int = int(run.player_vitals.max_guard) + int(run.player_vitals.max_hp)
+	var guard_hit_before := _audio_event_count(&"guard_hit")
 	enemy.damage_event.emit({
 		"damage": lethal_damage,
 		"spawn_id": enemy.spawn_id,
@@ -829,6 +831,7 @@ func _test_enemy_damage_flows_through_guard_hp_and_stops_spawning_on_death() -> 
 
 	_check_eq("enemy damage drains guard first", run.player_vitals.guard, 0)
 	_check_eq("enemy damage drains hp to zero after guard", run.player_vitals.hp, 0)
+	_check_eq("enemy damage notifies guard_hit once", _audio_event_count(&"guard_hit"), guard_hit_before + 1)
 	_check_eq("orchestrator surfaces player_died once", death_events.size(), 1)
 	var count_after_death: int = run.spawned_enemy_count()
 	run.current_director.wave_requested.emit(99, [
@@ -842,6 +845,30 @@ func _test_enemy_damage_flows_through_guard_hp_and_stops_spawning_on_death() -> 
 
 	_check_eq("wave requests after death do not spawn more enemies", run.spawned_enemy_count(), count_after_death)
 	_check("dead player leaves the run inactive", not run._run_active)
+	await _cleanup_run(run)
+
+func _test_dash_audio_hook_follows_ability_signal() -> void:
+	var run = await _new_run()
+	run.start_run("hearth", _empty_template_pool(), 2, _seeded_rng(5))
+	await process_frame
+
+	var kit: AbilityComponent = run._player_ability_kit()
+	_check("dash audio hook test has an AbilityComponent", kit != null)
+	if kit == null:
+		await _cleanup_run(run)
+		return
+	var dash := kit.get_ability(&"dash") as DashAbility
+	_check("dash audio hook test has a DashAbility", dash != null)
+	if dash == null:
+		await _cleanup_run(run)
+		return
+	dash.cooldown = 0.0
+	dash.dash_duration = 0.05
+
+	var dash_before := _audio_event_count(&"dash_whoosh")
+	_check("dash activates through the AbilityComponent", kit.try_activate(&"dash", Vector3.RIGHT))
+	await process_frame
+	_check_eq("dash signal notifies dash_whoosh once", _audio_event_count(&"dash_whoosh"), dash_before + 1)
 	await _cleanup_run(run)
 
 func _test_real_attack_damages_front_enemy_only_and_charges_spark() -> void:
@@ -873,6 +900,7 @@ func _test_real_attack_damages_front_enemy_only_and_charges_spark() -> void:
 	var expected_damage := attack.damage_for_step(1) if attack != null else 0.0
 	var front_before := front_enemy.hp
 	var rear_before := rear_enemy.hp
+	var melee_hit_before := _audio_event_count(&"melee_hit")
 
 	_check("real attack activates through the AbilityComponent", kit.try_activate(&"attack"))
 	await process_frame
@@ -880,6 +908,7 @@ func _test_real_attack_damages_front_enemy_only_and_charges_spark() -> void:
 	_check_almost("front enemy takes the attack step damage", front_before - front_enemy.hp, expected_damage)
 	_check_almost("rear enemy outside the forward arc is untouched", rear_before - rear_enemy.hp, 0.0)
 	_check_almost("real dealt damage charges the Spark Surge meter", float(run.player_vitals.get("spark_surge_charge")), expected_damage)
+	_check_eq("attack hit notifies melee_hit once", _audio_event_count(&"melee_hit"), melee_hit_before + 1)
 	await _cleanup_run(run)
 
 func _test_special_resolver_heavy_wide_arc_skips_windup_and_charges_spark() -> void:
@@ -931,6 +960,7 @@ func _test_special_resolver_heavy_wide_arc_skips_windup_and_charges_spark() -> v
 	var wide_before := wide_arc_enemy.hp
 	var windup_before := windup_enemy.hp
 	var rear_before := rear_enemy.hp
+	var melee_hit_before := _audio_event_count(&"melee_hit")
 
 	_check("special activates through the AbilityComponent", kit.try_activate(&"special"))
 	await process_frame
@@ -939,6 +969,7 @@ func _test_special_resolver_heavy_wide_arc_skips_windup_and_charges_spark() -> v
 	_check_almost("special skips spawn-windup enemies", windup_before - windup_enemy.hp, 0.0)
 	_check_almost("special does not hit behind the player", rear_before - rear_enemy.hp, 0.0)
 	_check_almost("special dealt damage charges Spark Surge", float(run.player_vitals.get("spark_surge_charge")), special.potency)
+	_check_eq("special hit notifies melee_hit once", _audio_event_count(&"melee_hit"), melee_hit_before + 1)
 	await _cleanup_run(run)
 
 func _test_cast_resolver_hits_first_target_consumes_ammo_and_charges_spark() -> void:
@@ -984,6 +1015,7 @@ func _test_cast_resolver_hits_first_target_consumes_ammo_and_charges_spark() -> 
 	var first_before := first_enemy.hp
 	var farther_before := farther_enemy.hp
 	var side_before := side_enemy.hp
+	var cast_before := _audio_event_count(&"cast_shot")
 
 	_check("cast activates with available ammo", kit.try_activate(&"cast"))
 	await process_frame
@@ -994,6 +1026,7 @@ func _test_cast_resolver_hits_first_target_consumes_ammo_and_charges_spark() -> 
 	_check_eq("cast consumes one ammo stone", kit.cast_ammo(), 1)
 	_check_eq("cast lodges one ammo stone", kit.cast_lodged_ammo(), 1)
 	_check_almost("cast dealt damage charges Spark Surge", float(run.player_vitals.get("spark_surge_charge")), cast.potency)
+	_check_eq("cast signal notifies cast_shot once", _audio_event_count(&"cast_shot"), cast_before + 1)
 	await _cleanup_run(run)
 
 func _test_cast_shards_reclaim_on_victim_death_and_walkover_pickup() -> void:
@@ -1144,6 +1177,7 @@ func _test_spark_surge_hits_living_enemies_once_and_empties_meter() -> void:
 	var before_hp: Dictionary = {}
 	for enemy in enemies:
 		before_hp[enemy.spawn_id] = enemy.hp
+	var surge_before := _audio_event_count(&"surge_burst")
 
 	_check("full Spark Surge activates through player kit", kit.try_activate(&"surge"))
 	await process_frame
@@ -1161,6 +1195,7 @@ func _test_spark_surge_hits_living_enemies_once_and_empties_meter() -> void:
 		)
 		_check("Spark Surge staggers %s" % enemy.spawn_id, enemy.brain.has_method("is_staggered") and bool(enemy.brain.call("is_staggered")))
 	_check_almost("Spark Surge meter empties after burst", float(run.player_vitals.get("spark_surge_charge")), 0.0)
+	_check_eq("Spark Surge signal notifies surge_burst once", _audio_event_count(&"surge_burst"), surge_before + 1)
 	await _cleanup_run(run)
 
 func _test_spark_surge_skips_spawn_windup_enemies() -> void:
@@ -1898,6 +1933,14 @@ func _object_has_property(object: Object, property_name: String) -> bool:
 		if str(property.get("name", "")) == property_name:
 			return true
 	return false
+
+func _audio_event_count(event: StringName) -> int:
+	var director := root.get_node_or_null("AudioDirector")
+	if director == null or not director.has_method(&"describe"):
+		return 0
+	var desc: Dictionary = director.describe()
+	var counts: Dictionary = desc.get("sfx_event_counts", {})
+	return int(counts.get(String(event), 0))
 
 func _test_cast_during_transition_is_gated_with_ammo_intact() -> void:
 	var run = await _new_run()

@@ -123,6 +123,14 @@ func _benefactor_for_slot(slot: BoonDef.Slot) -> StringName:
 		_:
 			return &"company"
 
+func _audio_event_count(event: StringName) -> int:
+	var director := root.get_node_or_null("AudioDirector")
+	if director == null or not director.has_method(&"describe"):
+		return 0
+	var desc: Dictionary = director.describe()
+	var counts: Dictionary = desc.get("sfx_event_counts", {})
+	return int(counts.get(String(event), 0))
+
 func _test_present_renders_three_offer_cards() -> void:
 	var ui = await _new_ui()
 	var offers := _make_offer_set()
@@ -217,12 +225,16 @@ func _test_button_selection_emits_nth_boon_once() -> void:
 	)
 
 	ui.present(offers)
+	var ui_click_before := _audio_event_count(&"ui_click")
+	var boon_pickup_before := _audio_event_count(&"boon_pickup")
 	_card(ui, 1).emit_signal("pressed")
 	_card(ui, 1).emit_signal("pressed")
 
 	_check_eq("button selection emits exactly once", chosen.size(), 1)
 	_check("button selection emits the second BoonDef resource", chosen[0] == offers[1])
 	_check("selection hides the overlay", not ui.visible)
+	_check_eq("card button press notifies ui_click once", _audio_event_count(&"ui_click"), ui_click_before + 1)
+	_check_eq("boon selection notifies boon_pickup once", _audio_event_count(&"boon_pickup"), boon_pickup_before + 1)
 	await _cleanup(ui)
 
 func _test_keyboard_selection_emits_nth_boon_once() -> void:

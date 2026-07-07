@@ -37,6 +37,7 @@ func open_for(connection: RoomConnection, next_reward_type: RoomNode.RewardType)
 	state = State.OPEN
 	_exit_requested = false
 	monitoring = true
+	_notify_audio_event(&"door_open")
 	_show_reward_telegraph(next_reward_type)
 	_overlap_check_generation += 1
 	call_deferred("_check_for_already_overlapping_player", _overlap_check_generation)
@@ -155,3 +156,10 @@ func _show_reward_telegraph(next_reward_type: RoomNode.RewardType) -> void:
 func _hide_reward_telegraph() -> void:
 	if _telegraph_label != null and is_instance_valid(_telegraph_label):
 		_telegraph_label.visible = false
+
+func _notify_audio_event(event: StringName) -> void:
+	if not is_inside_tree():
+		return
+	var director := get_node_or_null("/root/AudioDirector")
+	if director != null and director.has_method(&"notify_event"):
+		director.call(&"notify_event", event)

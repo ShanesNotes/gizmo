@@ -133,6 +133,7 @@ func _test_open_door_emits_once_with_bound_connection() -> void:
 		requested_connections.append(requested_connection)
 	)
 
+	var door_open_before := _audio_event_count(&"door_open")
 	door.open_for(connection, RoomNode.RewardType.HAMMER)
 
 	_check_eq("open_for moves door to OPEN", door.state, RoomDoorScript.State.OPEN)
@@ -142,6 +143,7 @@ func _test_open_door_emits_once_with_bound_connection() -> void:
 	_check_eq("open_for stores telegraph door_name", door.door_name, "RoomExitA")
 	_check_eq("telegraph_data exposes reward_type", door.telegraph_data()[&"reward_type"], RoomNode.RewardType.HAMMER)
 	_check_eq("telegraph_data exposes door_name", door.telegraph_data()[&"door_name"], "RoomExitA")
+	_check_eq("open_for notifies door_open SFX once", _audio_event_count(&"door_open"), door_open_before + 1)
 
 	door.emit_signal(&"body_entered", player)
 
@@ -398,3 +400,11 @@ func _pinned_telegraph_colors() -> Dictionary:
 		_reward_type_value("REST", MISSING_REST_REWARD_TYPE): Color(0.42, 0.82, 0.72),
 		_reward_type_value("REWARD", MISSING_REWARD_REWARD_TYPE): Color(0.78, 0.86, 0.92),
 	}
+
+func _audio_event_count(event: StringName) -> int:
+	var director := root.get_node_or_null("AudioDirector")
+	if director == null or not director.has_method(&"describe"):
+		return 0
+	var desc: Dictionary = director.describe()
+	var counts: Dictionary = desc.get("sfx_event_counts", {})
+	return int(counts.get(String(event), 0))

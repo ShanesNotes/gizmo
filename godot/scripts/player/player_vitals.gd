@@ -58,6 +58,7 @@ func apply_damage(amount: int) -> Dictionary:
 		incoming -= absorbed
 		if absorbed > 0:
 			record_guard_damage_taken(absorbed)
+			_notify_audio_event(&"guard_hit")
 
 	if incoming > 0:
 		hp_damage = mini(hp, incoming)
@@ -172,3 +173,10 @@ func _tick_damage_lockout(delta: float) -> void:
 	_damage_lockout_remaining = maxf(0.0, _damage_lockout_remaining - delta)
 	if _damage_lockout_remaining <= 0.00001:
 		_damage_lockout_remaining = 0.0
+
+func _notify_audio_event(event: StringName) -> void:
+	if not is_inside_tree():
+		return
+	var director := get_node_or_null("/root/AudioDirector")
+	if director != null and director.has_method(&"notify_event"):
+		director.call(&"notify_event", event)

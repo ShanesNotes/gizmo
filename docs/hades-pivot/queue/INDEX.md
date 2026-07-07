@@ -185,3 +185,7 @@ Rubric: Opus = seam-shaping/cross-system judgment; Sonnet = specified single-fil
 | HZ-083 | combat-room baseline lighting warmth | Codex | look | done | 077 |
 | HZ-084 | combat feedback kit (hit flash, death pop, surge ring, stagger read) | FABLE | feel | done | — |
 - Director's playthrough (2026-07-06 evening, Shane-directed): survived 3:31 with the full kit live, zero errors; demo backlog at queue/DEMO-POLISH-BACKLOG.md. Headline gap: combat feedback (HZ-084, Fable-owned). Process: merged-checkout sync ritual now includes --import (stale class-name cache bricked the run door and revealed the void-walk).
+| HZ-090 | ElevenLabs audio wired live (10 SFX + 2 music loops, demo-provisional) | Codex | audio | done | 104 |
+| HZ-091 | meshy enemy models (chaff/bruiser/elite/Custodian GLBs) | Codex | look | done | — |
+| HZ-092 | title screen + settings (volume buses, persistence) | Codex | ship | done | — |
+- FULL-SEND block (Shane 2026-07-06 ~8pm, 2h to playtest): ElevenLabs limit test PASSED (10 SFX + 2×60s music loops generated, converted 48k per canon, provenance+ledger in gizmo-audio-canon/generated/elevenlabs/); meshy limit test PASSED (4 textured models, ~75 credits of 2557: chaff/bruiser/elite meshy-5+refine, Custodian meshy-6+refine). Three concurrent Codex jobs wiring it all.

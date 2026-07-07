@@ -6,7 +6,9 @@ extends CanvasLayer
 
 @onready var _root: Control = %Root
 @onready var _resume_button: Button = %ResumeButton
+@onready var _settings_button: Button = %SettingsButton
 @onready var _abandon_button: Button = %AbandonButton
+@onready var _settings_panel: Node = %SettingsPanel
 
 var _owns_pause := false
 var _last_overlay_visible := false
@@ -15,6 +17,7 @@ func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_root.visible = false
 	_resume_button.pressed.connect(_on_resume_pressed)
+	_settings_button.pressed.connect(_on_settings_pressed)
 	_abandon_button.pressed.connect(_on_abandon_pressed)
 	_sync_overlay_visibility()
 
@@ -26,6 +29,16 @@ func _process(_delta: float) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if not event.is_action_pressed(&"ui_cancel"):
+		return
+
+	var settings_open := (
+		_settings_panel != null
+		and _settings_panel.has_method(&"is_open")
+		and bool(_settings_panel.call(&"is_open"))
+	)
+	if get_tree().paused and settings_open:
+		_settings_panel.call(&"close")
+		get_viewport().set_input_as_handled()
 		return
 
 	if get_tree().paused:
@@ -53,6 +66,8 @@ func request_pause() -> bool:
 	return true
 
 func resume() -> void:
+	if _settings_panel != null and _settings_panel.has_method(&"close"):
+		_settings_panel.call(&"close")
 	if get_tree().paused:
 		get_tree().paused = false
 	_owns_pause = false
@@ -67,6 +82,8 @@ func _sync_overlay_visibility() -> void:
 
 	var should_show := get_tree().paused and _find_live_run_surface() != null
 	_root.visible = should_show
+	if not should_show and _settings_panel != null and _settings_panel.has_method(&"close"):
+		_settings_panel.call(&"close")
 	if should_show and not _last_overlay_visible:
 		_resume_button.grab_focus()
 	_last_overlay_visible = should_show
@@ -115,6 +132,10 @@ func _has_blocking_overlay() -> bool:
 
 func _on_resume_pressed() -> void:
 	resume()
+
+func _on_settings_pressed() -> void:
+	if _settings_panel != null and _settings_panel.has_method(&"open"):
+		_settings_panel.call(&"open")
 
 func _on_abandon_pressed() -> void:
 	var run_surface := _find_live_run_surface()

@@ -17,7 +17,7 @@ const RoomNode := preload("res://scripts/room_graph/room_node.gd")
 const RoomTemplate := preload("res://scripts/room_graph/room_template.gd")
 const RoomConnection := preload("res://scripts/room_graph/room_connection.gd")
 
-const EXPECTED_MAIN_SCENE := "res://scenes/app.tscn"
+const EXPECTED_MAIN_SCENE := "res://scenes/title_screen.tscn"
 const EXPECTED_RUN_SCENE := "res://scenes/run.tscn"
 const SCRAP_REWARD_VALUE := 10
 const SPAWN_SEPARATION_DISTANCE := 1.1
@@ -85,7 +85,7 @@ func _test_victory_run_returns_to_hub_with_summary_and_persisted_scrap() -> void
 	if app == null:
 		return
 
-	_check_eq("project main scene points at app.tscn", ProjectSettings.get_setting("application/run/main_scene"), EXPECTED_MAIN_SCENE)
+	_check_eq("project main scene points at the title screen (demo boot)", ProjectSettings.get_setting("application/run/main_scene"), EXPECTED_MAIN_SCENE)
 	_check("AppShell default run surface is real run.tscn", app.run_surface_scene != null and app.run_surface_scene.resource_path == EXPECTED_RUN_SCENE)
 	_check("boot content is the hub", _current_hub(app) != null)
 

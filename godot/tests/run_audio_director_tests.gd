@@ -16,13 +16,15 @@ func _initialize() -> void:
 func _run_tests() -> void:
 	await _test_bus_layout_has_contract_buses()
 	await _test_master_bus_uses_hard_limiter()
+	await _test_manifest_music_cues_register_and_loop()
+	await _test_notify_event_known_unknown_and_round_robin_pool()
 	await _test_contract_seam_and_describe_surface()
 	await _test_registered_state_crossfades_to_target_cue()
 	await _test_unknown_cue_noops_without_stopping_current_music()
 	await _test_duplicate_state_is_idempotent()
 	await _test_crossfade_progresses_while_tree_is_paused()
 	await _test_registering_active_cue_swaps_stream_in_place()
-	await _test_empty_registry_is_headless_safe()
+	await _test_cueless_state_is_headless_safe()
 	await _test_autoload_registration()
 	print("")
 	if _failed == 0 and _passed > 0:
@@ -69,6 +71,72 @@ func _test_master_bus_uses_hard_limiter() -> void:
 		_check_almost_eq("hard limiter ceiling_db matches contract", hard_limiter.ceiling_db, -0.5)
 		_check_almost_eq("hard limiter pre_gain_db maps contract threshold", hard_limiter.pre_gain_db, -1.0)
 
+func _test_manifest_music_cues_register_and_loop() -> void:
+	var director := await _new_director()
+	var desc: Dictionary = director.describe()
+	var registered: Array = desc.get("registered_cues", [])
+	var state_cues: Dictionary = desc.get("state_cue_ids", {})
+	_check("manifest registers HUB cue", registered.has("music_hub"))
+	_check("manifest registers COMBAT cue", registered.has("music_combat"))
+	_check_eq("manifest registers exactly the live music cues", int(desc.get("registered_cue_count", -1)), 2)
+	_check_eq("HUB state binds to manifest hub cue", state_cues.get("HUB", ""), "music_hub")
+	_check_eq("COMBAT state binds to manifest combat cue", state_cues.get("COMBAT", ""), "music_combat")
+	_check("CLEARED state stays cueless", not state_cues.has("CLEARED") or String(state_cues.get("CLEARED", "")).is_empty())
+
+	_request_zone_state(director, &"HUB")
+	await _wait_seconds(director.crossfade_seconds + 0.05)
+	var hub_desc: Dictionary = director.describe()
+	var hub_player := director.get_node_or_null(String(hub_desc.get("active_lane", ""))) as AudioStreamPlayer
+	_check("HUB manifest request loads an AudioStream", hub_player != null and hub_player.stream != null)
+	_check("HUB manifest stream loops", hub_player != null and _stream_loops(hub_player.stream))
+
+	_request_zone_state(director, &"COMBAT")
+	await process_frame
+	var combat_desc: Dictionary = director.describe()
+	var combat_player := director.get_node_or_null(String(combat_desc.get("active_lane", ""))) as AudioStreamPlayer
+	_check("COMBAT manifest request loads an AudioStream", combat_player != null and combat_player.stream != null)
+	_check("COMBAT manifest stream loops", combat_player != null and _stream_loops(combat_player.stream))
+
+	await _cleanup_director(director)
+
+func _test_notify_event_known_unknown_and_round_robin_pool() -> void:
+	var director := await _new_director()
+	_check("AudioDirector exposes notify_event seam", director.has_method(&"notify_event"))
+	var before: Dictionary = director.describe()
+	var initial_count := int(before.get("sfx_play_count", -1))
+	_check_eq("SFX manifest registers ten events", int(before.get("sfx_registered_event_count", -1)), 10)
+	_check_eq("SFX pool preallocates eight players", int(before.get("sfx_pool_size", -1)), 8)
+
+	if director.has_method(&"notify_event"):
+		director.call(&"notify_event", &"unknown_audio_event")
+	await process_frame
+	var unknown_desc: Dictionary = director.describe()
+	_check_eq("unknown SFX event is a silent no-op", int(unknown_desc.get("sfx_play_count", -1)), initial_count)
+	_check_eq("unknown SFX event records no-op reason", unknown_desc.get("last_noop_reason", ""), "unknown_sfx_event")
+
+	var events: Array[StringName] = [
+		&"melee_hit",
+		&"enemy_death",
+		&"surge_burst",
+		&"cast_shot",
+		&"guard_hit",
+		&"door_open",
+		&"boon_pickup",
+		&"ui_click",
+		&"dash_whoosh",
+	]
+	for event in events:
+		if director.has_method(&"notify_event"):
+			director.call(&"notify_event", event)
+	await process_frame
+
+	var after: Dictionary = director.describe()
+	_check_eq("known SFX events advance the pool", int(after.get("sfx_play_count", -1)), initial_count + events.size())
+	_check_eq("round-robin wraps to the first SFX lane after eight plays", after.get("last_sfx_player", ""), "SfxLane1")
+	_check_eq("last known SFX event is recorded", after.get("last_sfx_event", ""), "dash_whoosh")
+
+	await _cleanup_director(director)
+
 func _test_contract_seam_and_describe_surface() -> void:
 	var director := await _new_director()
 	_check("AudioDirector exposes contract set_zone_state seam", director.has_method(&"set_zone_state"))
@@ -77,7 +145,7 @@ func _test_contract_seam_and_describe_surface() -> void:
 	director.register_cue(&"music_combat", _new_stream())
 
 	_request_zone_state(director, &"HUB")
-	await process_frame
+	await _wait_seconds(director.crossfade_seconds + 0.05)
 	var hub_desc: Dictionary = director.describe()
 	_check_eq("describe reports current state before transition", hub_desc.get("current_state", ""), "HUB")
 	_check_eq("describe reports active cue id before transition", hub_desc.get("active_cue_id", ""), "music_hub")
@@ -136,11 +204,11 @@ func _test_unknown_cue_noops_without_stopping_current_music() -> void:
 	await process_frame
 	var after: Dictionary = director.describe()
 
-	_check_eq("missing CLEARED cue records requested state", after["requested_music_state"], "CLEARED")
-	_check_eq("missing CLEARED cue leaves active state unchanged", after["active_music_state"], "HUB")
-	_check_eq("missing CLEARED cue leaves active cue unchanged", after["active_cue_id"], before["active_cue_id"])
-	_check_eq("missing CLEARED cue does not crossfade", after["crossfade_count"], before["crossfade_count"])
-	_check_eq("missing CLEARED cue records no-op reason", after["last_noop_reason"], "missing_registered_cue")
+	_check_eq("cueless CLEARED records requested state", after["requested_music_state"], "CLEARED")
+	_check_eq("cueless CLEARED leaves active state unchanged", after["active_music_state"], "HUB")
+	_check_eq("cueless CLEARED leaves active cue unchanged", after["active_cue_id"], before["active_cue_id"])
+	_check_eq("cueless CLEARED does not crossfade", after["crossfade_count"], before["crossfade_count"])
+	_check_eq("cueless CLEARED records no-op reason", after["last_noop_reason"], "missing_state_cue")
 
 	await _cleanup_director(director)
 
@@ -216,18 +284,18 @@ func _test_registering_active_cue_swaps_stream_in_place() -> void:
 
 	await _cleanup_director(director)
 
-func _test_empty_registry_is_headless_safe() -> void:
+func _test_cueless_state_is_headless_safe() -> void:
 	var director := await _new_director()
 
-	_request_zone_state(director, &"HUB")
-	_request_zone_state(director, &"COMBAT")
+	_request_zone_state(director, &"CLEARED")
 	await process_frame
 	var desc: Dictionary = director.describe()
 
-	_check_eq("empty registry has no registered cues", desc["registered_cue_count"], 0)
-	_check_eq("empty registry has no active cue", desc["active_cue_id"], "")
-	_check_eq("empty registry does not crossfade", desc["crossfade_count"], 0)
-	_check_eq("empty registry keeps two music lanes available", desc["music_lane_count"], 2)
+	_check_eq("cueless state keeps manifest cues registered", desc["registered_cue_count"], 2)
+	_check_eq("cueless state has no active cue", desc["active_cue_id"], "")
+	_check_eq("cueless state does not crossfade", desc["crossfade_count"], 0)
+	_check_eq("cueless state records missing cue binding", desc["last_noop_reason"], "missing_state_cue")
+	_check_eq("cueless state keeps two music lanes available", desc["music_lane_count"], 2)
 
 	await _cleanup_director(director)
 
@@ -239,9 +307,12 @@ func _test_autoload_registration() -> void:
 	_check("AudioDirector autoload exposes set_zone_state", autoload.has_method(&"set_zone_state"))
 	_check("AudioDirector autoload exposes set_music_state", autoload.has_method(&"set_music_state"))
 	_check("AudioDirector autoload exposes register_cue", autoload.has_method(&"register_cue"))
+	_check("AudioDirector autoload exposes notify_event", autoload.has_method(&"notify_event"))
 	_check("AudioDirector autoload exposes describe", autoload.has_method(&"describe"))
 	var desc: Dictionary = autoload.describe()
-	_check_eq("AudioDirector autoload starts with empty registry", desc["registered_cue_count"], 0)
+	_check_eq("AudioDirector autoload registers manifest music cues", desc["registered_cue_count"], 2)
+	_check_eq("AudioDirector autoload registers manifest SFX events", int(desc.get("sfx_registered_event_count", -1)), 10)
+	_check_eq("AudioDirector autoload owns pooled SFX players", int(desc.get("sfx_pool_size", -1)), 8)
 
 func _new_director() -> Node:
 	var director: Node = AudioDirectorScript.new()
@@ -269,3 +340,11 @@ func _request_zone_state(director: Node, state: StringName) -> void:
 
 func _wait_seconds(seconds: float) -> void:
 	await create_timer(maxf(seconds, 0.0), true).timeout
+
+func _stream_loops(stream: AudioStream) -> bool:
+	if stream == null:
+		return false
+	for property in stream.get_property_list():
+		if str(property.get("name", "")) == "loop":
+			return bool(stream.get("loop"))
+	return false
