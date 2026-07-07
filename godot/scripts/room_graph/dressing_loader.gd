@@ -112,7 +112,17 @@ static func apply_region_layer(room_root: Node3D, region_id: String) -> Node3D:
 			continue
 		layers.remove_child(child)
 		child.queue_free()
+	_notify_region_ambience(room_root, region_id)
 	return kept
+
+## Ambience rides the region resolve: the audio director (autoload) swaps the
+## region bed when a room's layer is chosen. Safe no-op headless/out-of-tree.
+static func _notify_region_ambience(room_root: Node3D, region_id: String) -> void:
+	if not room_root.is_inside_tree():
+		return
+	var director := room_root.get_tree().root.get_node_or_null("AudioDirector")
+	if director != null and director.has_method("set_region_ambience"):
+		director.call("set_region_ambience", StringName(region_id))
 
 ## Builds the GrammarDressing layer under room_root. Reads the floor and door
 ## layout from the scene itself; safe no-op when the grammar or floor is absent.

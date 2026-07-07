@@ -52,6 +52,10 @@ const EXPECTED_FIXTURE_METHODS := {
 # The shop is a shop (playtest 2): a safe interior with a merchant fixture and
 # three walk-over purchase pedestals wired to the run-scrap economy.
 const EXPECTED_SHOP_OFFER_FIXTURES := ["ShopOfferGuard", "ShopOfferAmmo", "ShopOfferReroll"]
+const REGION_LAYER_TEMPLATE_IDS := ["combat_small", "combat_large", "elite_arena"]
+const ACT1_REGION_LAYER_NAMES := ["RegionLayer_HEARTH", "RegionLayer_BRASS", "RegionLayer_VERDANT", "RegionLayer_RUST"]
+const REGION_LAYER_NAME_PATTERN := "^RegionLayer_(HEARTH|BRASS|VERDANT|RUST)$"
+const REGION_DOOR_APRON_RADIUS := 0.22
 
 var _passed := 0
 var _failed := 0
@@ -61,6 +65,7 @@ func _initialize() -> void:
 	_test_expected_template_set()
 	_test_templates_validate_and_match_metadata()
 	_test_combat_templates_carry_spawn_clear_dressing_variants()
+	_test_act1_combat_region_layers()
 	_test_shop_interior_is_a_safe_shop()
 	_test_hazard_strips_land_only_in_combat_rooms()
 	_test_rooms_share_the_cosmos_backdrop()
@@ -182,6 +187,116 @@ func _assert_dressing_contract(template_id: String, root_node: Node) -> void:
 				"%s %s prop %s keeps collision for readable blocking" % [template_id, variant.name, prop.name],
 				prop.use_collision
 			)
+
+func _test_act1_combat_region_layers() -> void:
+	var layer_name_regex := RegEx.new()
+	_check_eq("act-1 region layer regex compiles", layer_name_regex.compile(REGION_LAYER_NAME_PATTERN), OK)
+
+	for template_id in REGION_LAYER_TEMPLATE_IDS:
+		var scene_path := "res://scenes/rooms/%s.tscn" % template_id
+		var packed := load(scene_path) as PackedScene
+		_check("%s region-layer scene loads" % template_id, packed != null)
+		if packed == null:
+			continue
+
+		var instance := packed.instantiate()
+		_check("%s region-layer scene instantiates as Node3D" % template_id, instance is Node3D)
+		if not instance is Node3D:
+			if instance != null:
+				instance.free()
+			continue
+
+		_assert_region_layers_contract(template_id, instance as Node3D, layer_name_regex)
+		instance.free()
+
+func _assert_region_layers_contract(template_id: String, root_node: Node3D, layer_name_regex: RegEx) -> void:
+	var layers := root_node.get_node_or_null("RegionLayers") as Node3D
+	_check("%s has top-level RegionLayers Node3D" % template_id, layers != null)
+	if layers == null:
+		return
+
+	var layer_names: Array = []
+	for child in layers.get_children():
+		layer_names.append(String(child.name))
+		_check(
+			"%s %s matches act-1 RegionLayer naming" % [template_id, child.name],
+			layer_name_regex.search(String(child.name)) != null
+		)
+
+	var expected_names := ACT1_REGION_LAYER_NAMES.duplicate()
+	layer_names.sort()
+	expected_names.sort()
+	_check_eq("%s has exactly the four act-1 RegionLayer children" % template_id, layer_names, expected_names)
+
+	for layer in layers.get_children():
+		_assert_region_layer_secret_cache(template_id, layer)
+	_assert_region_layer_geometry_door_aprons(template_id, root_node, layers)
+
+func _assert_region_layer_secret_cache(template_id: String, layer: Node) -> void:
+	var scrap_caches: Array = []
+	for node in _flatten_nodes(layer):
+		if node is Area3D:
+			var area := node as Area3D
+			var fixture_kind: Variant = area.get("fixture_kind")
+			if fixture_kind != null and int(fixture_kind) == 0:
+				scrap_caches.append(area)
+
+	_check_eq("%s %s has exactly one scrap-cache Area3D" % [template_id, layer.name], scrap_caches.size(), 1)
+	if scrap_caches.size() != 1:
+		return
+
+	var cache := scrap_caches[0] as Area3D
+	_check_eq("%s %s scrap cache grants 15 scrap" % [template_id, layer.name], int(cache.get("scrap_amount")), 15)
+	_check("%s %s scrap cache has a CollisionShape3D" % [template_id, layer.name], _area_has_collision_shape(cache))
+
+func _assert_region_layer_geometry_door_aprons(template_id: String, root_node: Node3D, layers: Node3D) -> void:
+	var floor_node := root_node.find_child("Floor", true, false) as CSGBox3D
+	_check("%s region-layer apron test finds Floor" % template_id, floor_node != null)
+	if floor_node == null:
+		return
+
+	var half := Vector2(floor_node.size.x * 0.5, floor_node.size.z * 0.5)
+	var doors := root_node.find_children("RoomExit*", "Area3D", true, false)
+	_check("%s region-layer apron test finds at least one door" % template_id, doors.size() > 0)
+	if doors.is_empty():
+		return
+
+	var violation := ""
+	for layer in layers.get_children():
+		if violation != "":
+			break
+		for node in _flatten_nodes(layer):
+			if not _is_region_layer_geometry_node(node):
+				continue
+			var to_room := _room_space_transform(node as Node3D, root_node)
+			var n := Vector2(to_room.origin.x / half.x, to_room.origin.z / half.y)
+			if absf(n.y) > 1.0:
+				continue
+			for door in doors:
+				var door_node := door as Node3D
+				var dn := Vector2(door_node.position.x / half.x, door_node.position.z / half.y)
+				if maxf(absf(n.x - dn.x), absf(n.y - dn.y)) <= REGION_DOOR_APRON_RADIUS:
+					violation = "%s/%s near %s at %s" % [layer.name, node.name, door_node.name, n]
+					break
+			if violation != "":
+				break
+
+	_check(
+		"%s RegionLayer geometry stays out of door aprons%s" % [
+			template_id,
+			"" if violation == "" else " (%s)" % violation,
+		],
+		violation == ""
+	)
+
+func _is_region_layer_geometry_node(node: Node) -> bool:
+	return (
+		node is CSGBox3D
+		or node is CSGCylinder3D
+		or node is CSGSphere3D
+		or node is CSGTorus3D
+		or node is MeshInstance3D
+	)
 
 # Backdrop (docs/hades-pivot/design/backdrop-wiring.md): every room sees the
 # gouache cosmos sky, energy <= 1.0, fog never mattes it, ambient stays fixed.

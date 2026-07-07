@@ -423,6 +423,19 @@ func _test_unknown_cue_noops_without_stopping_current_music() -> void:
 	_check_eq("v2 CLEARED records its no-op reason", cleared["last_noop_reason"], "v2_cleared_pressure_only")
 	_check_eq("CLEARED fires the room-clear sting", cleared["last_sfx_event"], "room_clear_sting")
 
+	# Region ambience seam (levels lane 2026-07-07).
+	for region in ["HEARTH", "BRASS", "VERDANT", "RUST"]:
+		_check("ambient bed for %s exists on disk" % region,
+			ResourceLoader.exists(String(director.AMBIENT_BED_MANIFEST[StringName(region)])))
+	director.set_region_ambience(&"BRASS")
+	var amb: Dictionary = director.describe()
+	_check_eq("region ambience activates the requested bed", amb["active_ambient_region"], "BRASS")
+	_check("region ambience bed is playing", amb["ambient_playing"] == true)
+	director.set_region_ambience(&"NO_SUCH_REGION")
+	var amb_off: Dictionary = director.describe()
+	_check_eq("unknown region stops the ambient bed", amb_off["active_ambient_region"], "")
+	_check("unknown region leaves nothing playing", amb_off["ambient_playing"] == false)
+
 	await _cleanup_director(director)
 
 func _test_duplicate_state_is_idempotent() -> void:
