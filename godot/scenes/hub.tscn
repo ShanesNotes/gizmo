@@ -4,6 +4,7 @@
 [ext_resource type="Script" path="res://scripts/player/gizmo_visual.gd" id="2_visual"]
 [ext_resource type="PackedScene" uid="uid://qa2ralfsy66q" path="res://assets/gizmo.glb" id="3_gizmo_glb"]
 [ext_resource type="Shader" path="res://shaders/gouache_grade.gdshader" id="4_grade_shader"]
+[ext_resource type="Script" path="res://scripts/ui/look_grade.gd" id="5_look_grade"]
 
 [sub_resource type="ProceduralSkyMaterial" id="Sky_mat"]
 sky_top_color = Color(0.09, 0.07, 0.16, 1)
@@ -430,6 +431,7 @@ layer = -1
 
 [node name="GradeRect" type="ColorRect" parent="GradeLayer"]
 material = SubResource("ShaderMat_grade")
+script = ExtResource("5_look_grade")
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
