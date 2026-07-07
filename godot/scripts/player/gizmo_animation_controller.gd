@@ -19,6 +19,10 @@ const RIGHT_HAND_BONE := "Bone_024"
 ## are remapped onto this controller's skeleton on graft.
 const EXTERNAL_CLIPS_PATH := "res://assets/animations/gizmo_clips.glb"
 const EXTERNAL_CLIP_ALIASES := {&"hit_react": &"hit"}
+## Swing clips are code-owned (playtest 2): their strike poses are keyed to
+## SwingTiming's contact seconds so the damage frame matches the clip. An
+## authored GLB clip with unknown timing must never supersede them.
+const CODE_OWNED_CLIPS: Array[StringName] = [&"attack_1", &"attack_2", &"attack_3", &"special"]
 ## The authored clips swing the Bone_019-hand arm (audited at camera 2026-07-06);
 ## the code-built fallback clips swing the Bone_024-hand arm. The weapon mount
 ## follows whichever source won the attack clip so the wrench rides the swing.
@@ -193,21 +197,25 @@ const CLIP_DATA := {
 			}},
 		],
 	},
-	&"attack": {
+	## Combo swings (playtest 2, animation-led): three DISTINCT silhouettes so
+	## the kit's 3-step combo reads as three different attacks. Strike poses
+	## sit exactly on SwingTiming's contact seconds — the resolver's damage
+	## frame — so the hit lands when the swing visually connects.
+	&"attack_1": {
+		# Forehand sweep, right-to-left. Contact at 0.10s.
 		"length": 0.4,
 		"loop": false,
 		"keys": [
 			{"t": 0.0, "root_y": 0.0, "bones": {}},
-			{"t": 0.16, "root_y": 0.02, "bones": {
-				B_R_UPPER_ARM: Vector3(2.3, 0.0, -0.3),
+			{"t": 0.05, "root_y": 0.02, "bones": {
+				B_R_UPPER_ARM: Vector3(2.2, 0.0, -0.3),
 				B_R_ELBOW: Vector3(0.9, 0.0, 0.0),
 				B_CHEST: Vector3(-0.08, 0.35, 0.0),
 				B_SPINE_LOW: Vector3(-0.08, 0.20, 0.0),
 				B_L_UPPER_ARM: Vector3(0.4, 0.0, 0.2),
 				B_HEAD: Vector3(0.0, -0.20, 0.0),
-				B_L_HIP: Vector3(-0.1, 0.0, 0.0),
 			}},
-			{"t": 0.24, "root_y": -0.04, "bones": {
+			{"t": 0.10, "root_y": -0.04, "bones": {
 				B_R_UPPER_ARM: Vector3(0.7, 0.0, -0.1),
 				B_R_ELBOW: Vector3(0.15, 0.0, 0.0),
 				B_CHEST: Vector3(0.24, -0.40, 0.0),
@@ -217,10 +225,114 @@ const CLIP_DATA := {
 				B_L_KNEE: Vector3(0.3, 0.0, 0.0),
 				B_R_KNEE: Vector3(0.3, 0.0, 0.0),
 			}},
-			{"t": 0.4, "root_y": -0.01, "bones": {
+			{"t": 0.22, "root_y": -0.02, "bones": {
+				B_R_UPPER_ARM: Vector3(0.4, 0.0, 0.0),
+				B_CHEST: Vector3(0.12, -0.20, 0.0),
+				B_SPINE_LOW: Vector3(0.12, -0.10, 0.0),
+			}},
+			{"t": 0.4, "root_y": 0.0, "bones": {
 				B_R_UPPER_ARM: Vector3(0.3, 0.0, 0.0),
 				B_CHEST: Vector3(0.08, -0.10, 0.0),
-				B_SPINE_LOW: Vector3(0.08, 0.0, 0.0),
+			}},
+		],
+	},
+	&"attack_2": {
+		# Backhand return, left-to-right — mirrored torso wind. Contact 0.10s.
+		"length": 0.4,
+		"loop": false,
+		"keys": [
+			{"t": 0.0, "root_y": 0.0, "bones": {}},
+			{"t": 0.05, "root_y": 0.01, "bones": {
+				B_R_UPPER_ARM: Vector3(0.9, 0.0, 0.5),
+				B_R_ELBOW: Vector3(0.5, 0.0, 0.0),
+				B_CHEST: Vector3(0.10, -0.45, 0.0),
+				B_SPINE_LOW: Vector3(0.10, -0.25, 0.0),
+				B_HEAD: Vector3(0.0, 0.20, 0.0),
+			}},
+			{"t": 0.10, "root_y": -0.03, "bones": {
+				B_R_UPPER_ARM: Vector3(1.6, 0.0, -0.6),
+				B_R_ELBOW: Vector3(0.2, 0.0, 0.0),
+				B_CHEST: Vector3(-0.10, 0.45, 0.0),
+				B_SPINE_LOW: Vector3(-0.05, 0.30, 0.0),
+				B_L_UPPER_ARM: Vector3(0.3, 0.0, 0.25),
+				B_HEAD: Vector3(0.05, -0.15, 0.0),
+			}},
+			{"t": 0.22, "root_y": -0.01, "bones": {
+				B_R_UPPER_ARM: Vector3(0.9, 0.0, -0.2),
+				B_CHEST: Vector3(0.0, 0.20, 0.0),
+			}},
+			{"t": 0.4, "root_y": 0.0, "bones": {
+				B_R_UPPER_ARM: Vector3(0.5, 0.0, 0.0),
+				B_CHEST: Vector3(0.0, 0.05, 0.0),
+			}},
+		],
+	},
+	&"attack_3": {
+		# Overhead finisher — both arms, heavier. Contact at 0.14s.
+		"length": 0.5,
+		"loop": false,
+		"keys": [
+			{"t": 0.0, "root_y": 0.0, "bones": {}},
+			{"t": 0.07, "root_y": 0.03, "bones": {
+				B_R_UPPER_ARM: Vector3(2.6, 0.0, -0.2),
+				B_L_UPPER_ARM: Vector3(2.6, 0.0, 0.2),
+				B_R_ELBOW: Vector3(0.6, 0.0, 0.0),
+				B_L_ELBOW: Vector3(0.6, 0.0, 0.0),
+				B_CHEST: Vector3(-0.25, 0.0, 0.0),
+				B_SPINE_LOW: Vector3(-0.15, 0.0, 0.0),
+				B_HEAD: Vector3(-0.20, 0.0, 0.0),
+			}},
+			{"t": 0.14, "root_y": -0.06, "bones": {
+				B_R_UPPER_ARM: Vector3(0.5, 0.0, -0.1),
+				B_L_UPPER_ARM: Vector3(0.5, 0.0, 0.1),
+				B_R_ELBOW: Vector3(0.1, 0.0, 0.0),
+				B_L_ELBOW: Vector3(0.1, 0.0, 0.0),
+				B_CHEST: Vector3(0.45, 0.0, 0.0),
+				B_SPINE_LOW: Vector3(0.35, 0.0, 0.0),
+				B_HEAD: Vector3(0.15, 0.0, 0.0),
+				B_L_KNEE: Vector3(0.4, 0.0, 0.0),
+				B_R_KNEE: Vector3(0.4, 0.0, 0.0),
+			}},
+			{"t": 0.3, "root_y": -0.04, "bones": {
+				B_R_UPPER_ARM: Vector3(0.4, 0.0, 0.0),
+				B_L_UPPER_ARM: Vector3(0.4, 0.0, 0.0),
+				B_CHEST: Vector3(0.30, 0.0, 0.0),
+			}},
+			{"t": 0.5, "root_y": -0.01, "bones": {
+				B_CHEST: Vector3(0.10, 0.0, 0.0),
+			}},
+		],
+	},
+	&"special": {
+		# Wide two-hand sweep — bigger wind, wider follow. Contact at 0.22s.
+		"length": 0.6,
+		"loop": false,
+		"keys": [
+			{"t": 0.0, "root_y": -0.02, "bones": {
+				B_SPINE_LOW: Vector3(0.10, 0.0, 0.0),
+			}},
+			{"t": 0.12, "root_y": 0.0, "bones": {
+				B_CHEST: Vector3(-0.15, 0.70, 0.0),
+				B_SPINE_LOW: Vector3(-0.10, 0.45, 0.0),
+				B_R_UPPER_ARM: Vector3(1.8, 0.0, -0.5),
+				B_L_UPPER_ARM: Vector3(0.6, 0.0, 0.4),
+				B_HEAD: Vector3(0.0, -0.35, 0.0),
+			}},
+			{"t": 0.22, "root_y": -0.05, "bones": {
+				B_CHEST: Vector3(0.20, -0.80, 0.0),
+				B_SPINE_LOW: Vector3(0.15, -0.50, 0.0),
+				B_R_UPPER_ARM: Vector3(0.8, 0.0, -0.7),
+				B_L_UPPER_ARM: Vector3(-0.4, 0.0, 0.6),
+				B_HEAD: Vector3(0.10, 0.30, 0.0),
+				B_L_KNEE: Vector3(0.3, 0.0, 0.0),
+				B_R_KNEE: Vector3(0.3, 0.0, 0.0),
+			}},
+			{"t": 0.42, "root_y": -0.03, "bones": {
+				B_CHEST: Vector3(0.10, -0.40, 0.0),
+				B_R_UPPER_ARM: Vector3(0.5, 0.0, -0.3),
+			}},
+			{"t": 0.6, "root_y": 0.0, "bones": {
+				B_CHEST: Vector3(0.05, -0.10, 0.0),
 			}},
 		],
 	},
@@ -269,9 +381,10 @@ static func clip_for_state(state: int, is_moving: bool) -> StringName:
 		PlayerActionStateMachine.ActionState.DASH:
 			return &"dash"
 		PlayerActionStateMachine.ActionState.ATTACK, \
-		PlayerActionStateMachine.ActionState.SPECIAL, \
 		PlayerActionStateMachine.ActionState.CAST:
-			return &"attack"
+			return &"attack_1"
+		PlayerActionStateMachine.ActionState.SPECIAL:
+			return &"special"
 		PlayerActionStateMachine.ActionState.HITSTUN:
 			return &"hit_react"
 		PlayerActionStateMachine.ActionState.SURGE:
@@ -333,7 +446,10 @@ func update_animation(_delta: float) -> void:
 	if animation_player == null:
 		return
 	var desired := clip_for_state(_action_state(), _is_moving())
-	if desired != _current_clip:
+	# Combo retriggers pick the exact swing variant; the state map only knows
+	# "an attack is happening" — never let it restart a variant mid-swing.
+	var both_attacks := String(desired).begins_with("attack_") and String(_current_clip).begins_with("attack_")
+	if desired != _current_clip and not both_attacks:
 		_play_clip(desired)
 	animation_player.speed_scale = _speed_scale_for(desired)
 
@@ -350,6 +466,8 @@ func _assemble_library() -> AnimationLibrary:
 	if external == null:
 		return library
 	for clip_name: StringName in CLIP_DATA:
+		if CODE_OWNED_CLIPS.has(clip_name):
+			continue
 		var source_name: StringName = clip_name
 		if not external.has_animation(source_name):
 			source_name = EXTERNAL_CLIP_ALIASES.get(clip_name, clip_name)
@@ -408,7 +526,8 @@ func _connect_retriggers() -> void:
 	var component := _ability_component()
 	if component == null:
 		return
-	component.attack_started.connect(func(_step: int, _damage: float) -> void: _play_clip(&"attack"))
+	component.attack_started.connect(func(step: int, _damage: float) -> void: _play_clip(SwingTiming.melee_clip_name(step)))
+	component.special_started.connect(func(_potency: float) -> void: _play_clip(&"special"))
 	component.dash_started.connect(func(_direction: Vector3, _speed: float, _duration: float) -> void: _play_clip(&"dash"))
 	component.surge_started.connect(func(_damage: float, _radius: float, _stagger: float) -> void: _play_clip(&"surge"))
 

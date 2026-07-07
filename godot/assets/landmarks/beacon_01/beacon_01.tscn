@@ -1,0 +1,37 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="PackedScene" path="res://assets/landmarks/beacon_01/beacon_01.glb" id="1_glb"]
+
+[sub_resource type="CylinderShape3D" id="col1"]
+radius = 4.42
+height = 12.0441762
+
+[node name="Beacon01" type="Node3D"]
+metadata/asset_id = "beacon_01"
+metadata/asset_class = "landmark"
+metadata/source_brief = "gizmo-asset-pipeline/briefs/landmarks/beacon_01.brief.yaml"
+metadata/source_candidate_task_id = "019f3b1c-bb76-79a5-8803-07cf49af1d99"
+metadata/promotion_report = "gizmo-asset-pipeline/runs/2026-07-06-world-beauty/promotion-report-beacon_01.md"
+metadata/scale = "6.3 (meshy ~1.9m normalized -> 12.0m tall, 9.8m wide)"
+metadata/collision_policy = "fullcyl (wrapper-owned primitive)"
+metadata/material_override_policy = "meshy texture as generated (gouache-brief guided, 1K capped)"
+metadata/surface = "stone"
+metadata/camera_readability_status = "proofed at fixed Diablo camera 2026-07-06 (see promotion report)"
+metadata/performance_status = "37107 tris, 1 material(s)"
+metadata/verdict = "promoted"
+metadata/beacon_states = "Dormant (ships as-is: HearthLight energy 0) / Rekindling / Rekindled — game drives HearthLight energy+color and later emissive override; states are wrapper-controlled light/material variants per brief technical_targets"
+
+[node name="Model" parent="." instance=ExtResource("1_glb")]
+transform = Transform3D(-6.3, 0, 0, 0, 6.3, 0, 0, 0, -6.3, 0, 0, 0)
+
+[node name="Collision" type="StaticBody3D" parent="."]
+
+[node name="Shape" type="CollisionShape3D" parent="Collision"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 6.02, 0)
+shape = SubResource("col1")
+
+[node name="HearthLight" type="OmniLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 10.5, 0)
+light_color = Color(1, 0.68, 0.35, 1)
+light_energy = 0.0
+omni_range = 14.0

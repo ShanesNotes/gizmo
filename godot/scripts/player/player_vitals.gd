@@ -75,6 +75,7 @@ func apply_damage(amount: int) -> Dictionary:
 	if absorbed > 0 or hp_damage > 0:
 		_damage_lockout_remaining = maxf(damage_lockout, 0.0)
 		_reset_guard_recharge_timer()
+		_notify_audio_event(&"gizmo_chirp_hurt")
 		damage_taken.emit(absorbed, hp_damage)
 	_emit_vitals_changed()
 	if hp <= 0 and not _dead:

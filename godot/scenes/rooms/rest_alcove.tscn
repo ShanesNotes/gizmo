@@ -1,10 +1,13 @@
-[gd_scene load_steps=9 format=3]
+[gd_scene load_steps=11 format=3]
 
 [ext_resource type="Script" path="res://scripts/room_graph/room_fixture.gd" id="1_fixture"]
+[ext_resource type="Sky" path="res://assets/sky/gizmo_cosmos_sky_panorama.tres" id="sky_cosmos"]
 
 [sub_resource type="Environment" id="Env_res"]
-background_mode = 1
-background_color = Color(0.065, 0.038, 0.03, 1)
+background_mode = 2
+sky = ExtResource("sky_cosmos")
+sky_rotation = Vector3(0, 0.0, 0)
+background_energy_multiplier = 0.9
 ambient_light_source = 2
 ambient_light_color = Color(0.86, 0.46, 0.28, 1)
 ambient_light_energy = 0.74
@@ -43,6 +46,13 @@ emission = Color(0.18, 0.42, 0.34, 1)
 emission_energy_multiplier = 0.55
 roughness = 0.78
 
+[sub_resource type="StandardMaterial3D" id="Mat_ember_garden"]
+albedo_color = Color(0.95, 0.6, 0.3, 1)
+emission_enabled = true
+emission = Color(0.6, 0.28, 0.08, 1)
+emission_energy_multiplier = 0.8
+roughness = 0.7
+
 [sub_resource type="BoxShape3D" id="DoorShapeNorth"]
 size = Vector3(3, 2.2, 1.2)
 
@@ -62,34 +72,64 @@ light_energy = 0.98
 shadow_enabled = true
 sky_mode = 1
 
+[node name="HearthGlow" type="OmniLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.6, 2.4)
+light_color = Color(1, 0.68, 0.36, 1)
+light_energy = 1.5
+omni_range = 12.0
+
 [node name="Geometry" type="Node3D" parent="."]
 
 [node name="Floor" type="CSGBox3D" parent="Geometry"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.15, 0)
 use_collision = true
-size = Vector3(22, 0.3, 18)
+size = Vector3(38, 0.3, 32)
 material = SubResource("Mat_floor")
 
-[node name="ObstacleA" type="CSGBox3D" parent="Geometry"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5.0, 0.45, -1.4)
+[node name="ObstacleShelterW" type="CSGBox3D" parent="Geometry"]
+transform = Transform3D(0.92388, 0, 0.382683, 0, 1, 0, -0.382683, 0, 0.92388, -6.2, 0.7, 0.5)
 use_collision = true
-size = Vector3(2.5, 0.9, 3.2)
+size = Vector3(1.4, 1.4, 6.5)
 material = SubResource("Mat_obstacle")
 
-[node name="ObstacleB" type="CSGBox3D" parent="Geometry"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.8, 0.45, 1.3)
+[node name="ObstacleShelterE" type="CSGBox3D" parent="Geometry"]
+transform = Transform3D(0.92388, 0, -0.382683, 0, 1, 0, 0.382683, 0, 0.92388, 6.2, 0.7, 0.5)
 use_collision = true
-size = Vector3(2.4, 0.9, 3.0)
+size = Vector3(1.4, 1.4, 6.5)
 material = SubResource("Mat_obstacle")
 
-[node name="ObstacleC" type="CSGBox3D" parent="Geometry"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.3, -5.2)
+[node name="ObstacleBench" type="CSGBox3D" parent="Geometry"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.3, -6.5)
 use_collision = true
-size = Vector3(4.8, 0.6, 1.2)
+size = Vector3(5.2, 0.6, 1.2)
 material = SubResource("Mat_obstacle")
+
+[node name="EmberPlanterA" type="CSGCylinder3D" parent="Geometry"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10.5, 0.4, 6.5)
+use_collision = true
+radius = 0.7
+height = 0.8
+sides = 8
+material = SubResource("Mat_ember_garden")
+
+[node name="EmberPlanterB" type="CSGCylinder3D" parent="Geometry"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10.5, 0.4, 6.5)
+use_collision = true
+radius = 0.7
+height = 0.8
+sides = 8
+material = SubResource("Mat_ember_garden")
+
+[node name="EmberPlanterC" type="CSGCylinder3D" parent="Geometry"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -12.0, 0.4, -8.5)
+use_collision = true
+radius = 0.7
+height = 0.8
+sides = 8
+material = SubResource("Mat_ember_garden")
 
 [node name="RestFixture" type="Area3D" parent="Geometry"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.42, 1.4)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.42, 2.4)
 script = ExtResource("1_fixture")
 fixture_kind = 1
 scrap_amount = 0
@@ -105,19 +145,19 @@ sides = 12
 material = SubResource("Mat_fixture")
 
 [node name="RoomExitPad" type="CSGBox3D" parent="Geometry"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.04, -8.0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.04, -15.0)
 size = Vector3(3.5, 0.08, 1.4)
 material = SubResource("Mat_exit")
 
 [node name="CameraAnchor" type="Marker3D" parent="."]
-metadata/camera_half_extent_x = 4.5
-metadata/camera_half_extent_z = 3.5
+metadata/camera_half_extent_x = 8.0
+metadata/camera_half_extent_z = 6.5
 
 [node name="SpawnMarker" type="Marker3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 6.2)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 11.5)
 
 [node name="RoomExit" type="Area3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1, -8.7)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1, -15.7)
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="RoomExit"]
 shape = SubResource("DoorShapeNorth")

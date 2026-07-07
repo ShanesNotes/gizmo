@@ -33,6 +33,7 @@ func _run_tests() -> void:
 	await _test_custodian_is_snapshot_damageable_enemy()
 	await _test_boss_arena_uses_custodian_model()
 	await _test_custodian_visual_presides_over_the_arena()
+	await _test_custodian_windup_presence_and_death_powerdown()
 	print("")
 	if _failed == 0 and _passed > 0:
 		print("PASS - %d checks" % _passed)
@@ -413,6 +414,50 @@ func _test_custodian_visual_presides_over_the_arena() -> void:
 		pivot.call("update_motion", 0.05)
 	_check("custodian inclines faintly while repositioning", model.rotation.x > 0.02)
 	boss.velocity = Vector3.ZERO
+
+	arena.queue_free()
+	await process_frame
+
+func _test_custodian_windup_presence_and_death_powerdown() -> void:
+	# Attack telegraph at boss scale: during brain windup the survey freezes
+	# and the monolith rises + leans in. Death is a glacial power-down sink.
+	# Both are cosmetic reads of boss_brain/is_dead — no gameplay writes.
+	var arena := BossArenaScene.instantiate()
+	root.add_child(arena)
+	await process_frame
+	var boss := arena.get_node_or_null("CustodianBoss") as CharacterBody3D
+	var pivot := boss.get_node_or_null("VisualPivot") as Node3D if boss != null else null
+	var model := pivot.get_node_or_null("CustodianBossModel") as Node3D if pivot != null else null
+	if pivot == null or model == null or not pivot.has_method("update_motion"):
+		_check("presence fixture has pivot + model + motion API", false)
+		arena.queue_free()
+		await process_frame
+		return
+
+	# Settle a calm baseline, then arm the windup read. The presence rise
+	# (0.24) is compared against the rest height with the levitation sine
+	# nearly zero-crossed at the sampled tick, so the check is deterministic.
+	for i in range(30):
+		pivot.call("update_motion", 0.05)
+	var rest_y: float = float(pivot.get("_base_position").y)
+
+	boss.boss_brain._state = "windup"
+	for i in range(60):
+		pivot.call("update_motion", 0.05)
+	_check(
+		"custodian rises with presence during windup",
+		model.position.y > rest_y + 0.15
+	)
+	_check("custodian survey freezes during windup (locked attention)", absf(model.rotation.y) < 0.01)
+	_check("custodian leans in during windup", model.rotation.x > 0.05)
+	boss.boss_brain._state = "idle"
+
+	var base_y: float = float(pivot.get("_base_position").y)
+	boss.take_damage(9999999.0, false)
+	for i in range(40):
+		pivot.call("update_motion", 0.05)
+	_check("dead custodian powers down and sinks", model.position.y < base_y - 0.3)
+	_check("dead custodian settles into the fallen pitch", model.rotation.x > 0.05)
 
 	arena.queue_free()
 	await process_frame

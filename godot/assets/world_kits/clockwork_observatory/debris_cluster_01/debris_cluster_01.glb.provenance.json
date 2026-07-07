@@ -1,0 +1,10 @@
+{
+  "notice": "derived from asset pipeline canon; do not edit as source",
+  "asset_id": "debris_cluster_01",
+  "asset_class": "world_kit",
+  "meshy_task_id": "019f3b03-17fa-75ba-951a-a8c7ab33869b",
+  "clean_glb_sha256": "554f1ee228756141f1a63b528249a17327e17a20f62c769722435877e5608426",
+  "triangles": 12389,
+  "cleanup_report": "gizmo-asset-pipeline/generated/debris_cluster_01/cleanup.json",
+  "run": "2026-07-06-world-beauty"
+}

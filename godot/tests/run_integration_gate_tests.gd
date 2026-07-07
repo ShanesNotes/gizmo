@@ -16,6 +16,7 @@ const MetaState := preload("res://scripts/meta/meta_state.gd")
 const RoomNode := preload("res://scripts/room_graph/room_node.gd")
 const RoomTemplate := preload("res://scripts/room_graph/room_template.gd")
 const RoomConnection := preload("res://scripts/room_graph/room_connection.gd")
+const SwingTiming := preload("res://scripts/room_graph/swing_timing.gd")
 
 const EXPECTED_MAIN_SCENE := "res://scenes/title_screen.tscn"
 const EXPECTED_RUN_SCENE := "res://scenes/run.tscn"
@@ -1163,7 +1164,11 @@ func _clear_current_room_by_real_attack_dps(run) -> Dictionary:
 
 		swings += 1
 		var step := kit.combo_step()
-		var recovery := maxf(attack.recovery_for_step(step), 0.01)
+		# Animation-led swings: damage lands on the clip's contact frame, so
+		# drive the resolver's swing clock past it before reading the result.
+		var contact := SwingTiming.melee_contact_delay(step) + 0.01
+		run.combat_resolvers.tick_pending_swings(contact)
+		var recovery := maxf(attack.recovery_for_step(step), 0.01) + contact
 		var target_died := target.is_dead()
 		if was_elite:
 			if target_died:

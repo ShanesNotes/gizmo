@@ -1,10 +1,13 @@
-[gd_scene load_steps=12 format=3]
+[gd_scene load_steps=13 format=3]
 
 [ext_resource type="Script" path="res://scripts/room_graph/room_hazard.gd" id="1_hazard"]
+[ext_resource type="Sky" path="res://assets/sky/gizmo_cosmos_sky_procedural.tres" id="sky_cosmos"]
 
 [sub_resource type="Environment" id="Env_res"]
-background_mode = 1
-background_color = Color(0.045, 0.052, 0.075, 1)
+background_mode = 2
+sky = ExtResource("sky_cosmos")
+sky_rotation = Vector3(0, 0.6, 0)
+background_energy_multiplier = 0.9
 ambient_light_source = 2
 ambient_light_color = Color(0.677, 0.692, 0.735, 1)
 ambient_light_energy = 0.78

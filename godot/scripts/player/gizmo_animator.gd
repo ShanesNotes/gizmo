@@ -157,6 +157,7 @@ func _build_player_and_tree() -> void:
 	var library := build_animation_library()
 	if library == null:
 		return
+	_graft_timed_swing_clips(library)
 	_anim_player = AnimationPlayer.new()
 	_anim_player.name = "ClipPlayer"
 	add_child(_anim_player)
@@ -169,6 +170,62 @@ func _build_player_and_tree() -> void:
 	animation_tree.anim_player = animation_tree.get_path_to(_anim_player)
 	animation_tree.tree_root = _build_blend_tree()
 	animation_tree.active = true
+
+## Animation-led combat (playtest 2): the swing clips' strike poses are keyed
+## to SwingTiming's contact seconds (the resolver's damage frame), and the
+## 3-step combo needs three distinct silhouettes. The code-built swing clips
+## own those slots; the authored GLB keeps everything else. Their tracks are
+## remapped from the code library's "Skeleton3D:" root onto whatever node
+## path the GLB tracks use, so both drive the same skeleton.
+func _graft_timed_swing_clips(library: AnimationLibrary) -> void:
+	var skeleton: Skeleton3D = _model.find_child("Skeleton3D", true, false)
+	if skeleton == null:
+		return
+	var prefix := _skeleton_track_prefix(library)
+	var code_library := GizmoAnimationController.build_clip_library(skeleton)
+	for clip_name: StringName in [&"attack_1", &"attack_2", &"attack_3", &"special"]:
+		if not code_library.has_animation(clip_name):
+			continue
+		var animation: Animation = code_library.get_animation(clip_name).duplicate(true)
+		for track in animation.get_track_count():
+			var path := String(animation.track_get_path(track))
+			var bone_split := path.rsplit(":", true, 1)
+			if bone_split.size() == 2:
+				animation.track_set_path(track, "%s:%s" % [prefix, bone_split[1]])
+		animation.loop_mode = Animation.LOOP_NONE
+		if library.has_animation(clip_name):
+			library.remove_animation(clip_name)
+		library.add_animation(clip_name, animation)
+	# The attack one-shot slot defaults to &"attack"; keep that name pointing
+	# at the timed step-1 swing so every route sees SwingTiming's contact.
+	if library.has_animation(&"attack_1"):
+		if library.has_animation(&"attack"):
+			library.remove_animation(&"attack")
+		library.add_animation(&"attack", library.get_animation(&"attack_1").duplicate(true))
+
+func _skeleton_track_prefix(library: AnimationLibrary) -> String:
+	for clip in library.get_animation_list():
+		var animation := library.get_animation(clip)
+		for track in animation.get_track_count():
+			var path := String(animation.track_get_path(track))
+			var split := path.rsplit(":", true, 1)
+			if split.size() == 2 and split[0].contains("Skeleton3D"):
+				return split[0]
+	return "Skeleton3D"
+
+## Route the attack one-shot to the combo step's swing variant before firing.
+func _set_attack_variant(step: int) -> void:
+	if animation_tree == null:
+		return
+	var tree := animation_tree.tree_root as AnimationNodeBlendTree
+	if tree == null or not tree.has_node(&"attack_clip"):
+		return
+	var clip := tree.get_node(&"attack_clip") as AnimationNodeAnimation
+	if clip == null:
+		return
+	var variant: StringName = SwingTiming.melee_clip_name(step)
+	if _anim_player != null and _anim_player.has_animation(variant):
+		clip.animation = variant
 
 func _build_blend_tree() -> AnimationNodeBlendTree:
 	var tree := AnimationNodeBlendTree.new()
@@ -250,7 +307,8 @@ func _connect_ability_signals() -> void:
 	var abilities := get_parent().get_node_or_null("AbilityComponent")
 	if abilities == null:
 		return
-	abilities.attack_started.connect(func(_step: int, _damage: float) -> void:
+	abilities.attack_started.connect(func(step: int, _damage: float) -> void:
+		_set_attack_variant(step)
 		play_one_shot(&"attack"))
 	abilities.special_started.connect(func(_potency: float) -> void:
 		play_one_shot(&"special"))

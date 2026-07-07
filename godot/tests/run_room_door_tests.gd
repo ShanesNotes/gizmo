@@ -403,8 +403,16 @@ func _test_open_for_shows_lure_glyph_and_beckon_glow() -> void:
 	if glyph != null:
 		_check("reward glyph is visible while OPEN", glyph.visible)
 		var meshes := glyph.find_children("*", "MeshInstance3D", true, false)
-		_check("reward glyph is built from meshes, not text", meshes.size() >= 1)
+		var emblems := glyph.find_children("*", "Sprite3D", true, false)
+		_check("reward glyph is built from meshes or emblem art, not text", meshes.size() + emblems.size() >= 1)
 		_check("reward glyph reads above the door frame", glyph.position.y >= 1.5)
+		# Canon emblem language (design-system EMBLEMS.md): BOON carries the moon.
+		var carries_moon := false
+		for emblem in emblems:
+			var texture := (emblem as Sprite3D).texture
+			if texture != null and String(texture.resource_path).ends_with("moon.svg"):
+				carries_moon = true
+		_check("BOON glyph is the canon moon emblem", carries_moon)
 
 	var beckon := door.get_node_or_null(NodePath("BeckonGlow")) as OmniLight3D
 	_check("open_for lights a beckoning glow", beckon != null)
@@ -442,6 +450,10 @@ func _glyph_signature(glyph: Node3D) -> String:
 		var mesh_instance := mesh as MeshInstance3D
 		var mesh_class := mesh_instance.mesh.get_class() if mesh_instance.mesh != null else "null"
 		parts.append("%s:%s:%s" % [mesh.name, mesh_class, mesh_instance.transform])
+	for emblem in glyph.find_children("*", "Sprite3D", true, false):
+		var sprite := emblem as Sprite3D
+		var texture_path := String(sprite.texture.resource_path) if sprite.texture != null else "null"
+		parts.append("%s:%s" % [emblem.name, texture_path])
 	parts.sort()
 	return ";".join(parts)
 

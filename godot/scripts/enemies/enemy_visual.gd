@@ -22,42 +22,56 @@ const MODEL_NAMES := {
 
 @export var placeholder_path: NodePath = NodePath("Capsule")
 @export var fallback_model_scale: float = 1.0
+## Rigged bruiser (2.4m) / elite (3.2m) meshes stand feet-at-origin, so their
+## ground offset is 0; the scales keep the silhouette heights the unrigged
+## center-origin meshes established (2.7m / 3.5m before the pivot scale).
 @export var model_scale_by_archetype: Dictionary = {
 	ARCHETYPE_CHAFF: 0.9,
-	ARCHETYPE_BRUISER: 1.35,
-	ARCHETYPE_ELITE: 1.75,
+	ARCHETYPE_BRUISER: 1.125,
+	ARCHETYPE_ELITE: 1.09,
 }
 @export var model_ground_offset_by_archetype: Dictionary = {
 	ARCHETYPE_CHAFF: 0.53,
-	ARCHETYPE_BRUISER: 1.35,
-	ARCHETYPE_ELITE: 1.75,
+	ARCHETYPE_BRUISER: 0.0,
+	ARCHETYPE_ELITE: 0.0,
 }
 
 ## Motion identity per archetype (cosmetic only — reads parent velocity, never
 ## writes gameplay state). Chaff hovers busily and spins; bruiser lumbers with a
 ## heavy stomp roll; elite glides dead-level with cold, economical banking —
 ## the hollow-machine contrast against Gizmo's eager patter.
+## windup_wobble: aggression shiver (roll radians) while the brain winds up an
+## attack — chaff-only; bruiser/elite telegraph skeletally via their attack
+## clips. death: "tumble" spins the chaff drone out of the air; "freeze" holds
+## the model level so the rigged death clips own the fall.
 const MOTION_PROFILES := {
 	ARCHETYPE_CHAFF: {
 		"bob_amplitude": 0.06, "bob_frequency_hz": 2.2, "stomp": false,
-		"spin_rad_per_s": 1.6, "bank_lean": 0.0, "recoil_strength": 0.28,
+		"spin_rad_per_s": 1.6, "bank_lean": 0.10, "recoil_strength": 0.28,
+		"windup_wobble": 0.14, "death": "tumble",
 	},
 	ARCHETYPE_BRUISER: {
 		"bob_amplitude": 0.09, "bob_frequency_hz": 1.1, "stomp": true,
 		"spin_rad_per_s": 0.0, "bank_lean": 0.05, "recoil_strength": 0.10,
+		"windup_wobble": 0.0, "death": "freeze",
 	},
 	ARCHETYPE_ELITE: {
 		"bob_amplitude": 0.0, "bob_frequency_hz": 0.0, "stomp": false,
 		"spin_rad_per_s": 0.0, "bank_lean": 0.16, "recoil_strength": 0.06,
+		"windup_wobble": 0.0, "death": "freeze",
 	},
 }
 const RECOIL_DURATION := 0.22
+const WINDUP_WOBBLE_HZ := 9.0
+const CHAFF_TUMBLE_SINK := 0.45
 
 var _model_instance: Node3D = null
 var _model_base_position: Vector3 = Vector3.ZERO
 var _motion_time: float = 0.0
 var _spin_angle: float = 0.0
 var _recoil_remaining: float = 0.0
+var _windup_amount: float = 0.0
+var _death_time: float = 0.0
 
 func _ready() -> void:
 	var parent_node := get_parent()
@@ -78,6 +92,11 @@ func update_motion(delta: float) -> void:
 	if profile.is_empty():
 		return
 	var safe_delta: float = maxf(delta, 0.0)
+	if _parent_is_dead():
+		_death_time += safe_delta
+		_apply_death_motion(profile, safe_delta)
+		return
+	_death_time = 0.0
 	var move_amount := _parent_move_amount()
 	_motion_time += safe_delta * (0.6 + 0.8 * move_amount)
 
@@ -100,8 +119,34 @@ func update_motion(delta: float) -> void:
 	var recoil_envelope := _recoil_remaining * _recoil_remaining
 	var recoil_kick := float(profile["recoil_strength"]) * recoil_envelope
 
+	# Aggression shiver while the brain winds up (chaff): the drone vibrates
+	# with intent before it bites — the telegraph for an archetype with no rig.
+	var wobble := 0.0
+	var wobble_strength := float(profile.get("windup_wobble", 0.0))
+	if wobble_strength > 0.0:
+		var windup_target := 1.0 if _parent_attack_state() == "windup" else 0.0
+		var windup_weight := 1.0 - exp(-10.0 * safe_delta)
+		_windup_amount = lerpf(_windup_amount, windup_target, windup_weight)
+		wobble = wobble_strength * _windup_amount * sin(_motion_time * TAU * WINDUP_WOBBLE_HZ)
+
 	_model_instance.position = _model_base_position + Vector3(0.0, bob, -recoil_kick)
-	_model_instance.rotation = Vector3(-recoil_kick * 0.8, _spin_angle, bank)
+	_model_instance.rotation = Vector3(-recoil_kick * 0.8, _spin_angle, bank + wobble)
+
+func _apply_death_motion(profile: Dictionary, safe_delta: float) -> void:
+	if String(profile.get("death", "freeze")) == "tumble":
+		# Chaff death: the hover fails — it spins out and drops. Cosmetic
+		# motion under the death_pop squash; gameplay was booked before this.
+		_model_instance.rotation.x += 5.2 * safe_delta
+		_model_instance.rotation.z += 3.4 * safe_delta
+		var sink := minf(_death_time * 1.6, CHAFF_TUMBLE_SINK)
+		_model_instance.position = _model_base_position + Vector3(0.0, -sink, 0.0)
+		return
+	# Rigged archetypes: level the whole-model layer fast so the skeletal
+	# death clip owns the fall without a residual bob/bank underneath it.
+	var settle := 1.0 - exp(-8.0 * safe_delta)
+	_model_instance.position = _model_instance.position.lerp(_model_base_position, settle)
+	_model_instance.rotation.x = lerpf(_model_instance.rotation.x, 0.0, settle)
+	_model_instance.rotation.z = lerpf(_model_instance.rotation.z, 0.0, settle)
 
 func play_hit_recoil() -> void:
 	_recoil_remaining = 1.0
@@ -117,6 +162,20 @@ func _parent_move_amount() -> float:
 	var speed := Vector3(body.velocity.x, 0.0, body.velocity.z).length()
 	var reference: float = maxf(float(parent_node.get("move_speed")), 0.001)
 	return clampf(speed / reference, 0.0, 1.0)
+
+func _parent_is_dead() -> bool:
+	var parent_node := get_parent()
+	return parent_node != null and parent_node.has_method(&"is_dead") \
+			and bool(parent_node.is_dead())
+
+func _parent_attack_state() -> String:
+	var parent_node := get_parent()
+	if parent_node == null:
+		return ""
+	var brain: Variant = parent_node.get("brain")
+	if brain == null or not (brain as Object).has_method(&"attack_state"):
+		return ""
+	return String(brain.attack_state())
 
 func _parent_local_velocity_x() -> float:
 	var parent_node := get_parent()
@@ -173,6 +232,22 @@ func _instance_model(archetype: String) -> void:
 	_motion_time = 0.0
 	_spin_angle = 0.0
 	_recoil_remaining = 0.0
+	_windup_amount = 0.0
+	_death_time = 0.0
+	_attach_animation_controller(archetype)
+
+## Rigged models carry a Skeleton3D + clip AnimationPlayer; give them the
+## two-tier controller so authored clips drive locomotion/telegraph/hit/death.
+func _attach_animation_controller(archetype: String) -> void:
+	var parent_node := get_parent()
+	if parent_node == null:
+		return
+	if _model_instance.find_child("Skeleton3D", true, false) == null:
+		return
+	var controller := EnemyAnimationController.new()
+	controller.name = "EnemyAnimationController"
+	add_child(controller)
+	controller.setup(parent_node, _model_instance, archetype)
 
 func _clear_model() -> void:
 	var placeholder := get_node_or_null(placeholder_path)

@@ -1,4 +1,4 @@
-[gd_scene load_steps=12 format=3]
+[gd_scene load_steps=13 format=3]
 
 [ext_resource type="Script" path="res://scripts/room_graph/run_orchestrator.gd" id="1_orchestrator"]
 [ext_resource type="PackedScene" path="res://scenes/gizmo_player.tscn" id="2_player"]
@@ -9,10 +9,13 @@
 [ext_resource type="PackedScene" path="res://scenes/boon_draft.tscn" id="7_boon_draft"]
 [ext_resource type="PackedScene" path="res://scenes/pause_menu.tscn" id="8_pause_menu"]
 [ext_resource type="Shader" path="res://shaders/gouache_grade.gdshader" id="9_grade_shader"]
+[ext_resource type="Sky" path="res://assets/sky/gizmo_cosmos_sky_procedural.tres" id="sky_cosmos"]
 
 [sub_resource type="Environment" id="Environment_run"]
-background_mode = 1
-background_color = Color(0.045, 0.051, 0.067, 1)
+background_mode = 2
+sky = ExtResource("sky_cosmos")
+sky_rotation = Vector3(0, 0.6, 0)
+background_energy_multiplier = 0.9
 ambient_light_source = 2
 ambient_light_color = Color(0.78, 0.72, 0.66, 1)
 ambient_light_energy = 0.8

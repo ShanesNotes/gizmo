@@ -10,6 +10,7 @@ extends Node
 
 const CombatEffectsScript := preload("res://scripts/room_graph/combat_effects.gd")
 const CastShardPickupScript := preload("res://scripts/abilities/cast_shard_pickup.gd")
+const SwingTimingScript := preload("res://scripts/room_graph/swing_timing.gd")
 
 var melee_range: float = 2.0
 var melee_arc_degrees: float = 120.0
@@ -25,6 +26,9 @@ var _shard_parent_provider: Callable = Callable()
 var _run_state_provider: Callable = Callable()
 var _render_hud_payloads: Callable = Callable()
 var _bound_kit: AbilityComponent = null
+## Animation-led swings (playtest 2): each attack/special holds here for its
+## SwingTiming contact delay so the damage frame IS the clip's contact frame.
+var _pending_swings: Array[Dictionary] = []
 var _cast_shard_sequence: int = 0
 var _cast_shards_by_key: Dictionary = {}
 var _cast_shard_keys_by_spawn_id: Dictionary = {}
@@ -61,10 +65,56 @@ func bind_ability_kit(kit: AbilityComponent) -> void:
 
 func reset_for_run() -> void:
 	_clear_cast_shards(false)
+	_pending_swings.clear()
 	_cast_shard_sequence = 0
 
 func clear_for_room_cleanup(reclaim: bool) -> void:
 	_clear_cast_shards(reclaim)
+	_pending_swings.clear()
+
+func _physics_process(delta: float) -> void:
+	tick_pending_swings(delta)
+
+## Deterministic swing clock (public so headless suites can drive it). A swing
+## fires when its contact delay elapses; it is dropped if combat input is no
+## longer allowed or the player dash-cancelled out of the windup.
+func tick_pending_swings(delta: float) -> void:
+	if _pending_swings.is_empty():
+		return
+	var step := maxf(delta, 0.0)
+	var due: Array[Dictionary] = []
+	for swing in _pending_swings:
+		swing["time_remaining"] = float(swing["time_remaining"]) - step
+		if float(swing["time_remaining"]) <= 0.0:
+			due.append(swing)
+	for swing in due:
+		_pending_swings.erase(swing)
+		_fire_swing(swing)
+
+func _schedule_swing(damage: float, attack_range: float, arc_degrees: float, contact_delay: float) -> void:
+	if contact_delay <= 0.0:
+		_fire_swing({"damage": damage, "range": attack_range, "arc": arc_degrees})
+		return
+	_pending_swings.append({
+		"time_remaining": contact_delay,
+		"damage": damage,
+		"range": attack_range,
+		"arc": arc_degrees,
+	})
+
+func _fire_swing(swing: Dictionary) -> void:
+	if not _combat_input_allowed():
+		return
+	var kit := _ability_kit()
+	if kit != null and kit.current_action_state() == PlayerActionStateMachine.ActionState.DASH:
+		return
+	var hits := _resolve_player_arc_damage(
+		float(swing["damage"]),
+		float(swing["range"]),
+		float(swing["arc"])
+	)
+	if hits > 0:
+		_notify_audio_event(&"melee_hit")
 
 func reclaim_cast_shard_once(shard_key: String) -> bool:
 	var run_state := _run_state()
@@ -102,15 +152,15 @@ func _on_player_dash_started(_direction: Vector3, _speed: float, _duration: floa
 	if not _combat_input_allowed():
 		return
 	_notify_audio_event(&"dash_whoosh")
+	_notify_audio_event(&"gizmo_chirp_effort")
 
-func _on_player_attack_started(_step: int, damage: float) -> void:
+func _on_player_attack_started(step: int, damage: float) -> void:
 	if not _combat_input_allowed():
 		return
-	_spawn_swing_read(melee_range)
+	var contact_delay := SwingTimingScript.melee_contact_delay(step)
+	_spawn_swing_read(melee_range, melee_arc_degrees, contact_delay, -1.0 if step == 2 else 1.0)
 	_apply_melee_lunge()
-	var hits := _resolve_player_arc_damage(damage, melee_range, melee_arc_degrees)
-	if hits > 0:
-		_notify_audio_event(&"melee_hit")
+	_schedule_swing(damage, melee_range, melee_arc_degrees, contact_delay)
 
 ## HUD dash-slot cooldown surface: the payload's "ready" flag only reads right
 ## if the HUD re-renders exactly when a cooldown starts and ends.
@@ -137,10 +187,9 @@ func _apply_melee_lunge() -> void:
 func _on_player_special_started(potency: float) -> void:
 	if not _combat_input_allowed():
 		return
-	_spawn_swing_read(special_range)
-	var hits := _resolve_player_arc_damage(potency, special_range, special_arc_degrees)
-	if hits > 0:
-		_notify_audio_event(&"melee_hit")
+	var contact_delay := SwingTimingScript.special_contact_delay()
+	_spawn_swing_read(special_range, special_arc_degrees, contact_delay, 1.0)
+	_schedule_swing(potency, special_range, special_arc_degrees, contact_delay)
 
 func _on_player_cast_started(potency: float) -> void:
 	if not _combat_input_allowed():
@@ -162,7 +211,7 @@ func _on_player_surge_started(damage: float, radius: float, stagger_seconds: flo
 		return
 	_notify_audio_event(&"surge_burst")
 	var center := active_player.global_position
-	CombatEffectsScript.spawn_burst_ring(_shard_parent(), center, radius)
+	CombatEffectsScript.spawn_surge_shockwave(_shard_parent(), center, radius)
 	CombatEffectsScript.shake_active_camera(active_player, 0.18, 0.12)
 	var snapshot: Array = _enemy_snapshot()
 	for candidate in snapshot:
@@ -175,15 +224,20 @@ func _on_player_surge_started(damage: float, radius: float, stagger_seconds: flo
 		enemy.take_damage(damage, false)
 	_render_hud()
 
-func _spawn_swing_read(swing_range: float) -> void:
+## Swing read: an arc trail that sweeps over the clip's windup->contact
+## window, alternating direction with the combo so step 2 visibly returns.
+func _spawn_swing_read(swing_range: float, arc_degrees: float, sweep_seconds: float, sweep_sign: float) -> void:
 	var active_player := _player()
 	if active_player == null:
 		return
-	CombatEffectsScript.spawn_swing_wedge(
+	CombatEffectsScript.spawn_swing_trail(
 		_shard_parent(),
 		active_player.global_position,
 		_player_facing_direction(active_player),
-		swing_range
+		swing_range,
+		arc_degrees,
+		sweep_seconds,
+		sweep_sign
 	)
 
 func _resolve_player_arc_damage(damage: float, attack_range: float, arc_degrees: float) -> int:
