@@ -17,8 +17,25 @@ const WRENCH_SCENE := preload("res://assets/props/brass_winding_wrench/brass_win
 ## Pure state-mapping rules, testable headless without a scene tree.
 class Logic:
 	const MAX_RUN_TIME_SCALE := 1.5
-	const ONE_SHOT_SLOTS: Array[StringName] = [&"attack", &"special", &"dash", &"hit"]
+	const ONE_SHOT_SLOTS: Array[StringName] = [&"attack", &"special", &"dash", &"hit", &"spark_cast"]
 	const LOOPING_CLIPS: Array[StringName] = [&"idle", &"run"]
+	## Cinematic poses played directly through the ClipPlayer (not the blend
+	## tree) that must loop while held — e.g. the lore lane's campfire seat.
+	const CINEMATIC_LOOPING_CLIPS: Array[StringName] = [&"campfire_sit"]
+	## Personality idle-breakers, fired in alternation from a dedicated one-shot
+	## once Gizmo has stood still past IDLE_FIDGET_DELAY (kept out of
+	## ONE_SHOT_SLOTS so the combat request-path contract is unchanged).
+	const FIDGET_CLIPS: Array[StringName] = [&"idle_fidget_key", &"idle_fidget_chirp"]
+	const IDLE_FIDGET_DELAY := 7.0
+	const IDLE_SPEED_EPSILON := 0.05
+
+	## True once the standing-idle timer has crossed the fidget delay.
+	static func should_fire_fidget(idle_time: float, delay: float) -> bool:
+		return idle_time >= delay
+
+	## Alternate key-turn / head-tilt so the same fidget never plays twice.
+	static func next_fidget(index: int) -> StringName:
+		return FIDGET_CLIPS[index % FIDGET_CLIPS.size()]
 
 	## Measured horizontal speed -> locomotion blend position (0 idle, 1 run).
 	static func locomotion_blend(speed: float, reference_speed: float) -> float:
@@ -47,8 +64,11 @@ const ONE_SHOT_FADES := {
 	&"special": [0.08, 0.15],
 	&"dash": [0.04, 0.08],
 	&"hit": [0.03, 0.12],
+	&"spark_cast": [0.06, 0.12],
 }
 const DEATH_BLEND_SECONDS := 0.2
+## Gentle blends so an idle-breaker eases in over the breathing idle.
+const FIDGET_FADES := [0.25, 0.5]
 
 @export var model_path: NodePath = NodePath("../VisualPivot/Model")
 ## 0 = read `move_speed` from the parent player (fallback 4.0).
@@ -70,6 +90,8 @@ var _anim_player: AnimationPlayer
 var _reference_speed := 4.0
 var _death_playing := false
 var _vitals_connected := false
+var _idle_time := 0.0
+var _fidget_index := 0
 
 static func build_animation_library() -> AnimationLibrary:
 	var instance := CLIPS_SCENE.instantiate()
@@ -86,8 +108,8 @@ static func build_animation_library() -> AnimationLibrary:
 	instance.free()
 	for clip in library.get_animation_list():
 		var animation := library.get_animation(clip)
-		animation.loop_mode = Animation.LOOP_LINEAR if Logic.LOOPING_CLIPS.has(clip) \
-				else Animation.LOOP_NONE
+		animation.loop_mode = Animation.LOOP_LINEAR if (Logic.LOOPING_CLIPS.has(clip) \
+				or Logic.CINEMATIC_LOOPING_CLIPS.has(clip)) else Animation.LOOP_NONE
 	return library
 
 func _ready() -> void:
@@ -105,7 +127,7 @@ func _ready() -> void:
 	_connect_ability_signals()
 	_try_connect_vitals()
 
-func _physics_process(_delta: float) -> void:
+func _physics_process(delta: float) -> void:
 	if not _vitals_connected:
 		_try_connect_vitals()
 	if animation_tree == null or _death_playing:
@@ -115,6 +137,32 @@ func _physics_process(_delta: float) -> void:
 			Logic.locomotion_blend(speed, _reference_speed))
 	animation_tree.set("parameters/speed/scale",
 			Logic.run_time_scale(speed, _reference_speed))
+	_tick_idle_fidget(delta, speed)
+
+## Standing-idle personality: once Gizmo has held still past the delay, fire an
+## alternating fidget and reset. Any motion or combat one-shot resets the timer.
+func _tick_idle_fidget(delta: float, speed: float) -> void:
+	if not animation_tree.active or speed >= Logic.IDLE_SPEED_EPSILON:
+		_idle_time = 0.0
+		return
+	_idle_time += delta
+	if Logic.should_fire_fidget(_idle_time, Logic.IDLE_FIDGET_DELAY):
+		_idle_time = 0.0
+		play_fidget(Logic.next_fidget(_fidget_index))
+		_fidget_index += 1
+
+## Swap the shared fidget one-shot to `clip` and fire it over the idle blend.
+func play_fidget(clip: StringName) -> void:
+	if animation_tree == null or _death_playing:
+		return
+	var tree := animation_tree.tree_root as AnimationNodeBlendTree
+	if tree == null or not tree.has_node(&"fidget_clip"):
+		return
+	var node := tree.get_node(&"fidget_clip") as AnimationNodeAnimation
+	if node == null or (_anim_player != null and not _anim_player.has_animation(clip)):
+		return
+	node.animation = clip
+	animation_tree.set("parameters/fidget_shot/request", AnimationNodeOneShot.ONE_SHOT_REQUEST_FIRE)
 
 ## Fire a one-shot expression (attack/special/dash/hit) over locomotion.
 func play_one_shot(slot: StringName) -> void:
@@ -123,6 +171,7 @@ func play_one_shot(slot: StringName) -> void:
 	var path := Logic.request_path(slot)
 	if path.is_empty():
 		return
+	_idle_time = 0.0  # acting resets the standing-idle fidget clock
 	animation_tree.set(path, AnimationNodeOneShot.ONE_SHOT_REQUEST_FIRE)
 
 ## Death takes over playback entirely; the final slump pose holds.
@@ -144,6 +193,16 @@ func play_victory() -> void:
 	if animation_tree != null:
 		animation_tree.active = false
 	_anim_player.play(&"victory", DEATH_BLEND_SECONDS)
+
+## Seat Gizmo at the campfire for the lore lane's opening cinematic. Takes over
+## playback with the looping "campfire_sit" pose; call resume_locomotion() to
+## hand control back to the blend tree when the beat ends.
+func play_campfire_sit() -> void:
+	if _anim_player == null or _death_playing:
+		return
+	if animation_tree != null:
+		animation_tree.active = false
+	_anim_player.play(&"campfire_sit", DEATH_BLEND_SECONDS)
 
 ## Return control to the blend tree (after victory, or on respawn/reset).
 func resume_locomotion() -> void:
@@ -260,6 +319,19 @@ func _build_blend_tree() -> AnimationNodeBlendTree:
 		tree.connect_node(shot_name, 1, clip_name)
 		previous = shot_name
 		column += 200
+	# Dedicated idle-fidget one-shot, chained last so a personality beat layers
+	# over locomotion but yields to any combat one-shot below it. Its clip is
+	# swapped per fire (see play_fidget); default to the first fidget.
+	var fidget := AnimationNodeOneShot.new()
+	fidget.fadein_time = FIDGET_FADES[0]
+	fidget.fadeout_time = FIDGET_FADES[1]
+	var fidget_clip := AnimationNodeAnimation.new()
+	fidget_clip.animation = Logic.FIDGET_CLIPS[0]
+	tree.add_node(&"fidget_shot", fidget, Vector2(column, 0))
+	tree.add_node(&"fidget_clip", fidget_clip, Vector2(column, 150))
+	tree.connect_node(&"fidget_shot", 0, previous)
+	tree.connect_node(&"fidget_shot", 1, &"fidget_clip")
+	previous = &"fidget_shot"
 	tree.connect_node(&"output", 0, previous)
 	return tree
 
@@ -312,12 +384,12 @@ func _connect_ability_signals() -> void:
 		play_one_shot(&"attack"))
 	abilities.special_started.connect(func(_potency: float) -> void:
 		play_one_shot(&"special"))
-	# Surge reuses the heavy two-hand slam read; cast reuses the swing until
-	# dedicated clips are authored.
+	# Surge reuses the heavy two-hand slam read; cast throws the spark as a gift
+	# (dedicated underhand-lob clip, contact-true release beat).
 	abilities.surge_started.connect(func(_damage: float, _radius: float, _stagger: float) -> void:
 		play_one_shot(&"special"))
 	abilities.cast_started.connect(func(_potency: float) -> void:
-		play_one_shot(&"attack"))
+		play_one_shot(&"spark_cast"))
 	abilities.dash_started.connect(func(_direction: Vector3, _speed: float, _duration: float) -> void:
 		play_one_shot(&"dash"))
 

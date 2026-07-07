@@ -28,6 +28,7 @@ func _initialize() -> void:
 	_test_locomotion_blend()
 	_test_run_time_scale()
 	_test_one_shot_request_paths()
+	_test_idle_fidget_logic()
 	_test_clip_library_contents()
 	_test_clip_library_loop_modes()
 	_test_vitals_damage_taken_seam()
@@ -70,12 +71,22 @@ func _test_run_time_scale() -> void:
 
 func _test_one_shot_request_paths() -> void:
 	var logic := GizmoAnimatorScript.Logic
-	_check(logic.ONE_SHOT_SLOTS.size() == 4, "four one-shot slots (attack/special/dash/hit)")
+	_check(logic.ONE_SHOT_SLOTS.size() == 5, "five one-shot slots (attack/special/dash/hit/spark_cast)")
 	_check(logic.request_path(&"attack") == "parameters/attack_shot/request", "attack request path")
 	_check(logic.request_path(&"special") == "parameters/special_shot/request", "special request path")
 	_check(logic.request_path(&"dash") == "parameters/dash_shot/request", "dash request path")
 	_check(logic.request_path(&"hit") == "parameters/hit_shot/request", "hit request path")
+	_check(logic.request_path(&"spark_cast") == "parameters/spark_cast_shot/request", "spark_cast request path")
 	_check(logic.request_path(&"nonsense") == "", "unknown slot maps to empty path")
+
+func _test_idle_fidget_logic() -> void:
+	var logic := GizmoAnimatorScript.Logic
+	_check(logic.FIDGET_CLIPS.size() == 2, "two personality fidgets")
+	_check(not logic.should_fire_fidget(1.0, logic.IDLE_FIDGET_DELAY), "no fidget before the delay")
+	_check(logic.should_fire_fidget(logic.IDLE_FIDGET_DELAY, logic.IDLE_FIDGET_DELAY), "fidget fires at the delay")
+	_check(logic.next_fidget(0) == &"idle_fidget_key", "first fidget is the key-turn")
+	_check(logic.next_fidget(1) == &"idle_fidget_chirp", "second fidget is the chirp")
+	_check(logic.next_fidget(2) == logic.next_fidget(0), "fidgets alternate")
 
 # --- authored clip asset ----------------------------------------------------
 
@@ -88,6 +99,10 @@ func _test_clip_library_contents() -> void:
 		_check(library.has_animation(clip), "library has clip '%s'" % clip)
 	var attack := library.get_animation(&"attack")
 	_check(attack != null and attack.length > 0.2 and attack.length < 0.8, "attack clip length is snappy")
+	# Wired-in authored clips (night wave 3): the dedicated spark-cast lob and
+	# the lore lane's looping campfire seat.
+	for clip in [&"spark_cast", &"campfire_sit"]:
+		_check(library.has_animation(clip), "library has authored clip '%s'" % clip)
 
 func _test_clip_library_loop_modes() -> void:
 	var library: AnimationLibrary = GizmoAnimatorScript.build_animation_library()
@@ -98,6 +113,8 @@ func _test_clip_library_loop_modes() -> void:
 	_check(library.get_animation(&"run").loop_mode == Animation.LOOP_LINEAR, "run loops")
 	_check(library.get_animation(&"death").loop_mode == Animation.LOOP_NONE, "death does not loop")
 	_check(library.get_animation(&"attack").loop_mode == Animation.LOOP_NONE, "attack does not loop")
+	_check(library.get_animation(&"campfire_sit").loop_mode == Animation.LOOP_LINEAR, "campfire_sit loops for the cinematic")
+	_check(library.get_animation(&"spark_cast").loop_mode == Animation.LOOP_NONE, "spark_cast is a one-shot")
 
 # --- PlayerVitals hit-react seam --------------------------------------------
 
@@ -155,6 +172,23 @@ func _test_runtime_wiring_smoke() -> void:
 	await process_frame
 	_check(bool(tree.get("parameters/attack_shot/active")), "attack one-shot fires through the tree")
 
+	animator.play_one_shot(&"spark_cast")
+	await process_frame
+	await process_frame
+	_check(bool(tree.get("parameters/spark_cast_shot/active")), "spark_cast one-shot fires through the tree")
+
+	# Idle fidget: the dedicated one-shot swaps its clip and fires over locomotion.
+	player.velocity = Vector3.ZERO
+	await physics_frame
+	animator.play_fidget(&"idle_fidget_chirp")
+	await process_frame
+	await process_frame
+	_check(bool(tree.get("parameters/fidget_shot/active")), "idle fidget one-shot fires through the tree")
+	var blend_root := tree.tree_root as AnimationNodeBlendTree
+	var fidget_node := blend_root.get_node(&"fidget_clip") as AnimationNodeAnimation
+	_check(fidget_node != null and fidget_node.animation == &"idle_fidget_chirp",
+		"play_fidget routes the fidget one-shot to the chosen clip")
+
 	var skeleton: Skeleton3D = model.find_child("Skeleton3D", true, false)
 	_check(skeleton != null, "shipped model exposes Skeleton3D")
 	if skeleton != null:
@@ -163,6 +197,18 @@ func _test_runtime_wiring_smoke() -> void:
 		if mount != null:
 			_check(mount.bone_name != "", "weapon mount is bound to a bone")
 			_check(mount.get_child_count() > 0, "wrench attached under the mount")
+
+	# Campfire cinematic takeover: the tree yields so the ClipPlayer's looping
+	# seat pose drives the skeleton; resume hands control back.
+	animator.play_campfire_sit()
+	await process_frame
+	_check(not tree.active, "campfire_sit deactivates the blend tree")
+	var clip_player := animator.get_node_or_null("ClipPlayer") as AnimationPlayer
+	_check(clip_player != null and clip_player.current_animation == "campfire_sit",
+		"campfire_sit plays on the ClipPlayer")
+	animator.resume_locomotion()
+	await process_frame
+	_check(tree.active, "resume_locomotion reactivates the blend tree")
 
 	animator.play_death()
 	await process_frame
