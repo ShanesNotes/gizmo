@@ -34,6 +34,23 @@ const VOICE_LINE_MANIFEST := {
 	&"pattern_death": 1,
 	# Reserved (unrecorded — future codex reading; also the dark-line test hook).
 	&"margin_codex_entry": 1,
+	# The saints of the church (scripts: voice-scripts-v2-saints.md; canon:
+	# gizmo-lore canon/saints-of-the-church.md; batch 2026-07-07-saints-batch).
+	&"saint_bearer_meeting": 1,
+	&"saint_bearer_offer": 3,
+	&"saint_bearer_threshold": 1,
+	&"saint_hearthguard_meeting": 1,
+	&"saint_hearthguard_offer": 3,
+	&"saint_hearthguard_threshold": 1,
+	&"saint_swordbearer_meeting": 1,
+	&"saint_swordbearer_offer": 3,
+	&"saint_swordbearer_threshold": 1,
+	&"saint_marksman_meeting": 1,
+	&"saint_marksman_offer": 3,
+	&"saint_marksman_threshold": 1,
+	&"saint_company_meeting": 1,
+	&"saint_company_offer": 3,
+	&"saint_company_threshold": 1,
 }
 
 const V2_CUE_MAP_PATH := "res://audio/music/soundtrack_v2/cue_map.json"
