@@ -32,12 +32,32 @@ var _current_incline: float = 0.0
 var _windup_presence: float = 0.0
 var _death_time: float = 0.0
 
+## --- skeletal clip layer (night pass 2026-07-07) -------------------------
+## The boss GLB carries a 9-bone rig + authored clips (idle loop, phase_shift
+## flourish, attack [overreach strike 1.20s], attack_sweep [audit strike
+## 0.90s], death = halo guttering out; tools/animation/rig_custodian_boss.py).
+## This layer plays them from the same parent reads the procedural motion
+## uses; the two compose — this node moves the model, clips pose bones.
+const CLIP_LOOPED := {&"idle": true}
+
+var _anim: AnimationPlayer = null
+var _clip: StringName = &""
+var _windup_clip: StringName = &"attack"
+var _last_phase: int = 0
+var _phase_flourish_pending := false
+var _brain_connected := false
+
 func _ready() -> void:
 	if _model != null:
 		_base_position = _model.position
+		_anim = _model.find_child("AnimationPlayer", true, false) as AnimationPlayer
+		if _anim != null:
+			_pin_clip_loops()
+			_play_clip(&"idle")
 
 func _physics_process(delta: float) -> void:
 	update_motion(delta)
+	_update_clip_layer()
 
 func update_motion(delta: float) -> void:
 	if _model == null:
@@ -91,6 +111,80 @@ func _parent_execution_state() -> String:
 	if brain == null or not (brain as Object).has_method(&"execution_state"):
 		return ""
 	return String(brain.execution_state())
+
+## ------------------------------------------------------ clip layer internals
+func _update_clip_layer() -> void:
+	if _anim == null:
+		return
+	_try_connect_brain()
+	_track_phase()
+	var desired := _desired_clip()
+	if desired != _clip:
+		_play_clip(desired)
+
+func _desired_clip() -> StringName:
+	if _parent_is_dead():
+		return &"death"
+	if (_clip == &"attack" or _clip == &"attack_sweep") and _anim.is_playing():
+		return _clip  # strike/settle plays through
+	if _parent_execution_state() == "windup":
+		return _windup_clip
+	if _clip == &"phase_shift" and _anim.is_playing():
+		return _clip
+	if _phase_flourish_pending:
+		_phase_flourish_pending = false
+		return &"phase_shift"
+	return &"idle"
+
+func _track_phase() -> void:
+	var brain: Variant = _parent_brain()
+	if brain == null or not (brain as Object).has_method(&"current_phase"):
+		return
+	var phase := int(brain.current_phase())
+	if phase != _last_phase:
+		if _last_phase > 0 and not _parent_is_dead():
+			_phase_flourish_pending = true
+		_last_phase = phase
+
+func _try_connect_brain() -> void:
+	if _brain_connected:
+		return
+	var brain: Variant = _parent_brain()
+	if brain == null or not (brain as Object).has_signal(&"attack_windup_started"):
+		return
+	brain.attack_windup_started.connect(_on_attack_windup_started)
+	_brain_connected = true
+
+func _on_attack_windup_started(attack: Dictionary) -> void:
+	_windup_clip = &"attack_sweep" if String(attack.get("id", "")) == "audit_sweep" else &"attack"
+
+func _play_clip(clip_name: StringName) -> void:
+	var key := _library_key(clip_name)
+	if key == "":
+		return
+	_clip = clip_name
+	_anim.play(key, 0.25)
+
+func _pin_clip_loops() -> void:
+	for clip_name: StringName in [&"idle", &"phase_shift", &"attack", &"attack_sweep", &"death"]:
+		var key := _library_key(clip_name)
+		if key == "":
+			continue
+		var animation := _anim.get_animation(key)
+		animation.loop_mode = Animation.LOOP_LINEAR if CLIP_LOOPED.get(clip_name, false) else Animation.LOOP_NONE
+
+func _library_key(clip_name: StringName) -> String:
+	for library_name in _anim.get_animation_library_list():
+		var library := _anim.get_animation_library(library_name)
+		if library.has_animation(clip_name):
+			return "%s/%s" % [library_name, clip_name] if String(library_name) != "" else String(clip_name)
+	return ""
+
+func _parent_brain() -> Variant:
+	var parent_node := get_parent()
+	if parent_node == null:
+		return null
+	return parent_node.get("boss_brain")
 
 func _parent_move_amount() -> float:
 	var parent_node := get_parent()
