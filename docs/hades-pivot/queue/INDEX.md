@@ -205,4 +205,4 @@ Rubric: Opus = seam-shaping/cross-system judgment; Sonnet = specified single-fil
 | HZ-105B | AAA animation pipeline: rig/clips/weapon, movement identity | FABLE-assets | assets | done | plan-P2 |
 | HZ-106B | wire-next from asset lab: beacon HearthLight state, sanctuary relief zone, gear_gate open state; hub sky one-liner; room-clear sting playback; bridge_arch kit-bash | any | world | ready-for-agent | 34 |
 | HZ-107B | deflake stochastic contact-damage balance check (~50% flap, flagged by asset lab + 2 ship batteries) | codex | tests | ready-for-agent | 34 |
-| HZ-108B | design-sweep follow-ups: world-state palette tinting in-engine; region voice dialects into room identity | FABLE | look/lore | backlog | 34 |
+| HZ-108B | design-sweep follow-ups: world-state palette tinting in-engine (DONE night/design 2026-07-07, look_grade.gd); region voice dialects into room identity (lore half open) | FABLE | look/lore | half-done | 34 |
