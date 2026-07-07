@@ -370,9 +370,10 @@ func _test_weapon_mount_attaches_to_right_hand() -> void:
 	var mount := skeleton.get_node_or_null("WeaponMount") as BoneAttachment3D
 	_check("WeaponMount BoneAttachment3D exists under the skeleton", mount != null)
 	if mount != null:
-		# Swing clips are code-owned since the SwingTiming sync (playtest 2), so
-		# the mount always rides the code-built swing arm's hand bone.
-		_check_eq("WeaponMount rides the swing-arm hand bone", mount.bone_name, "Bone_024")
+		# Authored contact-true swings graft from gizmo_clips.glb (2026-07-07);
+		# they swing the Bone_019-hand arm, so the mount follows it
+		# (EXTERNAL_WEAPON_BONE). Bone_024 is the code-built fallback mount.
+		_check_eq("WeaponMount rides the swing-arm hand bone", mount.bone_name, "Bone_019")
 		_check("WeaponMount carries a weapon model", mount.get_child_count() > 0)
 	# Never two visible wrenches: the arbitration winner's mount is the only
 	# visible one (GizmoAnimator hides the fallback WeaponMount when it owns).
