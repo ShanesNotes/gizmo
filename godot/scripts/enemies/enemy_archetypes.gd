@@ -5,6 +5,16 @@ const ARCHETYPE_CHAFF := "chaff"
 const ARCHETYPE_BRUISER := "bruiser"
 const ARCHETYPE_ELITE := "elite"
 
+const AFFIX_NONE: StringName = &""
+const AFFIX_SHIELDED: StringName = &"shielded"
+const AFFIX_FRENZIED: StringName = &"frenzied"
+const AFFIX_WARDED: StringName = &"warded"
+const ELITE_AFFIXES: Array[StringName] = [
+	AFFIX_SHIELDED,
+	AFFIX_FRENZIED,
+	AFFIX_WARDED,
+]
+
 const STATS := {
 	ARCHETYPE_CHAFF: {
 		"archetype": ARCHETYPE_CHAFF,
@@ -62,4 +72,11 @@ static func normalize_archetype(archetype: String) -> String:
 static func stats_for(archetype: String) -> Dictionary:
 	var key := normalize_archetype(archetype)
 	var stats: Dictionary = STATS[key]
-	return stats.duplicate(true)
+	var result := stats.duplicate(true)
+	result["affix"] = ""
+	return result
+
+static func normalize_affix(affix_id: StringName) -> StringName:
+	if ELITE_AFFIXES.has(affix_id):
+		return affix_id
+	return AFFIX_NONE

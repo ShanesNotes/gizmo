@@ -8,6 +8,7 @@ signal player_died()
 
 const RoomDoorScript := preload("res://scripts/room_graph/room_door.gd")
 const PlayerVitalsScript := preload("res://scripts/player/player_vitals.gd")
+const EnemyArchetypesScript := preload("res://scripts/enemies/enemy_archetypes.gd")
 const CombatResolversScript := preload("res://scripts/room_graph/combat_resolvers.gd")
 const CustodianBossScript := preload("res://scripts/room_graph/custodian_boss.gd")
 const DressingLoaderScript := preload("res://scripts/room_graph/dressing_loader.gd")
@@ -734,7 +735,12 @@ func _spawn_from_request(request: Dictionary) -> void:
 			SPAWN_SEPARATION_DISTANCE
 		)
 		_spawn_index_in_room += 1
-		enemy.configure(archetype, spawn_id)
+		var stats := EnemyArchetypesScript.stats_for(archetype)
+		stats["affix"] = String(request.get("affix", ""))
+		if enemy.has_method(&"configure_from_stats"):
+			enemy.call(&"configure_from_stats", stats, spawn_id)
+		else:
+			enemy.configure(archetype, spawn_id)
 		enemy.set_chase_target(player)
 		enemy.died.connect(_on_enemy_died)
 		enemy.damage_event.connect(_on_enemy_damage_event)
@@ -906,10 +912,20 @@ func _on_boss_died(spawn_id: String) -> void:
 func _on_boss_add_wave_requested(requests: Array[Dictionary]) -> void:
 	if not _run_active or _death_teardown_complete:
 		return
-	_boss_phase_count += 1
-	_speak_voice(StringName("pattern_phase_%d" % clampi(_boss_phase_count, 1, 3)))
+	if not _boss_requests_are_quarantine(requests):
+		_boss_phase_count += 1
+		_speak_voice(StringName("pattern_phase_%d" % clampi(_boss_phase_count, 1, 3)))
 	for request in requests:
 		_spawn_from_request(request)
+
+func _boss_requests_are_quarantine(requests: Array[Dictionary]) -> bool:
+	if requests.is_empty():
+		return false
+	for request: Dictionary in requests:
+		for spawn_id in request.get("spawn_ids", []):
+			if String(spawn_id).begins_with("boss_quarantine_"):
+				return true
+	return false
 
 func _on_enemy_damage_event(event: Dictionary) -> void:
 	if player_vitals == null:

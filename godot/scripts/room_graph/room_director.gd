@@ -7,6 +7,14 @@ signal room_cleared()
 const ARCHETYPE_CHAFF := "chaff"
 const ARCHETYPE_BRUISER := "bruiser"
 const ARCHETYPE_ELITE := "elite"
+const AFFIX_SHIELDED: StringName = &"shielded"
+const AFFIX_FRENZIED: StringName = &"frenzied"
+const AFFIX_WARDED: StringName = &"warded"
+const ELITE_AFFIXES: Array[StringName] = [
+	AFFIX_SHIELDED,
+	AFFIX_FRENZIED,
+	AFFIX_WARDED,
+]
 const ROOM_KIND_COMBAT := "combat"
 const ROOM_KIND_ELITE := "elite"
 
@@ -167,6 +175,7 @@ func _rebuild_plan() -> void:
 		carry_budget = maxf(0.0, usable_budget - wave_spend)
 		spent_budget += wave_spend
 		_waves.append(wave_requests)
+	_assign_affixes_to_plan()
 
 func _calculate_wave_count(planned_budget: float) -> int:
 	var tier_wave_count := MIN_WAVES + int(ceil(difficulty_tier * float(MAX_WAVES - MIN_WAVES)))
@@ -290,7 +299,18 @@ func _spawn_request(archetype: String, count: int, wave_index: int) -> Dictionar
 		"archetype": archetype,
 		"count": count,
 		"spawn_ids": spawn_ids,
+		"affix": "",
 	}
+
+func _assign_affixes_to_plan() -> void:
+	for wave: Array in _waves:
+		for request: Dictionary in wave:
+			request["affix"] = _roll_affix_for_request(String(request.get("archetype", "")))
+
+func _roll_affix_for_request(archetype: String) -> String:
+	if archetype != ARCHETYPE_ELITE:
+		return ""
+	return String(ELITE_AFFIXES[_rng.randi_range(0, ELITE_AFFIXES.size() - 1)])
 
 func _spawn_id(wave_index: int, archetype: String, ordinal: int) -> String:
 	return "w%d:%s:%d" % [wave_index, archetype, ordinal]

@@ -32,6 +32,9 @@ func _initialize() -> void:
 	await _test_take_damage_emits_died_once()
 	await _test_take_damage_spawns_floating_damage_number()
 	await _test_contact_damage_spawns_red_player_number()
+	await _test_shielded_affix_absorbs_breaks_and_blocks_stagger_read()
+	await _test_frenzied_affix_applies_exact_stat_deltas()
+	await _test_warded_affix_halves_damage_only_with_living_neighbor()
 	await _test_scene_instantiates_headless()
 	await _test_scene_visual_models_follow_configured_archetype()
 	await _test_visual_motion_identity_per_archetype()
@@ -484,6 +487,84 @@ func _test_contact_damage_spawns_red_player_number() -> void:
 		label.queue_free()
 	await _cleanup(enemy)
 
+func _test_shielded_affix_absorbs_breaks_and_blocks_stagger_read() -> void:
+	var enemy = await _new_enemy()
+	var stats := EnemyArchetypesScript.stats_for("elite")
+	stats["affix"] = String(EnemyArchetypesScript.AFFIX_SHIELDED)
+	enemy.configure_from_stats(stats, "affix:shielded")
+	var shield_max: float = enemy.max_hp * 0.35
+
+	_check_eq("shielded elite records affix id", String(enemy.affix), "shielded")
+	_check_almost("shielded elite gets a 35 percent overshield", enemy.overshield, shield_max)
+	enemy.take_damage(shield_max - 1.0)
+	_check_almost("shielded damage leaves HP untouched while overshield remains", enemy.hp, enemy.max_hp)
+	_check_almost("shielded damage drains overshield first", enemy.overshield, 1.0)
+	enemy.stagger(0.25)
+	_check("shielded overshield blocks stagger read while up", not enemy.is_staggered())
+
+	var before := _label3d_nodes(root)
+	var meshes_before := _mesh3d_nodes(root)
+	enemy.take_damage(1.0)
+	var spawned := _new_label3d_since(before)
+	var spawned_meshes := _new_mesh3d_since(meshes_before)
+	_check_almost("exact shield break still leaves HP untouched", enemy.hp, enemy.max_hp)
+	_check_almost("shield break consumes overshield permanently", enemy.overshield, 0.0)
+	_check("shield break spawns a visible surge pop", spawned_meshes.size() > 0)
+	if spawned.size() == 1:
+		_check("shield absorption fallback number reads grey-blue", spawned[0].modulate.b > spawned[0].modulate.r)
+
+	enemy.stagger(0.25)
+	_check("shielded elite can stagger after overshield breaks", enemy.is_staggered())
+	enemy.take_damage(10.0)
+	_check_almost("post-break damage reaches HP", enemy.hp, enemy.max_hp - 10.0)
+
+	for label in _label3d_nodes(root):
+		label.queue_free()
+	await _cleanup(enemy)
+
+func _test_frenzied_affix_applies_exact_stat_deltas() -> void:
+	var enemy = await _new_enemy()
+	var stats := EnemyArchetypesScript.stats_for("elite")
+	stats["affix"] = String(EnemyArchetypesScript.AFFIX_FRENZIED)
+	enemy.configure_from_stats(stats, "affix:frenzied")
+
+	_check_eq("frenzied elite records affix id", String(enemy.affix), "frenzied")
+	_check_almost("frenzied elite loses exactly 20 percent max HP", enemy.max_hp, 512.0)
+	_check_almost("frenzied elite starts at reduced max HP", enemy.hp, 512.0)
+	_check_almost("frenzied elite gains exactly 40 percent move speed", enemy.move_speed, 1.75)
+	_check_almost("frenzied elite cuts windup by exactly 25 percent", enemy.attack_windup, 0.7875)
+	_check_almost("frenzied brain receives move-speed delta", enemy.brain.move_speed, 1.75)
+	_check_almost("frenzied brain receives windup delta", enemy.brain.attack_windup, 0.7875)
+	await _cleanup(enemy)
+
+func _test_warded_affix_halves_damage_only_with_living_neighbor() -> void:
+	var warded = await _new_enemy()
+	var neighbor = await _new_enemy()
+	var stats := EnemyArchetypesScript.stats_for("elite")
+	stats["affix"] = String(EnemyArchetypesScript.AFFIX_WARDED)
+	warded.configure_from_stats(stats, "affix:warded")
+	neighbor.configure("chaff", "ward-neighbor")
+	warded.global_position = Vector3.ZERO
+	neighbor.global_position = Vector3(5.9, 0.0, 0.0)
+
+	warded.take_damage(100.0)
+	_check_eq("warded elite records affix id", String(warded.affix), "warded")
+	_check_almost("warded elite takes half damage near a living neighbor", warded.hp, warded.max_hp - 50.0)
+
+	neighbor.take_damage(9999.0)
+	warded.take_damage(100.0)
+	_check_almost("warded elite takes full damage after the neighbor dies", warded.hp, warded.max_hp - 150.0)
+
+	var far_neighbor = await _new_enemy()
+	far_neighbor.configure("chaff", "ward-far-neighbor")
+	far_neighbor.global_position = Vector3(6.1, 0.0, 0.0)
+	warded.take_damage(100.0)
+	_check_almost("warded elite takes full damage when the living neighbor is outside six meters", warded.hp, warded.max_hp - 250.0)
+
+	await _cleanup(far_neighbor)
+	await _cleanup(neighbor)
+	await _cleanup(warded)
+
 func _label3d_nodes(node: Node) -> Array[Label3D]:
 	var found: Array[Label3D] = []
 	if node is Label3D:
@@ -497,6 +578,21 @@ func _new_label3d_since(before: Array[Label3D]) -> Array[Label3D]:
 	for label in _label3d_nodes(root):
 		if not before.has(label):
 			fresh.append(label)
+	return fresh
+
+func _mesh3d_nodes(node: Node) -> Array[MeshInstance3D]:
+	var found: Array[MeshInstance3D] = []
+	if node is MeshInstance3D:
+		found.append(node as MeshInstance3D)
+	for child in node.get_children():
+		found.append_array(_mesh3d_nodes(child))
+	return found
+
+func _new_mesh3d_since(before: Array[MeshInstance3D]) -> Array[MeshInstance3D]:
+	var fresh: Array[MeshInstance3D] = []
+	for mesh in _mesh3d_nodes(root):
+		if not before.has(mesh):
+			fresh.append(mesh)
 	return fresh
 
 func _test_scene_instantiates_headless() -> void:
