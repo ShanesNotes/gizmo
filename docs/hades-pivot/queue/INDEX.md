@@ -207,7 +207,7 @@ Rubric: Opus = seam-shaping/cross-system judgment; Sonnet = specified single-fil
 | HZ-109B | region palette into floor/fog (region layers made the gap visible); RegionLayers for rest/reward/shop; kit-scene boot preload (first-load hitch); door emblem size pass | any | world | backlog | 106B |
 | HZ-110B | ambient beds: loudness finishing pass + A1 canon registration (audio lab; demo-provisional tonight) | audio | audio | backlog | 106B |
 | HZ-107B | deflake stochastic contact-damage balance check (~50% flap, flagged by asset lab + 2 ship batteries) | codex | tests | ready-for-agent | 34 |
-| HZ-108B | design-sweep follow-ups: world-state palette tinting in-engine; region voice dialects into room identity | FABLE | look/lore | backlog | 34 |
+| HZ-108B | design-sweep follow-ups: world-state palette tinting in-engine (DONE night/design 2026-07-07, look_grade.gd); region voice dialects into room identity (lore half open) | FABLE | look/lore | half-done | 34 |
 | HZ-110 | weapon family 2 groundwork: lantern_staff_01 (procedural bpy, zero-spend) — mesh+wrapper+grip proof installed at godot/assets/weapons/; CORE LANE: wire kit mechanics (moveset/boons) when ready — wrapper is the interface, grip proof in ceremony/assets/2026-07-07-lantern-staff-grip-*.png | night/assets → core | assets | handoff-ready | — |
 | HZ-LORE-1 | title screen: play margin_attract on idle (file+manifest shipped PR37; title_screen.gd outside lore fence) | design | lore | queued | — |
 | HZ-LORE-2 | keepsake offer moment: call play_voice_line("saint_<role>_offer") + first-meeting line on draft screen (ids/lines/VO shipped PR37; boon_draft_ui.gd outside lore fence) | design | lore | queued | — |

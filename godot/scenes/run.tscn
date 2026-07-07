@@ -1,4 +1,4 @@
-[gd_scene load_steps=13 format=3]
+[gd_scene load_steps=14 format=3]
 
 [ext_resource type="Script" path="res://scripts/room_graph/run_orchestrator.gd" id="1_orchestrator"]
 [ext_resource type="PackedScene" path="res://scenes/gizmo_player.tscn" id="2_player"]
@@ -10,6 +10,7 @@
 [ext_resource type="PackedScene" path="res://scenes/pause_menu.tscn" id="8_pause_menu"]
 [ext_resource type="Shader" path="res://shaders/gouache_grade.gdshader" id="9_grade_shader"]
 [ext_resource type="Sky" path="res://assets/sky/gizmo_cosmos_sky_procedural.tres" id="sky_cosmos"]
+[ext_resource type="Script" path="res://scripts/ui/look_grade.gd" id="10_look_grade"]
 
 [sub_resource type="Environment" id="Environment_run"]
 background_mode = 2
@@ -73,6 +74,7 @@ layer = -1
 
 [node name="GradeRect" type="ColorRect" parent="GradeLayer"]
 material = SubResource("ShaderMat_grade")
+script = ExtResource("10_look_grade")
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0

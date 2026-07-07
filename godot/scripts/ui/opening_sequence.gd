@@ -116,6 +116,8 @@ var _controls_tween: Tween = null
 var _camera_tween: Tween = null
 var _fire_ramp_tween: Tween = null
 var _title_tween: Tween = null
+var _margin_tween: Tween = null
+var _margin_base_y := 0.0
 var title_sting_path := TITLE_STING_PATH
 
 @onready var _caption_label: Label = %CaptionLabel
@@ -126,6 +128,7 @@ var title_sting_path := TITLE_STING_PATH
 @onready var _camera: Camera3D = $Camera3D
 @onready var _title_card: Control = %TitleCard
 @onready var _title_sting_player: AudioStreamPlayer = %TitleStingPlayer
+@onready var _margin_figure: Node3D = get_node_or_null("MarginFigure")
 
 static var replay_requested := false
 
@@ -159,6 +162,9 @@ func _ready() -> void:
 	if _camera != null and CAMERA_POSES.has(&"ember_close"):
 		_apply_camera_pose(CAMERA_POSES[&"ember_close"])
 	_portrait_texture.modulate.a = 0.0
+	if _margin_figure != null:
+		_margin_base_y = _margin_figure.position.y
+		_margin_figure.visible = false
 	_title_card.visible = false
 	_title_card.modulate.a = 0.0
 	_load_portrait()
@@ -231,6 +237,7 @@ func _advance_beat() -> void:
 		_clear_caption()
 	if bool(beat.get("reveal_portrait", false)):
 		_reveal_portrait()
+		_reveal_margin()
 	if beat.has("voice"):
 		if not _fire_ramp_started:
 			_start_fire_ramp()
@@ -252,6 +259,18 @@ func _reveal_portrait() -> void:
 	_kill_tween(_portrait_tween)
 	_portrait_tween = create_tween()
 	_portrait_tween.tween_property(_portrait_texture, "modulate:a", 1.0, PORTRAIT_FADE_SECONDS)
+
+## Margin's body resolves out of the mist across the fire on her reveal beat —
+## voice before image, then the lady herself rising into her own candlelight.
+func _reveal_margin() -> void:
+	if _margin_figure == null:
+		return
+	_kill_tween(_margin_tween)
+	_margin_figure.visible = true
+	_margin_figure.position.y = _margin_base_y - 0.25
+	_margin_tween = create_tween()
+	_margin_tween.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	_margin_tween.tween_property(_margin_figure, "position:y", _margin_base_y, PORTRAIT_FADE_SECONDS)
 
 func _show_controls() -> void:
 	_controls_shown = true
@@ -417,6 +436,7 @@ func _advance_active_tweens(seconds: float) -> void:
 	_custom_step_tween(_camera_tween, seconds)
 	_custom_step_tween(_fire_ramp_tween, seconds)
 	_custom_step_tween(_title_tween, seconds)
+	_custom_step_tween(_margin_tween, seconds)
 	_apply_fire_energy(0.0)
 
 func _custom_step_tween(tween: Tween, seconds: float) -> void:
@@ -435,6 +455,7 @@ func _kill_all_tweens() -> void:
 	_kill_tween(_camera_tween)
 	_kill_tween(_fire_ramp_tween)
 	_kill_tween(_title_tween)
+	_kill_tween(_margin_tween)
 
 func _kill_tween(tween: Tween) -> void:
 	if tween != null and tween.is_valid():

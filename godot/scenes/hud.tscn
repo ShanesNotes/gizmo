@@ -3,9 +3,54 @@
 [ext_resource type="Script" path="res://scripts/hud.gd" id="1_hud"]
 [ext_resource type="Theme" path="res://scenes/hud_theme.tres" id="2_theme"]
 
+[sub_resource type="StyleBoxFlat" id="sb_brass_panel"]
+bg_color = Color(0.102, 0.0824, 0.0706, 0.92)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.6902, 0.5529, 0.3412, 1.0)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+shadow_color = Color(0.0, 0.0, 0.0, 0.52)
+shadow_size = 8
+
+[sub_resource type="StyleBoxFlat" id="sb_brass_panel_lit"]
+bg_color = Color(0.102, 0.0824, 0.0706, 0.9)
+border_width_left = 2
+border_width_top = 3
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.8784, 0.7569, 0.4784, 1.0)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+shadow_color = Color(0.0, 0.0, 0.0, 0.48)
+shadow_size = 7
+
+[sub_resource type="StyleBoxFlat" id="sb_hp_back"]
+bg_color = Color(0.102, 0.0824, 0.0706, 0.96)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.6902, 0.5529, 0.3412, 1.0)
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
+
 [sub_resource type="StyleBoxFlat" id="sb_hp_fill"]
 ; canon hud.hp / accent.vermilion #c34f32 — HP is WARM (gate G6: teal stays reserved for guard/eye/beacon-spark)
 bg_color = Color(0.7647, 0.3098, 0.1961, 1.0)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.8784, 0.7569, 0.4784, 0.72)
 corner_radius_top_left = 4
 corner_radius_top_right = 4
 corner_radius_bottom_right = 4
@@ -15,13 +60,27 @@ corner_radius_bottom_left = 4
 ; canon guard teal (gate G6: teal is reserved for guard/eye/beacon-spark) —
 ; the Halo-CE shield bar wears it inside the brass nameplate frame.
 bg_color = Color(0.3216, 0.7098, 0.6863, 1.0)
+border_width_top = 1
+border_color = Color(0.5608, 0.902, 0.902, 0.82)
 corner_radius_top_left = 3
 corner_radius_top_right = 3
 corner_radius_bottom_right = 3
 corner_radius_bottom_left = 3
 
+[sub_resource type="StyleBoxFlat" id="sb_shield_glow_fill"]
+bg_color = Color(0.5608, 0.902, 0.902, 0.72)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 2
+corner_radius_bottom_left = 2
+
 [sub_resource type="StyleBoxFlat" id="sb_shield_back"]
-bg_color = Color(0.1216, 0.149, 0.1608, 0.8)
+bg_color = Color(0.102, 0.0824, 0.0706, 0.9)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.6902, 0.5529, 0.3412, 0.92)
 corner_radius_top_left = 3
 corner_radius_top_right = 3
 corner_radius_bottom_right = 3
@@ -29,13 +88,44 @@ corner_radius_bottom_left = 3
 
 [sub_resource type="StyleBoxFlat" id="sb_spark_gem"]
 bg_color = Color(0.5412, 0.3569, 0.6902, 1.0)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.8784, 0.7569, 0.4784, 0.9)
 corner_radius_top_left = 3
 corner_radius_top_right = 3
 corner_radius_bottom_right = 3
 corner_radius_bottom_left = 3
 
 [sub_resource type="StyleBoxFlat" id="sb_spark_surge_fill"]
-bg_color = Color(0.9059, 0.7176, 0.2824, 1)
+bg_color = Color(0.5412, 0.3569, 0.6902, 1.0)
+border_width_top = 1
+border_color = Color(0.8784, 0.7569, 0.4784, 0.78)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+
+[sub_resource type="StyleBoxFlat" id="sb_spark_pip_lit"]
+bg_color = Color(0.5412, 0.3569, 0.6902, 1.0)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.8784, 0.7569, 0.4784, 1.0)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+
+[sub_resource type="StyleBoxFlat" id="sb_spark_pip_unlit"]
+bg_color = Color(0.102, 0.0824, 0.0706, 0.84)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.6902, 0.5529, 0.3412, 0.8)
 corner_radius_top_left = 3
 corner_radius_top_right = 3
 corner_radius_bottom_right = 3
@@ -63,6 +153,7 @@ offset_top = 16.0
 offset_right = 320.0
 offset_bottom = 110.0
 mouse_filter = 2
+theme_override_styles/panel = SubResource("sb_brass_panel")
 
 [node name="Margin" type="MarginContainer" parent="Root/Nameplate"]
 layout_mode = 2
@@ -79,15 +170,29 @@ theme_override_constants/separation = 4
 layout_mode = 2
 theme_type_variation = &"CapsLabel"
 text = "GIZMO"
-theme_override_font_sizes/font_size = 20
+theme_override_font_sizes/font_size = 22
 
 [node name="ShieldBar" type="ProgressBar" parent="Root/Nameplate/Margin/VBox"]
 unique_name_in_owner = true
 visible = false
-custom_minimum_size = Vector2(180, 12)
+custom_minimum_size = Vector2(180, 14)
 layout_mode = 2
 theme_override_styles/background = SubResource("sb_shield_back")
 theme_override_styles/fill = SubResource("sb_shield_fill")
+value = 100.0
+show_percentage = false
+
+[node name="ShieldTopGlow" type="ProgressBar" parent="Root/Nameplate/Margin/VBox/ShieldBar"]
+unique_name_in_owner = true
+layout_mode = 1
+anchor_right = 1.0
+offset_left = 3.0
+offset_top = 2.0
+offset_right = -3.0
+offset_bottom = 5.0
+grow_horizontal = 2
+theme_override_styles/background = SubResource("sb_shield_glow_fill")
+theme_override_styles/fill = SubResource("sb_shield_glow_fill")
 value = 100.0
 show_percentage = false
 
@@ -101,6 +206,7 @@ custom_minimum_size = Vector2(180, 22)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 4
+theme_override_styles/background = SubResource("sb_hp_back")
 theme_override_styles/fill = SubResource("sb_hp_fill")
 value = 100.0
 show_percentage = false
@@ -111,16 +217,17 @@ theme_type_variation = &"NumericLabel"
 layout_mode = 2
 size_flags_vertical = 4
 text = "3 / 3"
-theme_override_font_sizes/font_size = 16
+theme_override_font_sizes/font_size = 18
 
 [node name="SparksReadout" type="PanelContainer" parent="Root"]
 layout_mode = 1
 anchors_preset = 0
 offset_left = 16.0
-offset_top = 108.0
-offset_right = 156.0
-offset_bottom = 156.0
+offset_top = 122.0
+offset_right = 184.0
+offset_bottom = 194.0
 mouse_filter = 2
+theme_override_styles/panel = SubResource("sb_brass_panel")
 
 [node name="Margin" type="MarginContainer" parent="Root/SparksReadout"]
 layout_mode = 2
@@ -134,7 +241,7 @@ layout_mode = 2
 theme_override_constants/separation = 8
 
 [node name="Gem" type="PanelContainer" parent="Root/SparksReadout/Margin/Row"]
-custom_minimum_size = Vector2(20, 20)
+custom_minimum_size = Vector2(26, 26)
 layout_mode = 2
 size_flags_vertical = 4
 theme_override_styles/panel = SubResource("sb_spark_gem")
@@ -148,14 +255,14 @@ unique_name_in_owner = true
 theme_type_variation = &"NumericLabel"
 layout_mode = 2
 text = "0"
-theme_override_font_sizes/font_size = 20
+theme_override_font_sizes/font_size = 24
 
 [node name="SparksCaption" type="Label" parent="Root/SparksReadout/Margin/Row/TextCol"]
 layout_mode = 2
 theme_type_variation = &"CapsLabel"
 text = "SPARKS"
 theme_override_colors/font_color = Color(0.6706, 0.5608, 0.7765, 1.0)
-theme_override_font_sizes/font_size = 11
+theme_override_font_sizes/font_size = 18
 
 [node name="SparkGauge" type="PanelContainer" parent="Root"]
 unique_name_in_owner = true
@@ -167,12 +274,13 @@ anchor_top = 0.5
 anchor_right = 1.0
 anchor_bottom = 0.5
 offset_left = -220.0
-offset_top = -44.0
+offset_top = -54.0
 offset_right = -16.0
-offset_bottom = 44.0
+offset_bottom = 54.0
 grow_horizontal = 0
 grow_vertical = 2
 mouse_filter = 2
+theme_override_styles/panel = SubResource("sb_brass_panel_lit")
 
 [node name="Margin" type="MarginContainer" parent="Root/SparkGauge"]
 layout_mode = 2
@@ -189,7 +297,7 @@ theme_override_constants/separation = 4
 layout_mode = 2
 theme_type_variation = &"CapsLabel"
 text = "SPARK SURGE"
-theme_override_font_sizes/font_size = 13
+theme_override_font_sizes/font_size = 18
 
 [node name="SparkFill" type="ProgressBar" parent="Root/SparkGauge/Margin/VBox"]
 unique_name_in_owner = true
@@ -199,13 +307,34 @@ theme_override_styles/fill = SubResource("sb_spark_surge_fill")
 max_value = 100.0
 show_percentage = false
 
+[node name="SparkPips" type="HBoxContainer" parent="Root/SparkGauge/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+alignment = 1
+theme_override_constants/separation = 6
+
+[node name="Pip1" type="PanelContainer" parent="Root/SparkGauge/Margin/VBox/SparkPips"]
+custom_minimum_size = Vector2(16, 16)
+layout_mode = 2
+theme_override_styles/panel = SubResource("sb_spark_pip_unlit")
+
+[node name="Pip2" type="PanelContainer" parent="Root/SparkGauge/Margin/VBox/SparkPips"]
+custom_minimum_size = Vector2(16, 16)
+layout_mode = 2
+theme_override_styles/panel = SubResource("sb_spark_pip_unlit")
+
+[node name="Pip3" type="PanelContainer" parent="Root/SparkGauge/Margin/VBox/SparkPips"]
+custom_minimum_size = Vector2(16, 16)
+layout_mode = 2
+theme_override_styles/panel = SubResource("sb_spark_pip_unlit")
+
 [node name="Status" type="Label" parent="Root/SparkGauge/Margin/VBox"]
 unique_name_in_owner = true
 theme_type_variation = &"NumericLabel"
 layout_mode = 2
 text = "0%"
 horizontal_alignment = 2
-theme_override_font_sizes/font_size = 14
+theme_override_font_sizes/font_size = 16
 
 [node name="BoonLoadout" type="VBoxContainer" parent="Root"]
 unique_name_in_owner = true
@@ -216,11 +345,28 @@ anchor_top = 1.0
 anchor_bottom = 1.0
 offset_left = 16.0
 offset_top = -120.0
-offset_right = 300.0
+offset_right = 340.0
 offset_bottom = -16.0
 grow_vertical = 0
 mouse_filter = 2
 theme_override_constants/separation = 4
+
+[node name="AbilityFrame" type="PanelContainer" parent="Root"]
+visible = false
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -306.0
+offset_top = -94.0
+offset_right = 306.0
+offset_bottom = -10.0
+grow_horizontal = 2
+grow_vertical = 0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("sb_brass_panel")
 
 [node name="AbilityBar" type="HBoxContainer" parent="Root"]
 unique_name_in_owner = true
@@ -231,10 +377,10 @@ anchor_left = 0.5
 anchor_top = 1.0
 anchor_right = 0.5
 anchor_bottom = 1.0
-offset_left = -220.0
-offset_top = -72.0
-offset_right = 220.0
-offset_bottom = -16.0
+offset_left = -294.0
+offset_top = -82.0
+offset_right = 294.0
+offset_bottom = -18.0
 grow_horizontal = 2
 grow_vertical = 0
 mouse_filter = 2

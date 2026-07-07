@@ -1,4 +1,4 @@
-[gd_scene load_steps=13 format=3]
+[gd_scene load_steps=19 format=3]
 
 [ext_resource type="Script" path="res://scripts/ui/opening_sequence.gd" id="1_opening"]
 [ext_resource type="PackedScene" uid="uid://qa2ralfsy66q" path="res://assets/gizmo.glb" id="2_gizmo"]
@@ -53,6 +53,34 @@ height = 0.34
 material = SubResource("mat_flame")
 radius = 0.24
 height = 0.22
+
+[sub_resource type="StandardMaterial3D" id="mat_margin_veil"]
+albedo_color = Color(0.82, 0.8, 0.86, 0.92)
+transparency = 1
+roughness = 0.9
+
+[sub_resource type="StandardMaterial3D" id="mat_margin_robe"]
+albedo_color = Color(0.45, 0.42, 0.55, 1)
+roughness = 0.85
+
+[sub_resource type="StandardMaterial3D" id="mat_margin_wing"]
+albedo_color = Color(0.9, 0.87, 0.78, 0.55)
+transparency = 1
+emission_enabled = true
+emission = Color(0.85, 0.78, 0.6, 1)
+emission_energy_multiplier = 0.15
+
+[sub_resource type="CylinderMesh" id="mesh_margin_robe"]
+top_radius = 0.12
+bottom_radius = 0.42
+height = 1.5
+
+[sub_resource type="SphereMesh" id="mesh_margin_head"]
+radius = 0.17
+height = 0.34
+
+[sub_resource type="QuadMesh" id="mesh_margin_wing"]
+size = Vector2(0.55, 1.0)
 
 [node name="Opening" type="Node3D"]
 script = ExtResource("1_opening")
@@ -111,6 +139,36 @@ shadow_enabled = true
 position = Vector3(-0.95, 0, 0.15)
 rotation = Vector3(0, 0.95, 0)
 scale = Vector3(0.55, 0.55, 0.55)
+
+[node name="MarginFigure" type="Node3D" parent="."]
+transform = Transform3D(0.921061, 0, 0.389418, 0, 1, 0, -0.389418, 0, 0.921061, 0.2, 0, -0.9)
+visible = false
+
+[node name="Robe" type="MeshInstance3D" parent="MarginFigure"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.75, 0)
+mesh = SubResource("mesh_margin_robe")
+surface_material_override/0 = SubResource("mat_margin_robe")
+
+[node name="Head" type="MeshInstance3D" parent="MarginFigure"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.62, 0)
+mesh = SubResource("mesh_margin_head")
+surface_material_override/0 = SubResource("mat_margin_veil")
+
+[node name="WingLeft" type="MeshInstance3D" parent="MarginFigure"]
+transform = Transform3D(0.94, 0, 0.34, 0.06, 0.98, -0.17, -0.34, 0.18, 0.92, -0.3, 1.1, -0.12)
+mesh = SubResource("mesh_margin_wing")
+surface_material_override/0 = SubResource("mat_margin_wing")
+
+[node name="WingRight" type="MeshInstance3D" parent="MarginFigure"]
+transform = Transform3D(0.94, 0, -0.34, -0.06, 0.98, -0.17, 0.34, 0.18, 0.92, 0.3, 1.1, -0.12)
+mesh = SubResource("mesh_margin_wing")
+surface_material_override/0 = SubResource("mat_margin_wing")
+
+[node name="CandleLight" type="OmniLight3D" parent="MarginFigure"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.35, 1, 0.3)
+light_color = Color(1, 0.83, 0.55, 1)
+light_energy = 0.7
+omni_range = 3.0
 
 [node name="Ui" type="CanvasLayer" parent="."]
 

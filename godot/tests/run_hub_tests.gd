@@ -14,6 +14,7 @@ var _failed := 0
 func _initialize() -> void:
 	print("Running hub tests...")
 	await _test_hub_scene_instantiates_with_required_nodes()
+	await _test_hub_hosts_all_five_saint_shrines()
 	await _test_hub_identity_visual_nameplates_and_blocker()
 	await _test_run_surface_failure_label_api()
 	await _test_scrap_label_reflects_injected_meta_state()
@@ -76,6 +77,34 @@ func _test_hub_scene_instantiates_with_required_nodes() -> void:
 	_check("run surface failure label exists", failure_label != null)
 	if failure_label != null:
 		_check("run surface failure label starts hidden", not failure_label.visible)
+
+	await _cleanup(hub)
+
+func _test_hub_hosts_all_five_saint_shrines() -> void:
+	var hub := await _instantiate_hub()
+
+	var expected := {
+		&"bearer": "the Bearer - Saint Christopher",
+		&"hearthguard": "the Hearthguard - Saint Demetrios",
+		&"swordbearer": "the Swordbearer - Saint Mercurius",
+		&"marksman": "the Marksman - Saint Theodore",
+		&"company": "the Company - Forty Martyrs of Sebaste",
+	}
+
+	var roles_present := {}
+	for child in hub.get_children():
+		if child is SaintShrine:
+			roles_present[child.saint_role] = child.display_title
+
+	_check_eq("hub hosts every canon saint shrine", roles_present.size(), expected.size())
+	for role in expected:
+		_check("hub hosts the %s shrine" % String(role), roles_present.has(role))
+		if roles_present.has(role):
+			_check_eq(
+				"%s shrine carries its canon plaque title" % String(role),
+				roles_present[role],
+				expected[role]
+			)
 
 	await _cleanup(hub)
 

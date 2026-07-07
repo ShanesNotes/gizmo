@@ -3,9 +3,9 @@
 [ext_resource type="Script" path="res://scripts/boon_draft_ui.gd" id="1_ui"]
 [ext_resource type="Theme" path="res://scenes/hud_theme.tres" id="2_theme"]
 
-; HZ-022 rarity tint mapping, tuned to the brass cartouche HUD language:
-; Common #BDA47F, Rare #68C2CC, Epic #9B6FCF, Legendary #E7B748.
-; These are local card-frame accents only; hud_theme.tres remains the global generated theme.
+; Keepsake draft cards are local illuminated-manuscript pages: parchment ground,
+; brass/gold frames, rarity illumination. hud_theme.tres remains the global
+; generated HUD theme and is intentionally untouched.
 
 [node name="BoonDraft" type="Control"]
 visible = false
@@ -27,7 +27,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-color = Color(0.0353, 0.0392, 0.0549, 0.78)
+color = Color(0.1059, 0.0706, 0.1804, 0.82)
 
 [node name="SafeArea" type="MarginContainer" parent="."]
 layout_mode = 1
@@ -36,10 +36,10 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_constants/margin_left = 56
-theme_override_constants/margin_top = 42
-theme_override_constants/margin_right = 56
-theme_override_constants/margin_bottom = 46
+theme_override_constants/margin_left = 64
+theme_override_constants/margin_top = 46
+theme_override_constants/margin_right = 64
+theme_override_constants/margin_bottom = 48
 
 [node name="Content" type="VBoxContainer" parent="SafeArea"]
 layout_mode = 2
@@ -51,17 +51,20 @@ layout_mode = 2
 theme_type_variation = &"TitleLabel"
 text = "Choose a keepsake"
 horizontal_alignment = 1
-theme_override_font_sizes/font_size = 44
+theme_override_colors/font_color = Color(0.8784, 0.7569, 0.4784, 1)
+theme_override_colors/font_outline_color = Color(0.1098, 0.0902, 0.098, 0.86)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 42
 
 [node name="OfferRow" type="HBoxContainer" parent="SafeArea/Content"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-theme_override_constants/separation = 22
+theme_override_constants/separation = 28
 alignment = 1
 
 [node name="Card1" type="Button" parent="SafeArea/Content/OfferRow"]
-custom_minimum_size = Vector2(270, 420)
+custom_minimum_size = Vector2(300, 440)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
@@ -76,10 +79,10 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-theme_override_constants/margin_left = 22
-theme_override_constants/margin_top = 20
-theme_override_constants/margin_right = 22
-theme_override_constants/margin_bottom = 20
+theme_override_constants/margin_left = 28
+theme_override_constants/margin_top = 24
+theme_override_constants/margin_right = 28
+theme_override_constants/margin_bottom = 24
 
 [node name="VBox" type="VBoxContainer" parent="SafeArea/Content/OfferRow/Card1/Margin"]
 layout_mode = 2
@@ -102,14 +105,14 @@ theme_override_font_sizes/font_size = 30
 layout_mode = 2
 theme_type_variation = &"CapsLabel"
 horizontal_alignment = 1
-theme_override_colors/font_color = Color(0.6706, 0.5608, 0.7765, 1.0)
+theme_override_colors/font_color = Color(0.3216, 0.2667, 0.2471, 1.0)
 theme_override_font_sizes/font_size = 15
 
 [node name="SlotLabel" type="Label" parent="SafeArea/Content/OfferRow/Card1/Margin/VBox"]
 layout_mode = 2
 theme_type_variation = &"NumericLabel"
 horizontal_alignment = 1
-theme_override_colors/font_color = Color(0.9059, 0.7176, 0.2824, 1.0)
+theme_override_colors/font_color = Color(0.6902, 0.5529, 0.3412, 1.0)
 theme_override_font_sizes/font_size = 20
 
 [node name="Divider" type="HSeparator" parent="SafeArea/Content/OfferRow/Card1/Margin/VBox"]
@@ -122,11 +125,11 @@ text = ""
 horizontal_alignment = 1
 vertical_alignment = 1
 autowrap_mode = 3
-theme_override_colors/font_color = Color(0.9922, 0.9373, 0.8706, 1.0)
+theme_override_colors/font_color = Color(0.2078, 0.1725, 0.1686, 1.0)
 theme_override_font_sizes/font_size = 18
 
 [node name="Card2" type="Button" parent="SafeArea/Content/OfferRow"]
-custom_minimum_size = Vector2(270, 420)
+custom_minimum_size = Vector2(300, 440)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
@@ -141,10 +144,10 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-theme_override_constants/margin_left = 22
-theme_override_constants/margin_top = 20
-theme_override_constants/margin_right = 22
-theme_override_constants/margin_bottom = 20
+theme_override_constants/margin_left = 28
+theme_override_constants/margin_top = 24
+theme_override_constants/margin_right = 28
+theme_override_constants/margin_bottom = 24
 
 [node name="VBox" type="VBoxContainer" parent="SafeArea/Content/OfferRow/Card2/Margin"]
 layout_mode = 2
@@ -167,14 +170,14 @@ theme_override_font_sizes/font_size = 30
 layout_mode = 2
 theme_type_variation = &"CapsLabel"
 horizontal_alignment = 1
-theme_override_colors/font_color = Color(0.6706, 0.5608, 0.7765, 1.0)
+theme_override_colors/font_color = Color(0.3216, 0.2667, 0.2471, 1.0)
 theme_override_font_sizes/font_size = 15
 
 [node name="SlotLabel" type="Label" parent="SafeArea/Content/OfferRow/Card2/Margin/VBox"]
 layout_mode = 2
 theme_type_variation = &"NumericLabel"
 horizontal_alignment = 1
-theme_override_colors/font_color = Color(0.9059, 0.7176, 0.2824, 1.0)
+theme_override_colors/font_color = Color(0.6902, 0.5529, 0.3412, 1.0)
 theme_override_font_sizes/font_size = 20
 
 [node name="Divider" type="HSeparator" parent="SafeArea/Content/OfferRow/Card2/Margin/VBox"]
@@ -187,11 +190,11 @@ text = ""
 horizontal_alignment = 1
 vertical_alignment = 1
 autowrap_mode = 3
-theme_override_colors/font_color = Color(0.9922, 0.9373, 0.8706, 1.0)
+theme_override_colors/font_color = Color(0.2078, 0.1725, 0.1686, 1.0)
 theme_override_font_sizes/font_size = 18
 
 [node name="Card3" type="Button" parent="SafeArea/Content/OfferRow"]
-custom_minimum_size = Vector2(270, 420)
+custom_minimum_size = Vector2(300, 440)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
@@ -206,10 +209,10 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-theme_override_constants/margin_left = 22
-theme_override_constants/margin_top = 20
-theme_override_constants/margin_right = 22
-theme_override_constants/margin_bottom = 20
+theme_override_constants/margin_left = 28
+theme_override_constants/margin_top = 24
+theme_override_constants/margin_right = 28
+theme_override_constants/margin_bottom = 24
 
 [node name="VBox" type="VBoxContainer" parent="SafeArea/Content/OfferRow/Card3/Margin"]
 layout_mode = 2
@@ -232,14 +235,14 @@ theme_override_font_sizes/font_size = 30
 layout_mode = 2
 theme_type_variation = &"CapsLabel"
 horizontal_alignment = 1
-theme_override_colors/font_color = Color(0.6706, 0.5608, 0.7765, 1.0)
+theme_override_colors/font_color = Color(0.3216, 0.2667, 0.2471, 1.0)
 theme_override_font_sizes/font_size = 15
 
 [node name="SlotLabel" type="Label" parent="SafeArea/Content/OfferRow/Card3/Margin/VBox"]
 layout_mode = 2
 theme_type_variation = &"NumericLabel"
 horizontal_alignment = 1
-theme_override_colors/font_color = Color(0.9059, 0.7176, 0.2824, 1.0)
+theme_override_colors/font_color = Color(0.6902, 0.5529, 0.3412, 1.0)
 theme_override_font_sizes/font_size = 20
 
 [node name="Divider" type="HSeparator" parent="SafeArea/Content/OfferRow/Card3/Margin/VBox"]
@@ -252,5 +255,5 @@ text = ""
 horizontal_alignment = 1
 vertical_alignment = 1
 autowrap_mode = 3
-theme_override_colors/font_color = Color(0.9922, 0.9373, 0.8706, 1.0)
+theme_override_colors/font_color = Color(0.2078, 0.1725, 0.1686, 1.0)
 theme_override_font_sizes/font_size = 18

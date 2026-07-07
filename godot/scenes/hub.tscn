@@ -4,6 +4,7 @@
 [ext_resource type="Script" path="res://scripts/player/gizmo_visual.gd" id="2_visual"]
 [ext_resource type="PackedScene" uid="uid://qa2ralfsy66q" path="res://assets/gizmo.glb" id="3_gizmo_glb"]
 [ext_resource type="Shader" path="res://shaders/gouache_grade.gdshader" id="4_grade_shader"]
+[ext_resource type="Script" path="res://scripts/ui/look_grade.gd" id="5_look_grade"]
 [ext_resource type="PackedScene" path="res://scenes/npcs/saint_shrine.tscn" id="5_saint_shrine"]
 [ext_resource type="PackedScene" path="res://scenes/npcs/codex_book.tscn" id="6_codex_book"]
 [ext_resource type="PackedScene" path="res://scenes/npcs/margin_keeper.tscn" id="7_margin_keeper"]
@@ -534,6 +535,7 @@ layer = -1
 
 [node name="GradeRect" type="ColorRect" parent="GradeLayer"]
 material = SubResource("ShaderMat_grade")
+script = ExtResource("5_look_grade")
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -549,6 +551,21 @@ transform = Transform3D(0.92388, 0, -0.382683, 0, 1, 0, 0.382683, 0, 0.92388, 2.
 transform = Transform3D(0.92388, 0, 0.382683, 0, 1, 0, -0.382683, 0, 0.92388, -2.4, 0, -4.5)
 saint_role = &"hearthguard"
 display_title = "the Hearthguard - Saint Demetrios"
+
+[node name="ShrineSwordbearer" parent="." instance=ExtResource("5_saint_shrine")]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, -4.3, 0, -2)
+saint_role = &"swordbearer"
+display_title = "the Swordbearer - Saint Mercurius"
+
+[node name="ShrineMarksman" parent="." instance=ExtResource("5_saint_shrine")]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, -4.3, 0, 0.2)
+saint_role = &"marksman"
+display_title = "the Marksman - Saint Theodore"
+
+[node name="ShrineCompany" parent="." instance=ExtResource("5_saint_shrine")]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, -4.3, 0, 2.4)
+saint_role = &"company"
+display_title = "the Company - Forty Martyrs of Sebaste"
 
 [node name="CodexBook" parent="." instance=ExtResource("6_codex_book")]
 transform = Transform3D(0.707107, 0, 0.707107, 0, 1, 0, -0.707107, 0, 0.707107, 4.3, 0.55, -1.5)
