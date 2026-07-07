@@ -75,6 +75,7 @@ var _current_clip: StringName = &""
 var _external_attack_grafted := false
 var _idle_seconds := 0.0
 var _next_fidget := 0
+var _cinematic_hold := false
 
 ## Clip data: per-clip length/loop and keyframes. Each key holds per-bone euler
 ## rotation deltas (radians, applied on top of the bone rest pose) plus a root
@@ -463,6 +464,8 @@ func _physics_process(delta: float) -> void:
 func update_animation(delta: float) -> void:
 	if animation_player == null:
 		return
+	if _cinematic_hold:
+		return  # a cinematic owns playback; the gameplay state map stands down
 	var state := _action_state()
 	var desired := clip_for_state(state, _is_moving())
 	if state == PlayerActionStateMachine.ActionState.CAST and _library_has(&"spark_cast"):
@@ -488,6 +491,27 @@ func update_animation(delta: float) -> void:
 	if desired != _current_clip and not both_attacks:
 		_play_clip(desired)
 	animation_player.speed_scale = _speed_scale_for(desired)
+
+## Lore lane cinematic seam: seat Gizmo at the campfire with the looping
+## campfire_sit pose and HOLD it — update_animation() stands down until
+## resume_from_cinematic() is called, so the gameplay state map cannot override
+## the beat. The opening scene attaches this controller to its Gizmo (raw
+## gizmo.glb has no clips) and calls this by node path. No-op if the authored
+## GLB is missing the clip.
+func play_campfire_sit() -> void:
+	if animation_player == null or not _library_has(&"campfire_sit"):
+		return
+	_cinematic_hold = true
+	_idle_seconds = 0.0
+	_play_clip(&"campfire_sit")
+	animation_player.speed_scale = 1.0
+
+## Hand control back to the gameplay-driven state map after a cinematic hold.
+func resume_from_cinematic() -> void:
+	_cinematic_hold = false
+
+func is_cinematic_holding() -> bool:
+	return _cinematic_hold
 
 func _build_animation_player() -> void:
 	animation_player = AnimationPlayer.new()

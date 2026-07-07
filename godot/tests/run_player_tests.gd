@@ -24,6 +24,7 @@ func _initialize() -> void:
 	_test_animation_controller_state_to_clip_mapping()
 	await _test_animation_controller_builds_clip_library_on_rig()
 	await _test_animation_controller_follows_action_states()
+	await _test_animation_controller_campfire_cinematic_hold()
 	await _test_weapon_mount_attaches_to_right_hand()
 	_test_player_vitals_halo_ce_defaults()
 	_test_player_vitals_guard_recharges_after_damage_delay()
@@ -357,6 +358,36 @@ func _test_animation_controller_follows_action_states() -> void:
 	player.ability_input_router._unhandled_input(event)
 	controller.call("update_animation", 0.016)
 	_check_eq("dash press plays the dash clip", anim_player.current_animation, "gizmo/dash")
+
+	await _cleanup(player)
+
+## Lore lane seam: play_campfire_sit() seats Gizmo and HOLDS through the
+## gameplay state map until resume_from_cinematic().
+func _test_animation_controller_campfire_cinematic_hold() -> void:
+	var player = await _new_player()
+	var controller: Node = player.get_node_or_null("AnimationController")
+	var anim_player: AnimationPlayer = null
+	if controller != null:
+		anim_player = controller.get("animation_player") as AnimationPlayer
+	_check("controller + AnimationPlayer present for campfire test", anim_player != null)
+	if anim_player == null:
+		await _cleanup(player)
+		return
+
+	controller.call("play_campfire_sit")
+	_check("play_campfire_sit enters the cinematic hold", bool(controller.call("is_cinematic_holding")))
+	_check_eq("campfire_sit clip is playing", anim_player.current_animation, "gizmo/campfire_sit")
+
+	# The hold must survive a gameplay tick that would otherwise force run/idle.
+	player.velocity = Vector3.RIGHT * player.move_speed
+	controller.call("update_animation", 0.016)
+	_check_eq("cinematic hold suppresses the state map", anim_player.current_animation, "gizmo/campfire_sit")
+
+	controller.call("resume_from_cinematic")
+	_check("resume clears the cinematic hold", not bool(controller.call("is_cinematic_holding")))
+	player.velocity = Vector3.ZERO
+	controller.call("update_animation", 0.016)
+	_check_eq("gameplay resumes after the cinematic", anim_player.current_animation, "gizmo/idle")
 
 	await _cleanup(player)
 
