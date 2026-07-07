@@ -946,7 +946,8 @@ func _on_director_room_cleared() -> void:
 	_clear_spawned_enemies()
 	_set_audio_zone_state(ZONE_STATE_CLEARED)
 	_set_audio_pressure()
-	_notify_audio_sfx(&"gizmo_chirp_happy")
+	_notify_audio_event(&"room_clear")
+	_notify_audio_event(&"gizmo_chirp_happy")
 	_maybe_speak_boss_warning()
 	if run_controller != null:
 		run_controller.notify_room_cleared()
@@ -1265,7 +1266,7 @@ func _speak_voice(line_id: StringName) -> void:
 	if audio_director != null and audio_director.has_method(&"play_voice_line"):
 		audio_director.call(&"play_voice_line", line_id)
 
-func _notify_audio_sfx(event: StringName) -> void:
+func _notify_audio_event(event: StringName) -> void:
 	if audio_director == null or not is_instance_valid(audio_director):
 		audio_director = get_node_or_null("/root/AudioDirector")
 	if audio_director != null and audio_director.has_method(&"notify_event"):

@@ -6,11 +6,11 @@ const MUSIC_STATE_CLEARED: StringName = &"CLEARED"
 
 const MUSIC_BUS := &"Music"
 const SFX_BUS := &"SFX"
-const VOICE_BUS := &"VoiceReserved"
+const UI_BUS := &"UI"
+const VOICE_BUS := &"Voice"
 const ACTIVE_VOLUME_DB := 0.0
 const SILENT_VOLUME_DB := -80.0
 const SFX_POOL_SIZE := 8
-const VOICE_DUCK_DB := 4.0
 const VOICE_DIR := "res://audio/voice/"
 
 ## Voice line manifest: line_id -> variant count. One variant resolves to
@@ -100,6 +100,14 @@ const V2_ARC_BRIDGE_POOL: Array[String] = ["BRG_04", "BRG_08", "BRG_09"]
 ## scene-layer cues and tests.
 const MUSIC_CUE_MANIFEST := {}
 
+const UI_EVENT_MANIFEST := {
+	&"ui_click": "res://audio/sfx/sfx_ui_click.wav",
+}
+
+const MUSIC_STING_MANIFEST := {
+	&"room_clear": "res://audio/music/sting_room_clear.ogg",
+}
+
 const SFX_EVENT_MANIFEST := {
 	&"melee_hit": "res://audio/sfx/sfx_melee_hit.wav",
 	&"enemy_death": "res://audio/sfx/sfx_enemy_death.wav",
@@ -108,14 +116,12 @@ const SFX_EVENT_MANIFEST := {
 	&"guard_hit": "res://audio/sfx/sfx_guard_hit.wav",
 	&"door_open": "res://audio/sfx/sfx_door_open.wav",
 	&"boon_pickup": "res://audio/sfx/sfx_boon_pickup.wav",
-	&"ui_click": "res://audio/sfx/sfx_ui_click.wav",
 	&"dash_whoosh": "res://audio/sfx/sfx_dash_whoosh.wav",
 	&"boss_telegraph": "res://audio/sfx/sfx_boss_telegraph.wav",
 	&"gizmo_chirp_happy": "res://audio/sfx/gizmo_chirp_happy.wav",
 	&"gizmo_chirp_hurt": "res://audio/sfx/gizmo_chirp_hurt.wav",
 	&"gizmo_chirp_effort": "res://audio/sfx/gizmo_chirp_effort.wav",
 	&"gizmo_chirp_curious": "res://audio/sfx/gizmo_chirp_curious.wav",
-	&"room_clear_sting": "res://audio/music/sting_room_clear.ogg",
 }
 
 ## ── Region ambience (levels lane 2026-07-07): one looping bed per act-1
@@ -140,13 +146,19 @@ var _state_cue_ids: Dictionary = {
 }
 var _music_lanes: Array[AudioStreamPlayer] = []
 var _sfx_registry: Dictionary = {}
+var _ui_registry: Dictionary = {}
+var _music_sting_registry: Dictionary = {}
 var _sfx_players: Array[AudioStreamPlayer] = []
+var _ui_player: AudioStreamPlayer = null
+var _music_sting_player: AudioStreamPlayer = null
 var _active_lane_index := 0
 var _sfx_pool_index := 0
 var _requested_music_state: StringName = &""
 var _active_music_state: StringName = &""
 var _active_cue_id: StringName = &""
 var _last_sfx_event: StringName = &""
+var _last_ui_event: StringName = &""
+var _last_music_sting_event: StringName = &""
 var _last_sfx_player_name := ""
 var _last_noop_reason: StringName = &""
 var _last_crossfade: Dictionary = {}
@@ -180,15 +192,13 @@ var _vitals_lane: AudioStreamPlayer = null
 var _vitals_overlay_active := false
 var _last_zone_request: StringName = &""
 
-# ── Voice seam (Margin narrator + Custodian boss; VoiceReserved bus) ──────
+# ── Voice seam (Margin narrator + Custodian boss; Voice bus) ──────────────
 var _voice_player: AudioStreamPlayer = null
 var _voice_registry: Dictionary = {}    # line_id -> Array[AudioStream]
 var _voice_rng := RandomNumberGenerator.new()
 var _voice_speaking := false
 var _last_voice_line: StringName = &""
 var _last_voice_variant := -1
-var _music_ducked := false
-var _music_duck_base_db := 0.0
 
 func _init() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -198,6 +208,8 @@ func _ready() -> void:
 	_register_music_manifest()
 	_ensure_sfx_pool()
 	_register_sfx_manifest()
+	_register_ui_manifest()
+	_register_music_sting_manifest()
 	_load_v2_cue_table()
 	set_process(true)
 
@@ -241,11 +253,9 @@ func set_zone_state(state: StringName) -> void:
 
 	_last_zone_request = state
 	_requested_music_state = state
-	# Room-clear sting rides the SFX pool; music-path bookkeeping is untouched.
-	if state == MUSIC_STATE_CLEARED:
-		notify_event(&"room_clear_sting")
-		_last_noop_reason = &""
 	# CLEARED is not a zone in v2: the zone stays, pressure relaxes elsewhere.
+	# Room-clear stings are discrete notify_event(room_clear) calls from the
+	# scene layer, not zone changes.
 	if _v2_loaded and state == &"CLEARED":
 		_last_noop_reason = &"v2_cleared_pressure_only"
 		return
@@ -290,11 +300,19 @@ func set_music_state(state: StringName) -> void:
 func notify_event(event: StringName) -> void:
 	_last_noop_reason = &""
 	if String(event).is_empty():
-		_last_noop_reason = &"empty_sfx_event"
+		_last_noop_reason = &"empty_audio_event"
 		return
+
+	if _music_sting_registry.has(event):
+		_play_music_sting(event)
+		return
+	if _ui_registry.has(event):
+		_play_ui_event(event)
+		return
+
 	var stream := _sfx_registry.get(event) as AudioStream
 	if stream == null:
-		_last_noop_reason = &"unknown_sfx_event"
+		_last_noop_reason = &"unknown_audio_event"
 		return
 
 	_ensure_sfx_pool()
@@ -390,9 +408,13 @@ func describe() -> Dictionary:
 		"sfx_pool_size": _sfx_players.size(),
 		"sfx_registered_event_count": _sfx_registry.size(),
 		"sfx_registered_events": _registered_sfx_events(),
+		"ui_registered_event_count": _ui_registry.size(),
+		"music_sting_registered_event_count": _music_sting_registry.size(),
 		"sfx_play_count": _sfx_play_count,
 		"sfx_event_counts": _sfx_event_counts.duplicate(true),
 		"last_sfx_event": String(_last_sfx_event),
+		"last_ui_event": String(_last_ui_event),
+		"last_music_sting_event": String(_last_music_sting_event),
 		"last_sfx_player": _last_sfx_player_name,
 		"next_sfx_player_index": _sfx_pool_index,
 		"active_ambient_region": String(_active_ambient_region),
@@ -480,6 +502,26 @@ func _ensure_sfx_pool() -> void:
 		add_child(lane)
 		_sfx_players.append(lane)
 
+func _ensure_ui_player() -> void:
+	if _ui_player != null:
+		return
+	_ui_player = AudioStreamPlayer.new()
+	_ui_player.name = "UiEventLane"
+	_ui_player.process_mode = Node.PROCESS_MODE_ALWAYS
+	_ui_player.bus = String(UI_BUS)
+	_ui_player.volume_db = ACTIVE_VOLUME_DB
+	add_child(_ui_player)
+
+func _ensure_music_sting_player() -> void:
+	if _music_sting_player != null:
+		return
+	_music_sting_player = AudioStreamPlayer.new()
+	_music_sting_player.name = "MusicStingLane"
+	_music_sting_player.process_mode = Node.PROCESS_MODE_ALWAYS
+	_music_sting_player.bus = String(MUSIC_BUS)
+	_music_sting_player.volume_db = ACTIVE_VOLUME_DB
+	add_child(_music_sting_player)
+
 func _active_player() -> AudioStreamPlayer:
 	_ensure_music_lanes()
 	return _music_lanes[_active_lane_index]
@@ -524,6 +566,47 @@ func _register_sfx_manifest() -> void:
 		if stream == null:
 			continue
 		_sfx_registry[event] = stream
+
+func _register_ui_manifest() -> void:
+	for event in UI_EVENT_MANIFEST.keys():
+		var stream := load(String(UI_EVENT_MANIFEST[event])) as AudioStream
+		if stream == null:
+			continue
+		_ui_registry[event] = stream
+
+func _register_music_sting_manifest() -> void:
+	for event in MUSIC_STING_MANIFEST.keys():
+		var stream := load(String(MUSIC_STING_MANIFEST[event])) as AudioStream
+		if stream == null:
+			continue
+		_set_stream_loop(stream, false)
+		_music_sting_registry[event] = stream
+
+func _play_ui_event(event: StringName) -> void:
+	var stream := _ui_registry.get(event) as AudioStream
+	if stream == null:
+		_last_noop_reason = &"unknown_audio_event"
+		return
+	_ensure_ui_player()
+	_ui_player.stop()
+	_ui_player.stream = stream
+	_ui_player.bus = String(UI_BUS)
+	_ui_player.volume_db = ACTIVE_VOLUME_DB
+	_ui_player.play()
+	_last_ui_event = event
+
+func _play_music_sting(event: StringName) -> void:
+	var stream := _music_sting_registry.get(event) as AudioStream
+	if stream == null:
+		_last_noop_reason = &"unknown_audio_event"
+		return
+	_ensure_music_sting_player()
+	_music_sting_player.stop()
+	_music_sting_player.stream = stream
+	_music_sting_player.bus = String(MUSIC_BUS)
+	_music_sting_player.volume_db = ACTIVE_VOLUME_DB
+	_music_sting_player.play()
+	_last_music_sting_event = event
 
 func _set_stream_loop(stream: AudioStream, enabled: bool) -> void:
 	if stream == null:
@@ -611,8 +694,8 @@ func notify_vitals(guard: float, guard_max: float, hp: float, hp_max: float) -> 
 				_vitals_lane.stop())
 
 func play_voice_line(line_id: StringName) -> void:
-	## One line at a time on the VoiceReserved bus; a new line interrupts the
-	## old. Music ducks by VOICE_DUCK_DB while speaking and restores after.
+	## One line at a time on the Voice bus; a new line interrupts the old.
+	## Music ducking is owned by the bus layout sidechain compressors.
 	_last_noop_reason = &""
 	if String(line_id).is_empty():
 		_last_noop_reason = &"empty_voice_line"
@@ -634,7 +717,6 @@ func play_voice_line(line_id: StringName) -> void:
 	_voice_speaking = true
 	_last_voice_line = line_id
 	_last_voice_variant = index
-	_duck_music_for_voice(true)
 
 func register_voice_line(line_id: StringName, streams: Array) -> void:
 	## Runtime drop-in seam (and the test hook): registered streams win over
@@ -889,25 +971,6 @@ func _on_voice_finished() -> void:
 	_voice_speaking = false
 	if _voice_player != null:
 		_voice_player.stop()
-	_duck_music_for_voice(false)
-
-func _duck_music_for_voice(speaking: bool) -> void:
-	var music_index := AudioServer.get_bus_index(MUSIC_BUS)
-	if music_index < 0:
-		return
-	if speaking:
-		if _music_ducked:
-			return
-		_music_ducked = true
-		_music_duck_base_db = AudioServer.get_bus_volume_db(music_index)
-		AudioServer.set_bus_volume_db(music_index, _music_duck_base_db - VOICE_DUCK_DB)
-	elif _music_ducked:
-		_music_ducked = false
-		AudioServer.set_bus_volume_db(music_index, _music_duck_base_db)
-
-func _exit_tree() -> void:
-	# The duck edits global bus state; never leave it applied past this node.
-	_duck_music_for_voice(false)
 
 func _ensure_vitals_lane() -> void:
 	if _vitals_lane != null:
