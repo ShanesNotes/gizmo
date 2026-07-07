@@ -72,7 +72,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-color = Color(0.1098, 0.0902, 0.0980, 0.72)
+color = Color(0.1098, 0.0902, 0.0980, 0.78)
 
 [node name="Center" type="CenterContainer" parent="Root"]
 layout_mode = 1
@@ -83,7 +83,7 @@ grow_horizontal = 2
 grow_vertical = 2
 
 [node name="Panel" type="PanelContainer" parent="Root/Center"]
-custom_minimum_size = Vector2(440, 0)
+custom_minimum_size = Vector2(480, 0)
 layout_mode = 2
 
 [node name="Margin" type="MarginContainer" parent="Root/Center/Panel"]
@@ -253,16 +253,47 @@ text = "Unknown"
 horizontal_alignment = 2
 theme_override_font_sizes/font_size = 20
 
+[node name="MetaProgress" type="VBoxContainer" parent="Root/Center/Panel/Margin/VBox"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="MetaProgressLabel" type="Label" parent="Root/Center/Panel/Margin/VBox/MetaProgress"]
+unique_name_in_owner = true
+theme_type_variation = &"CapsLabel"
+layout_mode = 2
+text = "KEEPER PROGRESS"
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(0.6902, 0.5529, 0.3412, 1.0)
+theme_override_font_sizes/font_size = 15
+
+[node name="MetaProgressBar" type="ProgressBar" parent="Root/Center/Panel/Margin/VBox/MetaProgress"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 18)
+layout_mode = 2
+show_percentage = false
+
+[node name="MetaProgressValue" type="Label" parent="Root/Center/Panel/Margin/VBox/MetaProgress"]
+unique_name_in_owner = true
+theme_type_variation = &"NumericLabel"
+layout_mode = 2
+text = "0%"
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(0.2078, 0.1725, 0.1686, 1.0)
+theme_override_font_sizes/font_size = 18
+
 [node name="Spacer" type="Control" parent="Root/Center/Panel/Margin/VBox"]
 custom_minimum_size = Vector2(0, 8)
 layout_mode = 2
 
 [node name="RetryButton" type="Button" parent="Root/Center/Panel/Margin/VBox"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(160, 44)
+custom_minimum_size = Vector2(190, 48)
 layout_mode = 2
 size_flags_horizontal = 4
-theme_override_font_sizes/font_size = 18
+focus_mode = 2
+theme_override_font_sizes/font_size = 20
 theme_override_styles/normal = SubResource("sb_btn_normal")
 theme_override_styles/hover = SubResource("sb_btn_hover")
 theme_override_styles/pressed = SubResource("sb_btn_pressed")
