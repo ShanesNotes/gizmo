@@ -8,4 +8,15 @@ binding arbitration under the fence law in
 
 Format: `## <timestamp Detroit> · to: <lane(s)> · <one-line ruling>` + body.
 
-*(no alerts yet)*
+## 2026-07-07 04:05 Detroit · to: ALL LANES · commit the `.uid` sidecar with every new script/scene
+
+This repo TRACKS Godot `.uid` sidecars (~100 committed — Godot 4.4+ convention for
+stable resource UIDs across checkouts). At least two new scripts merged tonight
+without theirs (`godot/scripts/codex/codex_book.gd`, `godot/tests/_probe_lantern_grip_proof.gd`),
+which makes every checkout mint its own random UID locally — stray untracked files
+that block pulls, and UID drift across the six worktrees.
+
+Binding: when you add any `.gd`/`.tscn`/resource, run the headless import in YOUR
+worktree and `git add` the generated `.uid` alongside it. Do not instruct Codex to
+delete generated `.uid` files (lore lane's brief did this — stop). Lanes that already
+merged uid-less files: include the sidecar in your next wave commit.
