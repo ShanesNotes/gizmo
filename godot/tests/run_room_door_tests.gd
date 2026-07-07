@@ -27,6 +27,7 @@ func _initialize() -> void:
 	await _test_seal_hides_telegraph_label()
 	await _test_reopen_updates_telegraph_text_and_color()
 	await _test_open_for_pulses_unlock_shine()
+	await _test_open_for_shows_lure_glyph_and_beckon_glow()
 	print("")
 	if _failed == 0 and _passed > 0:
 		print("PASS - %d checks" % _passed)
@@ -388,6 +389,61 @@ func _test_open_for_pulses_unlock_shine() -> void:
 	if shine != null:
 		_check_eq("seal snuffs the unlock shine", shine.light_energy, 0.0)
 	await _cleanup([door])
+
+## Playtest 2: doors had no lure — just a hard-to-read word. An open door now
+## carries a large reward glyph (mesh, distinct per reward type), a warm
+## beckoning glow, and keeps the canon term as a subtitle.
+func _test_open_for_shows_lure_glyph_and_beckon_glow() -> void:
+	var door: Variant = await _new_door()
+	door.open_for(_make_connection("RoomExitA"), RoomNode.RewardType.BOON)
+	await process_frame
+
+	var glyph := door.get_node_or_null(NodePath("RewardGlyph")) as Node3D
+	_check("open_for spawns a RewardGlyph lure", glyph != null)
+	if glyph != null:
+		_check("reward glyph is visible while OPEN", glyph.visible)
+		var meshes := glyph.find_children("*", "MeshInstance3D", true, false)
+		_check("reward glyph is built from meshes, not text", meshes.size() >= 1)
+		_check("reward glyph reads above the door frame", glyph.position.y >= 1.5)
+
+	var beckon := door.get_node_or_null(NodePath("BeckonGlow")) as OmniLight3D
+	_check("open_for lights a beckoning glow", beckon != null)
+	if beckon != null:
+		_check("beckon glow burns while OPEN", beckon.light_energy > 0.0)
+		_check("beckon glow is warm-tinted", beckon.light_color.r >= beckon.light_color.b)
+
+	var label := _telegraph_label(door)
+	_check("canon term stays as a subtitle label", label != null and label.visible)
+
+	var boon_signature := _glyph_signature(glyph)
+	door.seal()
+	glyph = door.get_node_or_null(NodePath("RewardGlyph")) as Node3D
+	if glyph != null:
+		_check("seal hides the reward glyph", not glyph.visible)
+	beckon = door.get_node_or_null(NodePath("BeckonGlow")) as OmniLight3D
+	if beckon != null:
+		_check_eq("seal snuffs the beckon glow", beckon.light_energy, 0.0)
+
+	door.open_for(_make_connection("RoomExitA"), RoomNode.RewardType.SCRAP)
+	await process_frame
+	glyph = door.get_node_or_null(NodePath("RewardGlyph")) as Node3D
+	_check("reopen shows the glyph again", glyph != null and glyph.visible)
+	_check(
+		"scrap glyph differs from boon glyph (distinct silhouettes per reward)",
+		_glyph_signature(glyph) != boon_signature
+	)
+	await _cleanup([door])
+
+func _glyph_signature(glyph: Node3D) -> String:
+	if glyph == null:
+		return ""
+	var parts: Array[String] = []
+	for mesh in glyph.find_children("*", "MeshInstance3D", true, false):
+		var mesh_instance := mesh as MeshInstance3D
+		var mesh_class := mesh_instance.mesh.get_class() if mesh_instance.mesh != null else "null"
+		parts.append("%s:%s:%s" % [mesh.name, mesh_class, mesh_instance.transform])
+	parts.sort()
+	return ";".join(parts)
 
 func _reward_type_value(name: String, fallback: int) -> int:
 	if RoomNode.RewardType.has(name):

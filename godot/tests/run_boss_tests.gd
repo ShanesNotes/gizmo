@@ -159,7 +159,7 @@ func _test_boss_brain_attack_roster_timing_and_damage_contract() -> void:
 		_check_eq("%s exists in roster" % attack_id, attack.get("id", ""), attack_id)
 		_check_almost("%s telegraph duration matches spec" % attack_id, float(attack.get("telegraph_seconds", 0.0)), float(contract["telegraph_seconds"]))
 		_check("%s telegraph is at least 0.8s" % attack_id, float(attack.get("telegraph_seconds", 0.0)) >= 0.8)
-		_check("%s damage is <= 2 guard pips" % attack_id, int(attack.get("damage", 99)) <= 2)
+		_check("%s damage is <= half the shield bar" % attack_id, int(attack.get("damage", 99)) <= 50)
 		_check_eq("%s uses the specified marker shape" % attack_id, attack.get("shape", ""), contract["shape"])
 
 	brain.update_health(600.0, BOSS_HP)

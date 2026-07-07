@@ -110,61 +110,50 @@ func _cleanup_hud(hud: Hud) -> void:
 	await process_frame
 
 
-func _guard_pip_counts(hud: Hud) -> Dictionary:
-	var row: HBoxContainer = hud.get_node("%GuardPips") as HBoxContainer
-	var visible := 0
-	var filled := 0
-	for child in row.get_children():
-		var pip := child as ColorRect
-		if not pip.visible:
-			continue
-		visible += 1
-		if is_equal_approx(pip.color.a, 1.0):
-			filled += 1
-	return {"row_visible": row.visible, "visible": visible, "filled": filled}
+## Halo-CE presentation: guard renders as one flat shield bar, not pips.
+func _shield_bar_state(hud: Hud) -> Dictionary:
+	var bar: ProgressBar = hud.get_node("%ShieldBar") as ProgressBar
+	return {"visible": bar.visible, "value": bar.value, "max": bar.max_value}
 
 
 func _test_guard_pips() -> void:
 	var hud := await _instantiate_hud()
-	var counts := _guard_pip_counts(hud)
-	_check_eq("guard pips hidden by default (row)", counts["row_visible"], false)
+	var state := _shield_bar_state(hud)
+	_check_eq("shield bar hidden by default", state["visible"], false)
 
 	hud.render_guard(0, 0)
-	counts = _guard_pip_counts(hud)
-	_check_eq("guard_max=0 hides GuardPips row", counts["row_visible"], false)
+	state = _shield_bar_state(hud)
+	_check_eq("guard_max=0 hides shield bar", state["visible"], false)
 
-	hud.render_guard(2, 4)
-	counts = _guard_pip_counts(hud)
-	_check_eq("render_guard(2,4) shows row", counts["row_visible"], true)
-	_check_eq("render_guard(2,4) shows 4 pips", counts["visible"], 4)
-	_check_eq("render_guard(2,4) fills 2 pips", counts["filled"], 2)
+	hud.render_guard(60, 100)
+	state = _shield_bar_state(hud)
+	_check_eq("render_guard(60,100) shows the bar", state["visible"], true)
+	_check_eq("render_guard(60,100) sets bar max", float(state["max"]), 100.0)
+	_check_eq("render_guard(60,100) fills to current shield", float(state["value"]), 60.0)
 
-	hud.render_guard(1, 2)
-	counts = _guard_pip_counts(hud)
-	_check_eq("render_guard(1,2) shows 2 pips", counts["visible"], 2)
-	_check_eq("render_guard(1,2) fills 1 pip", counts["filled"], 1)
+	hud.render_guard(999, 100)
+	state = _shield_bar_state(hud)
+	_check_eq("guard > guard_max clamps to full bar", float(state["value"]), 100.0)
 
-	hud.render_guard(99, 2)
-	counts = _guard_pip_counts(hud)
-	_check_eq("guard > guard_max clamps fill to guard_max", counts["filled"], 2)
-
-	hud.render_guard(7, 10)
-	counts = _guard_pip_counts(hud)
-	_check_eq("render_guard(7,10) shows tuned guard pool", counts["visible"], 10)
-	_check_eq("render_guard(7,10) fills current guard", counts["filled"], 7)
-
-	hud.render_guard(-3, 4)
-	counts = _guard_pip_counts(hud)
-	_check_eq("negative guard clamps to zero filled", counts["filled"], 0)
+	hud.render_guard(-3, 100)
+	state = _shield_bar_state(hud)
+	_check_eq("negative guard clamps to empty bar", float(state["value"]), 0.0)
 
 	hud.render_guard(1, -2)
-	counts = _guard_pip_counts(hud)
-	_check_eq("negative guard_max hides row", counts["row_visible"], false)
+	state = _shield_bar_state(hud)
+	_check_eq("negative guard_max hides the bar", state["visible"], false)
 
-	hud.render_guard(3, 99)
-	counts = _guard_pip_counts(hud)
-	_check_eq("guard_max > cap shows at most HUD cap pips", counts["visible"], Hud.GUARD_PIP_MAX)
-	_check_eq("guard_max > cap clamps fill", counts["filled"], 3)
+	hud.render_guard(3, 7)
+	state = _shield_bar_state(hud)
+	_check_eq("tuned pools rescale the bar max", float(state["max"]), 7.0)
+	_check_eq("tuned pools keep the fill exact", float(state["value"]), 3.0)
+
+	var hp_bar: ProgressBar = hud.get_node("%HpBar") as ProgressBar
+	var dividers := 0
+	for child in hp_bar.get_children():
+		if String(child.name).begins_with("BlockDivider"):
+			dividers += 1
+	_check_eq("hull bar reads as discrete blocks (divider ticks)", dividers, Hud.HP_BLOCKS - 1)
 
 	await _cleanup_hud(hud)
 

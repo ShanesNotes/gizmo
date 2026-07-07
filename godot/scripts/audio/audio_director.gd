@@ -76,6 +76,10 @@ const SFX_EVENT_MANIFEST := {
 	&"ui_click": "res://audio/sfx/sfx_ui_click.wav",
 	&"dash_whoosh": "res://audio/sfx/sfx_dash_whoosh.wav",
 	&"boss_telegraph": "res://audio/sfx/sfx_boss_telegraph.wav",
+	&"gizmo_chirp_happy": "res://audio/sfx/gizmo_chirp_happy.wav",
+	&"gizmo_chirp_hurt": "res://audio/sfx/gizmo_chirp_hurt.wav",
+	&"gizmo_chirp_effort": "res://audio/sfx/gizmo_chirp_effort.wav",
+	&"gizmo_chirp_curious": "res://audio/sfx/gizmo_chirp_curious.wav",
 }
 
 @export_range(0.0, 10.0, 0.01, "or_greater") var crossfade_seconds: float = 1.25
@@ -735,6 +739,9 @@ func _min_play_satisfied() -> bool:
 	return elapsed >= V2_MIN_PLAY_FRACTION * _active_stream_length
 
 func _ui_one_shot_after_silence(zone: StringName, variant: StringName, silence_seconds: float) -> void:
+	## The override HOLDS through the whole one-shot (Shane playtest 2: defeat
+	## reflection and hub music were doubling). Zone playback resumes only when
+	## the one-shot lane finishes.
 	_ui_override_active = true
 	_fade_active_lane_out(0.5)
 	if _ui_override_tween != null:
@@ -742,8 +749,17 @@ func _ui_one_shot_after_silence(zone: StringName, variant: StringName, silence_s
 	_ui_override_tween = create_tween().set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
 	_ui_override_tween.tween_interval(maxf(silence_seconds, 0.0))
 	_ui_override_tween.tween_callback(func() -> void:
-		_ui_override_active = false
-		_play_v2_cue(zone, variant, false, true))
+		_play_v2_cue(zone, variant, false, true)
+		var lane := _active_player()
+		if lane != null and lane.playing:
+			if not lane.finished.is_connected(_on_ui_one_shot_finished):
+				lane.finished.connect(_on_ui_one_shot_finished, CONNECT_ONE_SHOT)
+		else:
+			_on_ui_one_shot_finished())
+
+func _on_ui_one_shot_finished() -> void:
+	_ui_override_active = false
+	_replay_requested_zone()
 
 func _fade_active_lane_out(seconds: float) -> void:
 	var player := _active_player()

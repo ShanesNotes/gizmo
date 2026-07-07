@@ -1,0 +1,49 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/controls_card.gd" id="1_card"]
+
+[sub_resource type="StyleBoxFlat" id="sb_card_plate"]
+bg_color = Color(0.1098, 0.0902, 0.0980, 0.96)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0.7412, 0.5176, 0.4078, 1.0)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[node name="ControlsCard" type="PanelContainer"]
+custom_minimum_size = Vector2(380, 0)
+theme_override_styles/panel = SubResource("sb_card_plate")
+script = ExtResource("1_card")
+
+[node name="Margin" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 30
+theme_override_constants/margin_top = 22
+theme_override_constants/margin_right = 30
+theme_override_constants/margin_bottom = 24
+
+[node name="VBox" type="VBoxContainer" parent="Margin"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="CardTitleLabel" type="Label" parent="Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "HOW TO KEEP"
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(0.8784, 0.7569, 0.4784, 1.0)
+theme_override_font_sizes/font_size = 28
+
+[node name="Divider" type="HSeparator" parent="Margin/VBox"]
+layout_mode = 2
+
+[node name="ControlsGrid" type="GridContainer" parent="Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+columns = 2
+theme_override_constants/h_separation = 22
+theme_override_constants/v_separation = 8

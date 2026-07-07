@@ -10,6 +10,8 @@ const PauseMenuScene := preload("res://scenes/pause_menu.tscn")
 
 const EXPECTED_MAIN_SCENE := "res://scenes/title_screen.tscn"
 const TEST_SETTINGS_PATH := "user://title_settings_tests.cfg"
+const DISPLAY_FULLSCREEN_KEY := "fullscreen"
+const DISPLAY_VSYNC_KEY := "vsync"
 
 class StubRunSurface:
 	extends Node
@@ -35,6 +37,8 @@ class StubRunSurface:
 var _passed := 0
 var _failed := 0
 var _original_bus_db := {}
+var _original_window_mode := DisplayServer.WINDOW_MODE_WINDOWED
+var _original_vsync_mode := DisplayServer.VSYNC_ENABLED
 
 func _initialize() -> void:
 	print("Running title/settings tests...")
@@ -42,16 +46,21 @@ func _initialize() -> void:
 
 func _run_tests() -> void:
 	_original_bus_db = _snapshot_bus_db()
+	_original_window_mode = DisplayServer.window_get_mode()
+	_original_vsync_mode = DisplayServer.window_get_vsync_mode()
 	_remove_settings_file()
 
 	await _test_project_main_scene_points_at_title()
 	await _test_title_scene_loads_headless()
 	await _test_title_settings_button_opens_panel()
 	await _test_start_path_reaches_app_shell()
+	await _test_display_toggles_default_to_windowed_vsync_enabled()
 	await _test_volume_sliders_apply_persist_and_reload()
+	await _test_display_toggles_apply_persist_and_reload()
 	await _test_pause_menu_settings_button_exists_and_opens_panel()
 
 	_restore_bus_db(_original_bus_db)
+	_restore_display_state()
 	_remove_settings_file()
 
 	print("")
@@ -102,11 +111,18 @@ func _restore_bus_db(snapshot: Dictionary) -> void:
 func _slider(panel: Node, slider_name: String) -> HSlider:
 	return panel.get_node("Root/Center/Panel/Margin/VBox/SettingsGrid/%s" % slider_name) as HSlider
 
+func _toggle(panel: Node, toggle_name: String) -> CheckButton:
+	return panel.get_node_or_null("Root/Center/Panel/Margin/VBox/SettingsGrid/%s" % toggle_name) as CheckButton
+
 func _bus_volume_db(bus_name: StringName) -> float:
 	var index := AudioServer.get_bus_index(bus_name)
 	if index < 0:
 		return INF
 	return AudioServer.get_bus_volume_db(index)
+
+func _restore_display_state() -> void:
+	DisplayServer.window_set_mode(_original_window_mode)
+	DisplayServer.window_set_vsync_mode(_original_vsync_mode)
 
 func _object_has_property(object: Object, property_name: String) -> bool:
 	for property in object.get_property_list():
@@ -154,6 +170,7 @@ func _test_title_scene_loads_headless() -> void:
 	_check_eq("wordmark renders", title.get_node("Center/Menu/WordmarkLabel").text, "GIZMO")
 	_check_eq("subtitle renders sentence case", title.get_node("Center/Menu/SubtitleLabel").text, "keep it safe, keep it alive")
 	_check("START button exists", title.get_node_or_null("Center/Menu/StartButton") is Button)
+	_check("REPLAY THE CAMPFIRE button exists", title.get_node_or_null("Center/Menu/ReplayOpeningButton") is Button)
 	_check("SETTINGS button exists on title", title.get_node_or_null("Center/Menu/SettingsButton") is Button)
 	_check("QUIT button exists", title.get_node_or_null("Center/Menu/QuitButton") is Button)
 
@@ -200,6 +217,33 @@ func _test_start_path_reaches_app_shell() -> void:
 	current_scene = null
 	await process_frame
 	await process_frame
+
+func _test_display_toggles_default_to_windowed_vsync_enabled() -> void:
+	_remove_settings_file()
+	DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
+	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
+
+	var panel := SettingsPanelScene.instantiate()
+	panel.settings_path = TEST_SETTINGS_PATH
+	root.add_child(panel)
+	await process_frame
+
+	var fullscreen := _toggle(panel, "FullscreenToggle")
+	var vsync := _toggle(panel, "VSyncToggle")
+	_check("fullscreen toggle exists", fullscreen is CheckButton)
+	_check("vsync toggle exists", vsync is CheckButton)
+	if fullscreen != null:
+		_check_eq("fullscreen defaults off", fullscreen.button_pressed, false)
+	if vsync != null:
+		_check_eq("vsync defaults enabled", vsync.button_pressed, true)
+	if _can_assert_display_server_mode():
+		_check_eq("fullscreen default applies windowed mode", DisplayServer.window_get_mode(), DisplayServer.WINDOW_MODE_WINDOWED)
+		_check_eq("vsync default applies enabled mode", DisplayServer.window_get_vsync_mode(), DisplayServer.VSYNC_ENABLED)
+	else:
+		_check("headless DisplayServer skips window-mode default assertion", true)
+		_check("headless DisplayServer skips vsync default assertion", true)
+
+	await _cleanup_node(panel)
 
 func _test_volume_sliders_apply_persist_and_reload() -> void:
 	_remove_settings_file()
@@ -260,6 +304,60 @@ func _test_volume_sliders_apply_persist_and_reload() -> void:
 
 	await _cleanup_node(reloaded)
 
+func _test_display_toggles_apply_persist_and_reload() -> void:
+	_remove_settings_file()
+	DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
+	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_ENABLED)
+
+	var panel := SettingsPanelScene.instantiate()
+	panel.settings_path = TEST_SETTINGS_PATH
+	root.add_child(panel)
+	await process_frame
+
+	var fullscreen := _toggle(panel, "FullscreenToggle")
+	var vsync := _toggle(panel, "VSyncToggle")
+	_check("display persistence test has fullscreen toggle", fullscreen is CheckButton)
+	_check("display persistence test has vsync toggle", vsync is CheckButton)
+	if fullscreen == null or vsync == null:
+		await _cleanup_node(panel)
+		return
+
+	fullscreen.button_pressed = true
+	vsync.button_pressed = false
+	await process_frame
+
+	var cfg := ConfigFile.new()
+	var load_error := cfg.load(TEST_SETTINGS_PATH)
+	_check_eq("display settings ConfigFile is written", load_error, OK)
+	_check_eq("fullscreen toggle persists enabled", bool(cfg.get_value("display", DISPLAY_FULLSCREEN_KEY, false)), true)
+	_check_eq("vsync toggle persists disabled", bool(cfg.get_value("display", DISPLAY_VSYNC_KEY, true)), false)
+	if _can_assert_display_server_mode():
+		_check_eq("fullscreen toggle applies DisplayServer fullscreen", DisplayServer.window_get_mode(), DisplayServer.WINDOW_MODE_FULLSCREEN)
+		_check_eq("vsync toggle applies DisplayServer disabled", DisplayServer.window_get_vsync_mode(), DisplayServer.VSYNC_DISABLED)
+	else:
+		_check("headless DisplayServer skips fullscreen mutation assertion", true)
+		_check("headless DisplayServer skips vsync mutation assertion", true)
+
+	await _cleanup_node(panel)
+	DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
+	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_ENABLED)
+
+	var reloaded := SettingsPanelScene.instantiate()
+	reloaded.settings_path = TEST_SETTINGS_PATH
+	root.add_child(reloaded)
+	await process_frame
+
+	_check_eq("persisted fullscreen reloads into toggle", _toggle(reloaded, "FullscreenToggle").button_pressed, true)
+	_check_eq("persisted vsync reloads into toggle", _toggle(reloaded, "VSyncToggle").button_pressed, false)
+	if _can_assert_display_server_mode():
+		_check_eq("persisted fullscreen reload applies DisplayServer", DisplayServer.window_get_mode(), DisplayServer.WINDOW_MODE_FULLSCREEN)
+		_check_eq("persisted vsync reload applies DisplayServer", DisplayServer.window_get_vsync_mode(), DisplayServer.VSYNC_DISABLED)
+	else:
+		_check("headless DisplayServer skips reloaded fullscreen mutation assertion", true)
+		_check("headless DisplayServer skips reloaded vsync mutation assertion", true)
+
+	await _cleanup_node(reloaded)
+
 func _test_pause_menu_settings_button_exists_and_opens_panel() -> void:
 	var harness := await _new_pause_harness()
 	var menu := harness["menu"] as Node
@@ -284,3 +382,6 @@ func _test_pause_menu_settings_button_exists_and_opens_panel() -> void:
 
 	paused = false
 	await _cleanup_node(harness["surface"] as Node)
+
+func _can_assert_display_server_mode() -> bool:
+	return DisplayServer.get_name() != "headless"

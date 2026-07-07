@@ -105,17 +105,17 @@ func _test_archetype_stats_match_balance_bands() -> void:
 	_check("bruiser archetype exists", EnemyArchetypesScript.has_archetype("bruiser"))
 	_check("elite archetype exists", EnemyArchetypesScript.has_archetype("elite"))
 	_check_eq("chaff hp is rebased to a two-hit trash value", float(chaff["max_hp"]), 30.0)
-	_check_eq("chaff damage is chip contact pressure", int(chaff["damage"]), 1)
+	_check_eq("chaff damage is a fifth of the shield bar", int(chaff["damage"]), 20)
 	_check_almost("chaff speed salvages nibbler chase band", float(chaff["move_speed"]), 2.1)
 	_check_almost("chaff contact radius is tight trash pressure", float(chaff["contact_radius"]), 0.9)
 	_check_almost("chaff contact cadence is slower than one pip per second", float(chaff["attack_windup"]) + float(chaff["attack_recovery"]), 2.1)
 	_check_almost("chaff budget cost matches director chaff cost", float(chaff["budget_cost"]), 1.0)
 	_check_eq("bruiser hp is rebased to a seven-hit priority target", float(bruiser["max_hp"]), 140.0)
-	_check_eq("bruiser damage stays chip, not burst", int(bruiser["damage"]), 1)
+	_check_eq("bruiser damage takes a real shield bite, not burst", int(bruiser["damage"]), 30)
 	_check_almost("bruiser speed salvages slower priority-target band", float(bruiser["move_speed"]), 1.65)
 	_check_almost("bruiser budget cost matches director bruiser cost", float(bruiser["budget_cost"]), 2.4)
 	_check_eq("elite hp sits in the 3-10s punctuation band", float(elite["max_hp"]), 640.0)
-	_check_eq("elite contact damage is heavier than chip enemies", int(elite["damage"]), 2)
+	_check_eq("elite contact damage is nearly half the shield bar", int(elite["damage"]), 45)
 	_check_almost("elite is slower than bruiser", float(elite["move_speed"]), 1.25)
 	_check_almost("elite has a larger contact radius", float(elite["contact_radius"]), 1.75)
 	_check_almost("elite budget cost matches director elite cost", float(elite["budget_cost"]), 9.0)
@@ -154,8 +154,10 @@ func _test_multi_chaff_contact_respects_guard_pacing() -> void:
 	var result := _multi_contact_survival(EnemyArchetypesScript.stats_for("chaff"), [0.0, 0.35, 0.70, 1.05], 30.0)
 
 	_check("four desynced chaff create sustained contact attempts", int(result["damage_attempts"]) >= 12)
-	_check_between("four desynced chaff do not empty guard in the old 2-3s melt window", float(result["guard_empty_seconds"]), 15.0, 24.0)
-	_check_between("four desynced chaff lethal contact remains above the three-room lower pacing bound", float(result["death_seconds"]), 21.0, 30.0)
+	# Halo-CE fragile-but-recharging: standing inside four chaff strips the
+	# shield in a fight-or-disengage window and kills only if you stay in it.
+	_check_between("four desynced chaff strip the shield in the disengage window", float(result["guard_empty_seconds"]), 3.5, 8.0)
+	_check_between("four desynced chaff are lethal only to a player who keeps standing in them", float(result["death_seconds"]), 6.0, 12.0)
 
 func _test_unknown_archetype_falls_back_to_chaff() -> void:
 	var fallback := EnemyArchetypesScript.stats_for("unknown")
@@ -319,7 +321,7 @@ func _test_contact_damage_spawns_red_player_number() -> void:
 	var spawned := _new_label3d_since(before)
 	_check_eq("released contact hit spawns one player damage number", spawned.size(), 1)
 	if spawned.size() == 1:
-		_check_eq("player damage number shows the contact damage", spawned[0].text, "1")
+		_check_eq("player damage number shows the contact damage", spawned[0].text, "20")
 		_check("player damage number reads red", spawned[0].modulate.r > 0.7 and spawned[0].modulate.g < 0.5)
 		_check(
 			"player damage number floats above the player, not the enemy",
@@ -546,7 +548,7 @@ func _test_spawn_windup_blocks_movement_and_contact_until_elapsed() -> void:
 	enemy.tick_chase(Vector3(0.5, 0.0, 0.0), 0.63)
 	_check_eq("enemy still respects attack windup after spawn windup", events.size(), 0)
 	var contact_after_ready: Dictionary = enemy.tick_chase(Vector3(0.5, 0.0, 0.0), 0.03)
-	_check_eq("enemy can deal contact damage after spawn and attack windups", int(Dictionary(contact_after_ready["damage_event"]).get("damage", 0)), 1)
+	_check_eq("enemy can deal contact damage after spawn and attack windups", int(Dictionary(contact_after_ready["damage_event"]).get("damage", 0)), 20)
 	_check_eq("post-windup damage event is emitted once", events.size(), 1)
 
 	await _cleanup(enemy)
@@ -567,7 +569,7 @@ func _test_scene_stagger_ticks_down_during_spawn_windup() -> void:
 	_check_eq(
 		"stagger does not bank through spawn windup into the first live contact",
 		int(Dictionary(contact_after_spawn["damage_event"]).get("damage", 0)),
-		1
+		20
 	)
 
 	await _cleanup(enemy)
@@ -593,7 +595,7 @@ func _test_scene_chase_emits_damage_event_data_without_player_wiring() -> void:
 	if events.size() == 1:
 		_check_eq("damage event carries spawn id", String(events[0]["spawn_id"]), "w0:chaff:3")
 		_check_eq("damage event carries archetype", String(events[0]["archetype"]), "chaff")
-		_check_eq("damage event carries amount", int(events[0]["damage"]), 1)
+		_check_eq("damage event carries amount", int(events[0]["damage"]), 20)
 		_check_eq("returned event matches emitted event", Dictionary(contact["damage_event"]), events[0])
 
 	await _cleanup(enemy)

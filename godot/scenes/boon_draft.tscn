@@ -49,7 +49,7 @@ alignment = 1
 [node name="HeaderLabel" type="Label" parent="SafeArea/Content"]
 layout_mode = 2
 theme_type_variation = &"TitleLabel"
-text = "Choose a Boon"
+text = "Choose a keepsake"
 horizontal_alignment = 1
 theme_override_font_sizes/font_size = 44
 

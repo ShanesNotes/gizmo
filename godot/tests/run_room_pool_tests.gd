@@ -49,6 +49,10 @@ const EXPECTED_FIXTURE_METHODS := {
 	"reward_cache": "grant_scrap",
 }
 
+# The shop is a shop (playtest 2): a safe interior with a merchant fixture and
+# three walk-over purchase pedestals wired to the run-scrap economy.
+const EXPECTED_SHOP_OFFER_FIXTURES := ["ShopOfferGuard", "ShopOfferAmmo", "ShopOfferReroll"]
+
 var _passed := 0
 var _failed := 0
 
@@ -57,6 +61,7 @@ func _initialize() -> void:
 	_test_expected_template_set()
 	_test_templates_validate_and_match_metadata()
 	_test_combat_templates_carry_spawn_clear_dressing_variants()
+	_test_shop_interior_is_a_safe_shop()
 	print("")
 	if _failed == 0 and _passed > 0:
 		print("PASS - %d checks" % _passed)
@@ -175,6 +180,29 @@ func _assert_dressing_contract(template_id: String, root_node: Node) -> void:
 				"%s %s prop %s keeps collision for readable blocking" % [template_id, variant.name, prop.name],
 				prop.use_collision
 			)
+
+func _test_shop_interior_is_a_safe_shop() -> void:
+	var template := _load_template("%s/shop_small.tres" % TEMPLATE_DIR)
+	if template == null or template.scene == null:
+		_check("shop interior test has a loadable scene", false)
+		return
+	var instance := template.scene.instantiate()
+
+	var merchant := instance.find_child("MerchantFixture", true, false)
+	_check("shop has a MerchantFixture set-piece", merchant is Node3D)
+
+	for fixture_name in EXPECTED_SHOP_OFFER_FIXTURES:
+		var fixture := _find_area3d_named(instance, fixture_name)
+		_check("shop has walk-over offer fixture %s" % fixture_name, fixture != null)
+		if fixture == null:
+			continue
+		_check("%s has a CollisionShape3D" % fixture_name, _area_has_collision_shape(fixture))
+		_check("%s uses the purchase fixture seam" % fixture_name, fixture.has_method("purchase_offer"))
+		_check("%s carries a shop offer id" % fixture_name, String(fixture.get("shop_offer_id")) != "")
+		_check("%s shows a price tag" % fixture_name, fixture.find_child("PriceTag", true, false) is Label3D)
+
+	_check_eq("shop has no authored enemy nodes", _count_named_prefix(instance, "Enemy"), 0)
+	instance.free()
 
 func _prop_outside_keep_out(prop: CSGBox3D, root_node: Node, center: Vector2, half: Vector2) -> bool:
 	var to_room := _room_space_transform(prop, root_node)

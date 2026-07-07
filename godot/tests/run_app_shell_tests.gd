@@ -149,6 +149,9 @@ func _new_app(save_path: String, injected_audio_director: Node = null) -> Node:
 		app.queue_free()
 		return null
 	app.meta_save_path = save_path
+	# First-boot campfire opening is covered by run_opening_tests.gd; this
+	# suite pins the hub/run lifecycle, so boot straight to the hub.
+	app.opening_scene = null
 	app.run_surface_factory = Callable(self, "_make_stub_run_surface")
 	if injected_audio_director != null:
 		app.audio_director = injected_audio_director

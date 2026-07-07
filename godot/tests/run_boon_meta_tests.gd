@@ -7,6 +7,7 @@ extends SceneTree
 const AbilityComponentScript := preload("res://scripts/abilities/ability_component.gd")
 const AbilityModifierScript := preload("res://scripts/abilities/ability_modifier.gd")
 const SpecialAbilityScript := preload("res://scripts/abilities/special_ability.gd")
+const PlayerVitalsScript := preload("res://scripts/player/player_vitals.gd")
 const BoonDef := preload("res://scripts/boons/boon_def.gd")
 const BoonDraft := preload("res://scripts/boons/boon_draft.gd")
 const MetaState := preload("res://scripts/meta/meta_state.gd")
@@ -25,8 +26,17 @@ func _initialize() -> void:
 	_test_benefactor_schema_role_id_display_defaults_and_validation()
 	_test_benefactor_reassignment_refreshes_placeholder()
 	_test_default_boon_pool_is_fully_tagged_with_valid_benefactors()
+	_test_default_pool_every_entry_has_a_felt_effect()
+	_test_default_pool_carries_tradeoffs_and_synergies()
+	_test_effect_lines_surface_numbers_for_every_pool_entry()
 	_test_rarity_weighted_draft_offers_unique_between_rooms()
 	await _test_boon_modifiers_apply_to_target_ability_kit()
+	await _test_attack_rarity_ladder_shrinks_ttk()
+	await _test_tradeoff_keepsake_pays_a_real_vitals_cost()
+	await _test_synergy_modifiers_activate_only_with_partner_slot()
+	await _test_damage_keepsakes_compound_multiplicatively()
+	await _test_cast_ammo_keepsake_grants_and_reverts()
+	await _test_vitals_keepsake_reverts_on_reset()
 	_test_meta_state_round_trips_through_config_file()
 	_test_meta_state_migrates_old_schema_without_stat_grades()
 	_test_stat_grade_caps_fit_price_table()
@@ -103,6 +113,12 @@ func _test_default_boon_pool_is_fully_tagged_with_valid_benefactors() -> void:
 		&"gear_special": &"swordbearer",
 		&"spark_cast": &"marksman",
 		&"codex_passive": &"hearthguard",
+		&"flame_attack": &"swordbearer",
+		&"spring_special": &"swordbearer",
+		&"volley_cast": &"marksman",
+		&"company_passive": &"company",
+		&"maker_attack": &"swordbearer",
+		&"light_passive": &"hearthguard",
 	}
 	var expected_display: Dictionary = {
 		&"bearer": "the Bearer",
@@ -113,7 +129,7 @@ func _test_default_boon_pool_is_fully_tagged_with_valid_benefactors() -> void:
 	}
 	var seen: Dictionary = {}
 
-	_check_eq("default boon pool keeps ten boons", pool.size(), 10)
+	_check_eq("default boon pool keeps sixteen keepsakes", pool.size(), 16)
 	for boon in pool:
 		seen[boon.boon_id] = boon.benefactor
 		_check("%s has a benefactor role-id" % boon.boon_id, boon.benefactor != &"")
@@ -276,6 +292,287 @@ func _test_boon_modifiers_apply_to_target_ability_kit() -> void:
 	_check("replacement runtime modifier is duplicated, not shared authored data", kit.ability_modifiers[0] != replacement_modifier)
 	_check("replacement-modified special activates", kit.try_activate(&"special"))
 	_check_eq("replacement special potency swaps old modifier out", emitted_potencies[1], base_potency + 5.0)
+	await _cleanup(body)
+
+func _pool_boon(pool: Array[BoonDef], boon_id: StringName) -> BoonDef:
+	for boon in pool:
+		if boon.boon_id == boon_id:
+			return boon
+	return null
+
+func _default_pool_with_orchestrator() -> Array:
+	var orchestrator: RunOrchestrator = RunOrchestratorScript.new()
+	return [orchestrator, orchestrator._default_boon_pool()]
+
+func _new_vitals_kit() -> Dictionary:
+	var harness := await _new_ability_kit()
+	var body: Node = harness["body"]
+	var kit: AbilityComponent = harness["kit"]
+	var vitals: PlayerVitals = PlayerVitalsScript.new()
+	vitals.name = "PlayerVitals"
+	body.add_child(vitals)
+	kit.bind_player_vitals(vitals)
+	await process_frame
+	harness["vitals"] = vitals
+	return harness
+
+## Every draft pick must land as a real mechanical change — no flavor-only entries.
+func _test_default_pool_every_entry_has_a_felt_effect() -> void:
+	var bundle := _default_pool_with_orchestrator()
+	var orchestrator: RunOrchestrator = bundle[0]
+	var pool: Array[BoonDef] = bundle[1]
+	for boon in pool:
+		_check("%s carries at least one mechanical effect" % boon.boon_id, boon.has_effects())
+	orchestrator.free()
+
+func _test_default_pool_carries_tradeoffs_and_synergies() -> void:
+	var bundle := _default_pool_with_orchestrator()
+	var orchestrator: RunOrchestrator = bundle[0]
+	var pool: Array[BoonDef] = bundle[1]
+	var tradeoffs := 0
+	var synergies := 0
+	for boon in pool:
+		if boon.has_cost():
+			tradeoffs += 1
+		if boon.has_synergy():
+			synergies += 1
+	_check("pool holds at least two trade-off keepsakes (got %d)" % tradeoffs, tradeoffs >= 2)
+	_check("pool holds at least two synergy keepsakes (got %d)" % synergies, synergies >= 2)
+	orchestrator.free()
+
+func _test_effect_lines_surface_numbers_for_every_pool_entry() -> void:
+	var bundle := _default_pool_with_orchestrator()
+	var orchestrator: RunOrchestrator = bundle[0]
+	var pool: Array[BoonDef] = bundle[1]
+	var digit_pattern := RegEx.create_from_string("\\d")
+	for boon in pool:
+		var lines := boon.effect_lines()
+		_check("%s surfaces at least one effect line" % boon.boon_id, not lines.is_empty())
+		var has_number := false
+		for line in lines:
+			if digit_pattern.search(line) != null:
+				has_number = true
+		_check("%s effect lines carry a number" % boon.boon_id, has_number)
+		if boon.has_cost():
+			_check("%s trade-off surfaces its cost line" % boon.boon_id, not boon.cost_lines().is_empty())
+	orchestrator.free()
+
+func _attack_damage_with_boon(kit: AbilityComponent, draft: BoonDraft, boon: BoonDef) -> float:
+	if boon != null:
+		draft.accept_boon(boon, kit)
+	var damages: Array[float] = []
+	var handler := func(_step: int, damage: float) -> void:
+		damages.append(damage)
+	kit.attack_started.connect(handler)
+	kit.try_activate(&"attack")
+	kit.attack_started.disconnect(handler)
+	draft.reset_run()
+	return damages[0] if not damages.is_empty() else -1.0
+
+## Red-first probe for Shane's "number go up": the attack-slot rarity ladder must
+## shrink time-to-kill measurably at every rarity step.
+func _test_attack_rarity_ladder_shrinks_ttk() -> void:
+	var bundle := _default_pool_with_orchestrator()
+	var orchestrator: RunOrchestrator = bundle[0]
+	var pool: Array[BoonDef] = bundle[1]
+	var harness := await _new_ability_kit()
+	var body: Node = harness["body"]
+	var kit: AbilityComponent = harness["kit"]
+	var draft: BoonDraft = BoonDraft.new()
+
+	const NOMINAL_ENEMY_HP := 120.0
+	var ladder: Array[StringName] = [&"", &"spark_attack", &"ember_attack", &"flame_attack", &"maker_attack"]
+	var labels := ["baseline", "common", "rare", "epic", "legendary"]
+	var damages: Array[float] = []
+	var hits: Array[int] = []
+	for i in range(ladder.size()):
+		kit.tick(5.0)
+		var boon: BoonDef = null if ladder[i] == &"" else _pool_boon(pool, ladder[i])
+		if ladder[i] != &"":
+			_check("attack ladder finds %s in the pool" % ladder[i], boon != null)
+			if boon == null:
+				continue
+		var damage := _attack_damage_with_boon(kit, draft, boon)
+		damages.append(damage)
+		hits.append(int(ceil(NOMINAL_ENEMY_HP / maxf(damage, 0.001))))
+
+	for i in range(1, damages.size()):
+		_check(
+			"%s attack damage beats %s (%.1f > %.1f)" % [labels[i], labels[i - 1], damages[i], damages[i - 1]],
+			damages[i] > damages[i - 1]
+		)
+	_check(
+		"legendary TTK probe beats baseline hits-to-kill (%d < %d)" % [hits[hits.size() - 1], hits[0]],
+		hits[hits.size() - 1] < hits[0]
+	)
+	_check(
+		"epic TTK probe beats common hits-to-kill (%d < %d)" % [hits[3], hits[1]],
+		hits[3] < hits[1]
+	)
+	orchestrator.free()
+	await _cleanup(body)
+
+## Trade-off contract: big power must carry a real, measurable cost.
+func _test_tradeoff_keepsake_pays_a_real_vitals_cost() -> void:
+	var bundle := _default_pool_with_orchestrator()
+	var orchestrator: RunOrchestrator = bundle[0]
+	var pool: Array[BoonDef] = bundle[1]
+	var harness := await _new_vitals_kit()
+	var body: Node = harness["body"]
+	var kit: AbilityComponent = harness["kit"]
+	var vitals: PlayerVitals = harness["vitals"]
+	var draft: BoonDraft = BoonDraft.new()
+
+	var base_guard_rate := vitals.guard_recharge_rate
+	var base_max_guard := vitals.max_guard
+	var flame := _pool_boon(pool, &"flame_attack")
+	_check("trade-off probe finds flame_attack", flame != null)
+	if flame != null:
+		_check("flame_attack applies", draft.accept_boon(flame, kit))
+		_check(
+			"flame_attack slows guard recovery (%.2f < %.2f)" % [vitals.guard_recharge_rate, base_guard_rate],
+			vitals.guard_recharge_rate < base_guard_rate
+		)
+	draft.reset_run()
+	_check_eq("reset restores guard recovery rate", vitals.guard_recharge_rate, base_guard_rate)
+
+	var spring := _pool_boon(pool, &"spring_special")
+	_check("trade-off probe finds spring_special", spring != null)
+	if spring != null:
+		_check("spring_special applies", draft.accept_boon(spring, kit))
+		_check(
+			"spring_special trims max guard (%d < %d)" % [vitals.max_guard, base_max_guard],
+			vitals.max_guard < base_max_guard
+		)
+	draft.reset_run()
+	_check_eq("reset restores max guard", vitals.max_guard, base_max_guard)
+	orchestrator.free()
+	await _cleanup(body)
+
+func _cast_potency(kit: AbilityComponent) -> float:
+	var potencies: Array[float] = []
+	var handler := func(potency: float) -> void:
+		potencies.append(potency)
+	kit.cast_started.connect(handler)
+	kit.try_activate(&"cast")
+	kit.cast_started.disconnect(handler)
+	kit.tick(5.0)
+	kit.reclaim_cast_ammo(99)
+	return potencies[0] if not potencies.is_empty() else -1.0
+
+## Synergy contract: the bonus block sleeps until the partner slot is occupied.
+func _test_synergy_modifiers_activate_only_with_partner_slot() -> void:
+	var bundle := _default_pool_with_orchestrator()
+	var orchestrator: RunOrchestrator = bundle[0]
+	var pool: Array[BoonDef] = bundle[1]
+	var harness := await _new_ability_kit()
+	var body: Node = harness["body"]
+	var kit: AbilityComponent = harness["kit"]
+	var draft: BoonDraft = BoonDraft.new()
+
+	var base_cast := _cast_potency(kit)
+	var volley := _pool_boon(pool, &"volley_cast")
+	_check("synergy probe finds volley_cast", volley != null)
+	_check("volley_cast targets the attack slot for synergy", volley != null and volley.synergy_with_slot == BoonDef.Slot.ATTACK)
+
+	draft.accept_boon(volley, kit)
+	var solo_cast := _cast_potency(kit)
+	_check("volley_cast alone still buffs the cast (%.1f > %.1f)" % [solo_cast, base_cast], solo_cast > base_cast)
+
+	draft.accept_boon(_pool_boon(pool, &"spark_attack"), kit)
+	var paired_cast := _cast_potency(kit)
+	_check(
+		"attack-slot partner wakes the synergy block (%.1f > %.1f)" % [paired_cast, solo_cast],
+		paired_cast > solo_cast + 0.001
+	)
+	draft.reset_run()
+	orchestrator.free()
+	await _cleanup(body)
+
+## Multiplicative contract: damage sources stack as products, not sums.
+func _test_damage_keepsakes_compound_multiplicatively() -> void:
+	var bundle := _default_pool_with_orchestrator()
+	var orchestrator: RunOrchestrator = bundle[0]
+	var pool: Array[BoonDef] = bundle[1]
+	var harness := await _new_ability_kit()
+	var body: Node = harness["body"]
+	var kit: AbilityComponent = harness["kit"]
+	var draft: BoonDraft = BoonDraft.new()
+
+	var base_damage := _attack_damage_with_boon(kit, draft, null)
+	kit.tick(5.0)
+	draft.accept_boon(_pool_boon(pool, &"brass_dash"), kit)
+	draft.accept_boon(_pool_boon(pool, &"company_passive"), kit)
+	draft.accept_boon(_pool_boon(pool, &"spark_attack"), kit)
+	var damages: Array[float] = []
+	var handler := func(_step: int, damage: float) -> void:
+		damages.append(damage)
+	kit.attack_started.connect(handler)
+	kit.try_activate(&"attack")
+	kit.attack_started.disconnect(handler)
+	var stacked := damages[0] if not damages.is_empty() else -1.0
+	var additive_ceiling := base_damage * (1.0 + 0.10 + 0.20)
+	_check(
+		"dash+company+attack stack compounds multiplicatively (%.2f > %.2f additive ceiling would allow %.2f)"
+		% [stacked, base_damage, additive_ceiling],
+		stacked > additive_ceiling - 0.001
+	)
+	draft.reset_run()
+	orchestrator.free()
+	await _cleanup(body)
+
+func _test_cast_ammo_keepsake_grants_and_reverts() -> void:
+	var bundle := _default_pool_with_orchestrator()
+	var orchestrator: RunOrchestrator = bundle[0]
+	var pool: Array[BoonDef] = bundle[1]
+	var harness := await _new_ability_kit()
+	var body: Node = harness["body"]
+	var kit: AbilityComponent = harness["kit"]
+	var draft: BoonDraft = BoonDraft.new()
+
+	var base_max := kit.cast_max_ammo()
+	var codex := _pool_boon(pool, &"codex_cast")
+	_check("cast probe finds codex_cast", codex != null)
+	_check("codex_cast declares bonus cast ammo", codex != null and codex.bonus_cast_ammo >= 1)
+	draft.accept_boon(codex, kit)
+	_check_eq("codex_cast raises max cast ammo immediately", kit.cast_max_ammo(), base_max + codex.bonus_cast_ammo)
+	_check_eq("codex_cast grants the new shard as usable ammo", kit.cast_ammo(), base_max + codex.bonus_cast_ammo)
+	draft.reset_run()
+	_check_eq("reset returns max cast ammo to base", kit.cast_max_ammo(), base_max)
+	orchestrator.free()
+	await _cleanup(body)
+
+func _test_vitals_keepsake_reverts_on_reset() -> void:
+	var bundle := _default_pool_with_orchestrator()
+	var orchestrator: RunOrchestrator = bundle[0]
+	var pool: Array[BoonDef] = bundle[1]
+	var harness := await _new_vitals_kit()
+	var body: Node = harness["body"]
+	var kit: AbilityComponent = harness["kit"]
+	var vitals: PlayerVitals = harness["vitals"]
+	var draft: BoonDraft = BoonDraft.new()
+
+	var base_rate := vitals.guard_recharge_rate
+	var base_surge_rate := vitals.spark_damage_dealt_charge_rate
+	draft.accept_boon(_pool_boon(pool, &"codex_passive"), kit)
+	_check(
+		"codex_passive speeds guard recovery (%.2f > %.2f)" % [vitals.guard_recharge_rate, base_rate],
+		vitals.guard_recharge_rate > base_rate
+	)
+	draft.accept_boon(_pool_boon(pool, &"light_passive"), kit)
+	_check(
+		"light_passive speeds surge charging (%.2f > %.2f)" % [vitals.spark_damage_dealt_charge_rate, base_surge_rate],
+		vitals.spark_damage_dealt_charge_rate > base_surge_rate
+	)
+	_check_eq(
+		"passive slot replacement drops the earlier vitals effect",
+		vitals.guard_recharge_rate,
+		base_rate
+	)
+	draft.reset_run()
+	_check_eq("reset restores guard rate", vitals.guard_recharge_rate, base_rate)
+	_check_eq("reset restores surge charge rate", vitals.spark_damage_dealt_charge_rate, base_surge_rate)
+	orchestrator.free()
 	await _cleanup(body)
 
 func _test_meta_state_round_trips_through_config_file() -> void:

@@ -25,7 +25,11 @@ func _initialize() -> void:
 	await _test_animation_controller_builds_clip_library_on_rig()
 	await _test_animation_controller_follows_action_states()
 	await _test_weapon_mount_attaches_to_right_hand()
+	_test_player_vitals_halo_ce_defaults()
 	_test_player_vitals_guard_recharges_after_damage_delay()
+	_test_player_vitals_shield_break_grace_and_hp_blocks()
+	_test_player_vitals_hp_never_regens_while_shield_does()
+	_test_player_vitals_death_after_hull_blocks_deplete()
 	_test_player_vitals_damage_lockout_limits_burst_contact()
 	_test_player_vitals_spark_charge_bands_and_clamps()
 	_test_player_vitals_spark_charge_empties_on_death()
@@ -378,6 +382,81 @@ func _test_weapon_mount_attaches_to_right_hand() -> void:
 		_check("exactly one weapon mount is visible", not mount.visible)
 	await _cleanup(player)
 
+## Halo-CE vitals model (playtest 2 verdict): guard is a flat recharging
+## shield BAR in shield points; hp is a small stack of hull BLOCKS that tick
+## exactly one per shield-broken hit and never regenerate in-run.
+func _test_player_vitals_halo_ce_defaults() -> void:
+	var vitals: PlayerVitals = PlayerVitalsScript.new()
+	_check_eq("default hull is 3 blocks", vitals.max_hp, 3)
+	_check_eq("default shield bar is 100 points", vitals.max_guard, 100)
+	_check_almost("default shield recharge delay is 2.5s", vitals.guard_recharge_delay, 2.5)
+	_check_almost("default shield recharge rate refills in 2.5s", vitals.guard_recharge_rate, 40.0)
+	_check_almost("default damage lockout is a short mercy window", vitals.damage_lockout, 0.6)
+	vitals.free()
+
+func _test_player_vitals_shield_break_grace_and_hp_blocks() -> void:
+	var vitals: PlayerVitals = PlayerVitalsScript.new()
+	vitals.max_hp = 3
+	vitals.max_guard = 4
+	vitals.guard_recharge_delay = 99.0
+	vitals.damage_lockout = 0.5
+	vitals.reset()
+
+	var result := vitals.apply_damage(9)
+	_check_eq("overkill hit breaks the shield to zero", vitals.guard, 0)
+	_check_eq("shield-break overflow never reaches the hull (grace)", vitals.hp, 3)
+	_check_eq("break hit reports only absorbed shield", int(result["absorbed"]), 4)
+	_check_eq("break hit reports zero hull damage", int(result["hp_damage"]), 0)
+
+	vitals.tick_guard_recharge(0.51)
+	result = vitals.apply_damage(9)
+	_check_eq("shield-down heavy hit ticks exactly one hull block", vitals.hp, 2)
+	_check_eq("shield-down hit reports one block", int(result["hp_damage"]), 1)
+
+	vitals.tick_guard_recharge(0.51)
+	vitals.apply_damage(1)
+	_check_eq("shield-down light hit also ticks exactly one block", vitals.hp, 1)
+	vitals.free()
+
+func _test_player_vitals_hp_never_regens_while_shield_does() -> void:
+	var vitals: PlayerVitals = PlayerVitalsScript.new()
+	vitals.max_hp = 3
+	vitals.max_guard = 4
+	vitals.guard_recharge_delay = 1.0
+	vitals.guard_recharge_rate = 4.0
+	vitals.damage_lockout = 0.25
+	vitals.reset()
+
+	vitals.apply_damage(4)
+	vitals.tick_guard_recharge(0.26)
+	vitals.apply_damage(1)
+	_check_eq("setup: shield broken and one block lost", vitals.hp, 2)
+
+	vitals.tick_guard_recharge(3.0)
+	_check_eq("shield bar recharges back to full", vitals.guard, 4)
+	_check_eq("hull blocks never regenerate in-run", vitals.hp, 2)
+
+	vitals.refill_guard()
+	_check_eq("sanctuary refill restores shield only", vitals.guard, 4)
+	_check_eq("sanctuary refill leaves hull blocks untouched", vitals.hp, 2)
+	vitals.free()
+
+func _test_player_vitals_death_after_hull_blocks_deplete() -> void:
+	var vitals: PlayerVitals = PlayerVitalsScript.new()
+	vitals.max_hp = 3
+	vitals.max_guard = 4
+	vitals.guard_recharge_delay = 99.0
+	vitals.damage_lockout = 0.25
+	vitals.reset()
+
+	vitals.apply_damage(99)
+	for i in range(3):
+		vitals.tick_guard_recharge(0.26)
+		vitals.apply_damage(99)
+	_check_eq("three shield-down hits empty the hull", vitals.hp, 0)
+	_check_eq("hull depletion marks the player dead", vitals.is_dead(), true)
+	vitals.free()
+
 func _test_player_vitals_guard_recharges_after_damage_delay() -> void:
 	var vitals: PlayerVitals = PlayerVitalsScript.new()
 	vitals.max_hp = 3
@@ -474,9 +553,14 @@ func _test_player_vitals_spark_charge_empties_on_death() -> void:
 
 	vitals.max_hp = 3
 	vitals.max_guard = 2
+	vitals.guard_recharge_delay = 99.0
+	vitals.damage_lockout = 0.25
 	vitals.reset()
 	vitals.call("set_spark_surge_charge", 80.0)
-	vitals.apply_damage(vitals.max_hp + vitals.max_guard)
+	vitals.apply_damage(vitals.max_guard)
+	for i in range(vitals.max_hp):
+		vitals.tick_guard_recharge(0.26)
+		vitals.apply_damage(1)
 	_check_eq("lethal damage marks player dead", vitals.is_dead(), true)
 	_check_almost("Spark Surge charge empties on death", float(vitals.get("spark_surge_charge")), 0.0)
 	vitals.free()

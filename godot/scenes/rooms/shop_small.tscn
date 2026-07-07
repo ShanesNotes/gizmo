@@ -1,4 +1,6 @@
-[gd_scene load_steps=6 format=3]
+[gd_scene load_steps=14 format=3]
+
+[ext_resource type="Script" path="res://scripts/room_graph/room_fixture.gd" id="1_fixture"]
 
 [sub_resource type="Environment" id="Env_res"]
 background_mode = 1
@@ -20,12 +22,48 @@ adjustment_contrast = 1.04
 adjustment_saturation = 1.06
 
 [sub_resource type="StandardMaterial3D" id="Mat_floor"]
-albedo_color = Color(0.24, 0.24, 0.26, 1)
+albedo_color = Color(0.3, 0.27, 0.24, 1)
 roughness = 0.95
 
+[sub_resource type="StandardMaterial3D" id="Mat_rug"]
+albedo_color = Color(0.44, 0.22, 0.16, 1)
+roughness = 0.98
+
 [sub_resource type="StandardMaterial3D" id="Mat_obstacle"]
-albedo_color = Color(0.34, 0.33, 0.36, 1)
+albedo_color = Color(0.4, 0.35, 0.3, 1)
 roughness = 0.9
+
+[sub_resource type="StandardMaterial3D" id="Mat_brass"]
+albedo_color = Color(0.72, 0.52, 0.28, 1)
+emission_enabled = true
+emission = Color(0.4, 0.24, 0.08, 1)
+emission_energy_multiplier = 0.45
+roughness = 0.78
+
+[sub_resource type="StandardMaterial3D" id="Mat_counter"]
+albedo_color = Color(0.36, 0.26, 0.18, 1)
+roughness = 0.85
+
+[sub_resource type="StandardMaterial3D" id="Mat_ware_guard"]
+albedo_color = Color(0.42, 0.82, 0.72, 1)
+emission_enabled = true
+emission = Color(0.14, 0.4, 0.34, 1)
+emission_energy_multiplier = 0.9
+roughness = 0.7
+
+[sub_resource type="StandardMaterial3D" id="Mat_ware_ammo"]
+albedo_color = Color(0.35, 0.55, 0.95, 1)
+emission_enabled = true
+emission = Color(0.1, 0.2, 0.5, 1)
+emission_energy_multiplier = 0.9
+roughness = 0.7
+
+[sub_resource type="StandardMaterial3D" id="Mat_ware_reroll"]
+albedo_color = Color(0.72, 0.42, 0.9, 1)
+emission_enabled = true
+emission = Color(0.32, 0.12, 0.48, 1)
+emission_energy_multiplier = 0.9
+roughness = 0.7
 
 [sub_resource type="StandardMaterial3D" id="Mat_exit"]
 albedo_color = Color(0.66, 0.52, 0.34, 1)
@@ -36,6 +74,9 @@ roughness = 0.82
 
 [sub_resource type="BoxShape3D" id="DoorShapeNorth"]
 size = Vector3(3, 2.2, 1.2)
+
+[sub_resource type="BoxShape3D" id="OfferShape"]
+size = Vector3(2.2, 1.6, 2.2)
 
 [node name="ShopSmall" type="Node3D"]
 
@@ -49,46 +90,194 @@ light_energy = 1.28
 shadow_enabled = true
 sky_mode = 1
 
+[node name="HearthGlow" type="OmniLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.4, -9)
+light_color = Color(1, 0.72, 0.4, 1)
+light_energy = 1.6
+omni_range = 14.0
+
 [node name="Geometry" type="Node3D" parent="."]
 
 [node name="Floor" type="CSGBox3D" parent="Geometry"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.15, 0)
 use_collision = true
-size = Vector3(24, 0.3, 20)
+size = Vector3(42, 0.3, 34)
 material = SubResource("Mat_floor")
 
+[node name="MarketRug" type="CSGBox3D" parent="Geometry"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.01, -3)
+size = Vector3(14, 0.04, 12)
+material = SubResource("Mat_rug")
+
 [node name="ObstacleA" type="CSGBox3D" parent="Geometry"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.25, 0.6, -2.0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -13.5, 0.7, 6)
 use_collision = true
-size = Vector3(3.2, 1.2, 2.0)
+size = Vector3(2.6, 1.4, 2.6)
 material = SubResource("Mat_obstacle")
 
 [node name="ObstacleB" type="CSGBox3D" parent="Geometry"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.75, 0.5, 1.75)
+transform = Transform3D(0.92388, 0, 0.382683, 0, 1, 0, -0.382683, 0, 0.92388, -12.4, 0.5, 8.4)
 use_collision = true
-size = Vector3(2.1, 1.0, 3.2)
+size = Vector3(2.0, 1.0, 2.0)
 material = SubResource("Mat_obstacle")
 
 [node name="ObstacleC" type="CSGBox3D" parent="Geometry"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.35, -5.75)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 13.8, 0.7, 5.4)
 use_collision = true
-size = Vector3(5.0, 0.7, 1.2)
+size = Vector3(2.6, 1.4, 3.4)
 material = SubResource("Mat_obstacle")
 
+[node name="MerchantFixture" type="Node3D" parent="Geometry"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -9)
+
+[node name="Counter" type="CSGBox3D" parent="Geometry/MerchantFixture"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.55, 1.6)
+use_collision = true
+size = Vector3(7.0, 1.1, 1.2)
+material = SubResource("Mat_counter")
+
+[node name="MerchantBody" type="CSGCylinder3D" parent="Geometry/MerchantFixture"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.0, 0)
+use_collision = true
+radius = 0.7
+height = 2.0
+material = SubResource("Mat_brass")
+
+[node name="MerchantHead" type="CSGSphere3D" parent="Geometry/MerchantFixture"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.4, 0)
+radius = 0.5
+material = SubResource("Mat_brass")
+
+[node name="MerchantLamp" type="OmniLight3D" parent="Geometry/MerchantFixture"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.2, 0.4)
+light_color = Color(1, 0.78, 0.45, 1)
+light_energy = 1.2
+omni_range = 8.0
+
+[node name="MerchantNameplate" type="Label3D" parent="Geometry/MerchantFixture"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.4, 0)
+modulate = Color(0.96, 0.78, 0.4, 1)
+outline_modulate = Color(0.11, 0.07, 0.03, 1)
+billboard = 1
+no_depth_test = true
+text = "THE FACTOR"
+font_size = 40
+outline_size = 8
+
+[node name="ShopOfferGuard" type="Area3D" parent="Geometry" groups=["shop_offer"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 0, -4.5)
+script = ExtResource("1_fixture")
+fixture_kind = 2
+shop_offer_id = "guard_refill"
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Geometry/ShopOfferGuard"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.8, 0)
+shape = SubResource("OfferShape")
+
+[node name="Pedestal" type="CSGCylinder3D" parent="Geometry/ShopOfferGuard"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.3, 0)
+use_collision = false
+radius = 0.8
+height = 0.6
+material = SubResource("Mat_counter")
+
+[node name="Ware" type="CSGSphere3D" parent="Geometry/ShopOfferGuard"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1, 0)
+radius = 0.42
+material = SubResource("Mat_ware_guard")
+
+[node name="PriceTag" type="Label3D" parent="Geometry/ShopOfferGuard"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.1, 0)
+modulate = Color(0.42, 0.82, 0.72, 1)
+outline_modulate = Color(0.11, 0.07, 0.03, 1)
+billboard = 1
+no_depth_test = true
+text = "EMBER DRAUGHT
+GUARD REFILL - 15 SCRAP"
+font_size = 30
+outline_size = 8
+
+[node name="ShopOfferAmmo" type="Area3D" parent="Geometry" groups=["shop_offer"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -3.4)
+script = ExtResource("1_fixture")
+fixture_kind = 2
+shop_offer_id = "cast_ammo"
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Geometry/ShopOfferAmmo"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.8, 0)
+shape = SubResource("OfferShape")
+
+[node name="Pedestal" type="CSGCylinder3D" parent="Geometry/ShopOfferAmmo"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.3, 0)
+use_collision = false
+radius = 0.8
+height = 0.6
+material = SubResource("Mat_counter")
+
+[node name="Ware" type="CSGBox3D" parent="Geometry/ShopOfferAmmo"]
+transform = Transform3D(0.866025, 0, 0.5, 0, 1, 0, -0.5, 0, 0.866025, 0, 1.1, 0)
+size = Vector3(0.55, 0.9, 0.55)
+material = SubResource("Mat_ware_ammo")
+
+[node name="PriceTag" type="Label3D" parent="Geometry/ShopOfferAmmo"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.1, 0)
+modulate = Color(0.45, 0.62, 0.98, 1)
+outline_modulate = Color(0.11, 0.07, 0.03, 1)
+billboard = 1
+no_depth_test = true
+text = "CODEX SHARD CASE
+CAST AMMO +1 - 25 SCRAP"
+font_size = 30
+outline_size = 8
+
+[node name="ShopOfferReroll" type="Area3D" parent="Geometry" groups=["shop_offer"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 0, -4.5)
+script = ExtResource("1_fixture")
+fixture_kind = 2
+shop_offer_id = "draft_reroll"
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Geometry/ShopOfferReroll"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.8, 0)
+shape = SubResource("OfferShape")
+
+[node name="Pedestal" type="CSGCylinder3D" parent="Geometry/ShopOfferReroll"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.3, 0)
+use_collision = false
+radius = 0.8
+height = 0.6
+material = SubResource("Mat_counter")
+
+[node name="Ware" type="CSGTorus3D" parent="Geometry/ShopOfferReroll"]
+transform = Transform3D(1, 0, 0, 0, 0.707107, -0.707107, 0, 0.707107, 0.707107, 0, 1.1, 0)
+inner_radius = 0.22
+outer_radius = 0.45
+material = SubResource("Mat_ware_reroll")
+
+[node name="PriceTag" type="Label3D" parent="Geometry/ShopOfferReroll"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.1, 0)
+modulate = Color(0.78, 0.52, 0.95, 1)
+outline_modulate = Color(0.11, 0.07, 0.03, 1)
+billboard = 1
+no_depth_test = true
+text = "MARGIN'S FAVOR
+DRAFT REROLL - 20 SCRAP"
+font_size = 30
+outline_size = 8
+
 [node name="RoomExitPad" type="CSGBox3D" parent="Geometry"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.04, -9.0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 0.04, -16)
 size = Vector3(3.5, 0.08, 1.4)
 material = SubResource("Mat_exit")
 
 [node name="CameraAnchor" type="Marker3D" parent="."]
-metadata/camera_half_extent_x = 5.0
-metadata/camera_half_extent_z = 4.0
+metadata/camera_half_extent_x = 9.0
+metadata/camera_half_extent_z = 7.0
 
 [node name="SpawnMarker" type="Marker3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 7.2)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 13)
 
 [node name="RoomExit" type="Area3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1, -9.7)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 1.1, -16.7)
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="RoomExit"]
 shape = SubResource("DoorShapeNorth")

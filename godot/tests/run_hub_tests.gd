@@ -18,6 +18,7 @@ func _initialize() -> void:
 	await _test_run_surface_failure_label_api()
 	await _test_scrap_label_reflects_injected_meta_state()
 	await _test_run_requested_emits_once_per_door_entry()
+	await _test_mirror_panel_lists_grades_and_spends_persisted_scrap()
 	print("")
 	if _failed == 0 and _passed > 0:
 		print("PASS - %d checks" % _passed)
@@ -191,3 +192,73 @@ func _test_run_requested_emits_once_per_door_entry() -> void:
 	body.queue_free()
 	await process_frame
 	await _cleanup(hub)
+
+# HZ playtest 2: the Mirror anchor becomes the meta-upgrade surface. A brass
+# panel lists the three stat grades with their next price; walking into the
+# MirrorZone opens it, purchases spend banked scrap through MetaState and persist.
+func _test_mirror_panel_lists_grades_and_spends_persisted_scrap() -> void:
+	var save_path := "user://saves/test_mirror_meta_state.cfg"
+	var meta_state: MetaState = MetaState.new()
+	meta_state.scrap_banked = 120
+	var hub := await _instantiate_hub(meta_state)
+
+	var mirror_zone := hub.get_node_or_null("MirrorZone") as Area3D
+	_check("hub has a MirrorZone Area3D at the mirror plinth", mirror_zone != null)
+	var panel := hub.get_node_or_null("HubUi/Root/MirrorPanel") as Control
+	_check("hub has a MirrorPanel Control", panel != null)
+	if mirror_zone == null or panel == null:
+		await _cleanup(hub)
+		return
+	_check("mirror panel starts hidden", not panel.visible)
+
+	var body := hub.get_node_or_null("GizmoPlaceholder") as CharacterBody3D
+	mirror_zone.emit_signal(&"body_entered", body)
+	await process_frame
+	_check("entering the mirror zone opens the panel", panel.visible)
+
+	var rows := 0
+	for stat in ["dash_charges", "guard_max", "draft_rerolls"]:
+		var row := panel.find_child("MirrorRow_%s" % stat, true, false)
+		_check("mirror panel lists %s" % stat, row != null)
+		if row != null:
+			rows += 1
+			var row_label := row.find_child("*", true, false)
+			_check("%s row shows its next price" % stat, _row_mentions_price(row, MetaState.STAT_GRADE_PRICES[0]))
+	_check_eq("mirror panel lists all three grades", rows, 3)
+
+	_check("hub exposes purchase_mirror_grade", hub.has_method(&"purchase_mirror_grade"))
+	if hub.has_method(&"purchase_mirror_grade"):
+		hub.set("mirror_save_path", save_path)
+		_check("mirror purchase succeeds with funds", bool(hub.call(&"purchase_mirror_grade", "guard_max")))
+		_check_eq("mirror purchase spends the grade price", meta_state.scrap_banked, 120 - MetaState.STAT_GRADE_PRICES[0])
+		_check_eq("mirror purchase raises the grade", meta_state.get_stat_grade("guard_max"), 1)
+		var scrap_label := hub.get_node("HubUi/Root/ScrapLabel") as Label
+		_check_eq("scrap label refreshes after purchase", scrap_label.text, "SCRAP %d" % meta_state.scrap_banked)
+		_check("%s row shows the rank-two price after purchase" % "guard_max", _row_mentions_price(panel.find_child("MirrorRow_guard_max", true, false), MetaState.STAT_GRADE_PRICES[1]))
+
+		var persisted: MetaState = MetaState.load_from_path(save_path)
+		_check_eq("mirror purchase persists the grade", persisted.get_stat_grade("guard_max"), 1)
+		_check_eq("mirror purchase persists the spend", persisted.scrap_banked, 120 - MetaState.STAT_GRADE_PRICES[0])
+
+		meta_state.scrap_banked = 0
+		_check("broke mirror purchase is refused", not bool(hub.call(&"purchase_mirror_grade", "dash_charges")))
+		_check_eq("broke mirror purchase leaves the grade", meta_state.get_stat_grade("dash_charges"), 0)
+
+	mirror_zone.emit_signal(&"body_exited", body)
+	await process_frame
+	_check("leaving the mirror zone closes the panel", not panel.visible)
+
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(save_path))
+	await _cleanup(hub)
+
+func _row_mentions_price(row: Node, price: int) -> bool:
+	if row == null:
+		return false
+	if row is Label and String((row as Label).text).contains(str(price)):
+		return true
+	if row is Button and String((row as Button).text).contains(str(price)):
+		return true
+	for child in row.get_children():
+		if _row_mentions_price(child, price):
+			return true
+	return false

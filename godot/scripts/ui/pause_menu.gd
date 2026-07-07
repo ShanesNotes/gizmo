@@ -7,8 +7,10 @@ extends CanvasLayer
 @onready var _root: Control = %Root
 @onready var _resume_button: Button = %ResumeButton
 @onready var _settings_button: Button = %SettingsButton
+@onready var _how_to_keep_button: Button = %HowToKeepButton
 @onready var _abandon_button: Button = %AbandonButton
 @onready var _settings_panel: Node = %SettingsPanel
+@onready var _controls_card: Node = %ControlsCard
 
 var _owns_pause := false
 var _last_overlay_visible := false
@@ -18,7 +20,10 @@ func _ready() -> void:
 	_root.visible = false
 	_resume_button.pressed.connect(_on_resume_pressed)
 	_settings_button.pressed.connect(_on_settings_pressed)
+	_how_to_keep_button.pressed.connect(_on_how_to_keep_pressed)
 	_abandon_button.pressed.connect(_on_abandon_pressed)
+	if _controls_card != null and _controls_card.has_method(&"close"):
+		_controls_card.call(&"close")
 	_sync_overlay_visibility()
 
 func _process(_delta: float) -> void:
@@ -38,6 +43,16 @@ func _unhandled_input(event: InputEvent) -> void:
 	)
 	if get_tree().paused and settings_open:
 		_settings_panel.call(&"close")
+		get_viewport().set_input_as_handled()
+		return
+
+	var controls_open := (
+		_controls_card != null
+		and _controls_card.has_method(&"is_open")
+		and bool(_controls_card.call(&"is_open"))
+	)
+	if get_tree().paused and controls_open:
+		_controls_card.call(&"close")
 		get_viewport().set_input_as_handled()
 		return
 
@@ -68,6 +83,8 @@ func request_pause() -> bool:
 func resume() -> void:
 	if _settings_panel != null and _settings_panel.has_method(&"close"):
 		_settings_panel.call(&"close")
+	if _controls_card != null and _controls_card.has_method(&"close"):
+		_controls_card.call(&"close")
 	if get_tree().paused:
 		get_tree().paused = false
 	_owns_pause = false
@@ -84,6 +101,8 @@ func _sync_overlay_visibility() -> void:
 	_root.visible = should_show
 	if not should_show and _settings_panel != null and _settings_panel.has_method(&"close"):
 		_settings_panel.call(&"close")
+	if not should_show and _controls_card != null and _controls_card.has_method(&"close"):
+		_controls_card.call(&"close")
 	if should_show and not _last_overlay_visible:
 		_resume_button.grab_focus()
 	_last_overlay_visible = should_show
@@ -136,6 +155,10 @@ func _on_resume_pressed() -> void:
 func _on_settings_pressed() -> void:
 	if _settings_panel != null and _settings_panel.has_method(&"open"):
 		_settings_panel.call(&"open")
+
+func _on_how_to_keep_pressed() -> void:
+	if _controls_card != null and _controls_card.has_method(&"open"):
+		_controls_card.call(&"open")
 
 func _on_abandon_pressed() -> void:
 	var run_surface := _find_live_run_surface()

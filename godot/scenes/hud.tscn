@@ -11,6 +11,22 @@ corner_radius_top_right = 4
 corner_radius_bottom_right = 4
 corner_radius_bottom_left = 4
 
+[sub_resource type="StyleBoxFlat" id="sb_shield_fill"]
+; canon guard teal (gate G6: teal is reserved for guard/eye/beacon-spark) —
+; the Halo-CE shield bar wears it inside the brass nameplate frame.
+bg_color = Color(0.3216, 0.7098, 0.6863, 1.0)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+
+[sub_resource type="StyleBoxFlat" id="sb_shield_back"]
+bg_color = Color(0.1216, 0.149, 0.1608, 0.8)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+
 [sub_resource type="StyleBoxFlat" id="sb_spark_gem"]
 bg_color = Color(0.5412, 0.3569, 0.6902, 1.0)
 corner_radius_top_left = 3
@@ -65,31 +81,15 @@ theme_type_variation = &"CapsLabel"
 text = "GIZMO"
 theme_override_font_sizes/font_size = 20
 
-[node name="GuardPips" type="HBoxContainer" parent="Root/Nameplate/Margin/VBox"]
+[node name="ShieldBar" type="ProgressBar" parent="Root/Nameplate/Margin/VBox"]
 unique_name_in_owner = true
 visible = false
+custom_minimum_size = Vector2(180, 12)
 layout_mode = 2
-theme_override_constants/separation = 4
-
-[node name="Pip0" type="ColorRect" parent="Root/Nameplate/Margin/VBox/GuardPips"]
-custom_minimum_size = Vector2(14, 14)
-layout_mode = 2
-color = Color(0.7882, 0.5647, 0.4196, 1)
-
-[node name="Pip1" type="ColorRect" parent="Root/Nameplate/Margin/VBox/GuardPips"]
-custom_minimum_size = Vector2(14, 14)
-layout_mode = 2
-color = Color(0.7882, 0.5647, 0.4196, 1)
-
-[node name="Pip2" type="ColorRect" parent="Root/Nameplate/Margin/VBox/GuardPips"]
-custom_minimum_size = Vector2(14, 14)
-layout_mode = 2
-color = Color(0.7882, 0.5647, 0.4196, 1)
-
-[node name="Pip3" type="ColorRect" parent="Root/Nameplate/Margin/VBox/GuardPips"]
-custom_minimum_size = Vector2(14, 14)
-layout_mode = 2
-color = Color(0.7882, 0.5647, 0.4196, 1)
+theme_override_styles/background = SubResource("sb_shield_back")
+theme_override_styles/fill = SubResource("sb_shield_fill")
+value = 100.0
+show_percentage = false
 
 [node name="HpRow" type="HBoxContainer" parent="Root/Nameplate/Margin/VBox"]
 layout_mode = 2
@@ -110,7 +110,7 @@ unique_name_in_owner = true
 theme_type_variation = &"NumericLabel"
 layout_mode = 2
 size_flags_vertical = 4
-text = "7 / 7"
+text = "3 / 3"
 theme_override_font_sizes/font_size = 16
 
 [node name="SparksReadout" type="PanelContainer" parent="Root"]

@@ -13,6 +13,14 @@ Policy: ledger-before-use; stop and reassess past ~150 credits cumulative.
 
 Cumulative spend this session: **0 credits** (balance 2462 → 2462).
 
+## Enemy animation lane (2026-07-06, Fable enemy-animation principal)
+
+| # | date | action | task id | credits | balance after | notes |
+|---|------|--------|---------|---------|---------------|-------|
+| E0 | 2026-07-06 | meshy_check_balance | — | 0 | 2446 | lane start (other lanes spent 16 since row 0) |
+| E1 | 2026-07-06 | meshy_rig bruiser (test-on-one per lead directive; refine task 019f39ea-ebfd; includes walk+run) | 019f3ab6-6155-792a-afeb-93e2100079fa | 5 | 2441 | SUCCEEDED; 24-bone humanoid rig, mesh intact, walk reads at camera (proof frames in session scratchpad). ACCEPTED |
+| E2 | 2026-07-06 | meshy_rig elite (rig-honesty gate passed on bruiser; refine task 019f39eb-5b46; includes walk+run) | pending | 5 (planned) | — | elite mesh verified humanoid at camera before spend. Custom clips (attack/hit/death) will be Blender-authored on these rigs, zero credits — meshy_animate action ids are uncatalogued and no-retry-spend forbids blind 3-credit guesses |
+
 ## Outcome (2026-07-06)
 Character clip set delivered zero-credit via local Blender authoring
 (tools/animation/author_gizmo_clips.py → godot/assets/animations/gizmo_clips.glb

@@ -1,6 +1,14 @@
 # 0007 — Survival is a recoverable guard over a fixed mortal HP
 
-**Status:** accepted · 2026-06-21
+**Status:** accepted · 2026-06-21 · **amended 2026-07-07 (playtest 2)**
+
+> **Amendment (Halo-CE model, playtest 2 verdict):** the guard is now a
+> **continuous shield bar** (100 points, recharge after delay), and mortal HP
+> is **3 discrete hull blocks** that tick **exactly one per shield-broken
+> hit** — overflow from the breaking hit never reaches the hull (break
+> grace), and hull never regenerates in-run. The sanctuary language stands:
+> the REST Ember Alcove refills the **shield only**, never hull blocks.
+> Implementation: `godot/scripts/player/player_vitals.gd`.
 
 ## Decision
 Gizmo's survivability is **two layers**, in the Halo lineage:

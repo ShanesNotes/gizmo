@@ -1,0 +1,104 @@
+{
+  "_meta": {
+    "artifact": "gizmo_dressing_grammar_handoff",
+    "stamp": "derived from level canon; do not edit as source",
+    "derived_from": "canon/dressing-grammar.yaml",
+    "gates": ["L4", "L8", "L9", "L10", "L11", "L12"],
+    "validator": "validators/validate_dressing_map.py",
+    "updated": "2026-07-07",
+    "coordinate_note": "positions are normalized: nx = x/(width/2), nz = z/(depth/2), in [-1,1]; band radius r = max(|nx|,|nz|) (Chebyshev). Camera-near edge is +z (game camera_rig.gd offset (0,12,10)).",
+    "gaps": [
+      "density ranges are untested design-choices at the 3x scale; tune via game playtests, revise canon with provenance",
+      "one asset kit exists (clockwork_observatory); non-HEARTH/BRASS regions reuse its shape taxonomy under region palettes until per-region kits ship",
+      "entry-door far-arc check runs only when a room declares entry_door",
+      "band model assumes rectangular floors"
+    ]
+  },
+  "bands": {
+    "combat_core": {"r_max": 0.55},
+    "mid_band": {"r_min": 0.55, "r_max": 0.8},
+    "perimeter_band": {"r_min": 0.8, "r_max": 1.0},
+    "door_apron_radius": 0.22,
+    "camera_near_arc_nz": 0.55,
+    "perimeter_corner_nx": 0.8
+  },
+  "height_classes": ["low", "mid", "tall"],
+  "cluster_archetypes": {
+    "debris_scatter": {
+      "members": ["debris_cluster_01", "scrap_cluster_01"],
+      "height_class": "low",
+      "allowed_bands": ["mid_band", "perimeter_band"],
+      "pieces_per_cluster": [3, 7]
+    },
+    "cover_block": {
+      "members": ["scrap_cluster_01", "platform_small_01"],
+      "height_class": "mid",
+      "allowed_bands": ["combat_core", "mid_band"]
+    },
+    "vertical_punctuation": {
+      "members": ["spark_crystal_cluster_01", "gear_ring_01"],
+      "height_class": "mid",
+      "allowed_bands": ["perimeter_band"]
+    },
+    "threshold_frame": {
+      "members": ["gear_gate_01", "bridge_arch_01"],
+      "height_class": "tall",
+      "allowed_bands": ["door_apron"]
+    },
+    "landmark_anchor": {
+      "members": ["spire_01", "orrery_altar_01", "beacon_01", "sanctuary_01"],
+      "height_class": "tall",
+      "allowed_bands": ["perimeter_band"]
+    },
+    "ground_read": {
+      "members": ["island_base_01", "platform_small_01"],
+      "height_class": "low",
+      "allowed_bands": ["combat_core", "mid_band", "perimeter_band"]
+    }
+  },
+  "room_archetypes": {
+    "combat_small": {"debris_scatter": [2, 4], "cover_budget": 2, "vertical_punctuation": [1, 2], "landmark": "required"},
+    "combat_large": {"debris_scatter": [3, 6], "cover_budget": 3, "vertical_punctuation": [2, 3], "landmark": "required"},
+    "elite_arena": {"debris_scatter": [2, 4], "cover_budget": 2, "vertical_punctuation": [2, 4], "landmark": "required"},
+    "boss_arena": {"debris_scatter": [2, 4], "cover_budget": 1, "vertical_punctuation": [3, 6], "landmark": "required"},
+    "rest_alcove": {"debris_scatter": [0, 2], "cover_budget": 0, "vertical_punctuation": [0, 2], "landmark": "required", "landmark_must_be": "sanctuary_01"},
+    "reward_cache": {"debris_scatter": [1, 3], "cover_budget": 1, "vertical_punctuation": [0, 2], "landmark": "required", "landmark_should_be": "orrery_altar_01"},
+    "shop_small": {"debris_scatter": [1, 2], "cover_budget": 0, "vertical_punctuation": [0, 2], "landmark": "required", "landmark_should_be": "orrery_altar_01"}
+  },
+  "regions": {
+    "HEARTH": {"act": 1, "threat": 0, "defacement": 0, "palette": ["warm brass", "soft teal", "violet spark", "deep indigo void"], "mood": "warmth and orientation; handmade mechanisms vs first cold repeats", "landmark_pref": "spire_01"},
+    "BRASS": {"act": 1, "threat": 1, "defacement": 0, "palette": ["gold brass", "sky teal", "cream stone", "blue shadow"], "mood": "cadenced clockwork highlands; readable timing, gear silhouettes", "landmark_pref": "spire_01"},
+    "VERDANT": {"act": 1, "threat": 1, "defacement": 0, "palette": ["moss green", "teal runes", "warm bark", "violet memory motes"], "mood": "memory grove; organic motifs licensed where care/memory is present", "landmark_pref": "orrery_altar_01"},
+    "RUST": {"act": 1, "threat": 2, "defacement": 1, "palette": ["rust brown", "oil black", "dim teal", "ember flecks"], "mood": "half-buried titan yard; heavier, more material threats", "landmark_pref": "spire_01"},
+    "RUNE": {"act": 2, "threat": 2, "defacement": 1, "optional": "mystery_route", "palette": ["blue-violet stone", "pale rune light", "dark void", "small gold accents"], "mood": "sign and perception; sparse, deliberate placements", "landmark_pref": "orrery_altar_01"},
+    "OBS": {"act": 2, "threat": 2, "defacement": 1, "optional": "mystery_route", "palette": ["cyan glass", "silver brass", "indigo sky", "white star flecks"], "mood": "astral observatory; vertical glass-and-brass skyline", "landmark_pref": "spire_01"},
+    "PRISM": {"act": 2, "threat": 2, "defacement": 1, "palette": ["violet", "cyan crystal", "dark blue", "small warm gold"], "mood": "refraction; crystal punctuation carries the read", "landmark_pref": "spire_01"},
+    "ASH": {"act": 2, "threat": 3, "defacement": 2, "palette": ["ash red", "warm orange", "black iron", "violet core glow"], "mood": "ember foundry; heat without warmth beginning", "landmark_pref": "spire_01"},
+    "TEMPEST": {"act": 3, "threat": 3, "defacement": 2, "palette": ["storm blue", "electric teal", "dark violet", "brass rods"], "mood": "tested integration; storm verge, leaning verticals", "landmark_pref": "spire_01"},
+    "NULL": {"act": 3, "threat": 4, "defacement": 3, "palette": ["black violet", "cold purple", "pale ember", "desaturated brass"], "mood": "anti-sanctuary: imitates every earlier good, removes warmth", "landmark_pref": "beacon_01", "exclusive_assets": ["beacon_01"]}
+  },
+  "accent_rules": {
+    "teal_forbidden_on_dressing": true,
+    "teal_exception_assets": ["beacon_01"],
+    "accent_must_come_from_region_palette": true
+  },
+  "dressing_map_schema": {
+    "description": "the instance format a baked dressing map submits to the validator",
+    "example": {
+      "artifact": "dressing_map",
+      "rooms": [
+        {
+          "id": "room_03",
+          "room_archetype": "combat_small",
+          "region": "BRASS",
+          "doors": [{"nx": 0.0, "nz": -1.0}, {"nx": 1.0, "nz": 0.2}],
+          "entry_door": {"nx": 0.0, "nz": -1.0},
+          "spawn": {"nx": 0.0, "nz": 0.0},
+          "placements": [
+            {"cluster_archetype": "landmark_anchor", "asset": "spire_01", "nx": -0.9, "nz": 0.3, "height_class": "tall", "accent": "gold brass"}
+          ]
+        }
+      ]
+    }
+  }
+}

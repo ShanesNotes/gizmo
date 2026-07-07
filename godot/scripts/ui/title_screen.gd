@@ -6,6 +6,7 @@ const AppSceneDefault := preload("res://scenes/app.tscn")
 @export var app_scene: PackedScene = AppSceneDefault
 
 @onready var _start_button: Button = %StartButton
+@onready var _replay_opening_button: Button = %ReplayOpeningButton
 @onready var _settings_button: Button = %SettingsButton
 @onready var _quit_button: Button = %QuitButton
 @onready var _settings_panel: Node = %SettingsPanel
@@ -15,6 +16,7 @@ func _ready() -> void:
 	if director != null and director.has_method(&"play_ui_context"):
 		director.call(&"play_ui_context", &"main_menu")
 	_start_button.pressed.connect(_on_start_pressed)
+	_replay_opening_button.pressed.connect(_on_replay_opening_pressed)
 	_settings_button.pressed.connect(_on_settings_pressed)
 	_quit_button.pressed.connect(quit_game)
 	_start_button.grab_focus()
@@ -35,6 +37,10 @@ func quit_game() -> void:
 	get_tree().quit()
 
 func _on_start_pressed() -> void:
+	start_game()
+
+func _on_replay_opening_pressed() -> void:
+	OpeningSequence.replay_requested = true
 	start_game()
 
 func _on_settings_pressed() -> void:

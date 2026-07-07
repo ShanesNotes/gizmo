@@ -20,6 +20,7 @@ const RoomConnection := preload("res://scripts/room_graph/room_connection.gd")
 const EXPECTED_MAIN_SCENE := "res://scenes/title_screen.tscn"
 const EXPECTED_RUN_SCENE := "res://scenes/run.tscn"
 const SCRAP_REWARD_VALUE := 10
+const PICKUP_MAGNET_RADIUS := 2.5
 const SPAWN_SEPARATION_DISTANCE := 1.1
 const TEST_SAVE_SUBDIR := "saves"
 
@@ -431,14 +432,7 @@ func _test_boss_fight_death_tears_down_to_loss_summary() -> void:
 		await _cleanup_app(app, save_path)
 		return
 
-	var lethal_damage := int(run.player_vitals.guard) + int(run.player_vitals.hp)
-	boss.damage_event.emit({
-		"damage": lethal_damage,
-		"spawn_id": boss.spawn_id,
-		"archetype": boss.archetype,
-		"attack_id": "boss_death_probe",
-		"source_position": boss.global_position,
-	})
+	_kill_player_through_enemy(run, boss, "boss_death_probe")
 	await _flush_frames(3)
 
 	_check("boss-fight death returns content to hub", _current_hub(app) != null)
@@ -492,9 +486,24 @@ func _test_rest_reward_runtime_fixture_traversal() -> void:
 	var reward_fixture := _room_fixture_area(run, "RewardFixture")
 	_check("Scrap Cache fixture is a physical Area3D pickup", reward_fixture != null)
 	if reward_fixture != null:
+		run.player.add_to_group(&"pickup_magnet_test_player")
+		reward_fixture.set("player_group", &"pickup_magnet_test_player")
+		_check_almost("Scrap Cache magnet radius is pinned", _float_property(reward_fixture, "magnet_radius", -1.0), PICKUP_MAGNET_RADIUS)
+		var reward_fixture_parent := reward_fixture.get_parent()
+		var reward_start := reward_fixture.global_position
+		run.player.global_position = reward_start + Vector3(PICKUP_MAGNET_RADIUS - 0.25, 0.0, 0.0)
+		run.player.velocity = Vector3.ZERO
+		var reward_distance_before := reward_fixture.global_position.distance_to(run.player.global_position)
+		await _flush_physics_frames(3)
+		var reward_distance_after := reward_fixture.global_position.distance_to(run.player.global_position)
+		_check("Scrap Cache magnet lerps toward nearby player", reward_distance_after < reward_distance_before)
+		_check_eq("Scrap Cache magnet does not scale its Area3D body", reward_fixture.scale, Vector3.ONE)
+		await _walk_player_out_of_fixture(run)
+
 		var scrap_before: int = run.scrap_earned
 		await _walk_player_into_area(run, reward_fixture)
 		_check_eq("Scrap Cache grants promised Scrap exactly once", run.scrap_earned, scrap_before + SCRAP_REWARD_VALUE)
+		_check("Scrap Cache collect spawns a detached sparkle pulse", _has_collect_pulse(reward_fixture_parent))
 		if run.scrap_earned == scrap_before + SCRAP_REWARD_VALUE:
 			gate["scrap_earned"] = run.scrap_earned
 		await _walk_player_out_of_fixture(run)
@@ -510,6 +519,7 @@ func _test_rest_reward_runtime_fixture_traversal() -> void:
 	var rest_fixture := _room_fixture_area(run, "RestFixture")
 	_check("Ember Alcove fixture is a physical Area3D pickup", rest_fixture != null)
 	if rest_fixture != null:
+		_check_almost("Ember Alcove magnet radius is pinned", _float_property(rest_fixture, "magnet_radius", -1.0), PICKUP_MAGNET_RADIUS)
 		run.player_vitals.hp = 2
 		run.player_vitals.guard = 3
 		run.player_vitals.set("spark_surge_charge_max", 100.0)
@@ -525,7 +535,9 @@ func _test_rest_reward_runtime_fixture_traversal() -> void:
 		run.player_vitals.guard = 1
 		await _walk_player_out_of_fixture(run)
 		await _walk_player_into_area(run, rest_fixture)
-		_check_eq("Ember Alcove re-entry does not refill guard again", run.player_vitals.guard, 1)
+		# Shield regen may tick during the walk (Halo-CE vitals) — the pin is
+		# that the FIXTURE didn't refire to max, not that guard is frozen.
+		_check("Ember Alcove re-entry does not refill guard again", run.player_vitals.guard < run.player_vitals.max_guard)
 		_check_almost("Ember Alcove re-entry still leaves Spark Surge unchanged", float(run.player_vitals.get("spark_surge_charge")), spark_before)
 
 	await _cleanup_app(app, save_path)
@@ -549,12 +561,7 @@ func _test_death_run_returns_to_hub_with_summary_and_persisted_scrap() -> void:
 	var enemy := _first_spawned_enemy(run)
 	_check("death scenario has a real spawned enemy", enemy != null)
 	if enemy != null:
-		var lethal_damage: int = int(run.player_vitals.max_guard) + int(run.player_vitals.max_hp)
-		enemy.damage_event.emit({
-			"damage": lethal_damage,
-			"spawn_id": enemy.spawn_id,
-			"archetype": enemy.archetype,
-		})
+		_kill_player_through_enemy(run, enemy, "death_scenario_probe")
 	await _flush_frames(2)
 
 	var returned_hub := _current_hub(app)
@@ -584,6 +591,8 @@ func _new_app(save_path: String) -> Node:
 		app.queue_free()
 		return null
 	app.meta_save_path = save_path
+	# First-boot campfire opening is covered by run_opening_tests.gd.
+	app.opening_scene = null
 	root.add_child(app)
 	await _flush_frames(2)
 	return app
@@ -705,6 +714,8 @@ func _take_exit(run, connection: RoomConnection, gate: Dictionary) -> void:
 
 	if reward_type == RoomNode.RewardType.BOON:
 		if run.flow_bridge.is_draft_open() and run.boon_draft_ui.visible:
+			if not run.boon_draft_ui.is_reveal_finished():
+				await run.boon_draft_ui.reveal_finished
 			var picked: bool = run.boon_draft_ui.choose_offer(0)
 			_check("BOON draft choice succeeds through real UI", picked)
 			await process_frame
@@ -882,6 +893,11 @@ func _move_player_to_area_xz(run, area: Area3D) -> void:
 	run.player.global_position = Vector3(area.global_position.x, current_y, area.global_position.z)
 	run.player.velocity = Vector3.ZERO
 
+func _has_collect_pulse(parent: Node) -> bool:
+	if parent == null:
+		return false
+	return parent.find_child("CollectSparklePulse*", true, false) != null
+
 func _audio_requested_zone_state() -> String:
 	var director := root.get_node_or_null("AudioDirector")
 	if director == null or not director.has_method(&"describe"):
@@ -964,7 +980,7 @@ func _new_gate_state(run) -> Dictionary:
 func _assert_hud_matches_run_start(run) -> void:
 	_check("run HUD stays outside the room root", run.hud != null and run.hud.get_parent() == run)
 	_check_eq("HUD HP label reflects player vitals", _hp_label_text(run.hud), "%d / %d" % [run.player_vitals.hp, run.player_vitals.max_hp])
-	_check("HUD guard pips are visible from player vitals", _guard_pips_visible(run.hud))
+	_check("HUD shield bar is visible from player vitals", _guard_pips_visible(run.hud))
 	_check("HUD ability bar renders the kit", _ability_bar_count(run.hud) >= 4)
 	_assert_spawned_enemies_inside_current_room_bounds(run, "integration run start")
 
@@ -1025,8 +1041,29 @@ func _hp_label_text(hud: Hud) -> String:
 	return label.text if label != null else ""
 
 func _guard_pips_visible(hud: Hud) -> bool:
-	var guard_pips := hud.get_node_or_null("Root/Nameplate/Margin/VBox/GuardPips") as HBoxContainer
-	return guard_pips != null and guard_pips.visible
+	var shield_bar := hud.get_node_or_null("Root/Nameplate/Margin/VBox/ShieldBar") as ProgressBar
+	return shield_bar != null and shield_bar.visible
+
+## Halo-CE vitals: one hit can no longer chain shield into hull (break grace),
+## so a lethal probe is a hit sequence with the mercy lockout expiring between
+## hits, delivered through real enemy damage events.
+func _kill_player_through_enemy(run: Variant, enemy: GreyboxEnemy, attack_id: String) -> void:
+	var vitals: PlayerVitals = run.player_vitals
+	var payload := {
+		"damage": int(vitals.max_guard),
+		"spawn_id": enemy.spawn_id,
+		"archetype": enemy.archetype,
+		"attack_id": attack_id,
+		"source_position": enemy.global_position,
+	}
+	enemy.damage_event.emit(payload)
+	for i in range(vitals.max_hp + 1):
+		if vitals.is_dead():
+			return
+		vitals.tick_guard_recharge(vitals.damage_lockout + 0.01)
+		payload = payload.duplicate(true)
+		payload["damage"] = 1
+		enemy.damage_event.emit(payload)
 
 func _ability_bar_count(hud: Hud) -> int:
 	var ability_bar := hud.get_node_or_null("Root/AbilityBar") as HBoxContainer
@@ -1308,3 +1345,8 @@ func _object_has_property(object: Object, property_name: String) -> bool:
 		if str(property.get("name", "")) == property_name:
 			return true
 	return false
+
+func _float_property(object: Object, property_name: String, fallback: float) -> float:
+	if object == null or not _object_has_property(object, property_name):
+		return fallback
+	return float(object.get(property_name))

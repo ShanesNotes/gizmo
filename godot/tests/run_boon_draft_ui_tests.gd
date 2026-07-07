@@ -12,6 +12,9 @@ var _failed := 0
 
 func _initialize() -> void:
 	print("Running boon draft UI tests...")
+	await _test_header_copy_uses_keepsake_term()
+	await _test_cards_render_effect_and_cost_lines()
+	await _test_rarity_reveal_ceremony_and_stings()
 	await _test_present_renders_three_offer_cards()
 	await _test_present_with_two_offers_hides_third_card()
 	await _test_present_with_zero_offers_hides_all_cards()
@@ -131,11 +134,106 @@ func _audio_event_count(event: StringName) -> int:
 	var counts: Dictionary = desc.get("sfx_event_counts", {})
 	return int(counts.get(String(event), 0))
 
+func _await_reveal(ui) -> void:
+	if not ui.is_reveal_finished():
+		await ui.reveal_finished
+
+## True when the sting reached the AudioDirector: either counted (stream
+## registered by the audio lane) or observed as an unknown-event noop (hook
+## wired, asset pending — stream registration belongs to the audio lane).
+func _sting_fired(event: StringName, count_before: int) -> bool:
+	var director := root.get_node_or_null("AudioDirector")
+	if director == null or not director.has_method(&"describe"):
+		return false
+	var desc: Dictionary = director.describe()
+	var counts: Dictionary = desc.get("sfx_event_counts", {})
+	if int(counts.get(String(event), 0)) > count_before:
+		return true
+	return String(desc.get("last_noop_reason", "")) == "unknown_sfx_event"
+
+func _test_header_copy_uses_keepsake_term() -> void:
+	var ui = await _new_ui()
+	var header := ui.get_node("SafeArea/Content/HeaderLabel") as Label
+	_check("header label exists", header != null)
+	_check("header copy transposes boon to keepsake", header != null and header.text == "Choose a keepsake")
+	_check("no player-facing 'boon' in header", header == null or not header.text.to_lower().contains("boon"))
+	await _cleanup(ui)
+
+func _test_cards_render_effect_and_cost_lines() -> void:
+	var ui = await _new_ui()
+	var offers := _make_offer_set("effects")
+	var gain_mod := AbilityModifier.new()
+	gain_mod.modifier_id = &"probe_attack_damage"
+	gain_mod.target_ability_id = &"attack"
+	gain_mod.damage_multiplier = 1.2
+	offers[0].ability_modifiers.append(gain_mod)
+	offers[1].guard_recharge_rate_multiplier = 0.5
+	offers[1].max_guard_delta = 2
+
+	ui.present(offers)
+	await _await_reveal(ui)
+	await process_frame
+
+	var card_one := _card(ui, 0)
+	_check("card renders an EffectsLabel", _has_label(card_one, "EffectsLabel"))
+	if _has_label(card_one, "EffectsLabel"):
+		_check_eq(
+			"effects label carries the boon's numeric gain lines",
+			_label(card_one, "EffectsLabel").text,
+			"\n".join(offers[0].effect_lines())
+		)
+	var card_two := _card(ui, 1)
+	_check("trade-off card renders a CostLabel", _has_label(card_two, "CostLabel"))
+	if _has_label(card_two, "CostLabel"):
+		_check_eq(
+			"cost label carries the trade-off lines",
+			_label(card_two, "CostLabel").text,
+			"\n".join(offers[1].cost_lines())
+		)
+		_check("cost label text names the slower guard", _label(card_two, "CostLabel").text.contains("slower"))
+	var effectless := _card(ui, 2)
+	if _has_label(effectless, "CostLabel"):
+		_check_eq("cost label clears when the boon has no cost", _label(effectless, "CostLabel").text, "")
+	await _cleanup(ui)
+
+func _test_rarity_reveal_ceremony_and_stings() -> void:
+	var ui = await _new_ui()
+	var quiet_offers: Array[BoonDef] = []
+	quiet_offers.append(_make_boon(&"quiet_a", "Quiet A", BoonDef.Rarity.COMMON, BoonDef.Slot.ATTACK, "spark", "Quiet."))
+	quiet_offers.append(_make_boon(&"quiet_b", "Quiet B", BoonDef.Rarity.RARE, BoonDef.Slot.DASH, "spark", "Quiet."))
+	ui.present(quiet_offers)
+	_check("common/rare draft reveals instantly (no pause-beat)", ui.is_reveal_finished())
+
+	var epic_before := _audio_event_count(&"boon_epic_reveal")
+	var epic_offers: Array[BoonDef] = []
+	epic_offers.append(_make_boon(&"epic_probe", "Epic Probe", BoonDef.Rarity.EPIC, BoonDef.Slot.CAST, "spark", "A flash."))
+	ui.present(epic_offers)
+	_check("epic reveal opens with a pause-beat", not ui.is_reveal_finished())
+	_check("selection is held during the epic pause-beat", not ui.choose_offer(0))
+	_check("epic reveal fires its sting hook", _sting_fired(&"boon_epic_reveal", epic_before))
+	await _await_reveal(ui)
+	_check("epic reveal finishes and unlocks", ui.is_reveal_finished())
+	_check("selection works after the epic beat", ui.choose_offer(0))
+
+	var legendary_before := _audio_event_count(&"boon_legendary_reveal")
+	var legendary_offers: Array[BoonDef] = []
+	legendary_offers.append(_make_boon(&"legend_probe", "Legend Probe", BoonDef.Rarity.LEGENDARY, BoonDef.Slot.PASSIVE, "spark", "The Pattern notices."))
+	ui.present(legendary_offers)
+	_check("legendary reveal opens with the full ceremony beat", not ui.is_reveal_finished())
+	var shade := ui.get_node("Shade") as ColorRect
+	_check("legendary ceremony deepens the world-dim shade", shade != null and shade.color.a > 0.8)
+	_check("legendary reveal fires its sting hook", _sting_fired(&"boon_legendary_reveal", legendary_before))
+	await _await_reveal(ui)
+	_check("legendary ceremony finishes and unlocks", ui.is_reveal_finished())
+	_check("selection works after the legendary ceremony", ui.choose_offer(0))
+	await _cleanup(ui)
+
 func _test_present_renders_three_offer_cards() -> void:
 	var ui = await _new_ui()
 	var offers := _make_offer_set()
 
 	ui.present(offers)
+	await _await_reveal(ui)
 	await process_frame
 
 	_check("present makes the overlay visible", ui.visible)
@@ -225,6 +323,7 @@ func _test_button_selection_emits_nth_boon_once() -> void:
 	)
 
 	ui.present(offers)
+	await _await_reveal(ui)
 	var ui_click_before := _audio_event_count(&"ui_click")
 	var boon_pickup_before := _audio_event_count(&"boon_pickup")
 	_card(ui, 1).emit_signal("pressed")
@@ -246,6 +345,7 @@ func _test_keyboard_selection_emits_nth_boon_once() -> void:
 	)
 
 	ui.present(offers)
+	await _await_reveal(ui)
 	var key_event := InputEventKey.new()
 	key_event.pressed = true
 	key_event.keycode = KEY_3
@@ -266,7 +366,9 @@ func _test_present_twice_reuses_card_nodes() -> void:
 		original_cards.append(child)
 
 	ui.present(first_offers)
+	await _await_reveal(ui)
 	ui.present(second_offers)
+	await _await_reveal(ui)
 	await process_frame
 
 	_check_eq("present twice leaves card count unchanged", row.get_child_count(), 3)
