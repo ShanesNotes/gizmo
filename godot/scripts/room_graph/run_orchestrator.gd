@@ -10,10 +10,10 @@ const RoomDoorScript := preload("res://scripts/room_graph/room_door.gd")
 const PlayerVitalsScript := preload("res://scripts/player/player_vitals.gd")
 const CombatResolversScript := preload("res://scripts/room_graph/combat_resolvers.gd")
 const CustodianBossScript := preload("res://scripts/room_graph/custodian_boss.gd")
+const DressingLoaderScript := preload("res://scripts/room_graph/dressing_loader.gd")
 
 const SCRAP_REWARD_VALUE := 10
 const SPARKS_REWARD_VALUE := 5
-const SPAWN_GOLDEN_ANGLE := 2.399963
 const SPAWN_CANDIDATE_COUNT := 48
 const SPAWN_EDGE_CLEARANCE := 0.75
 const SPAWN_SEPARATION_DISTANCE := 1.1
@@ -422,6 +422,7 @@ func _load_current_room() -> void:
 		return
 	rooms_root.add_child(current_room_root)
 	_select_dressing_variant(current_room_root)
+	_apply_grammar_dressing(current_room_root, room)
 	_spawn_index_in_room = 0
 
 	_place_player_at_spawn(current_room_root)
@@ -453,6 +454,18 @@ func _select_dressing_variant(room_root: Node3D) -> void:
 		if parent != null:
 			parent.remove_child(discarded)
 		discarded.queue_free()
+
+## Grammar dressing (docs/reference/dressing-grammar.json): data-driven layer
+## on top of the authored geometry. Seeded from _rng.state (read, never rolled)
+## plus the room id, so the run stream stays untouched and revisits are stable.
+func _apply_grammar_dressing(room_root: Node3D, room: RoomNode) -> void:
+	if room == null or room.template == null:
+		return
+	var state_seed: int = 0
+	if _rng != null:
+		state_seed = int(_rng.state & 0x7FFFFFFF)
+	var dressing_seed := hash("%s|%d" % [room.room_id, state_seed])
+	DressingLoaderScript.apply_to_room(room_root, room.template.template_id, room.region_id, dressing_seed)
 
 func _cleanup_current_room() -> void:
 	_invalidate_pending_wave_spawns()
@@ -706,10 +719,25 @@ func _spawn_position_for(index: int, edge_clearance: float = 0.0, separation_dis
 	var best_fallback_nearest_enemy_distance := -INF
 	var best_fallback_player_distance := -INF
 
+	# Jittered area scatter (playtest 2: no more golden-angle ring clusters).
+	# Candidates sample the whole spawnable rect from a per-index seeded RNG,
+	# so packs land spread across the room, deterministically per spawn index.
+	var scatter_rng := RandomNumberGenerator.new()
+	scatter_rng.seed = hash([_current_room_anchor_key(), index])
 	for attempt in range(SPAWN_CANDIDATE_COUNT):
-		var radius := required_distance + float((index + attempt) % 3)
-		var angle := (float(index) + float(attempt)) * SPAWN_GOLDEN_ANGLE
-		var candidate := center + Vector3(cos(angle) * radius, 0.1, sin(angle) * radius)
+		var candidate := center + Vector3(0.0, 0.1, 0.0)
+		if half_extents.x > 0.0 and half_extents.y > 0.0:
+			candidate += Vector3(
+				scatter_rng.randf_range(-half_extents.x, half_extents.x),
+				0.0,
+				scatter_rng.randf_range(-half_extents.y, half_extents.y)
+			)
+		else:
+			# No containment metadata: scatter on a jittered annulus past the
+			# player-distance rule instead of a fixed golden-angle ring.
+			var radius := required_distance + scatter_rng.randf_range(0.0, 4.0)
+			var angle := scatter_rng.randf_range(0.0, TAU)
+			candidate += Vector3(cos(angle) * radius, 0.0, sin(angle) * radius)
 		candidate = _constrain_spawn_position(candidate, center, half_extents)
 		var distance := _xz_distance(candidate, player_position)
 		var nearest_enemy_distance := _nearest_spawned_enemy_distance(candidate)
@@ -740,6 +768,13 @@ func _current_room_anchor() -> Marker3D:
 	if current_room_root == null:
 		return null
 	return current_room_root.find_child("CameraAnchor", true, false) as Marker3D
+
+## Stable per-room ingredient for the scatter seed: same room + same spawn
+## index always resamples the same candidates.
+func _current_room_anchor_key() -> int:
+	if current_room_root == null or not is_instance_valid(current_room_root):
+		return 0
+	return int(current_room_root.get_instance_id() % 2147483647)
 
 func _spawn_half_extents(anchor: Marker3D, edge_clearance: float = 0.0) -> Vector2:
 	if anchor == null:
@@ -860,6 +895,7 @@ func _on_director_room_cleared() -> void:
 	_clear_spawned_enemies()
 	_set_audio_zone_state(ZONE_STATE_CLEARED)
 	_set_audio_pressure()
+	_notify_audio_sfx(&"gizmo_chirp_happy")
 	_maybe_speak_boss_warning()
 	if run_controller != null:
 		run_controller.notify_room_cleared()
@@ -1098,6 +1134,12 @@ func _speak_voice(line_id: StringName) -> void:
 		audio_director = get_node_or_null("/root/AudioDirector")
 	if audio_director != null and audio_director.has_method(&"play_voice_line"):
 		audio_director.call(&"play_voice_line", line_id)
+
+func _notify_audio_sfx(event: StringName) -> void:
+	if audio_director == null or not is_instance_valid(audio_director):
+		audio_director = get_node_or_null("/root/AudioDirector")
+	if audio_director != null and audio_director.has_method(&"notify_event"):
+		audio_director.call(&"notify_event", event)
 
 func _set_audio_zone_state(state: StringName) -> void:
 	if audio_director == null or not is_instance_valid(audio_director):

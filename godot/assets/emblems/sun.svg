@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><!-- Gizmo emblem · sun (M6 day). Harvested from Symbolic Illuminated, recoloured to /tokens. The LIVING register adds a serene face (faced=alive). derived from canon package; do not edit as source. -->
+<g fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <g transform="translate(1.1 0.9)" opacity="0.9"><circle cx="32" cy="32" r="10" fill="#e0c17a"/></g>
+  <circle cx="32" cy="32" r="10.5" stroke="#352c2b" stroke-width="1.8"/>
+  <circle cx="32" cy="32" r="7" stroke="#352c2b" stroke-width="0.7"/>
+  <g stroke="#352c2b" stroke-width="1.6"><path d="M32 17.5 V9 M32 46.5 V55 M17.5 32 H9 M46.5 32 H55"/></g>
+  <g stroke="#352c2b" stroke-width="1.1"><path d="M22 22 q-3 -1.5 -4.5 -4.5 M42 22 q3 -1.5 4.5 -4.5 M22 42 q-3 1.5 -4.5 4.5 M42 42 q3 1.5 4.5 4.5"/></g>
+  <g stroke="#c9906b" stroke-width="0.9"><path d="M27 14.5 l-1.6 -4 M37 14.5 l1.6 -4 M27 49.5 l-1.6 4 M37 49.5 l1.6 4"/><path d="M14.5 27 l-4 -1.6 M14.5 37 l-4 1.6 M49.5 27 l4 -1.6 M49.5 37 l4 1.6"/></g>
+  <path d="M28.5 28 a5 5 0 0 1 7 0 M28.5 32 a5 5 0 0 1 7 0 M28.5 36 a5 5 0 0 1 7 0" stroke="#352c2b" stroke-width="0.65"/>
+</g></svg>

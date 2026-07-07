@@ -81,6 +81,8 @@ func configure(p_archetype: String, p_spawn_id: String) -> void:
 	attack_windup = float(_current_stats["attack_windup"])
 	attack_recovery = float(_current_stats["attack_recovery"])
 	brain.configure(_current_stats)
+	# Desync orbits/pauses across a pack, deterministically per spawn.
+	brain.set_behavior_seed(hash(spawn_id))
 	velocity = Vector3.ZERO
 	_spawn_windup_remaining = maxf(spawn_windup, 0.0)
 	_dead = false
@@ -173,11 +175,10 @@ func take_damage(amount: float, charges_spark: bool = true) -> float:
 		velocity = Vector3.ZERO
 		died.emit(spawn_id)
 		_notify_audio_event(&"enemy_death")
-		CombatEffectsScript.spawn_burst_ring(
+		CombatEffectsScript.spawn_death_collapse(
 			get_parent(),
 			global_position,
-			1.1,
-			Color(1.0, 0.45, 0.2, 0.85)
+			float(_current_stats.get("visual_scale", 1.0))
 		)
 		CombatEffectsScript.shake_active_camera(self)
 	return hp

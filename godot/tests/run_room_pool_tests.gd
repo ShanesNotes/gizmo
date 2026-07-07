@@ -62,6 +62,8 @@ func _initialize() -> void:
 	_test_templates_validate_and_match_metadata()
 	_test_combat_templates_carry_spawn_clear_dressing_variants()
 	_test_shop_interior_is_a_safe_shop()
+	_test_hazard_strips_land_only_in_combat_rooms()
+	_test_rooms_share_the_cosmos_backdrop()
 	print("")
 	if _failed == 0 and _passed > 0:
 		print("PASS - %d checks" % _passed)
@@ -180,6 +182,52 @@ func _assert_dressing_contract(template_id: String, root_node: Node) -> void:
 				"%s %s prop %s keeps collision for readable blocking" % [template_id, variant.name, prop.name],
 				prop.use_collision
 			)
+
+# Backdrop (docs/hades-pivot/design/backdrop-wiring.md): every room sees the
+# gouache cosmos sky, energy <= 1.0, fog never mattes it, ambient stays fixed.
+func _test_rooms_share_the_cosmos_backdrop() -> void:
+	for path in _template_paths():
+		var template := _load_template(path)
+		if template == null or template.scene == null:
+			continue
+		var template_id := path.get_file().get_basename()
+		var instance := template.scene.instantiate()
+		var world_env := instance.find_child("WorldEnvironment", true, false) as WorldEnvironment
+		_check("%s has a WorldEnvironment" % template_id, world_env != null)
+		if world_env != null and world_env.environment != null:
+			var env := world_env.environment
+			_check_eq("%s backdrop uses BG_SKY" % template_id, env.background_mode, Environment.BG_SKY)
+			var sky_path := String(env.sky.resource_path) if env.sky != null else ""
+			_check("%s sky is the canonical cosmos" % template_id, sky_path.begins_with("res://assets/sky/gizmo_cosmos_sky"))
+			_check("%s sky energy stays under the grade (<= 1.0)" % template_id, env.background_energy_multiplier <= 1.0)
+			_check_eq("%s fog never mattes the cosmos" % template_id, env.fog_sky_affect, 0.0)
+			_check_eq("%s ambient stays fixed-color (warm-key law)" % template_id, env.ambient_light_source, 2)
+		instance.free()
+
+# World mechanic: ember hazard strips ship in combat spaces only — safe rooms
+# (rest/shop/reward) and the boss floor stay hazard-free.
+const HAZARD_ROOMS := ["combat_small", "combat_large", "elite_arena"]
+
+func _test_hazard_strips_land_only_in_combat_rooms() -> void:
+	for path in _template_paths():
+		var template := _load_template(path)
+		if template == null or template.scene == null:
+			continue
+		var template_id := path.get_file().get_basename()
+		var instance := template.scene.instantiate()
+		var strips: Array[Node] = []
+		for node in _flatten_nodes(instance):
+			if String(node.name).begins_with("HazardStrip"):
+				strips.append(node)
+		if HAZARD_ROOMS.has(template_id):
+			_check("%s carries at least one ember hazard strip" % template_id, strips.size() >= 1)
+			for strip in strips:
+				_check("%s %s is an Area3D hazard" % [template_id, strip.name], strip is Area3D and strip.has_method("apply_tick"))
+				_check("%s %s has a CollisionShape3D" % [template_id, strip.name], strip is Area3D and _area_has_collision_shape(strip))
+				_check("%s %s shows an ember bed read" % [template_id, strip.name], strip.find_child("EmberBed", true, false) != null)
+		else:
+			_check_eq("%s stays hazard-free" % template_id, strips.size(), 0)
+		instance.free()
 
 func _test_shop_interior_is_a_safe_shop() -> void:
 	var template := _load_template("%s/shop_small.tres" % TEMPLATE_DIR)

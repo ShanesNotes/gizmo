@@ -266,16 +266,16 @@ func _test_animation_controller_state_to_clip_mapping() -> void:
 		Controller.clip_for_state(PlayerActionStateMachine.ActionState.DASH, true), &"dash"
 	)
 	_check_eq(
-		"ATTACK maps to attack clip",
-		Controller.clip_for_state(PlayerActionStateMachine.ActionState.ATTACK, false), &"attack"
+		"ATTACK maps to the step-1 swing clip",
+		Controller.clip_for_state(PlayerActionStateMachine.ActionState.ATTACK, false), &"attack_1"
 	)
 	_check_eq(
-		"SPECIAL maps to attack clip",
-		Controller.clip_for_state(PlayerActionStateMachine.ActionState.SPECIAL, false), &"attack"
+		"SPECIAL maps to its own timed clip",
+		Controller.clip_for_state(PlayerActionStateMachine.ActionState.SPECIAL, false), &"special"
 	)
 	_check_eq(
-		"CAST maps to attack clip",
-		Controller.clip_for_state(PlayerActionStateMachine.ActionState.CAST, false), &"attack"
+		"CAST maps to the step-1 swing clip",
+		Controller.clip_for_state(PlayerActionStateMachine.ActionState.CAST, false), &"attack_1"
 	)
 	_check_eq(
 		"HITSTUN maps to hit_react clip",
@@ -300,11 +300,11 @@ func _test_animation_controller_builds_clip_library_on_rig() -> void:
 		await _cleanup(player)
 		return
 
-	for clip_name in [&"idle", &"run", &"dash", &"attack", &"hit_react", &"surge"]:
+	for clip_name in [&"idle", &"run", &"dash", &"attack_1", &"attack_2", &"attack_3", &"special", &"hit_react", &"surge"]:
 		_check("clip library contains %s" % clip_name, anim_player.has_animation("gizmo/%s" % clip_name))
 	var idle_clip := anim_player.get_animation("gizmo/idle")
 	var run_clip := anim_player.get_animation("gizmo/run")
-	var attack_clip := anim_player.get_animation("gizmo/attack")
+	var attack_clip := anim_player.get_animation("gizmo/attack_1")
 	var dash_clip := anim_player.get_animation("gizmo/dash")
 	if idle_clip != null and run_clip != null and attack_clip != null and dash_clip != null:
 		_check("idle clip loops", idle_clip.loop_mode == Animation.LOOP_LINEAR)
@@ -370,10 +370,9 @@ func _test_weapon_mount_attaches_to_right_hand() -> void:
 	var mount := skeleton.get_node_or_null("WeaponMount") as BoneAttachment3D
 	_check("WeaponMount BoneAttachment3D exists under the skeleton", mount != null)
 	if mount != null:
-		# The mount follows the clip source: authored gizmo_clips.glb swings the
-		# Bone_019-hand arm; the code-built fallback swings the Bone_024-hand arm.
-		var expected_bone := "Bone_019" if ResourceLoader.exists("res://assets/animations/gizmo_clips.glb", "PackedScene") else "Bone_024"
-		_check_eq("WeaponMount rides the swing-arm hand bone", mount.bone_name, expected_bone)
+		# Swing clips are code-owned since the SwingTiming sync (playtest 2), so
+		# the mount always rides the code-built swing arm's hand bone.
+		_check_eq("WeaponMount rides the swing-arm hand bone", mount.bone_name, "Bone_024")
 		_check("WeaponMount carries a weapon model", mount.get_child_count() > 0)
 	# Never two visible wrenches: the arbitration winner's mount is the only
 	# visible one (GizmoAnimator hides the fallback WeaponMount when it owns).

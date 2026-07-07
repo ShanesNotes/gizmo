@@ -17,6 +17,11 @@ func _initialize() -> void:
 	print("Running enemy tests...")
 	await _test_archetype_stats_match_balance_bands()
 	await _test_archetype_ttk_bands_use_real_melee_kit()
+	_test_chaff_strafe_orbits_with_jitter_then_lunges()
+	_test_bruiser_shoulders_forward_with_pauses()
+	_test_elite_circles_at_range_then_cuts_in()
+	_test_aggro_movement_never_stands_still()
+	_test_movement_personality_is_deterministic_per_seed()
 	await _test_contact_cadence_does_not_melt_guard()
 	await _test_multi_chaff_contact_respects_guard_pacing()
 	await _test_unknown_archetype_falls_back_to_chaff()
@@ -31,6 +36,9 @@ func _initialize() -> void:
 	await _test_scene_visual_models_follow_configured_archetype()
 	await _test_visual_motion_identity_per_archetype()
 	await _test_visual_hit_recoil_kicks_and_decays()
+	await _test_rigged_archetypes_carry_animation_controller()
+	await _test_animation_controller_tracks_windup_death_and_locomotion()
+	await _test_chaff_windup_wobble_and_death_tumble()
 	await _test_spawn_windup_blocks_movement_and_contact_until_elapsed()
 	await _test_scene_stagger_ticks_down_during_spawn_windup()
 	await _test_scene_chase_emits_damage_event_data_without_player_wiring()
@@ -159,6 +167,151 @@ func _test_multi_chaff_contact_respects_guard_pacing() -> void:
 	_check_between("four desynced chaff strip the shield in the disengage window", float(result["guard_empty_seconds"]), 3.5, 8.0)
 	_check_between("four desynced chaff are lethal only to a player who keeps standing in them", float(result["death_seconds"]), 6.0, 12.0)
 
+
+# --- movement personality (playtest 2: dynamic AI, never static) --------------
+
+## Advance a brain-driven body from `start` for `seconds`, integrating position
+## by the returned velocity. Returns per-frame samples for profile assertions.
+func _simulate_brain(stats: Dictionary, seed_value: int, start: Vector3, seconds: float, dt: float = 0.05) -> Array[Dictionary]:
+	var brain = EnemyBrainScript.new()
+	brain.configure(stats)
+	brain.set_behavior_seed(seed_value)
+	var pos := start
+	var samples: Array[Dictionary] = []
+	var elapsed := 0.0
+	while elapsed < seconds:
+		var result: Dictionary = brain.step(pos, Vector3.ZERO, dt)
+		var velocity := Vector3(result["velocity"])
+		pos += velocity * dt
+		samples.append({
+			"pos": pos,
+			"velocity": velocity,
+			"distance": float(result["distance"]),
+			"in_contact": bool(result["in_contact"]),
+			"attack_state": String(result["attack_state"]),
+			"staggered": brain.is_staggered(),
+			"damage_event": result["damage_event"],
+		})
+		elapsed += dt
+	return samples
+
+func _tangential_fraction(sample: Dictionary) -> float:
+	var velocity := Vector3(sample["velocity"])
+	if velocity.length() <= 0.001:
+		return 0.0
+	var to_player := -Vector3(sample["pos"])
+	to_player.y = 0.0
+	if to_player.length() <= 0.001:
+		return 0.0
+	var cross_y := absf(to_player.normalized().cross(velocity.normalized()).y)
+	return cross_y
+
+func _test_chaff_strafe_orbits_with_jitter_then_lunges() -> void:
+	var stats := EnemyArchetypesScript.stats_for("chaff")
+	var samples := _simulate_brain(stats, 7, Vector3(3.0, 0.0, 0.0), 6.0)
+
+	var early_tangential := 0
+	var early_frames := 0
+	for i in range(mini(16, samples.size())):
+		early_frames += 1
+		if _tangential_fraction(samples[i]) > 0.5:
+			early_tangential += 1
+	_check("chaff opens by strafe-orbiting (mostly tangential velocity)", early_tangential >= early_frames / 2)
+
+	var reached_contact := false
+	var lunge_speed := 0.0
+	var move_speed := float(stats["move_speed"])
+	for sample in samples:
+		lunge_speed = maxf(lunge_speed, Vector3(sample["velocity"]).length())
+		if bool(sample["in_contact"]):
+			reached_contact = true
+			break
+	_check("chaff commits into contact within six seconds", reached_contact)
+	_check("chaff commit is a darting lunge faster than base speed", lunge_speed > move_speed * 1.4)
+
+func _test_bruiser_shoulders_forward_with_pauses() -> void:
+	var stats := EnemyArchetypesScript.stats_for("bruiser")
+	var samples := _simulate_brain(stats, 11, Vector3(7.0, 0.0, 0.0), 3.5)
+	var move_speed := float(stats["move_speed"])
+	var full := 0
+	var slow := 0
+	var statue := 0
+	var counted := 0
+	for sample in samples:
+		if bool(sample["in_contact"]) or String(sample["attack_state"]) != EnemyBrainScript.ATTACK_READY:
+			continue
+		counted += 1
+		var speed := Vector3(sample["velocity"]).length()
+		if speed >= move_speed * 0.9:
+			full += 1
+		elif speed <= move_speed * 0.6:
+			slow += 1
+		if speed < move_speed * 0.1:
+			statue += 1
+	_check("bruiser has real shouldering-forward phases", full >= counted / 4)
+	_check("bruiser has real hesitation pauses", slow >= counted / 10)
+	_check("bruiser pauses drift, never statue-still", statue == 0)
+
+func _test_elite_circles_at_range_then_cuts_in() -> void:
+	var stats := EnemyArchetypesScript.stats_for("elite")
+	var samples := _simulate_brain(stats, 3, Vector3(5.0, 0.0, 0.0), 12.0)
+
+	var early_tangential := 0
+	var early_close := 0
+	for i in range(mini(24, samples.size())):
+		if _tangential_fraction(samples[i]) > 0.5:
+			early_tangential += 1
+		if float(samples[i]["distance"]) < 3.0:
+			early_close += 1
+	_check("elite opens by circling at range", early_tangential >= 12)
+	_check("elite holds its ring before the cut-in", early_close == 0)
+
+	var reached_contact := false
+	for sample in samples:
+		if bool(sample["in_contact"]):
+			reached_contact = true
+			break
+	_check("elite cuts in to contact within twelve seconds", reached_contact)
+
+func _test_aggro_movement_never_stands_still() -> void:
+	for archetype in ["chaff", "bruiser", "elite"]:
+		var stats := EnemyArchetypesScript.stats_for(archetype)
+		var samples := _simulate_brain(stats, 5, Vector3(4.5, 0.0, 0.0), 5.0)
+		var move_speed := float(stats["move_speed"])
+		var contact_radius := float(stats["contact_radius"])
+		var still := 0
+		var counted := 0
+		for sample in samples:
+			if bool(sample["in_contact"]) or bool(sample["staggered"]):
+				continue
+			if String(sample["attack_state"]) != EnemyBrainScript.ATTACK_READY:
+				continue
+			# The arrival frame legitimately clamps speed to stop exactly at
+			# the contact radius — that is closing in, not standing around.
+			if float(sample["distance"]) <= contact_radius + move_speed * 0.05:
+				continue
+			counted += 1
+			if Vector3(sample["velocity"]).length() < move_speed * 0.1:
+				still += 1
+		_check("%s never stands still in aggro" % archetype, counted > 0 and still == 0)
+
+func _test_movement_personality_is_deterministic_per_seed() -> void:
+	var stats := EnemyArchetypesScript.stats_for("chaff")
+	var a := _simulate_brain(stats, 9, Vector3(3.0, 0.0, 0.0), 2.0)
+	var b := _simulate_brain(stats, 9, Vector3(3.0, 0.0, 0.0), 2.0)
+	var c := _simulate_brain(stats, 10, Vector3(3.0, 0.0, 0.0), 2.0)
+	var same := true
+	for i in range(a.size()):
+		if not Vector3(a[i]["pos"]).is_equal_approx(Vector3(b[i]["pos"])):
+			same = false
+			break
+	_check("same behavior seed replays the same movement", same)
+	var diverged := false
+	for i in range(c.size()):
+		if not Vector3(a[i]["pos"]).is_equal_approx(Vector3(c[i]["pos"])):
+			diverged = true
+			break
+	_check("different behavior seeds diverge", diverged)
 func _test_unknown_archetype_falls_back_to_chaff() -> void:
 	var fallback := EnemyArchetypesScript.stats_for("unknown")
 
@@ -368,10 +521,12 @@ func _test_scene_instantiates_headless() -> void:
 	await _cleanup(enemy)
 
 func _test_scene_visual_models_follow_configured_archetype() -> void:
+	# Bruiser/elite scales rebased from the HZ-091 table when the rigged GLBs
+	# landed (feet-at-origin, 2.4m/3.2m native): silhouette heights unchanged.
 	var cases := [
 		{"archetype": "chaff", "node": "ChaffDroneModel", "scale": 0.9},
-		{"archetype": "bruiser", "node": "BruiserUnitModel", "scale": 1.35},
-		{"archetype": "elite", "node": "EliteEnforcerModel", "scale": 1.75},
+		{"archetype": "bruiser", "node": "BruiserUnitModel", "scale": 1.125},
+		{"archetype": "elite", "node": "EliteEnforcerModel", "scale": 1.09},
 	]
 	for visual_case in cases:
 		var fixture: Dictionary = await _new_configured_enemy(
@@ -598,6 +753,115 @@ func _test_scene_chase_emits_damage_event_data_without_player_wiring() -> void:
 		_check_eq("damage event carries amount", int(events[0]["damage"]), 20)
 		_check_eq("returned event matches emitted event", Dictionary(contact["damage_event"]), events[0])
 
+	await _cleanup(enemy)
+
+func _test_rigged_archetypes_carry_animation_controller() -> void:
+	# Bruiser/elite load rigged GLBs; EnemyVisual attaches the two-tier
+	# EnemyAnimationController, which starts them in idle with the clip
+	# contract (idle/walk/attack/hit/death) resolvable.
+	for archetype in ["bruiser", "elite"]:
+		var fixture: Dictionary = await _new_configured_enemy(archetype, "anim:%s" % archetype)
+		var enemy = fixture["enemy"]
+		var controller = enemy.get_node_or_null("VisualPivot/EnemyAnimationController")
+		_check("%s gets an EnemyAnimationController" % archetype, controller != null)
+		if controller != null:
+			var player := controller.get("animation_player") as AnimationPlayer
+			_check("%s controller found the GLB AnimationPlayer" % archetype, player != null)
+			if player != null:
+				for clip_name in ["idle", "walk", "attack", "hit", "death"]:
+					_check(
+						"%s clip contract resolves '%s'" % [archetype, clip_name],
+						String(controller.call("_library_key", StringName(clip_name))) != ""
+					)
+				_check("%s starts in idle" % archetype, player.assigned_animation.ends_with("idle"))
+		await _cleanup(enemy)
+
+	# Chaff stays unrigged and procedural: no controller.
+	var chaff_fixture: Dictionary = await _new_configured_enemy("chaff", "anim:chaff")
+	var chaff = chaff_fixture["enemy"]
+	_check(
+		"chaff stays procedural (no animation controller)",
+		chaff.get_node_or_null("VisualPivot/EnemyAnimationController") == null
+	)
+	await _cleanup(chaff)
+
+func _test_animation_controller_tracks_windup_death_and_locomotion() -> void:
+	# Clip choice mirrors gameplay state (read-only): brain windup -> attack,
+	# death -> death (held), movement -> walk for bruiser but the poised idle
+	# glide stance for elite (its locomotion identity stays procedural).
+	var fixture: Dictionary = await _new_configured_enemy("bruiser", "anim:windup")
+	var enemy = fixture["enemy"]
+	var controller = enemy.get_node_or_null("VisualPivot/EnemyAnimationController")
+	_check("windup fixture has controller", controller != null)
+	if controller == null:
+		await _cleanup(enemy)
+		return
+	var player := controller.get("animation_player") as AnimationPlayer
+
+	enemy.velocity = Vector3(0.0, 0.0, enemy.move_speed)
+	controller.call("update_animation", 0.05)
+	_check("bruiser walks while moving", player.assigned_animation.ends_with("walk"))
+	_check("bruiser walk speed-scales to velocity", player.speed_scale > 0.5)
+	enemy.velocity = Vector3.ZERO
+
+	# Real windup: a contact-range brain step arms the attack.
+	enemy.brain.step(Vector3.ZERO, Vector3.ZERO, 0.016)
+	_check_eq("brain is winding up", enemy.brain.attack_state(), "windup")
+	controller.call("update_animation", 0.05)
+	_check("windup drives the attack clip", player.assigned_animation.ends_with("attack"))
+
+	enemy.take_damage(999999.0)
+	controller.call("update_animation", 0.05)
+	_check("death drives the death clip", player.assigned_animation.ends_with("death"))
+	await _cleanup(enemy)
+
+	var elite_fixture: Dictionary = await _new_configured_enemy("elite", "anim:glide")
+	var elite = elite_fixture["enemy"]
+	var elite_controller = elite.get_node_or_null("VisualPivot/EnemyAnimationController")
+	_check("elite fixture has controller", elite_controller != null)
+	if elite_controller != null:
+		var elite_player := elite_controller.get("animation_player") as AnimationPlayer
+		elite.velocity = Vector3(0.0, 0.0, elite.move_speed)
+		elite_controller.call("update_animation", 0.05)
+		_check(
+			"elite keeps the poised idle stance while gliding",
+			elite_player.assigned_animation.ends_with("idle")
+		)
+	await _cleanup(elite)
+
+func _test_chaff_windup_wobble_and_death_tumble() -> void:
+	# Chaff telegraph: an aggression shiver (roll wobble) while the brain
+	# winds up. Chaff death: the hover fails — it tumbles and sinks.
+	var fixture: Dictionary = await _new_configured_enemy("chaff", "anim:wobble")
+	var enemy = fixture["enemy"]
+	var visual := enemy.get_node_or_null("VisualPivot") as Node3D
+	var model := enemy.get_node_or_null("VisualPivot/ChaffDroneModel") as Node3D
+	_check("wobble fixture has model + motion API", model != null and visual.has_method("update_motion"))
+	if model == null or not visual.has_method("update_motion"):
+		await _cleanup(enemy)
+		return
+
+	var calm_roll := 0.0
+	for i in range(12):
+		visual.call("update_motion", 0.05)
+		calm_roll = maxf(calm_roll, absf(model.rotation.z))
+	_check_almost("chaff carries no roll wobble while calm", calm_roll, 0.0, 0.01)
+
+	enemy.brain.step(Vector3.ZERO, Vector3.ZERO, 0.016)
+	_check_eq("chaff brain is winding up", enemy.brain.attack_state(), "windup")
+	var windup_roll := 0.0
+	for i in range(24):
+		visual.call("update_motion", 0.05)
+		windup_roll = maxf(windup_roll, absf(model.rotation.z))
+	_check("chaff shivers with aggression during windup", windup_roll > 0.03)
+
+	var base_y: float = visual.get("_model_base_position").y
+	enemy.take_damage(999999.0)
+	var pitch_before: float = model.rotation.x
+	for i in range(10):
+		visual.call("update_motion", 0.05)
+	_check("dead chaff tumbles", model.rotation.x - pitch_before > 0.5)
+	_check("dead chaff sinks out of its hover", model.position.y < base_y - 0.2)
 	await _cleanup(enemy)
 
 func _test_physics_process_is_inert_after_exit() -> void:

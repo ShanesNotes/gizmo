@@ -123,16 +123,22 @@ func _unhandled_input(event: InputEvent) -> void:
 	if _finished:
 		return
 	if event.is_action_pressed(&"ui_cancel"):
-		skip()
-		get_viewport().set_input_as_handled()
+		_skip_and_consume_input()
 		return
 	if not _controls_shown:
 		return
 	var pressed: bool = (event is InputEventKey and event.pressed and not event.echo) \
 			or (event is InputEventMouseButton and event.pressed)
 	if pressed:
-		skip()
-		get_viewport().set_input_as_handled()
+		_skip_and_consume_input()
+
+## finished can tear this node out of the tree mid-event (AppShell swaps
+## content), after which get_viewport() is null — capture it first.
+func _skip_and_consume_input() -> void:
+	var viewport := get_viewport()
+	skip()
+	if viewport != null:
+		viewport.set_input_as_handled()
 
 func skip() -> void:
 	_finish()

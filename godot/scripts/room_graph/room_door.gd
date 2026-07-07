@@ -275,6 +275,34 @@ func _snuff_beckon_glow() -> void:
 	if _beckon_glow != null and is_instance_valid(_beckon_glow):
 		_beckon_glow.light_energy = 0.0
 
+## Canon emblem language (design-system EMBLEMS.md): rewards with a canonical
+## sign use it; salvage/spark/ingenuity keep primitive-mesh glyphs until the
+## emblem library grows those motifs. thorn stays reserved for elite room marks.
+const REWARD_EMBLEM_PATHS := {
+	RoomNode.RewardType.BOON: "res://assets/emblems/moon.svg",
+	RoomNode.RewardType.REWARD: "res://assets/emblems/sun.svg",
+	RoomNode.RewardType.HEAL: "res://assets/emblems/thread.svg",
+	RoomNode.RewardType.REST: "res://assets/emblems/lamp.svg",
+	RoomNode.RewardType.SHOP: "res://assets/emblems/seal-cracked.svg",
+}
+const EMBLEM_WORLD_HEIGHT := 1.7
+
+func _emblem_sprite_for(next_reward_type: RoomNode.RewardType) -> Sprite3D:
+	var path := String(REWARD_EMBLEM_PATHS.get(next_reward_type, ""))
+	if path == "" or not ResourceLoader.exists(path, "Texture2D"):
+		return null
+	var texture := load(path) as Texture2D
+	if texture == null:
+		return null
+	var sprite := Sprite3D.new()
+	sprite.name = "Emblem"
+	sprite.texture = texture
+	sprite.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	sprite.shaded = false
+	sprite.no_depth_test = true
+	sprite.pixel_size = EMBLEM_WORLD_HEIGHT / maxf(float(texture.get_height()), 1.0)
+	return sprite
+
 func _glyph_material(next_reward_type: RoomNode.RewardType) -> StandardMaterial3D:
 	var material := StandardMaterial3D.new()
 	var color := _reward_telegraph_color(next_reward_type)
@@ -294,6 +322,10 @@ func _add_glyph_mesh(glyph: Node3D, part_name: String, mesh: Mesh, material: Mat
 	glyph.add_child(instance)
 
 func _build_glyph_meshes(glyph: Node3D, next_reward_type: RoomNode.RewardType) -> void:
+	var emblem := _emblem_sprite_for(next_reward_type)
+	if emblem != null:
+		glyph.add_child(emblem)
+		return
 	var material := _glyph_material(next_reward_type)
 	match next_reward_type:
 		RoomNode.RewardType.BOON:

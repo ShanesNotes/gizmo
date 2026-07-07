@@ -1,0 +1,10 @@
+{
+  "notice": "derived from asset pipeline canon; do not edit as source",
+  "asset_id": "spark_crystal_cluster_01",
+  "asset_class": "world_kit",
+  "meshy_task_id": "019f3ac1-3278-7aa7-bf25-f86df6000296",
+  "clean_glb_sha256": "cd096faac9b6c9a7c6ac56c0632a7d056079b49dc18a316b6d2f5178779c6c12",
+  "triangles": 14469,
+  "cleanup_report": "gizmo-asset-pipeline/generated/spark_crystal_cluster_01/cleanup.json",
+  "run": "2026-07-06-world-beauty"
+}

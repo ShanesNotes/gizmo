@@ -5,11 +5,26 @@ extends RefCounted
 ## no gameplay state is read or written, every spawned node frees itself,
 ## and everything is safe headless (plain scene-tree tweens).
 
+## FX identity hue (docs/hades-pivot/design/hades-visual-workflow.md §1/§4):
+## every player-threat/impact effect wears the ONE ember-amber identity hue,
+## in every room, always. Layer recipe: crushed dark core + amber body + a
+## saturated rim accent + a single near-white flash on the contact beat.
+const FX_IDENTITY := Color(1.0, 0.62, 0.18, 1.0)
+const FX_IDENTITY_RIM := Color(1.0, 0.82, 0.45, 1.0)
+const FX_CONTACT_FLASH := Color(1.0, 0.95, 0.85, 1.0)
+const FX_CORE_DARK := Color(0.16, 0.09, 0.03, 1.0)
+
 const HIT_FLASH_UP := 0.08
 const HIT_FLASH_DOWN := 0.12
 const DEATH_POP_SECONDS := 0.22
-const BURST_RING_SECONDS := 0.4
-const SWING_WEDGE_SECONDS := 0.18
+const SWING_TRAIL_SEGMENTS := 9
+const SWING_TRAIL_HEIGHT := 1.15
+const SWING_TRAIL_FADE := 0.14
+const DEATH_IMPLOSION_SECONDS := 0.14
+const DEATH_SPARK_COUNT := 8
+const DEATH_SPARK_SECONDS := 0.35
+const SURGE_WAVE_SECONDS := 0.35
+const SURGE_AFTERGLOW_SECONDS := 0.6
 const STAGGER_TILT_RADIANS := 0.38
 const DAMAGE_NUMBER_SECONDS := 0.6
 const DAMAGE_NUMBER_RISE := 0.9
@@ -123,58 +138,233 @@ static func death_pop(body: Node3D) -> void:
 		if is_instance_valid(body):
 			body.queue_free())
 
-static func spawn_burst_ring(parent: Node, origin: Vector3, radius: float, color: Color = Color(1.0, 0.72, 0.3, 0.9)) -> void:
-	if parent == null or not parent.is_inside_tree():
-		return
-	var ring := MeshInstance3D.new()
-	var torus := TorusMesh.new()
-	torus.inner_radius = 0.34
-	torus.outer_radius = 0.5
-	ring.mesh = torus
+## Unshaded identity-hue material helper (FX layer recipe base coat).
+static func _fx_material(color: Color, energy: float = 1.4) -> StandardMaterial3D:
 	var material := StandardMaterial3D.new()
 	material.albedo_color = color
 	material.emission_enabled = true
-	material.emission = color
-	material.emission_energy_multiplier = 1.4
+	material.emission = Color(color.r, color.g, color.b, 1.0)
+	material.emission_energy_multiplier = energy
 	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	ring.material_override = material
-	parent.add_child(ring)
-	ring.global_position = Vector3(origin.x, maxf(origin.y, 0.1), origin.z)
-	ring.scale = Vector3(0.2, 0.35, 0.2)
-	var target := maxf(radius, 0.5) / 0.5
-	var tween := ring.create_tween()
-	tween.set_parallel(true)
-	tween.tween_property(ring, "scale", Vector3(target, 0.5, target), BURST_RING_SECONDS) \
-		.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-	tween.tween_property(material, "albedo_color:a", 0.0, BURST_RING_SECONDS)
-	tween.chain().tween_callback(ring.queue_free)
+	material.cull_mode = BaseMaterial3D.CULL_DISABLED
+	material.no_depth_test = false
+	return material
 
-static func spawn_swing_wedge(parent: Node, origin: Vector3, forward: Vector3, range_units: float, color: Color = Color(1.0, 0.9, 0.6, 0.7)) -> void:
+## Melee swing read: a thin arc TRAIL of blade segments at weapon height that
+## sweeps with the actual swing (not a floor decal). Segments light up in
+## sweep order across `sweep_seconds` (the clip's windup->contact window) —
+## the sweep head runs a step ahead in near-white so the contact beat pops.
+static func spawn_swing_trail(
+	parent: Node,
+	origin: Vector3,
+	forward: Vector3,
+	range_units: float,
+	arc_degrees: float,
+	sweep_seconds: float,
+	sweep_sign: float = 1.0
+) -> void:
 	if parent == null or not parent.is_inside_tree():
 		return
-	var wedge := MeshInstance3D.new()
-	var mesh := PrismMesh.new()
-	mesh.size = Vector3(maxf(range_units, 0.5) * 1.1, 0.04, maxf(range_units, 0.5))
-	wedge.mesh = mesh
-	var material := StandardMaterial3D.new()
-	material.albedo_color = color
-	material.emission_enabled = true
-	material.emission = color
-	material.emission_energy_multiplier = 1.1
-	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	wedge.material_override = material
-	parent.add_child(wedge)
 	var flat := Vector3(forward.x, 0.0, forward.z)
 	if flat.length_squared() <= 0.000001:
 		flat = Vector3(0.0, 0.0, -1.0)
 	flat = flat.normalized()
-	wedge.global_position = Vector3(origin.x, 0.12, origin.z) + flat * (maxf(range_units, 0.5) * 0.5)
-	wedge.rotation.y = atan2(flat.x, flat.z)
-	var tween := wedge.create_tween()
-	tween.tween_property(material, "albedo_color:a", 0.0, SWING_WEDGE_SECONDS)
-	tween.tween_callback(wedge.queue_free)
+	var base_yaw := atan2(flat.x, flat.z)
+	var half_arc := deg_to_rad(clampf(arc_degrees, 10.0, 360.0) * 0.5)
+	var radius := maxf(range_units, 0.5) * 0.8
+	var seg_length := (2.0 * half_arc * radius) / float(SWING_TRAIL_SEGMENTS) * 1.15
+	var sweep := maxf(sweep_seconds, 0.04)
+	var direction := 1.0 if sweep_sign >= 0.0 else -1.0
+
+	for i in range(SWING_TRAIL_SEGMENTS):
+		var progress := float(i) / float(SWING_TRAIL_SEGMENTS - 1)
+		var angle := base_yaw + direction * lerpf(half_arc, -half_arc, progress)
+		var blade := MeshInstance3D.new()
+		var mesh := BoxMesh.new()
+		mesh.size = Vector3(seg_length, 0.55, 0.05)
+		blade.mesh = mesh
+		var is_head := i == SWING_TRAIL_SEGMENTS - 1
+		var color := FX_CONTACT_FLASH if is_head else FX_IDENTITY
+		var material := _fx_material(Color(color.r, color.g, color.b, 0.0), 1.9 if is_head else 1.4)
+		blade.material_override = material
+		parent.add_child(blade)
+		blade.global_position = Vector3(origin.x, SWING_TRAIL_HEIGHT, origin.z) \
+			+ Vector3(sin(angle), 0.0, cos(angle)) * radius
+		blade.rotation.y = angle + PI * 0.5
+		var delay := sweep * progress
+		var tween := blade.create_tween()
+		tween.tween_interval(delay)
+		tween.tween_property(material, "albedo_color:a", 0.95, 0.02)
+		tween.tween_property(material, "albedo_color:a", 0.0, SWING_TRAIL_FADE) \
+			.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		tween.tween_callback(blade.queue_free)
+
+## Enemy death: two timed layers — a collapse implosion (ring and dark core
+## crushing inward) then a spark burst on the beat where it lands.
+static func spawn_death_collapse(parent: Node, origin: Vector3, scale: float = 1.0) -> void:
+	if parent == null or not parent.is_inside_tree():
+		return
+	var size := maxf(scale, 0.4)
+	var center := Vector3(origin.x, maxf(origin.y, 0.2) + 0.6, origin.z)
+
+	# Layer 1 — implosion: identity ring + crushed-dark core collapse inward.
+	var ring := MeshInstance3D.new()
+	var torus := TorusMesh.new()
+	torus.inner_radius = 0.7
+	torus.outer_radius = 0.85
+	ring.mesh = torus
+	var ring_material := _fx_material(FX_IDENTITY, 1.6)
+	ring.material_override = ring_material
+	parent.add_child(ring)
+	ring.global_position = center
+	ring.scale = Vector3.ONE * (1.3 * size)
+	var ring_tween := ring.create_tween()
+	ring_tween.set_parallel(true)
+	ring_tween.tween_property(ring, "scale", Vector3.ONE * 0.08, DEATH_IMPLOSION_SECONDS) \
+		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	ring_tween.tween_property(ring_material, "albedo_color:a", 0.2, DEATH_IMPLOSION_SECONDS)
+	ring_tween.chain().tween_callback(ring.queue_free)
+
+	var core := MeshInstance3D.new()
+	var core_mesh := SphereMesh.new()
+	core_mesh.radius = 0.45
+	core_mesh.height = 0.9
+	core.mesh = core_mesh
+	var core_material := _fx_material(FX_CORE_DARK, 0.2)
+	core.material_override = core_material
+	parent.add_child(core)
+	core.global_position = center
+	core.scale = Vector3.ONE * size
+	var core_tween := core.create_tween()
+	core_tween.tween_property(core, "scale", Vector3.ONE * 0.05, DEATH_IMPLOSION_SECONDS) \
+		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	core_tween.tween_callback(core.queue_free)
+
+	# Layer 2 — on the implosion beat: near-white flash + amber spark burst.
+	var flash := MeshInstance3D.new()
+	var flash_mesh := SphereMesh.new()
+	flash_mesh.radius = 0.3
+	flash_mesh.height = 0.6
+	flash.mesh = flash_mesh
+	var flash_material := _fx_material(Color(FX_CONTACT_FLASH.r, FX_CONTACT_FLASH.g, FX_CONTACT_FLASH.b, 0.0), 2.2)
+	flash.material_override = flash_material
+	parent.add_child(flash)
+	flash.global_position = center
+	var flash_tween := flash.create_tween()
+	flash_tween.tween_interval(DEATH_IMPLOSION_SECONDS)
+	flash_tween.tween_property(flash_material, "albedo_color:a", 0.95, 0.02)
+	flash_tween.set_parallel(true)
+	flash_tween.tween_property(flash, "scale", Vector3.ONE * (2.2 * size), 0.12) \
+		.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	flash_tween.tween_property(flash_material, "albedo_color:a", 0.0, 0.12)
+	flash_tween.chain().tween_callback(flash.queue_free)
+
+	for i in range(DEATH_SPARK_COUNT):
+		var spark := MeshInstance3D.new()
+		var spark_mesh := BoxMesh.new()
+		spark_mesh.size = Vector3(0.22, 0.05, 0.05)
+		spark.mesh = spark_mesh
+		var spark_material := _fx_material(Color(FX_IDENTITY_RIM.r, FX_IDENTITY_RIM.g, FX_IDENTITY_RIM.b, 0.0), 1.8)
+		spark.material_override = spark_material
+		parent.add_child(spark)
+		spark.global_position = center
+		var spark_angle := TAU * float(i) / float(DEATH_SPARK_COUNT) + 0.4
+		var out := Vector3(cos(spark_angle), 0.0, sin(spark_angle))
+		spark.rotation.y = atan2(out.x, out.z) + PI * 0.5
+		var spark_tween := spark.create_tween()
+		spark_tween.tween_interval(DEATH_IMPLOSION_SECONDS)
+		spark_tween.tween_property(spark_material, "albedo_color:a", 0.95, 0.02)
+		spark_tween.set_parallel(true)
+		spark_tween.tween_property(
+			spark, "global_position",
+			center + out * (1.5 * size) + Vector3(0.0, 0.5 - 0.9 * float(i % 2), 0.0),
+			DEATH_SPARK_SECONDS
+		).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		spark_tween.tween_property(spark_material, "albedo_color:a", 0.0, DEATH_SPARK_SECONDS) \
+			.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		spark_tween.chain().tween_callback(spark.queue_free)
+
+## Spark Surge: a ground shockwave — displacement ring (squashing torus) with
+## a saturated rim runner, a near-white burst flash, and a lingering amber
+## afterglow disc where the wave passed.
+static func spawn_surge_shockwave(parent: Node, origin: Vector3, radius: float) -> void:
+	if parent == null or not parent.is_inside_tree():
+		return
+	var target := maxf(radius, 1.0)
+	var base := Vector3(origin.x, maxf(origin.y, 0.1), origin.z)
+
+	# Displacement ring: thick amber torus that expands while flattening out.
+	var wave := MeshInstance3D.new()
+	var wave_mesh := TorusMesh.new()
+	wave_mesh.inner_radius = 0.62
+	wave_mesh.outer_radius = 1.0
+	wave.mesh = wave_mesh
+	var wave_material := _fx_material(FX_IDENTITY, 1.5)
+	wave.material_override = wave_material
+	parent.add_child(wave)
+	wave.global_position = base
+	wave.scale = Vector3(0.3, 0.6, 0.3)
+	var wave_tween := wave.create_tween()
+	wave_tween.set_parallel(true)
+	wave_tween.tween_property(wave, "scale", Vector3(target, 0.22, target), SURGE_WAVE_SECONDS) \
+		.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	wave_tween.tween_property(wave_material, "albedo_color:a", 0.0, SURGE_WAVE_SECONDS)
+	wave_tween.chain().tween_callback(wave.queue_free)
+
+	# Rim runner: a thinner, brighter ring a beat ahead of the wave body.
+	var rim := MeshInstance3D.new()
+	var rim_mesh := TorusMesh.new()
+	rim_mesh.inner_radius = 0.9
+	rim_mesh.outer_radius = 1.0
+	rim.mesh = rim_mesh
+	var rim_material := _fx_material(FX_IDENTITY_RIM, 2.0)
+	rim.material_override = rim_material
+	parent.add_child(rim)
+	rim.global_position = base
+	rim.scale = Vector3(0.35, 0.5, 0.35)
+	var rim_tween := rim.create_tween()
+	rim_tween.set_parallel(true)
+	rim_tween.tween_property(rim, "scale", Vector3(target * 1.12, 0.16, target * 1.12), SURGE_WAVE_SECONDS * 0.85) \
+		.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	rim_tween.tween_property(rim_material, "albedo_color:a", 0.0, SURGE_WAVE_SECONDS * 0.85)
+	rim_tween.chain().tween_callback(rim.queue_free)
+
+	# Contact-beat flash at the epicenter.
+	var flash := MeshInstance3D.new()
+	var flash_mesh := SphereMesh.new()
+	flash_mesh.radius = 0.5
+	flash_mesh.height = 1.0
+	flash.mesh = flash_mesh
+	var flash_material := _fx_material(FX_CONTACT_FLASH, 2.2)
+	flash.material_override = flash_material
+	parent.add_child(flash)
+	flash.global_position = base + Vector3(0.0, 0.5, 0.0)
+	var flash_tween := flash.create_tween()
+	flash_tween.set_parallel(true)
+	flash_tween.tween_property(flash, "scale", Vector3.ONE * 2.4, 0.1) \
+		.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	flash_tween.tween_property(flash_material, "albedo_color:a", 0.0, 0.14)
+	flash_tween.chain().tween_callback(flash.queue_free)
+
+	# Afterglow: a low flat amber disc that lingers where the wave passed.
+	var glow := MeshInstance3D.new()
+	var glow_mesh := CylinderMesh.new()
+	glow_mesh.top_radius = 1.0
+	glow_mesh.bottom_radius = 1.0
+	glow_mesh.height = 0.02
+	glow.mesh = glow_mesh
+	var glow_material := _fx_material(Color(FX_IDENTITY.r, FX_IDENTITY.g, FX_IDENTITY.b, 0.3), 0.8)
+	glow.material_override = glow_material
+	parent.add_child(glow)
+	glow.global_position = Vector3(base.x, 0.04, base.z)
+	glow.scale = Vector3(0.3, 1.0, 0.3)
+	var glow_tween := glow.create_tween()
+	glow_tween.tween_property(glow, "scale", Vector3(target * 0.85, 1.0, target * 0.85), SURGE_WAVE_SECONDS) \
+		.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	glow_tween.tween_property(glow_material, "albedo_color:a", 0.0, SURGE_AFTERGLOW_SECONDS) \
+		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	glow_tween.tween_callback(glow.queue_free)
 
 static func apply_stagger_read(body: Node3D, visual_root: Node3D, duration: float) -> void:
 	if visual_root == null or not visual_root.is_inside_tree():

@@ -32,6 +32,7 @@ func _initialize() -> void:
 	_test_clip_library_loop_modes()
 	_test_vitals_damage_taken_seam()
 	await _test_runtime_wiring_smoke()
+	await _test_timed_swing_clips_grafted()
 	print("")
 	if _failed == 0 and _passed > 0:
 		print("PASS — %d checks" % _passed)
@@ -166,6 +167,75 @@ func _test_runtime_wiring_smoke() -> void:
 	animator.play_death()
 	await process_frame
 	_check(animator.is_death_playing(), "death takes over playback")
+
+	player.queue_free()
+	await process_frame
+
+# --- animation-led swings (playtest 2) ----------------------------------------
+# The animator grafts code-built swing clips whose strike poses sit on
+# SwingTiming's contact seconds, and the 3-step combo has three DISTINCT
+# swing silhouettes routed per combo step.
+
+func _chest_rotation_at(animation: Animation, time: float) -> Quaternion:
+	for track in animation.get_track_count():
+		if animation.track_get_type(track) != Animation.TYPE_ROTATION_3D:
+			continue
+		if String(animation.track_get_path(track)).ends_with("Bone_002"):
+			return animation.rotation_track_interpolate(track, time)
+	return Quaternion.IDENTITY
+
+func _test_timed_swing_clips_grafted() -> void:
+	var player := CharacterBody3D.new()
+	player.name = "GizmoPlayer"
+	var pivot := Node3D.new()
+	pivot.name = "VisualPivot"
+	player.add_child(pivot)
+	var model: Node3D = GizmoGlb.instantiate()
+	model.name = "Model"
+	pivot.add_child(model)
+	var animator: Node = GizmoAnimatorScript.new()
+	animator.name = "GizmoAnimator"
+	player.add_child(animator)
+	root.add_child(player)
+	await process_frame
+
+	var clip_player := animator.get_node_or_null("ClipPlayer") as AnimationPlayer
+	_check(clip_player != null, "animator exposes its ClipPlayer")
+	if clip_player == null:
+		player.queue_free()
+		return
+
+	for step in [1, 2, 3]:
+		var clip_name: StringName = SwingTiming.melee_clip_name(step)
+		_check(clip_player.has_animation(clip_name), "library grafts %s" % clip_name)
+		if clip_player.has_animation(clip_name):
+			var clip := clip_player.get_animation(clip_name)
+			_check(is_equal_approx(clip.length, SwingTiming.melee_clip_length(step)),
+				"%s length matches SwingTiming" % clip_name)
+			_check(SwingTiming.melee_contact_delay(step) < clip.length,
+				"%s contact frame sits inside the clip" % clip_name)
+	_check(clip_player.has_animation(&"special"), "library grafts the timed special clip")
+	if clip_player.has_animation(&"special"):
+		_check(is_equal_approx(clip_player.get_animation(&"special").length, SwingTiming.special_clip_length()),
+			"special length matches SwingTiming")
+
+	# Three distinct silhouettes: chest pose at contact differs between steps.
+	if clip_player.has_animation(&"attack_1") and clip_player.has_animation(&"attack_2") and clip_player.has_animation(&"attack_3"):
+		var pose_1 := _chest_rotation_at(clip_player.get_animation(&"attack_1"), SwingTiming.melee_contact_delay(1))
+		var pose_2 := _chest_rotation_at(clip_player.get_animation(&"attack_2"), SwingTiming.melee_contact_delay(2))
+		var pose_3 := _chest_rotation_at(clip_player.get_animation(&"attack_3"), SwingTiming.melee_contact_delay(3))
+		_check(pose_1.angle_to(pose_2) > 0.2, "step 1 and step 2 swings read as different poses")
+		_check(pose_1.angle_to(pose_3) > 0.2, "step 1 and step 3 swings read as different poses")
+		_check(pose_2.angle_to(pose_3) > 0.2, "step 2 and step 3 swings read as different poses")
+
+	# Per-step routing: firing step 2 points the attack one-shot at attack_2.
+	var tree: AnimationTree = animator.animation_tree
+	if tree != null:
+		animator._set_attack_variant(2)
+		var blend := tree.tree_root as AnimationNodeBlendTree
+		var clip_node := blend.get_node(&"attack_clip") as AnimationNodeAnimation
+		_check(clip_node != null and clip_node.animation == &"attack_2",
+			"combo step 2 routes the attack one-shot to attack_2")
 
 	player.queue_free()
 	await process_frame

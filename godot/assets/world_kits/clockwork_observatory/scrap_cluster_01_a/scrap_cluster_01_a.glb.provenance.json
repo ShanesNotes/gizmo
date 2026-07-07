@@ -1,0 +1,10 @@
+{
+  "notice": "derived from asset pipeline canon; do not edit as source",
+  "asset_id": "scrap_cluster_01_a",
+  "asset_class": "world_kit",
+  "meshy_task_id": "019f3b0b-b4a9-7788-8e51-31d08e1a73f9",
+  "clean_glb_sha256": "a935d1236d5fedda6752428232dfd1dd26dcdef0e4af6afdbc3b6bf7ebd79fdc",
+  "triangles": 13092,
+  "cleanup_report": "gizmo-asset-pipeline/generated/scrap_cluster_01_a/cleanup.json",
+  "run": "2026-07-06-world-beauty"
+}

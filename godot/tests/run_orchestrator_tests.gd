@@ -7,6 +7,7 @@ extends SceneTree
 const RunScene := preload("res://scenes/run.tscn")
 const RoomNode := preload("res://scripts/room_graph/room_node.gd")
 const RoomTemplate := preload("res://scripts/room_graph/room_template.gd")
+const SwingTiming := preload("res://scripts/room_graph/swing_timing.gd")
 const RoomConnection := preload("res://scripts/room_graph/room_connection.gd")
 const RoomDoorScript := preload("res://scripts/room_graph/room_door.gd")
 const AttackAbilityScript := preload("res://scripts/abilities/attack_ability.gd")
@@ -19,7 +20,6 @@ const BossArenaScene := preload("res://scenes/rooms/boss_arena.tscn")
 const SURVIVAL_DT := 0.05
 const SURVIVAL_RETREAT_SPEED := 4.0
 const SURVIVAL_PLAYER_DPS_SCALE := 1.0
-const SPAWN_GOLDEN_ANGLE := 2.399963
 const SPAWN_CANDIDATE_COUNT := 48
 const SPAWN_SEPARATION_DISTANCE := 1.1
 const PICKUP_MAGNET_RADIUS := 2.5
@@ -96,6 +96,7 @@ func _run_tests() -> void:
 	await _test_real_room_load_spawns_enemies_inside_camera_bounds_after_physics()
 	await _test_exact_overlapping_enemies_reproduce_depenetration_blowout()
 	await _test_spawn_positions_respect_current_player_distance()
+	await _test_spawn_positions_scatter_across_room_area()
 	await _test_spawn_positions_ignore_player_elevation()
 	await _test_spawn_position_small_room_uses_farthest_valid_fallback()
 	await _test_spawn_position_crowded_small_room_uses_max_separation_fallback()
@@ -113,6 +114,7 @@ func _run_tests() -> void:
 	await _test_dash_audio_hook_follows_ability_signal()
 	await _test_real_attack_damages_front_enemy_only_and_charges_spark()
 	await _test_special_resolver_heavy_wide_arc_skips_windup_and_charges_spark()
+	await _test_swing_damage_lands_on_animation_contact_frame()
 	await _test_cast_resolver_hits_first_target_consumes_ammo_and_charges_spark()
 	await _test_cast_shards_reclaim_on_victim_death_and_walkover_pickup()
 	await _test_cast_kills_clear_director_ledger_exactly_once()
@@ -126,6 +128,7 @@ func _run_tests() -> void:
 	await _test_rest_room_does_not_refill_spark_surge_charge()
 	await _test_shop_room_clears_without_director_and_spawns_no_combat()
 	await _test_hazard_strips_damage_player_and_enemies()
+	await _test_grammar_dressing_dresses_rooms_deterministically()
 	await _test_shop_purchases_spend_run_scrap_one_shot()
 	await _test_fixture_grants_are_one_shot_and_rest_guard_only()
 	await _test_player_death_disconnects_director_and_ignores_posthumous_enemy_deaths()
@@ -340,6 +343,63 @@ func _test_real_room_load_spawns_enemies_inside_camera_bounds_after_physics() ->
 	_assert_spawned_enemies_inside_current_room_bounds(run, "scene-tree room load after 60 physics frames")
 	await _cleanup_run(run)
 
+## Playtest 2: the golden-angle ring clamped every candidate onto the room
+## boundary, reading as enemies stacked in corner clusters. Scatter spawns
+## across the room's spawnable AREA: interior coverage on both axes.
+func _test_spawn_positions_scatter_across_room_area() -> void:
+	var run = await _new_run()
+	run.start_run("hearth", _empty_template_pool(), 2, _seeded_rng(5))
+	await process_frame
+
+	var anchor := run.current_room_root.find_child("CameraAnchor", true, false) as Marker3D
+	_check("scatter test has a room CameraAnchor", anchor != null)
+	if anchor == null:
+		await _cleanup_run(run)
+		return
+	var half_x := float(anchor.get_meta("camera_half_extent_x", 0.0))
+	var half_z := float(anchor.get_meta("camera_half_extent_z", 0.0))
+	_check("scatter test room has positive spawn extents", half_x > 0.0 and half_z > 0.0)
+	if half_x <= 0.0 or half_z <= 0.0:
+		await _cleanup_run(run)
+		return
+
+	run.player.global_position = anchor.global_position + Vector3(0.0, 0.0, 7.2)
+	var interior := 0
+	var west := 0
+	var east := 0
+	var positions: Array[Vector3] = []
+	for index in range(12):
+		var spawn_position: Vector3 = run._spawn_position_for(index, 0.75, 1.1)
+		positions.append(spawn_position)
+		var local := spawn_position - anchor.global_position
+		var boundary_margin := minf(half_x - 0.75 - absf(local.x), half_z - 0.75 - absf(local.z))
+		if boundary_margin > 1.0:
+			interior += 1
+		if local.x < -0.5:
+			west += 1
+		elif local.x > 0.5:
+			east += 1
+	_check("scattered spawns use the room interior, not the clamped edge ring (%d/12 interior)" % interior, interior >= 4)
+	_check("scattered spawns cover both sides of the room", west >= 2 and east >= 2)
+
+	# A golden-angle ring keeps every spawn at ~min_spawn_distance from the
+	# room center; area scatter also finds legal ground far beyond the ring
+	# and (behind the player-distance rule) well inside it.
+	var min_center_distance := INF
+	var max_center_distance := 0.0
+	for spawn_position in positions:
+		var center_distance := Vector2(spawn_position.x - anchor.global_position.x, spawn_position.z - anchor.global_position.z).length()
+		min_center_distance = minf(min_center_distance, center_distance)
+		max_center_distance = maxf(max_center_distance, center_distance)
+	_check(
+		"spawns spread across radii, not a ring band (%.1f..%.1f from center)" % [min_center_distance, max_center_distance],
+		max_center_distance - min_center_distance > 5.0
+	)
+
+	var repeat: Vector3 = run._spawn_position_for(3, 0.75, 1.1)
+	_check("scatter candidates are deterministic per spawn index", repeat.distance_to(positions[3]) < 0.001)
+	await _cleanup_run(run)
+
 func _test_exact_overlapping_enemies_reproduce_depenetration_blowout() -> void:
 	var run = await _new_run()
 	run.start_run("hearth", _empty_template_pool(), 2, _seeded_rng(5))
@@ -355,6 +415,15 @@ func _test_exact_overlapping_enemies_reproduce_depenetration_blowout() -> void:
 		await _cleanup_run(run)
 		return
 	_check("overlap probe starts with identical enemy coordinates", first.global_position.distance_to(second.global_position) < 0.001)
+
+	# The blowout mechanism needs two bodies pushing into the same spot with
+	# identical straight-chase velocities. Movement-personality AI desyncs
+	# overlapped enemies (orbit jitter, per-spawn seeds), so the probes are
+	# pinned to the same seed and the straight-advance style to keep this
+	# regression trap honest to the original mechanism.
+	for probe in [first, second]:
+		probe.brain.movement_style = EnemyBrain.STYLE_JUGGERNAUT
+		probe.brain.set_behavior_seed(1)
 
 	await _step_physics_frames(STEPPED_CONTAINMENT_FRAMES)
 
@@ -445,7 +514,10 @@ func _test_spawn_position_small_room_uses_farthest_valid_fallback() -> void:
 	_check("small-room fallback stays within authored Z extent", absf(local.z) <= 2.001)
 	_check("small-room fallback is deterministic for the same index", first.distance_to(second) < 0.001)
 	_check("small-room fallback is below the normal min distance because no point can satisfy it", distance < 8.0)
-	_check("small-room fallback chooses the farthest valid point", absf(distance - sqrt(8.0)) < 0.01)
+	var farthest := 0.0
+	for candidate in _scatter_candidates(run, 1, 0.0):
+		farthest = maxf(farthest, _xz_distance(candidate, run.player.global_position))
+	_check("small-room fallback chooses the farthest sampled valid point", absf(distance - farthest) < 0.01)
 
 	await _cleanup_run(run)
 
@@ -850,6 +922,7 @@ func _test_boss_is_damageable_by_all_player_resolvers() -> void:
 	_ready_enemy_for_player_attack(run, boss, _player_forward(run) * 1.1)
 	var before_attack := boss.hp
 	_check("melee activates against boss", kit.try_activate(&"attack"))
+	run.combat_resolvers.tick_pending_swings(SwingTiming.melee_contact_delay(1) + 0.01)
 	await process_frame
 	_check("melee resolver damages boss through spawned_enemies snapshot", boss.hp < before_attack)
 	kit.tick(1.0)
@@ -858,6 +931,7 @@ func _test_boss_is_damageable_by_all_player_resolvers() -> void:
 	_ready_enemy_for_player_attack(run, boss, _player_forward(run) * 2.2)
 	var before_special := boss.hp
 	_check("special activates against boss", kit.try_activate(&"special"))
+	run.combat_resolvers.tick_pending_swings(SwingTiming.special_contact_delay() + 0.01)
 	await process_frame
 	_check("special resolver damages boss through spawned_enemies snapshot", boss.hp < before_special)
 	kit.tick(2.0)
@@ -988,6 +1062,7 @@ func _test_real_attack_damages_front_enemy_only_and_charges_spark() -> void:
 	var melee_hit_before := _audio_event_count(&"melee_hit")
 
 	_check("real attack activates through the AbilityComponent", kit.try_activate(&"attack"))
+	run.combat_resolvers.tick_pending_swings(SwingTiming.melee_contact_delay(1) + 0.01)
 	await process_frame
 
 	_check_almost("front enemy takes the attack step damage", front_before - front_enemy.hp, expected_damage)
@@ -1048,6 +1123,7 @@ func _test_special_resolver_heavy_wide_arc_skips_windup_and_charges_spark() -> v
 	var melee_hit_before := _audio_event_count(&"melee_hit")
 
 	_check("special activates through the AbilityComponent", kit.try_activate(&"special"))
+	run.combat_resolvers.tick_pending_swings(SwingTiming.special_contact_delay() + 0.01)
 	await process_frame
 
 	_check_almost("special hits the wider 160-degree arc at longer-than-melee range", wide_before - wide_arc_enemy.hp, special.potency)
@@ -1055,6 +1131,64 @@ func _test_special_resolver_heavy_wide_arc_skips_windup_and_charges_spark() -> v
 	_check_almost("special does not hit behind the player", rear_before - rear_enemy.hp, 0.0)
 	_check_almost("special dealt damage charges Spark Surge", float(run.player_vitals.get("spark_surge_charge")), special.potency)
 	_check_eq("special hit notifies melee_hit once", _audio_event_count(&"melee_hit"), melee_hit_before + 1)
+	await _cleanup_run(run)
+
+## Animation-led melee (playtest 2): swing damage lands on the clip's contact
+## frame, not on input. The resolver holds a pending swing for the SwingTiming
+## contact delay; a dash-cancel before contact drops the hit (Hades rule).
+func _test_swing_damage_lands_on_animation_contact_frame() -> void:
+	var run = await _new_run()
+	run.start_run("hearth", _empty_template_pool(), 2, _seeded_rng(5))
+	await process_frame
+
+	var kit: AbilityComponent = run._player_ability_kit()
+	var enemies := _live_spawned_enemies(run)
+	_check("contact-frame test has an AbilityComponent", kit != null)
+	_check("contact-frame test has an enemy", enemies.size() >= 1)
+	if kit == null or enemies.is_empty():
+		await _cleanup_run(run)
+		return
+
+	var target := enemies[0]
+	_ready_enemy_for_player_attack(run, target, _player_forward(run) * 1.2)
+	target.max_hp = 500.0
+	target.hp = 500.0
+	var resolver: CombatResolvers = run.combat_resolvers
+	var contact_delay := SwingTiming.melee_contact_delay(1)
+	_check("melee step 1 has a real windup before contact", contact_delay > 0.05)
+
+	var before := target.hp
+	_check("contact-frame attack activates", kit.try_activate(&"attack"))
+	_check_almost("no damage lands on the input frame", before - target.hp, 0.0)
+	resolver.tick_pending_swings(contact_delay - 0.02)
+	_check_almost("no damage lands mid-windup", before - target.hp, 0.0)
+	resolver.tick_pending_swings(0.03)
+	_check("damage lands on the contact frame", target.hp < before)
+	kit.tick(1.0)
+
+	var special := kit.get_ability(&"special") as SpecialAbility
+	if special != null:
+		special.cost = 0.0
+		special.cooldown = 0.0
+		special.cast_time = 0.0
+		special.recovery_time = 0.05
+	_ready_enemy_for_player_attack(run, target, _player_forward(run) * 1.2)
+	var special_delay := SwingTiming.special_contact_delay()
+	_check("special contact delay is wider than melee step 1", special_delay > contact_delay)
+	before = target.hp
+	_check("contact-frame special activates", kit.try_activate(&"special"))
+	_check_almost("special lands nothing on the input frame", before - target.hp, 0.0)
+	resolver.tick_pending_swings(special_delay + 0.01)
+	_check("special damage lands on its contact frame", target.hp < before)
+	kit.tick(2.0)
+
+	_ready_enemy_for_player_attack(run, target, _player_forward(run) * 1.2)
+	before = target.hp
+	_check("cancel-test attack activates", kit.try_activate(&"attack"))
+	_check("dash cancels the attack windup", kit.try_activate(&"dash"))
+	resolver.tick_pending_swings(1.0)
+	_check_almost("dash-cancelled swing never lands damage", before - target.hp, 0.0)
+
 	await _cleanup_run(run)
 
 func _test_cast_resolver_hits_first_target_consumes_ammo_and_charges_spark() -> void:
@@ -1357,6 +1491,7 @@ func _test_real_combat_fills_gauge_and_spends_on_surge() -> void:
 	run.player_vitals.call("set_spark_surge_charge", 0.0)
 
 	_check("attack activates to fill the gauge through combat", kit.try_activate(&"attack"))
+	run.combat_resolvers.tick_pending_swings(SwingTiming.melee_contact_delay(1) + 0.01)
 	await process_frame
 	_check_almost("real attack fills the Spark Surge gauge", float(run.player_vitals.get("spark_surge_charge")), 10.0)
 	kit.tick(1.0)
@@ -1422,6 +1557,71 @@ func _test_rest_room_does_not_refill_spark_surge_charge() -> void:
 	await process_frame
 
 	_check_almost("REST room auto-clear does not refill Spark Surge charge", float(run.player_vitals.get("spark_surge_charge")), 37.0)
+	await _cleanup_run(run)
+
+## Dressing grammar (docs/reference/dressing-grammar.json): rooms are dressed
+## data-driven — a required landmark, vertical punctuation, and debris scatter
+## placed per band rules, deterministic per seed, clear of door aprons, with
+## greybox placeholders standing in until world-kit assets land.
+func _test_grammar_dressing_dresses_rooms_deterministically() -> void:
+	var loader = load("res://scripts/room_graph/dressing_loader.gd")
+	_check("dressing_loader.gd exists", loader != null)
+	if loader == null:
+		return
+
+	var grammar: Dictionary = loader.load_grammar()
+	_check("dressing grammar JSON loads from res://", not grammar.is_empty())
+	if grammar.is_empty():
+		return
+
+	var run = await _new_run()
+	run.start_run("hearth", _empty_template_pool(), 2, _seeded_rng(7))
+	await process_frame
+
+	var dressing := run.current_room_root.find_child("GrammarDressing", true, false) as Node3D
+	_check("loaded room carries a GrammarDressing layer", dressing != null)
+	if dressing == null:
+		await _cleanup_run(run)
+		return
+
+	var archetype := String(run.run_controller.graph.get_room(run.run_controller.current_room_id).template.template_id)
+	var spec: Dictionary = grammar.get("room_archetypes", {}).get(archetype, {})
+	var landmarks := 0
+	var punctuation := 0
+	var debris := 0
+	for child in dressing.get_children():
+		match String(child.get_meta("cluster_archetype", "")):
+			"landmark_anchor":
+				landmarks += 1
+			"vertical_punctuation":
+				punctuation += 1
+			"debris_scatter":
+				debris += 1
+	_check_eq("grammar dressing places exactly one required landmark", landmarks, 1)
+	var punct_range: Array = spec.get("vertical_punctuation", [0, 0])
+	_check_between("vertical punctuation count honors the archetype range", float(punctuation), float(punct_range[0]), float(punct_range[1]))
+	var debris_range: Array = spec.get("debris_scatter", [0, 0])
+	_check_between("debris scatter count honors the archetype range", float(debris), float(debris_range[0]), float(debris_range[1]))
+
+	# Door aprons stay clear (normalized Chebyshev distance > 0.22).
+	var floor_node := run.current_room_root.find_child("Floor", true, false) as CSGBox3D
+	var half := Vector2(floor_node.size.x * 0.5, floor_node.size.z * 0.5)
+	var apron := float(grammar.get("bands", {}).get("door_apron_radius", 0.22))
+	var aprons_clear := true
+	for child in dressing.get_children():
+		var n := Vector2(child.position.x / half.x, child.position.z / half.y)
+		for door in run.current_room_root.find_children("RoomExit*", "Area3D", true, false):
+			var dn := Vector2(door.position.x / half.x, door.position.z / half.y)
+			if maxf(absf(n.x - dn.x), absf(n.y - dn.y)) <= apron:
+				aprons_clear = false
+	_check("grammar dressing stays out of door aprons", aprons_clear)
+
+	# Deterministic per seed.
+	var plan_a: Array = loader.plan_room(grammar, archetype, "HEARTH", 424242)
+	var plan_b: Array = loader.plan_room(grammar, archetype, "HEARTH", 424242)
+	_check("same seed yields the identical dressing plan", str(plan_a) == str(plan_b) and not plan_a.is_empty())
+	var plan_c: Array = loader.plan_room(grammar, archetype, "HEARTH", 5)
+	_check("different seed yields a different dressing plan", str(plan_a) != str(plan_c))
 	await _cleanup_run(run)
 
 ## Playtest-2 live bug: SHOP rooms ran a RoomDirector and spawned combat waves.
@@ -1641,9 +1841,11 @@ func _test_real_orchestrator_survivability_bands() -> void:
 	_check_between("motionless real-run death is not an instant spawn melt", float(stationary["survived_seconds"]), 8.0, 45.0)
 	_check("motionless real-run damage stays telegraphed", int(stationary["max_hit_delta"]) <= 45)
 
-	var retreating := await _run_survivability_probe(&"retreat", 40.0, 3)
+	# Movement-personality AI (orbits/rings) makes packs slower to reach the
+	# player, so the honest three-room clear pace widened past the old cap.
+	var retreating := await _run_survivability_probe(&"retreat", 60.0, 3)
 	_check("retreating real-run DPS probe avoids death while clearing three rooms", not bool(retreating["died"]))
-	_check_between("retreating real-run DPS clear time", float(retreating["survived_seconds"]), 18.0, 40.0)
+	_check_between("retreating real-run DPS clear time", float(retreating["survived_seconds"]), 18.0, 55.0)
 	_check("retreating real-run enters at least three rooms", int(retreating["rooms_entered"]) >= 3)
 	_check("retreating real-run clears at least three rooms", int(retreating["rooms_cleared"]) >= 3)
 	_check("retreating real-run damage stays telegraphed", int(retreating["max_hit_delta"]) <= 45)
@@ -1804,6 +2006,7 @@ func _clear_current_room_by_real_attacks(run) -> bool:
 		var target := enemies[0]
 		_ready_enemy_for_player_attack(run, target, _player_forward(run) * 1.1)
 		if kit.try_activate(&"attack"):
+			run.combat_resolvers.tick_pending_swings(SwingTiming.melee_contact_delay(1) + 0.01)
 			await process_frame
 		kit.tick(1.0)
 		await process_frame
@@ -2085,15 +2288,33 @@ func _has_collect_pulse(parent: Node) -> bool:
 		return false
 	return parent.find_child("CollectSparklePulse*", true, false) != null
 
-func _spawn_candidate_for(run, index: int, attempt: int, edge_clearance: float) -> Vector3:
+## Mirror of the orchestrator's jittered area-scatter candidate stream (same
+## seed recipe, same draw order) so fallback expectations replay it exactly.
+func _scatter_candidates(run, index: int, edge_clearance: float) -> Array[Vector3]:
 	var anchor: Marker3D = run._current_room_anchor()
 	var center: Vector3 = anchor.global_position if anchor != null else Vector3.ZERO
 	var half_extents: Vector2 = run._spawn_half_extents(anchor, edge_clearance)
 	var required_distance := maxf(float(run.min_spawn_distance), 0.0)
-	var radius := required_distance + float((index + attempt) % 3)
-	var angle := (float(index) + float(attempt)) * SPAWN_GOLDEN_ANGLE
-	var candidate: Vector3 = center + Vector3(cos(angle) * radius, 0.1, sin(angle) * radius)
-	return run._constrain_spawn_position(candidate, center, half_extents)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash([run._current_room_anchor_key(), index])
+	var candidates: Array[Vector3] = []
+	for attempt in range(SPAWN_CANDIDATE_COUNT):
+		var candidate: Vector3 = center + Vector3(0.0, 0.1, 0.0)
+		if half_extents.x > 0.0 and half_extents.y > 0.0:
+			candidate += Vector3(
+				rng.randf_range(-half_extents.x, half_extents.x),
+				0.0,
+				rng.randf_range(-half_extents.y, half_extents.y)
+			)
+		else:
+			var radius := required_distance + rng.randf_range(0.0, 4.0)
+			var angle := rng.randf_range(0.0, TAU)
+			candidate += Vector3(cos(angle) * radius, 0.0, sin(angle) * radius)
+		candidates.append(run._constrain_spawn_position(candidate, center, half_extents))
+	return candidates
+
+func _spawn_candidate_for(run, index: int, attempt: int, edge_clearance: float) -> Vector3:
+	return _scatter_candidates(run, index, edge_clearance)[attempt]
 
 func _has_separation_valid_spawn_candidate(run, index: int, edge_clearance: float, separation_distance: float) -> bool:
 	for attempt in range(SPAWN_CANDIDATE_COUNT):
