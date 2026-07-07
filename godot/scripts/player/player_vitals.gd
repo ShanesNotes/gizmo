@@ -4,6 +4,7 @@ extends Node
 signal vitals_changed(hp: int, max_hp: int, guard: int, max_guard: int)
 signal guard_changed(guard: int, max_guard: int)
 signal spark_surge_changed(charge: float, charge_max: float)
+signal damage_taken(absorbed: int, hp_damage: int)
 signal player_died()
 
 @export_range(1, 99) var max_hp: int = 3
@@ -67,6 +68,7 @@ func apply_damage(amount: int) -> Dictionary:
 	if absorbed > 0 or hp_damage > 0:
 		_damage_lockout_remaining = maxf(damage_lockout, 0.0)
 		_reset_guard_recharge_timer()
+		damage_taken.emit(absorbed, hp_damage)
 	_emit_vitals_changed()
 	if hp <= 0 and not _dead:
 		_dead = true

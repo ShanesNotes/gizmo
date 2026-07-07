@@ -11,6 +11,61 @@ const DEATH_POP_SECONDS := 0.22
 const BURST_RING_SECONDS := 0.4
 const SWING_WEDGE_SECONDS := 0.18
 const STAGGER_TILT_RADIANS := 0.38
+const DAMAGE_NUMBER_SECONDS := 0.6
+const DAMAGE_NUMBER_RISE := 0.9
+const DAMAGE_NUMBER_COLOR := Color(1.0, 0.95, 0.8, 1.0)
+const DAMAGE_NUMBER_CRIT_COLOR := Color(1.0, 0.62, 0.18, 1.0)
+const PLAYER_HIT_NUMBER_COLOR := Color(0.95, 0.25, 0.2, 1.0)
+const HIT_STOP_SECONDS := 0.05
+const HIT_STOP_TIME_SCALE := 0.05
+
+static func spawn_damage_number(parent: Node, origin: Vector3, amount: float, color: Color = DAMAGE_NUMBER_COLOR) -> void:
+	if parent == null or not parent.is_inside_tree():
+		return
+	var label := Label3D.new()
+	label.text = str(maxi(1, roundi(amount)))
+	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	label.no_depth_test = true
+	label.font_size = 64
+	label.outline_size = 14
+	label.outline_modulate = Color(0.08, 0.05, 0.02, 0.9)
+	label.modulate = color
+	parent.add_child(label)
+	label.global_position = origin
+	var drift := Vector3(randf_range(-0.35, 0.35), 0.0, randf_range(-0.15, 0.15))
+	var tween := label.create_tween()
+	tween.set_parallel(true)
+	tween.tween_property(label, "global_position", origin + drift + Vector3(0.0, DAMAGE_NUMBER_RISE, 0.0), DAMAGE_NUMBER_SECONDS) \
+		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tween.tween_property(label, "modulate:a", 0.0, DAMAGE_NUMBER_SECONDS * 0.55) \
+		.set_delay(DAMAGE_NUMBER_SECONDS * 0.45)
+	tween.tween_property(label, "outline_modulate:a", 0.0, DAMAGE_NUMBER_SECONDS * 0.55) \
+		.set_delay(DAMAGE_NUMBER_SECONDS * 0.45)
+	tween.chain().tween_callback(label.queue_free)
+
+## Brief global time freeze for hit punch. Cosmetic-only and guarded: it no-ops
+## headless (suite determinism) and never stacks; restore ignores time scale so
+## the freeze can always end itself.
+static func hit_stop(host: Node, duration: float = HIT_STOP_SECONDS) -> void:
+	if host == null or not host.is_inside_tree():
+		return
+	if DisplayServer.get_name() == "headless":
+		return
+	if Engine.time_scale < 0.999:
+		return
+	Engine.time_scale = HIT_STOP_TIME_SCALE
+	var timer := host.get_tree().create_timer(maxf(duration, 0.01), true, false, true)
+	timer.timeout.connect(func() -> void:
+		Engine.time_scale = 1.0)
+
+## Cosmetic camera shake on the active 3D camera, if it is a RoomCamera-style
+## rig exposing shake(). Safe headless: no camera means no-op.
+static func shake_active_camera(host: Node, strength: float = 0.12, duration: float = 0.1) -> void:
+	if host == null or not host.is_inside_tree():
+		return
+	var camera := host.get_viewport().get_camera_3d()
+	if camera != null and camera.has_method(&"shake"):
+		camera.call(&"shake", strength, duration)
 
 static func flash_hit(visual_root: Node3D) -> void:
 	if visual_root == null or not visual_root.is_inside_tree():

@@ -1,0 +1,20 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="PackedScene" path="res://assets/props/brass_winding_wrench/brass_winding_wrench.glb" id="1_wrench_glb"]
+
+[node name="BrassWindingWrench" type="Node3D"]
+metadata/asset_id = "brass_winding_wrench"
+metadata/asset_class = "prop"
+metadata/source_brief = "gizmo-asset-pipeline/briefs/props/brass_winding_wrench.brief.yaml"
+metadata/source_candidate_task_id = "019f3a6d-9d80-7bf0-b29e-a49cfe7de0ac"
+metadata/promotion_report = "gizmo-asset-pipeline/runs/2026-07-06-fable-animation-pass/promotion-report-brass_winding_wrench.md"
+metadata/scale = "0.29 (1.9m raw -> ~0.55m in hand)"
+metadata/collision_policy = "none - cosmetic hand prop"
+metadata/material_override_policy = "meshy texture as generated (gouache-brief guided)"
+metadata/surface = "brass"
+metadata/camera_readability_status = "proofed in swing arc 2026-07-06"
+metadata/performance_status = "4k tris, single material"
+metadata/verdict = "promoted"
+
+[node name="Model" parent="." instance=ExtResource("1_wrench_glb")]
+transform = Transform3D(0, -0.29, 0, 0.29, 0, 0, 0, 0, 0.29, 0, 0.14, 0)

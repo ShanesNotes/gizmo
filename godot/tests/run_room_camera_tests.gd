@@ -32,6 +32,9 @@ func _run_tests() -> void:
 	_test_enter_room_zero_extents_stays_static_after_player_moves()
 	_test_soft_follow_converges_between_room_cuts()
 	_test_missing_camera_anchor_uses_safe_fallback()
+	_test_settle_overlay_math()
+	_test_enter_room_arms_settle()
+	_test_push_overlay_math_and_arming()
 	print("")
 	if _failed == 0 and _passed > 0:
 		print("PASS - %d checks" % _passed)
@@ -214,6 +217,73 @@ func _test_missing_camera_anchor_uses_safe_fallback() -> void:
 	_cleanup(camera)
 	_cleanup(player)
 	_cleanup(room)
+
+func _test_settle_overlay_math() -> void:
+	var offset := Vector3(0.0, 12.0, 10.0)
+
+	_check_vec3(
+		"settle overlay starts fully pulled back along the camera offset",
+		RoomCameraScript.settle_overlay(offset, RoomCameraScript.SETTLE_DURATION),
+		offset * RoomCameraScript.SETTLE_PULLBACK,
+	)
+	_check_vec3(
+		"settle overlay decays to zero when time runs out",
+		RoomCameraScript.settle_overlay(offset, 0.0),
+		Vector3.ZERO,
+	)
+	var midway: Vector3 = RoomCameraScript.settle_overlay(offset, RoomCameraScript.SETTLE_DURATION * 0.5)
+	_check(
+		"settle overlay eases monotonically between full and zero",
+		midway.length() > 0.0 and midway.length() < (offset * RoomCameraScript.SETTLE_PULLBACK).length(),
+	)
+
+func _test_enter_room_arms_settle() -> void:
+	var room := _new_room_with_anchor(Vector3(10.0, 0.0, -4.0), Vector2(2.0, 3.0))
+	var player := _new_player(Vector3(99.0, 0.0, -99.0))
+	var camera = _new_camera(player)
+
+	camera.enter_room(room)
+	_check_eq(
+		"enter_room arms the settle-in beat",
+		camera.settle_time_remaining,
+		RoomCameraScript.SETTLE_DURATION,
+	)
+	_check_vec3(
+		"settle is a pure overlay: the hard cut position is untouched",
+		camera.global_position,
+		Vector3(12.0, 12.0, 3.0),
+	)
+
+	_cleanup(camera)
+	_cleanup(player)
+	_cleanup(room)
+
+func _test_push_overlay_math_and_arming() -> void:
+	var offset := Vector3(0.0, 12.0, 10.0)
+
+	_check_vec3(
+		"push overlay starts at zero",
+		RoomCameraScript.push_overlay(offset, 0.0, 1.0),
+		Vector3.ZERO,
+	)
+	_check_vec3(
+		"push overlay lands at full strength toward the target",
+		RoomCameraScript.push_overlay(offset, 1.0, 1.0),
+		offset * -RoomCameraScript.PUSH_IN_STRENGTH,
+	)
+	_check_vec3(
+		"push overlay clamps past its duration",
+		RoomCameraScript.push_overlay(offset, 2.0, 1.0),
+		offset * -RoomCameraScript.PUSH_IN_STRENGTH,
+	)
+
+	var player := _new_player(Vector3.ZERO)
+	var camera = _new_camera(player)
+	camera.push_in(1.0)
+	_check_eq("push_in arms the push duration", camera.push_duration, 1.0)
+	_check_eq("push_in starts at zero elapsed", camera.push_elapsed, 0.0)
+	_cleanup(camera)
+	_cleanup(player)
 
 func _new_camera(player: Node3D):
 	var camera = RoomCameraScript.new()

@@ -16,6 +16,9 @@ var _failed := 0
 func _initialize() -> void:
 	print("Running room-graph tests...")
 	_test_generator_produces_branching_graphs_with_honest_rewards()
+	_test_generator_assigns_region_identity_from_graph()
+	_test_region_assignment_is_deterministic_and_covers_both_routes()
+	_test_trial_beat_spikes_penultimate_room_tier()
 	_test_room_node_reward_type_vocabulary_includes_rest_reward()
 	_test_rest_reward_seed_sweep_invariants()
 	_test_room_node_state_transitions_to_cleared()
@@ -114,6 +117,115 @@ func _assert_generated_graph_contract(pool: Array[RoomTemplate], room_count: int
 
 	_check("seed %d: generated graph has at least one branch node" % seed, branch_nodes >= 1)
 	_check_eq("seed %d: terminal room has no outgoing connections" % seed, graph.get_connections_from("room_%02d" % (room_count - 1)).size(), 0)
+
+# Region vocabulary is pinned here as a second copy of the naming source of
+# truth (docs/reference/shattered-meridian-region-graph.json macro_topology +
+# regions.*.name/landmark) so the generator table cannot drift into invented
+# place names without a test catching it.
+const REGION_NAMES := {
+	"HEARTH": "Hearthwake Basin",
+	"BRASS": "Brasswind Highlands",
+	"VERDANT": "Verdant Archive",
+	"PRISM": "Prism Reach",
+	"TEMPEST": "Tempest Verge",
+	"NULL": "The Null Crown",
+	"RUST": "Rustchain Expanse",
+	"ASH": "Ashfall Foundries",
+}
+
+const REGION_LANDMARKS := {
+	"HEARTH": "The Heart Spire",
+	"BRASS": "The Chronarch Keep",
+	"VERDANT": "The Memory Tree",
+	"PRISM": "The Nebula Prism",
+	"TEMPEST": "The Storm Engine",
+	"NULL": "The Last Ember",
+	"RUST": "The Titan Yard",
+	"ASH": "The Ember Crucible",
+}
+
+const UPPER_ROUTE := ["HEARTH", "BRASS", "VERDANT", "PRISM", "TEMPEST", "NULL"]
+const LOWER_ROUTE := ["HEARTH", "RUST", "ASH", "TEMPEST", "NULL"]
+
+func _test_generator_assigns_region_identity_from_graph() -> void:
+	var pool := _make_template_pool()
+	for seed in [1, 2, 3, 4, 5, 6, 7, 8]:
+		var graph: RoomGraph = RoomGraphGenerator.generate("hearth", pool, 8, _seeded_rng(seed))
+		_assert_region_identity_contract(graph, seed)
+
+func _assert_region_identity_contract(graph: RoomGraph, seed: int) -> void:
+	var room_count := graph.rooms.size()
+	var region_sequence: Array[String] = []
+	for i in range(room_count):
+		var room := graph.rooms[i]
+		_check("seed %d: room_%02d region_id is graph vocabulary" % [seed, i], REGION_NAMES.has(room.region_id))
+		if not REGION_NAMES.has(room.region_id):
+			continue
+		region_sequence.append(room.region_id)
+		var expected_landmark := room.template != null and (
+			room.template.room_type == RoomTemplate.RoomType.BOSS
+			or room.template.room_type == RoomTemplate.RoomType.ELITE
+		)
+		var expected_name: String = REGION_LANDMARKS[room.region_id] if expected_landmark else REGION_NAMES[room.region_id]
+		_check_eq("seed %d: room_%02d display name is drawn from the graph" % [seed, i], room.display_name, expected_name)
+
+	_check_eq("seed %d: run departs from HEARTH" % seed, graph.rooms[0].region_id, "HEARTH")
+	var last_room := graph.rooms[room_count - 1]
+	_check_eq("seed %d: finale room reaches NULL" % seed, last_room.region_id, "NULL")
+	_check_eq("seed %d: boss room is named for The Last Ember" % seed, last_room.display_name, "The Last Ember")
+	_check("seed %d: region sequence follows one macro route in order" % seed, _sequence_follows_route(region_sequence))
+
+func _sequence_follows_route(sequence: Array[String]) -> bool:
+	for route in [UPPER_ROUTE, LOWER_ROUTE]:
+		var cursor := 0
+		var matched := true
+		for region_id in sequence:
+			var found: int = route.find(region_id, 0)
+			if found < 0 or found < cursor:
+				matched = false
+				break
+			cursor = found
+		if matched:
+			return true
+	return false
+
+func _test_region_assignment_is_deterministic_and_covers_both_routes() -> void:
+	var pool := _make_template_pool()
+	var saw_upper := false
+	var saw_lower := false
+	for seed in range(1, 41):
+		var first: RoomGraph = RoomGraphGenerator.generate("hearth", pool, 8, _seeded_rng(seed))
+		var second: RoomGraph = RoomGraphGenerator.generate("hearth", pool, 8, _seeded_rng(seed))
+		var identical := true
+		for i in range(first.rooms.size()):
+			if first.rooms[i].region_id != second.rooms[i].region_id:
+				identical = false
+			if first.rooms[i].display_name != second.rooms[i].display_name:
+				identical = false
+		_check("seed %d: region assignment is deterministic under the run seed" % seed, identical)
+		for room in first.rooms:
+			if room.region_id == "BRASS":
+				saw_upper = true
+			if room.region_id == "RUST":
+				saw_lower = true
+	_check("seed sweep reaches the upper route", saw_upper)
+	_check("seed sweep reaches the lower route", saw_lower)
+
+func _test_trial_beat_spikes_penultimate_room_tier() -> void:
+	# encounter-beats.yaml `trial`: a diegetic danger spike before relief/climax,
+	# expressed through the existing difficulty_tier knob (no new mechanics).
+	var pool := _make_template_pool()
+	for seed in [11, 12, 13]:
+		var graph: RoomGraph = RoomGraphGenerator.generate("hearth", pool, 8, _seeded_rng(seed))
+		var linear_tier := 6.0 / 7.0
+		var trial_tier := graph.rooms[6].difficulty_tier
+		_check("seed %d: trial room tier spikes above the linear ramp" % seed, trial_tier > linear_tier + 0.01)
+		_check("seed %d: trial tier stays clamped" % seed, trial_tier <= 1.0)
+		_check_eq("seed %d: entrance stays at tier zero" % seed, graph.rooms[0].difficulty_tier, 0.0)
+		_check_eq("seed %d: boss keeps peak tier" % seed, graph.rooms[7].difficulty_tier, 1.0)
+
+	var tiny: RoomGraph = RoomGraphGenerator.generate("hearth", pool, 2, _seeded_rng(11))
+	_check_eq("two-room run never spikes the entrance", tiny.rooms[0].difficulty_tier, 0.0)
 
 func _test_room_node_reward_type_vocabulary_includes_rest_reward() -> void:
 	_check("RewardType exposes REST for Ember Alcove door telegraphs", RoomNode.RewardType.has("REST"))

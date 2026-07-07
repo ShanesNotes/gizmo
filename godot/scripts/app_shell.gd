@@ -57,10 +57,15 @@ func _load_meta_state() -> void:
 	meta_state = loaded if loaded is MetaState else MetaState.new()
 	last_return_was_victory = meta_state.last_return_was_victory
 
+var _margin_intro_spoken := false
+
 func _show_hub() -> void:
 	if hub_scene == null:
 		push_error("AppShell requires a hub_scene.")
 		return
+	if not _margin_intro_spoken:
+		_margin_intro_spoken = true
+		_speak(&"margin_intro")
 
 	var hub: Node = hub_scene.instantiate()
 	_inject_meta_state(hub)
@@ -178,6 +183,13 @@ func _return_to_hub(victory: bool) -> void:
 	var director := get_node_or_null("/root/AudioDirector")
 	if director != null and director.has_method(&"play_ui_context"):
 		director.call(&"play_ui_context", &"victory_sequence" if victory else &"defeat_reflection")
+	if victory:
+		_speak(&"margin_victory")
+	else:
+		# The Pattern's defeat line owns a boss-room death; Margin yields.
+		var desc: Dictionary = director.call(&"describe") if director != null and director.has_method(&"describe") else {}
+		if not bool(desc.get("voice_speaking", false)):
+			_speak(&"margin_death")
 	summary["victory"] = victory
 	summary["scrap_banked"] = banked_scrap
 	summary["sparks_banked"] = banked_sparks
@@ -327,3 +339,8 @@ func _method_argument_count(object: Object, method_name: StringName) -> int:
 		if String(method.get("name", "")) == String(method_name):
 			return (method.get("args", []) as Array).size()
 	return 1
+
+func _speak(line_id: StringName) -> void:
+	var director := get_node_or_null("/root/AudioDirector")
+	if director != null and director.has_method(&"play_voice_line"):
+		director.call(&"play_voice_line", line_id)

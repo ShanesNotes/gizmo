@@ -65,7 +65,7 @@ func _test_force_gameover_for_playtest() -> void:
 	_check_eq("force gameover sets phase", controller.sim.phase, Simulation.PHASE_GAMEOVER)
 	_check_eq("force gameover drops HP to zero", controller.sim.hp, 0)
 	_check("loss overlay is visible", controller.end_screen.get_node("Root").visible)
-	_check_eq("loss title renders", controller.end_screen.get_node("Root/Center/Panel/Margin/VBox/TitleLabel").text, "GIZMO OFFLINE")
+	_check_eq("loss title renders", controller.end_screen.get_node("Root/Center/Panel/Margin/VBox/TitleLabel").text, "GIZMO'S LIGHT FAILED")
 	await _cleanup(controller)
 
 func _test_force_complete_for_playtest() -> void:

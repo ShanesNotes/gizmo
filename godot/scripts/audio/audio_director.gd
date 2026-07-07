@@ -6,9 +6,35 @@ const MUSIC_STATE_CLEARED: StringName = &"CLEARED"
 
 const MUSIC_BUS := &"Music"
 const SFX_BUS := &"SFX"
+const VOICE_BUS := &"VoiceReserved"
 const ACTIVE_VOLUME_DB := 0.0
 const SILENT_VOLUME_DB := -80.0
 const SFX_POOL_SIZE := 8
+const VOICE_DUCK_DB := 4.0
+const VOICE_DIR := "res://audio/voice/"
+
+## Voice line manifest: line_id -> variant count. One variant resolves to
+## <line_id>.ogg; N > 1 resolves to <line_id>_1.ogg … <line_id>_N.ogg with a
+## random pick. Files land later (Margin narrator + Custodian boss are in
+## generation); missing files are a silent no-op — the seam ships dark.
+## The spoken vigil (scripts: docs/hades-pivot/design/voice-scripts-v1.md;
+## casting/provenance: audio lab 2026-07-06-voice-batch).
+const VOICE_LINE_MANIFEST := {
+	&"margin_intro": 3,
+	&"margin_sendoff": 3,
+	&"margin_death": 3,
+	&"margin_victory": 2,
+	&"margin_boss_warning": 1,
+	&"margin_return": 2,
+	&"pattern_intro": 2,
+	&"pattern_phase_1": 1,
+	&"pattern_phase_2": 1,
+	&"pattern_phase_3": 1,
+	&"pattern_player_defeat": 1,
+	&"pattern_death": 1,
+	# Reserved (unrecorded — future codex reading; also the dark-line test hook).
+	&"margin_codex_entry": 1,
+}
 
 const V2_CUE_MAP_PATH := "res://audio/music/soundtrack_v2/cue_map.json"
 const V2_AUDIO_DIR := "res://audio/music/soundtrack_v2/"
@@ -22,23 +48,22 @@ const V2_STATE_ALIASES := {
 	&"REST": &"SANCTUARY",
 	&"ORIGIN_ENTRY": &"ORIGIN",
 }
-const V2_ENGAGE_PRESSURE := 0.25
-const V2_RELAX_PRESSURE := 0.15
-const V2_VARIANT_DWELL_SECONDS := 20.0
 const V2_SILENCE_ENTRY_SECONDS := 15.0
-const V2_IDLE_FADE_SECONDS := 45.0
 const V2_DEFEAT_SILENCE_SECONDS := 2.5
+## Long-form pacing (2026-07-06 playtest): a run picks its musical arc once —
+## SEG A (JAZZ) → BRG bridge (JAZZ) → SEG B (JAZZ) — and rooms never retrigger.
+## A SEG must play at least this fraction of its length before a soft milestone
+## (room-transition arc advance) may replace it; hard milestones always cut.
+const V2_MIN_PLAY_FRACTION := 0.65
+## Combat-stretch JAZZ pool: the pressure-led SEGs from the cue map.
+const V2_ARC_SEG_POOL: Array[StringName] = [&"ROAM", &"RUINS", &"KEEPER", &"GILDED", &"TRIAL"]
+## Combat-band bridges (calm→engage, engage→high, high-band evasion).
+const V2_ARC_BRIDGE_POOL: Array[String] = ["BRG_04", "BRG_08", "BRG_09"]
 
-const MUSIC_CUE_MANIFEST := {
-	MUSIC_STATE_HUB: {
-		"cue_id": &"music_hub",
-		"path": "res://audio/music/music_hub_loop.ogg",
-	},
-	MUSIC_STATE_COMBAT: {
-		"cue_id": &"music_combat",
-		"path": "res://audio/music/music_combat_loop.ogg",
-	},
-}
+## Legacy EL demo loops were demoted and deleted (soundtrack v2 is the music
+## source of truth); the register_cue/bind_music_state_cue seam remains for
+## scene-layer cues and tests.
+const MUSIC_CUE_MANIFEST := {}
 
 const SFX_EVENT_MANIFEST := {
 	&"melee_hit": "res://audio/sfx/sfx_melee_hit.wav",
@@ -80,21 +105,37 @@ var _is_fading := false
 
 # ── Soundtrack v2 state (dual-variant score; spec: docs/audio/soundtrack-map-v2.md) ──
 var _v2_zones: Dictionary = {}          # zone -> {"ORCH": path, "JAZZ": path, "rule": String}
+var _v2_bridges: Dictionary = {}        # bridge id -> {"ORCH": path, "JAZZ": path}
 var _v2_ui_contexts: Dictionary = {}    # context -> {"cue": zone-ish id, "variant": String}
 var _v2_vitals_paths: Dictionary = {}   # variant -> path (AMB_03)
 var _v2_loaded := false
 var _pressure := 0.0
 var _variant: StringName = &"ORCH"
-var _variant_last_switch_ms := -1000000
 var _silence_hold := false
 var _silence_remaining := 0.0
-var _idle_quiet_elapsed := 0.0
-var _idle_faded := false
+var _arc_active := false
+var _arc_stage: StringName = &""        # "" (pending) / SEG_A / BRIDGE / SEG_B
+var _arc_seg_a: StringName = &""
+var _arc_seg_b: StringName = &""
+var _arc_bridge_id := ""
+var _arc_rng := RandomNumberGenerator.new()
+var _cue_started_ms := 0
+var _active_stream_length := 0.0
 var _ui_override_active := false
 var _ui_override_tween: Tween = null
 var _vitals_lane: AudioStreamPlayer = null
 var _vitals_overlay_active := false
 var _last_zone_request: StringName = &""
+
+# ── Voice seam (Margin narrator + Custodian boss; VoiceReserved bus) ──────
+var _voice_player: AudioStreamPlayer = null
+var _voice_registry: Dictionary = {}    # line_id -> Array[AudioStream]
+var _voice_rng := RandomNumberGenerator.new()
+var _voice_speaking := false
+var _last_voice_line: StringName = &""
+var _last_voice_variant := -1
+var _music_ducked := false
+var _music_duck_base_db := 0.0
 
 func _init() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -113,17 +154,11 @@ func _process(delta: float) -> void:
 		if _silence_remaining <= 0.0:
 			_silence_hold = false
 			_replay_requested_zone()
-	if not _silence_hold and not _ui_override_active and _pressure < V2_RELAX_PRESSURE \
-			and _v2_zone_for_state(_last_zone_request) == &"ROAM" and not _idle_faded:
-		_idle_quiet_elapsed += delta
-		if _idle_quiet_elapsed >= V2_IDLE_FADE_SECONDS:
-			_idle_faded = true
-			_fade_active_lane_out(8.0)
-	elif _pressure >= V2_RELAX_PRESSURE:
-		_idle_quiet_elapsed = 0.0
-		if _idle_faded:
-			_idle_faded = false
-			_replay_requested_zone()
+	# The arc bridge plays once; when it ends, SEG B carries the rest of the stretch.
+	if _arc_active and _arc_stage == &"BRIDGE" and not _is_fading \
+			and not _silence_hold and not _ui_override_active \
+			and not _active_player().playing:
+		_arc_play_stage(&"SEG_B")
 
 func register_cue(cue_id: StringName, stream: AudioStream, loop: bool = true) -> void:
 	if String(cue_id).is_empty() or stream == null:
@@ -158,9 +193,25 @@ func set_zone_state(state: StringName) -> void:
 		_last_noop_reason = &"v2_cleared_pressure_only"
 		return
 	var v2_zone := _v2_zone_for_state(state)
-	if _v2_loaded and _v2_zones.has(v2_zone):
-		_play_v2_zone(v2_zone)
-		return
+	if _v2_loaded:
+		# Hard milestones cut through everything and end the run arc.
+		if v2_zone == &"REKINDLE_SIEGE":
+			_arc_end()
+			_play_v2_zone(v2_zone)
+			return
+		if state == &"HUB":
+			_arc_end()
+			_play_v2_zone(v2_zone)
+			return
+		# Run rooms never retrigger music: the run's arc owns the stretch.
+		if state == &"COMBAT" or state == &"SHOP" or state == &"REST":
+			if not _arc_active:
+				_arc_roll()
+			_arc_handle_room_request()
+			return
+		if _v2_zones.has(v2_zone):
+			_play_v2_zone(v2_zone)
+			return
 
 	_requested_music_state = state
 	var cue_id := _cue_id_for_state(state)
@@ -212,9 +263,18 @@ func describe() -> Dictionary:
 	return {
 		"v2_loaded": _v2_loaded,
 		"v2_zone_count": _v2_zones.size(),
+		"v2_bridge_count": _v2_bridges.size(),
 		"v2_variant": String(_variant),
 		"v2_pressure": _pressure,
 		"v2_silence_hold": _silence_hold,
+		"v2_arc_active": _arc_active,
+		"v2_arc_stage": String(_arc_stage),
+		"v2_arc_seg_a": String(_arc_seg_a),
+		"v2_arc_seg_b": String(_arc_seg_b),
+		"v2_arc_bridge": _arc_bridge_id,
+		"last_voice_line": String(_last_voice_line),
+		"last_voice_variant": _last_voice_variant,
+		"voice_speaking": _voice_speaking,
 		"v2_ui_override": _ui_override_active,
 		"v2_vitals_overlay": _vitals_overlay_active,
 		"v2_last_zone_request": String(_last_zone_request),
@@ -273,6 +333,8 @@ func _play_registered_state(state: StringName, cue_id: StringName) -> void:
 	_active_lane_index = to_lane_index
 	_active_music_state = state
 	_active_cue_id = cue_id
+	_cue_started_ms = Time.get_ticks_msec()
+	_active_stream_length = stream.get_length()
 	_crossfade_count += 1
 	_last_noop_reason = &""
 	_last_crossfade = {
@@ -392,29 +454,22 @@ func _bus_mix() -> Dictionary:
 # Zone assignments are provisional pending the audio lab's audition pass.
 
 func set_pressure(level: float) -> void:
+	## Pressure no longer flips variants (2026-07-06 playtest: shifts were far
+	## too frequent). It only releases the run-entry silence so the arc's first
+	## SEG lands on engagement; the combat stretch then lives in JAZZ.
 	_pressure = clampf(level, 0.0, 1.0)
 	if _silence_hold and _pressure > 0.0:
 		_silence_hold = false
 		_replay_requested_zone()
-	var now := Time.get_ticks_msec()
-	var dwell_ok := (now - _variant_last_switch_ms) >= int(V2_VARIANT_DWELL_SECONDS * 1000.0)
-	var wanted := _variant
-	if _pressure >= V2_ENGAGE_PRESSURE:
-		wanted = &"JAZZ"
-	elif _pressure < V2_RELAX_PRESSURE:
-		wanted = &"ORCH"
-	if wanted != _variant and dwell_ok:
-		_variant = wanted
-		_variant_last_switch_ms = now
-		_replay_requested_zone()
 
 func begin_run_silence() -> void:
 	## Presence grammar: run entry is authored silence; music enters on
-	## engagement (pressure > 0) or after ~15 s.
+	## engagement (pressure > 0) or after ~15 s. Run start is also the one
+	## moment the run's musical arc is rolled.
 	_silence_hold = true
 	_silence_remaining = V2_SILENCE_ENTRY_SECONDS
-	_idle_quiet_elapsed = 0.0
-	_idle_faded = false
+	if _v2_loaded:
+		_arc_roll()
 	_fade_active_lane_out(0.6)
 
 func play_ui_context(context: StringName) -> void:
@@ -426,8 +481,10 @@ func play_ui_context(context: StringName) -> void:
 	var variant := StringName(str(entry.get("variant", "ORCH")))
 	match context:
 		&"defeat_reflection":
+			_arc_end()
 			_ui_one_shot_after_silence(zone, variant, V2_DEFEAT_SILENCE_SECONDS)
 		&"victory_sequence":
+			_arc_end()
 			_ui_one_shot_after_silence(zone, variant, 0.4)
 		_:
 			# Looping UI bed (main_menu, shop_ui, ...): plays as a normal zone.
@@ -458,6 +515,39 @@ func notify_vitals(guard: float, guard_max: float, hp: float, hp_max: float) -> 
 		tween.tween_callback(func() -> void:
 			if _vitals_lane != null:
 				_vitals_lane.stop())
+
+func play_voice_line(line_id: StringName) -> void:
+	## One line at a time on the VoiceReserved bus; a new line interrupts the
+	## old. Music ducks by VOICE_DUCK_DB while speaking and restores after.
+	_last_noop_reason = &""
+	if String(line_id).is_empty():
+		_last_noop_reason = &"empty_voice_line"
+		return
+	var streams := _voice_streams_for(line_id)
+	if streams.is_empty():
+		if _voice_registry.has(line_id) or VOICE_LINE_MANIFEST.has(line_id):
+			_last_noop_reason = &"missing_voice_line"
+		else:
+			_last_noop_reason = &"unknown_voice_line"
+		return
+	var index := 0
+	if streams.size() > 1:
+		index = _voice_rng.randi_range(0, streams.size() - 1)
+	_ensure_voice_lane()
+	_voice_player.stop()
+	_voice_player.stream = streams[index]
+	_voice_player.play()
+	_voice_speaking = true
+	_last_voice_line = line_id
+	_last_voice_variant = index
+	_duck_music_for_voice(true)
+
+func register_voice_line(line_id: StringName, streams: Array) -> void:
+	## Runtime drop-in seam (and the test hook): registered streams win over
+	## the manifest paths for this line id.
+	if String(line_id).is_empty() or streams.is_empty():
+		return
+	_voice_registry[line_id] = streams
 
 func v2_loaded() -> bool:
 	return _v2_loaded
@@ -494,6 +584,16 @@ func _load_v2_cue_table() -> void:
 				record[variant] = _v2_path_for_filename(str(lst[0].get("filename", "")))
 		if String(zone) != "" and record.has("ORCH"):
 			_v2_zones[zone] = record
+	for bridge_entry in data.get("bridges", []):
+		var bridge_id := str(bridge_entry.get("id", ""))
+		var bridge_files: Dictionary = bridge_entry.get("files", {})
+		var bridge_record := {}
+		for variant in ["ORCH", "JAZZ"]:
+			var bridge_list: Array = bridge_files.get(variant, [])
+			if not bridge_list.is_empty():
+				bridge_record[variant] = _v2_path_for_filename(str(bridge_list[0].get("filename", "")))
+		if not bridge_id.is_empty() and not bridge_record.is_empty():
+			_v2_bridges[bridge_id] = bridge_record
 	for ui_entry in data.get("ui_contexts", []):
 		_v2_ui_contexts[StringName(str(ui_entry.get("context", "")))] = ui_entry
 	var vit: Dictionary = data.get("vitals_overlay", {})
@@ -542,24 +642,97 @@ func _play_v2_cue(zone: StringName, variant: StringName, loop: bool, immediate: 
 	if path.is_empty():
 		_last_noop_reason = &"v2_missing_variant_file"
 		return
+	_play_v2_path(StringName("v2:%s:%s" % [zone, variant]), path, loop, immediate, zone)
+
+func _play_v2_path(cue_id: StringName, path: String, loop: bool, immediate: bool, state: StringName = &"") -> void:
 	var stream := _load_stream(path, loop)
 	if stream == null:
 		_last_noop_reason = &"v2_stream_load_failed"
 		return
-	var cue_id := StringName("v2:%s:%s" % [zone, variant])
 	_set_stream_loop(stream, loop)
 	_cue_registry[cue_id] = stream
-	_state_cue_ids[zone] = cue_id
+	var play_state := state if String(state) != "" else cue_id
+	_state_cue_ids[play_state] = cue_id
 	var saved_fade := crossfade_seconds
 	if immediate:
 		crossfade_seconds = 0.0
-	_play_registered_state(zone, cue_id)
+	_play_registered_state(play_state, cue_id)
 	crossfade_seconds = saved_fade
 
 func _replay_requested_zone() -> void:
+	if _arc_active:
+		if _arc_stage == &"":
+			_arc_play_stage(&"SEG_A")
+		return
 	var zone := _v2_zone_for_state(_last_zone_request)
 	if _v2_loaded and _v2_zones.has(zone):
 		_play_v2_zone(zone)
+
+# ── Run arc: SEG A → bridge → SEG B, rolled once per run ──────────────────
+
+func _arc_roll() -> void:
+	var seg_pool: Array[StringName] = []
+	for zone in V2_ARC_SEG_POOL:
+		if _v2_zones.has(zone) and (_v2_zones[zone] as Dictionary).has("JAZZ"):
+			seg_pool.append(zone)
+	var bridge_pool: Array[String] = []
+	for bridge_id in V2_ARC_BRIDGE_POOL:
+		if _v2_bridges.has(bridge_id) and (_v2_bridges[bridge_id] as Dictionary).has("JAZZ"):
+			bridge_pool.append(bridge_id)
+	if seg_pool.size() < 2 or bridge_pool.is_empty():
+		return
+	_arc_rng.randomize()
+	_arc_seg_a = seg_pool[_arc_rng.randi_range(0, seg_pool.size() - 1)]
+	seg_pool.erase(_arc_seg_a)
+	_arc_seg_b = seg_pool[_arc_rng.randi_range(0, seg_pool.size() - 1)]
+	_arc_bridge_id = bridge_pool[_arc_rng.randi_range(0, bridge_pool.size() - 1)]
+	_arc_active = true
+	_arc_stage = &""
+	_variant = &"JAZZ"
+
+func _arc_end() -> void:
+	_arc_active = false
+	_arc_stage = &""
+	_variant = &"ORCH"
+
+func _arc_handle_room_request() -> void:
+	if _silence_hold:
+		_last_noop_reason = &"v2_playback_held"
+		return
+	match _arc_stage:
+		&"":
+			_arc_play_stage(&"SEG_A")
+		&"SEG_A":
+			# Room transitions are soft milestones: advance only once the
+			# composition has had room to breathe (minimum-play guard).
+			if _min_play_satisfied():
+				_arc_play_stage(&"BRIDGE")
+			else:
+				_last_noop_reason = &"v2_arc_hold"
+		_:
+			_last_noop_reason = &"v2_arc_hold"
+
+func _arc_play_stage(stage: StringName) -> void:
+	match stage:
+		&"SEG_A":
+			_play_v2_cue(_arc_seg_a, &"JAZZ", true, false)
+		&"BRIDGE":
+			var record: Dictionary = _v2_bridges.get(_arc_bridge_id, {})
+			var path := String(record.get("JAZZ", ""))
+			if path.is_empty():
+				_play_v2_cue(_arc_seg_b, &"JAZZ", true, false)
+				_arc_stage = &"SEG_B"
+				return
+			_play_v2_path(StringName("v2:brg:%s:JAZZ" % _arc_bridge_id), path, false, false)
+		&"SEG_B":
+			_play_v2_cue(_arc_seg_b, &"JAZZ", true, false)
+	_arc_stage = stage
+
+func _min_play_satisfied() -> bool:
+	if _active_stream_length <= 0.0:
+		return true
+	var elapsed := float(Time.get_ticks_msec() - _cue_started_ms) / 1000.0
+	return elapsed >= V2_MIN_PLAY_FRACTION * _active_stream_length
 
 func _ui_one_shot_after_silence(zone: StringName, variant: StringName, silence_seconds: float) -> void:
 	_ui_override_active = true
@@ -578,6 +751,57 @@ func _fade_active_lane_out(seconds: float) -> void:
 		return
 	var tween := create_tween().set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
 	tween.tween_property(player, "volume_db", SILENT_VOLUME_DB, maxf(seconds, 0.05))
+
+func _voice_streams_for(line_id: StringName) -> Array:
+	if _voice_registry.has(line_id):
+		return _voice_registry[line_id]
+	var count := int(VOICE_LINE_MANIFEST.get(line_id, 0))
+	if count <= 0:
+		return []
+	var streams: Array = []
+	for variant_index in range(1, count + 1):
+		var path := (VOICE_DIR + String(line_id) + ".ogg") if count == 1 \
+				else ("%s%s_%d.ogg" % [VOICE_DIR, line_id, variant_index])
+		var stream := _load_stream(path, false)
+		if stream != null:
+			streams.append(stream)
+	if not streams.is_empty():
+		_voice_registry[line_id] = streams
+	return streams
+
+func _ensure_voice_lane() -> void:
+	if _voice_player != null:
+		return
+	_voice_player = AudioStreamPlayer.new()
+	_voice_player.name = "VoiceLane"
+	_voice_player.bus = String(VOICE_BUS)
+	_voice_player.process_mode = Node.PROCESS_MODE_ALWAYS
+	_voice_player.finished.connect(_on_voice_finished)
+	add_child(_voice_player)
+
+func _on_voice_finished() -> void:
+	_voice_speaking = false
+	if _voice_player != null:
+		_voice_player.stop()
+	_duck_music_for_voice(false)
+
+func _duck_music_for_voice(speaking: bool) -> void:
+	var music_index := AudioServer.get_bus_index(MUSIC_BUS)
+	if music_index < 0:
+		return
+	if speaking:
+		if _music_ducked:
+			return
+		_music_ducked = true
+		_music_duck_base_db = AudioServer.get_bus_volume_db(music_index)
+		AudioServer.set_bus_volume_db(music_index, _music_duck_base_db - VOICE_DUCK_DB)
+	elif _music_ducked:
+		_music_ducked = false
+		AudioServer.set_bus_volume_db(music_index, _music_duck_base_db)
+
+func _exit_tree() -> void:
+	# The duck edits global bus state; never leave it applied past this node.
+	_duck_music_for_voice(false)
 
 func _ensure_vitals_lane() -> void:
 	if _vitals_lane != null:

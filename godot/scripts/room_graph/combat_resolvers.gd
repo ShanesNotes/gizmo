@@ -56,6 +56,8 @@ func bind_ability_kit(kit: AbilityComponent) -> void:
 	_connect_ability_signal(_bound_kit.cast_started, Callable(self, "_on_player_cast_started"))
 	_connect_ability_signal(_bound_kit.surge_started, Callable(self, "_on_player_surge_started"))
 	_connect_ability_signal(_bound_kit.cast_ammo_changed, Callable(self, "_on_player_cast_ammo_changed"))
+	_connect_ability_signal(_bound_kit.cooldown_started, Callable(self, "_on_player_cooldown_started"))
+	_connect_ability_signal(_bound_kit.cooldown_finished, Callable(self, "_on_player_cooldown_finished"))
 
 func reset_for_run() -> void:
 	_clear_cast_shards(false)
@@ -89,6 +91,8 @@ func _disconnect_ability_kit() -> void:
 	_disconnect_ability_signal(_bound_kit.cast_started, Callable(self, "_on_player_cast_started"))
 	_disconnect_ability_signal(_bound_kit.surge_started, Callable(self, "_on_player_surge_started"))
 	_disconnect_ability_signal(_bound_kit.cast_ammo_changed, Callable(self, "_on_player_cast_ammo_changed"))
+	_disconnect_ability_signal(_bound_kit.cooldown_started, Callable(self, "_on_player_cooldown_started"))
+	_disconnect_ability_signal(_bound_kit.cooldown_finished, Callable(self, "_on_player_cooldown_finished"))
 
 func _disconnect_ability_signal(ability_signal: Signal, callback: Callable) -> void:
 	if ability_signal.is_connected(callback):
@@ -103,9 +107,32 @@ func _on_player_attack_started(_step: int, damage: float) -> void:
 	if not _combat_input_allowed():
 		return
 	_spawn_swing_read(melee_range)
+	_apply_melee_lunge()
 	var hits := _resolve_player_arc_damage(damage, melee_range, melee_arc_degrees)
 	if hits > 0:
 		_notify_audio_event(&"melee_hit")
+
+## HUD dash-slot cooldown surface: the payload's "ready" flag only reads right
+## if the HUD re-renders exactly when a cooldown starts and ends.
+func _on_player_cooldown_started(_ability: Ability, _duration: float) -> void:
+	_render_hud()
+
+func _on_player_cooldown_finished(_ability_id: StringName) -> void:
+	_render_hud()
+
+## Small forward lunge on melee commit (feel pass): routed through the motor's
+## dash channel so displacement stays collision-safe via move_and_slide. A real
+## dash always wins — the lunge never overrides an active dash burst.
+func _apply_melee_lunge() -> void:
+	var active_player := _player()
+	if active_player == null:
+		return
+	var motor = active_player.get("motor")
+	if motor == null or not motor.has_method("begin_dash"):
+		return
+	if bool(motor.call("is_dashing")):
+		return
+	motor.call("begin_dash", _player_facing_direction(active_player), 3.5, 0.08)
 
 func _on_player_special_started(potency: float) -> void:
 	if not _combat_input_allowed():
@@ -136,6 +163,7 @@ func _on_player_surge_started(damage: float, radius: float, stagger_seconds: flo
 	_notify_audio_event(&"surge_burst")
 	var center := active_player.global_position
 	CombatEffectsScript.spawn_burst_ring(_shard_parent(), center, radius)
+	CombatEffectsScript.shake_active_camera(active_player, 0.18, 0.12)
 	var snapshot: Array = _enemy_snapshot()
 	for candidate in snapshot:
 		if not (candidate is GreyboxEnemy) or not is_instance_valid(candidate):

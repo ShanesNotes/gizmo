@@ -22,21 +22,32 @@ Requests for the canon canvas:
 
 Game-side seam files: `godot/scripts/audio/`, tests `godot/tests/run_audio_director_tests.gd`.
 
-## Audition-pending zone assignments (soundtrack v2 live wiring, 2026-07-06 night)
-Game-side provisional mapping (Fable), honoring the polarity note — every row is the
-audio lab's to overturn in the audition pass:
-| pivot state | cue-map zone | rationale |
-|---|---|---|
-| HUB | SANCTUARY (AMB_02) | the Brass Sphere IS the sanctuary |
-| COMBAT rooms | ROAM (SEG_02) | its variant rule is pressure-driven — combat intensity emerges from live pressure |
-| SHOP rooms | SCRAP_MERCHANT (AMB_04) | direct match |
-| REST/REWARD rooms | SANCTUARY via REST alias | breather fiction |
-| BOSS room | REKINDLE_SIEGE (SEG_11) | immediate-cut entry per spec |
-| title screen | main_menu ui (SEG_01 ORCH) | per ui_contexts |
-| defeat | defeat_reflection (2.5s silence → SEG_06 ORCH once) | per ui_contexts |
-| victory | victory_sequence (SEG_12 ORCH) | per ui_contexts |
-| critical vitals | AMB_03 overlay (variant follows active) | trigger: guard broken AND hp ≤ 1/3 |
+## Audition-pending pacing model (long-form rework, 2026-07-06 playtest)
+Shane's playtest verdict on the first wiring: shifts were far too frequent — the
+composition never got to build. Reworked to a **per-run musical arc** (Fable); every
+assignment stays the audio lab's to overturn in the audition pass:
+
+**Arc:** `begin_run_silence()` rolls the run's arc once — SEG A (JAZZ) → BRG bridge
+(JAZZ, plays once) → SEG B (JAZZ, loops out the stretch). SEG pool: ROAM/RUINS/KEEPER/
+GILDED/TRIAL JAZZ files; bridge pool: BRG_04/BRG_08/BRG_09 JAZZ. Combat stretches live
+in JAZZ; ORCH belongs to hub/rest-UI/afterglow contexts.
+
+**Milestones (the only music switches):**
+| milestone | behavior |
+|---|---|
+| run start | authored silence → arc SEG A on engagement (pressure > 0) or ~15 s |
+| room transitions (COMBAT/SHOP/REST) | never retrigger — arc holds (`v2_arc_hold`); zone request still recorded on the seam |
+| mid-run beat | a room transition after SEG A has played ≥ 65% of its length advances SEG A → bridge → SEG B (minimum-play guard) |
+| BOSS room | immediate cut to REKINDLE_SIEGE (SEG_11 JAZZ); ends the arc |
+| defeat / victory | ui_context sequences unchanged (2.5 s silence → SEG_06 ORCH once / SEG_12 ORCH); end the arc |
+| hub return | SANCTUARY (AMB_02) ORCH |
+
+**Retired by the rework:** per-pressure ORCH↔JAZZ hysteresis flipping (engage/relax
+thresholds + 20 s dwell) — `set_pressure` now only releases the run-entry silence; the
+45 s idle fade-out (it flapped between rooms). Critical-vitals AMB_03 overlay unchanged
+(variant follows the arc: JAZZ in-run, ORCH in hub). Pressure scalar unchanged
+(tier-weighted live enemies, chaff .15 / bruiser .35 / elite .8 / boss .9, clamped 0..1).
+
 Deferred (recorded): AudioStreamInteractive bar-sync .tres authoring (crossfade
-approximation shipped); BRG bridge cues on menu→run/defeat→hub edges beyond the three
-implemented ui sequences; loudness gates. Pressure scalar = tier-weighted live enemies
-(chaff .15 / bruiser .35 / elite .8 / boss .9, clamped 0..1).
+approximation shipped); BRG cues on menu→run/defeat→hub edges beyond the arc bridge and
+the three ui sequences; loudness gates.

@@ -23,6 +23,8 @@ func _initialize() -> void:
 	await _test_cast_ammo_consumes_reclaims_and_empty_fails()
 	await _test_surge_requires_full_gauge_and_empties_on_use()
 	await _test_dash_cancel_from_attack_without_opening_other_interrupts()
+	await _test_dash_short_cooldown_blocks_spam_and_recovers()
+	await _test_dash_bonus_charges_allow_back_to_back_then_refill()
 	print("")
 	if _failed == 0 and _passed > 0:
 		print("PASS — %d checks" % _passed)
@@ -235,6 +237,42 @@ func _test_dash_cancel_from_attack_without_opening_other_interrupts() -> void:
 	_check("dash cannot cancel hitstun", not kit.try_activate(&"dash", Vector3.RIGHT))
 	_check("attack cannot cancel hitstun", not kit.try_activate(&"attack"))
 	_check_eq("blocked hitstun interrupts leave FSM in HITSTUN", kit.current_action_state(), PlayerActionStateMachine.ActionState.HITSTUN)
+	await _cleanup(body)
+
+func _test_dash_short_cooldown_blocks_spam_and_recovers() -> void:
+	var harness := await _new_kit()
+	var body: Node = harness["body"]
+	var kit: AbilityComponent = harness["kit"]
+	var dash := kit.get_ability(&"dash") as DashAbility
+	_check_almost("dash ships with a 1.0s cooldown", dash.cooldown, 1.0)
+
+	_check("first dash activates", kit.try_activate(&"dash", Vector3.RIGHT))
+	_check("dash reads as on cooldown right after use", kit.is_on_cooldown(&"dash"))
+	kit.tick(0.50)
+	_check("dash inside the cooldown is rejected", not kit.try_activate(&"dash", Vector3.RIGHT))
+	kit.tick(0.55)
+	_check("dash cooldown clears once it elapses", not kit.is_on_cooldown(&"dash"))
+	_check("dash activates again after the cooldown", kit.try_activate(&"dash", Vector3.RIGHT))
+	await _cleanup(body)
+
+func _test_dash_bonus_charges_allow_back_to_back_then_refill() -> void:
+	var harness := await _new_kit()
+	var body: Node = harness["body"]
+	var kit: AbilityComponent = harness["kit"]
+	_check_eq("default kit carries one dash charge", kit.dash_charges(), 1)
+	kit.set_bonus_dash_charges(1)
+	_check_eq("meta bonus grants a second dash charge", kit.dash_charges(), 2)
+
+	_check("first charged dash activates", kit.try_activate(&"dash", Vector3.RIGHT))
+	kit.tick(0.20)
+	_check("second charge dashes through the shared cooldown", kit.try_activate(&"dash", Vector3.RIGHT))
+	_check_eq("both dash charges are spent", kit.dash_charges(), 0)
+	_check("dash with zero charges reads as on cooldown", kit.is_on_cooldown(&"dash"))
+	kit.tick(0.20)
+	_check("no third dash with zero charges", not kit.try_activate(&"dash", Vector3.RIGHT))
+	kit.tick(0.70)
+	_check_eq("one charge refills when the cooldown cycle ends", kit.dash_charges(), 1)
+	_check("the refilled charge dashes again", kit.try_activate(&"dash", Vector3.RIGHT))
 	await _cleanup(body)
 
 func _object_has_property(object: Object, property_name: String) -> bool:

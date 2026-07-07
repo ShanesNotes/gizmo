@@ -6,6 +6,11 @@ signal exit_requested(connection: RoomConnection)
 enum State { SEALED, OPEN }
 
 const TELEGRAPH_LABEL_NAME := &"RewardTelegraph"
+const UNLOCK_SHINE_NAME := &"UnlockShine"
+# Warm gold flash on unlock (tokens.metal.gold_lit #e0c17a — room-clear reward beat).
+const UNLOCK_SHINE_COLOR := Color(0.878, 0.757, 0.478)
+const UNLOCK_SHINE_PEAK_ENERGY := 2.2
+const UNLOCK_SHINE_SECONDS := 0.45
 
 @export var player_group: StringName = &"player"
 
@@ -17,6 +22,8 @@ var door_name: String = ""
 var _exit_requested: bool = false
 var _overlap_check_generation: int = 0
 var _telegraph_label: Label3D = null
+var _unlock_shine: OmniLight3D = null
+var _shine_tween: Tween = null
 
 func _init() -> void:
 	monitoring = false
@@ -39,6 +46,7 @@ func open_for(connection: RoomConnection, next_reward_type: RoomNode.RewardType)
 	monitoring = true
 	_notify_audio_event(&"door_open")
 	_show_reward_telegraph(next_reward_type)
+	_play_unlock_shine()
 	_overlap_check_generation += 1
 	call_deferred("_check_for_already_overlapping_player", _overlap_check_generation)
 
@@ -50,6 +58,7 @@ func seal() -> void:
 	door_name = ""
 	_exit_requested = false
 	_hide_reward_telegraph()
+	_snuff_unlock_shine()
 	_overlap_check_generation += 1
 
 func telegraph_data() -> Dictionary:
@@ -114,17 +123,17 @@ func _reward_telegraph_text(next_reward_type: RoomNode.RewardType) -> String:
 		RoomNode.RewardType.SPARKS:
 			return "SPARKS"
 		RoomNode.RewardType.HAMMER:
-			return "HAMMER"
+			return "INGENUITY"
 		RoomNode.RewardType.HEAL:
-			return "HEAL"
+			return "MENDING"
 		RoomNode.RewardType.SHOP:
-			return "SHOP"
+			return "TRADE"
 		RoomNode.RewardType.REST:
-			return "REST"
+			return "SANCTUARY"
 		RoomNode.RewardType.REWARD:
-			return "REWARD"
+			return "RELIQUARY"
 		_:
-			return "UNKNOWN"
+			return "UNMARKED"
 
 func _reward_telegraph_color(next_reward_type: RoomNode.RewardType) -> Color:
 	match next_reward_type:
@@ -156,6 +165,38 @@ func _show_reward_telegraph(next_reward_type: RoomNode.RewardType) -> void:
 func _hide_reward_telegraph() -> void:
 	if _telegraph_label != null and is_instance_valid(_telegraph_label):
 		_telegraph_label.visible = false
+
+func _ensure_unlock_shine() -> OmniLight3D:
+	if _unlock_shine != null and is_instance_valid(_unlock_shine):
+		return _unlock_shine
+
+	_unlock_shine = OmniLight3D.new()
+	_unlock_shine.name = UNLOCK_SHINE_NAME
+	_unlock_shine.light_color = UNLOCK_SHINE_COLOR
+	_unlock_shine.omni_range = 4.0
+	_unlock_shine.light_energy = 0.0
+	_unlock_shine.position = Vector3(0.0, 1.2, 0.0)
+	add_child(_unlock_shine)
+	return _unlock_shine
+
+## Cosmetic room-clear beat: a brief warm flash on the door telegraph when it
+## unlocks. Purely visual — no gameplay state.
+func _play_unlock_shine() -> void:
+	var shine := _ensure_unlock_shine()
+	if _shine_tween != null and _shine_tween.is_valid():
+		_shine_tween.kill()
+	shine.light_energy = UNLOCK_SHINE_PEAK_ENERGY
+	if not is_inside_tree():
+		return
+	_shine_tween = create_tween()
+	_shine_tween.tween_property(shine, "light_energy", 0.0, UNLOCK_SHINE_SECONDS) \
+		.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+
+func _snuff_unlock_shine() -> void:
+	if _shine_tween != null and _shine_tween.is_valid():
+		_shine_tween.kill()
+	if _unlock_shine != null and is_instance_valid(_unlock_shine):
+		_unlock_shine.light_energy = 0.0
 
 func _notify_audio_event(event: StringName) -> void:
 	if not is_inside_tree():

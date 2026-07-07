@@ -95,7 +95,7 @@ theme_override_font_sizes/font_size = 96
 
 [node name="SubtitleLabel" type="Label" parent="Center/Menu"]
 layout_mode = 2
-text = "keep the spark alive"
+text = "keep it safe, keep it alive"
 horizontal_alignment = 1
 theme_override_colors/font_color = Color(0.7569, 0.6667, 0.5686, 1.0)
 theme_override_font_sizes/font_size = 22

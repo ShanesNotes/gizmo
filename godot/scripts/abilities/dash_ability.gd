@@ -7,6 +7,7 @@ extends Ability
 @export_range(0.01, 3.0) var dash_duration: float = 0.18
 @export_range(0.0, 3.0) var iframe_duration: float = 0.18
 @export_range(0.0, 60.0) var dash_speed: float = 14.0
+@export_range(1, 5) var charges: int = 1
 
 func _init() -> void:
 	ability_id = &"dash"
@@ -14,7 +15,7 @@ func _init() -> void:
 	kind = AbilityKind.DASH
 	cost = 0.0
 	resource_key = &""
-	cooldown = 0.25
+	cooldown = 1.0
 	cast_time = 0.0
 	recovery_time = 0.0
 	potency = 0.0

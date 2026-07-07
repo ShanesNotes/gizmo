@@ -51,6 +51,12 @@ background_mode = 2
 sky = SubResource("Sky_res")
 ambient_light_source = 3
 tonemap_mode = 2
+glow_enabled = true
+glow_intensity = 0.35
+glow_blend_mode = 2
+adjustment_enabled = true
+adjustment_contrast = 1.05
+adjustment_saturation = 1.02
 
 [sub_resource type="BoxMesh" id="Floor_mesh"]
 size = Vector3(70, 0.4, 80)

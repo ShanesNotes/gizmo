@@ -40,6 +40,8 @@ var _combo_window_remaining: float = 0.0
 var _cast_ammo_current: int = -1
 var _cast_ammo_lodged: int = 0
 var _cast_max_ammo_seen: int = -1
+var _dash_charges: int = -1
+var _dash_bonus_charges: int = 0
 
 func _ready() -> void:
 	_ensure_state_machine()
@@ -83,7 +85,8 @@ func try_activate(ability_id: StringName, direction: Vector3 = Vector3.ZERO) -> 
 
 	var caster := get_parent()
 	var ability := _runtime_ability(base_ability, caster)
-	if _uses_cooldown(ability) and _cooldowns.has(ability.ability_id):
+	if _uses_cooldown(ability) and _cooldowns.has(ability.ability_id) \
+			and not _cooldown_bypassed_by_dash_charge(ability):
 		ability_failed.emit(ability, "on_cooldown")
 		return false
 	if not _has_resource_for(ability):
@@ -137,7 +140,24 @@ func cooldown_remaining(ability_id: StringName) -> float:
 	return float(_cooldowns.get(ability_id, 0.0))
 
 func is_on_cooldown(ability_id: StringName) -> bool:
+	# The dash is "on cooldown" only when no charge is available: with meta
+	# bonus charges a dash can fire while its recharge timer is still running.
+	if ability_id == &"dash" and _cooldowns.has(&"dash"):
+		return dash_charges() <= 0
 	return _cooldowns.has(ability_id)
+
+func dash_charges() -> int:
+	_ensure_dash_charges()
+	return _dash_charges
+
+## Meta-progression seam (stat_grades["dash_charges"] → extra_dash_charges):
+## grants additional dash charges on top of the DashAbility's own charge count.
+func set_bonus_dash_charges(amount: int) -> void:
+	_ensure_dash_charges()
+	var previous_max := _dash_max_charges()
+	_dash_bonus_charges = maxi(0, amount)
+	var gained := _dash_max_charges() - previous_max
+	_dash_charges = clampi(_dash_charges + maxi(gained, 0), 0, _dash_max_charges())
 
 func is_invulnerable() -> bool:
 	return _iframe_remaining > 0.0
@@ -203,6 +223,8 @@ func _start_dash(ability: DashAbility, direction: Vector3) -> void:
 	var duration := ability.dash_duration if ability != null else 0.0
 	var iframe_duration := ability.iframe_duration if ability != null else 0.0
 	var speed := ability.dash_speed if ability != null else 0.0
+	_ensure_dash_charges()
+	_dash_charges = maxi(0, _dash_charges - 1)
 	_set_iframe_remaining(iframe_duration)
 	_ensure_state_machine().start_ability(ability, duration)
 	var dash_direction := direction
@@ -236,6 +258,9 @@ func _next_combo_step(ability: AttackAbility) -> int:
 
 func _start_cooldown(ability: Ability) -> void:
 	if not _uses_cooldown(ability) or ability.cooldown <= 0.0:
+		return
+	# A charge-spent dash must not reset the running recharge timer.
+	if ability.kind == Ability.AbilityKind.DASH and _cooldowns.has(ability.ability_id):
 		return
 	_cooldowns[ability.ability_id] = ability.cooldown
 	cooldown_started.emit(ability, ability.cooldown)
@@ -327,6 +352,8 @@ func _tick_cooldowns(delta: float) -> void:
 			_cooldowns[ability_id] = remaining
 	for ability_id in finished:
 		_cooldowns.erase(ability_id)
+		if ability_id == &"dash":
+			_refill_dash_charge()
 		cooldown_finished.emit(ability_id)
 
 func _tick_iframes(delta: float) -> void:
@@ -349,6 +376,30 @@ func _set_iframe_remaining(duration: float) -> void:
 	_iframe_remaining = maxf(_iframe_remaining, duration)
 	if not was_invulnerable and is_invulnerable():
 		invulnerability_changed.emit(true)
+
+func _cooldown_bypassed_by_dash_charge(ability: Ability) -> bool:
+	return ability != null and ability.kind == Ability.AbilityKind.DASH and dash_charges() > 0
+
+func _dash_max_charges() -> int:
+	var dash := get_ability(&"dash") as DashAbility
+	var base := dash.charges if dash != null else 1
+	return maxi(1, base) + _dash_bonus_charges
+
+func _ensure_dash_charges() -> void:
+	if _dash_charges < 0:
+		_dash_charges = _dash_max_charges()
+
+func _refill_dash_charge() -> void:
+	_ensure_dash_charges()
+	var max_charges := _dash_max_charges()
+	if _dash_charges >= max_charges:
+		return
+	_dash_charges += 1
+	if _dash_charges < max_charges:
+		var dash := get_ability(&"dash")
+		if dash != null and dash.cooldown > 0.0:
+			_cooldowns[&"dash"] = dash.cooldown
+			cooldown_started.emit(dash, dash.cooldown)
 
 func _ensure_state_machine() -> PlayerActionStateMachine:
 	if state_machine == null:

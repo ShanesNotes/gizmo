@@ -89,6 +89,7 @@ func _initialize() -> void:
 func _run_tests() -> void:
 	await _test_run_scene_auto_starts_with_default_pool()
 	await _test_run_scene_instantiates_and_enters_room()
+	await _test_room_entry_renders_region_toast_and_one_dressing_variant()
 	await _test_inter_wave_delay_defers_next_spawn_requests()
 	await _test_real_room_load_spawns_enemies_inside_camera_bounds_after_physics()
 	await _test_exact_overlapping_enemies_reproduce_depenetration_blowout()
@@ -221,6 +222,36 @@ func _test_run_scene_instantiates_and_enters_room() -> void:
 	_check("director spawned at least one greybox enemy", run.spawned_enemy_count() > 0)
 	_check("room doors are bound to RoomDoor behavior", _all_bound_doors_are_room_doors(run))
 	await _cleanup_run(run)
+
+func _test_room_entry_renders_region_toast_and_one_dressing_variant() -> void:
+	var run = await _new_run()
+	run.start_run("hearth", _empty_template_pool(), 3, _seeded_rng(7))
+	await process_frame
+
+	var room = run.run_controller.graph.get_room(run.run_controller.current_room_id)
+	_check("entered room carries a region display name", room != null and String(room.display_name) != "")
+
+	var toast := run.hud.get_node_or_null("RegionToast") as Label
+	_check("HUD shows a region toast on room entry", toast != null and toast.visible)
+	if toast != null and room != null:
+		_check_eq("region toast text matches the room display name", toast.text, room.display_name)
+
+	var variant_count := 0
+	for node in run.current_room_root.find_children("DressingVariant*", "Node3D", true, false):
+		variant_count += 1
+	_check("exactly one dressing variant survives room load", variant_count == 1)
+
+	# Same seed, same run shape: the surviving variant is deterministic.
+	var first_variant := _surviving_variant_name(run)
+	run.start_run("hearth", _empty_template_pool(), 3, _seeded_rng(7))
+	await process_frame
+	_check_eq("dressing variant choice is deterministic under the run seed", _surviving_variant_name(run), first_variant)
+	await _cleanup_run(run)
+
+func _surviving_variant_name(run) -> String:
+	for node in run.current_room_root.find_children("DressingVariant*", "Node3D", true, false):
+		return String(node.name)
+	return ""
 
 func _test_inter_wave_delay_defers_next_spawn_requests() -> void:
 	const TEST_DELAY := 0.2

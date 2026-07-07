@@ -152,7 +152,7 @@ func _test_title_scene_loads_headless() -> void:
 
 	_check("title scene instantiates", title != null and title.is_inside_tree())
 	_check_eq("wordmark renders", title.get_node("Center/Menu/WordmarkLabel").text, "GIZMO")
-	_check_eq("subtitle renders sentence case", title.get_node("Center/Menu/SubtitleLabel").text, "keep the spark alive")
+	_check_eq("subtitle renders sentence case", title.get_node("Center/Menu/SubtitleLabel").text, "keep it safe, keep it alive")
 	_check("START button exists", title.get_node_or_null("Center/Menu/StartButton") is Button)
 	_check("SETTINGS button exists on title", title.get_node_or_null("Center/Menu/SettingsButton") is Button)
 	_check("QUIT button exists", title.get_node_or_null("Center/Menu/QuitButton") is Button)
