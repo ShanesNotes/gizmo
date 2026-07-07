@@ -21,6 +21,13 @@ integrated head.
   veiled robe, scribe-moth wings, her own candle — hidden through the ember-dark and
   spoken beats (voice before image), rising out of the mist into her light on the
   reveal beat, in step with the portrait. `run_opening_tests` 92 → 96.
+- **Gizmo seated at the campfire (HZ-111).** Wired the assets lane's
+  `play_campfire_sit()` seam into the opening — the raw-glb Gizmo now wears the
+  authored campfire_sit pose, held for the whole cinematic, so he is discovered
+  small beside the fire across from Margin's body instead of a default pose. The
+  attach is inert without the player rig (every gameplay dep in the controller
+  no-ops); `is_cinematic_holding()` verifies the clip grafted. `run_opening_tests`
+  96 → 98.
 - **Canon promoted game-side** (`docs/hades-pivot/design/lore-canon-gameside.md`): the
   Reverence Law, the role-id → saint → keepsake-family → VO-id map, and the region
   dialect table, each tied to its code seam. Closes backlog #7.
