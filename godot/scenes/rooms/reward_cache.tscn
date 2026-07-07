@@ -9,6 +9,17 @@ ambient_light_source = 2
 ambient_light_color = Color(0.82, 0.66, 0.38, 1)
 ambient_light_energy = 0.8
 tonemap_mode = 2
+glow_enabled = true
+glow_intensity = 0.4
+glow_blend_mode = 2
+fog_enabled = true
+fog_light_color = Color(0.878, 0.757, 0.478, 1)
+fog_light_energy = 1.0
+fog_density = 0.005
+fog_sky_affect = 0.0
+adjustment_enabled = true
+adjustment_contrast = 1.04
+adjustment_saturation = 1.05
 
 [sub_resource type="StandardMaterial3D" id="Mat_floor"]
 albedo_color = Color(0.23, 0.23, 0.25, 1)

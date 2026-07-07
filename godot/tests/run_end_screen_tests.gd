@@ -15,6 +15,7 @@ func _initialize() -> void:
 	await _test_run_summary_renders_victory_payload()
 	await _test_run_summary_renders_loss_payload()
 	await _test_end_screen_declares_blocking_overlay_group()
+	await _test_summary_fades_in_from_ink()
 	await _test_retired_copy_tokens_are_absent()
 	print("")
 	if _failed == 0 and _passed > 0:
@@ -60,8 +61,8 @@ func _test_run_summary_renders_victory_payload() -> void:
 	})
 
 	_check("summary becomes visible", screen.get_node("Root").visible)
-	_check_eq("victory title", _label_text(screen, "Root/Center/Panel/Margin/VBox/TitleLabel"), "RUN COMPLETE")
-	_check_eq("result stat", _label_text(screen, "Root/Center/Panel/Margin/VBox/Stats/ResultValue"), "COMPLETE")
+	_check_eq("victory title", _label_text(screen, "Root/Center/Panel/Margin/VBox/TitleLabel"), "VIGIL KEPT")
+	_check_eq("result stat", _label_text(screen, "Root/Center/Panel/Margin/VBox/Stats/ResultValue"), "KEPT")
 	_check_eq("rooms stat", _label_text(screen, "Root/Center/Panel/Margin/VBox/Stats/RoomsValue"), "8")
 	_check_eq("boons stat", _label_text(screen, "Root/Center/Panel/Margin/VBox/Stats/BoonsValue"), "3")
 	_check_eq("scrap stat", _label_text(screen, "Root/Center/Panel/Margin/VBox/Stats/ScrapValue"), "41")
@@ -79,8 +80,8 @@ func _test_run_summary_renders_loss_payload() -> void:
 		"victory": false,
 	})
 
-	_check_eq("loss title", _label_text(screen, "Root/Center/Panel/Margin/VBox/TitleLabel"), "RUN LOST")
-	_check_eq("loss result stat", _label_text(screen, "Root/Center/Panel/Margin/VBox/Stats/ResultValue"), "LOST")
+	_check_eq("loss title", _label_text(screen, "Root/Center/Panel/Margin/VBox/TitleLabel"), "THE LIGHT FAILED")
+	_check_eq("loss result stat", _label_text(screen, "Root/Center/Panel/Margin/VBox/Stats/ResultValue"), "FAILED")
 	_check_eq("zero survived stat", _label_text(screen, "Root/Center/Panel/Margin/VBox/Stats/SurvivedValue"), "0:00")
 
 	await _cleanup(screen)
@@ -88,6 +89,24 @@ func _test_run_summary_renders_loss_payload() -> void:
 func _test_end_screen_declares_blocking_overlay_group() -> void:
 	var screen := await _new_screen()
 	_check("EndScreen participates in global blocking overlay group", screen.is_in_group(&"blocking_overlay"))
+	await _cleanup(screen)
+
+func _test_summary_fades_in_from_ink() -> void:
+	var screen := await _new_screen()
+	screen.show_run_summary({"victory": false})
+
+	var root_node := screen.get_node("Root") as Control
+	_check("summary is visible the moment it is shown", root_node.visible)
+	_check(
+		"summary arms an ink fade instead of popping (alpha starts low)",
+		root_node.modulate.a < 0.5,
+	)
+	await create_timer(EndScreen.INK_FADE_SECONDS + 0.4).timeout
+	_check(
+		"ink fade lands fully rendered (got alpha %.2f)" % root_node.modulate.a,
+		root_node.modulate.a > 0.99,
+	)
+
 	await _cleanup(screen)
 
 func _test_retired_copy_tokens_are_absent() -> void:

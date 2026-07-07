@@ -1,7 +1,8 @@
-[gd_scene load_steps=11 format=3]
+[gd_scene load_steps=12 format=3]
 
 [ext_resource type="Script" path="res://scripts/room_graph/custodian_boss.gd" id="1_custodian"]
 [ext_resource type="PackedScene" uid="uid://fwe25p8sjjjw" path="res://assets/enemies/custodian_boss.glb" id="2_custodian_glb"]
+[ext_resource type="Script" path="res://scripts/enemies/custodian_visual.gd" id="3_custodian_visual"]
 
 [sub_resource type="Environment" id="Env_res"]
 background_mode = 1
@@ -10,6 +11,17 @@ ambient_light_source = 2
 ambient_light_color = Color(0.22, 0.16, 0.22, 1)
 ambient_light_energy = 0.34
 tonemap_mode = 2
+glow_enabled = true
+glow_intensity = 0.35
+glow_blend_mode = 2
+fog_enabled = true
+fog_light_color = Color(0.341, 0.251, 0.451, 1)
+fog_light_energy = 0.7
+fog_density = 0.012
+fog_sky_affect = 0.0
+adjustment_enabled = true
+adjustment_contrast = 1.1
+adjustment_saturation = 0.9
 
 [sub_resource type="StandardMaterial3D" id="Mat_floor"]
 albedo_color = Color(0.24, 0.23, 0.28, 1)
@@ -126,6 +138,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.2, 0)
 shape = SubResource("BossShape")
 
 [node name="VisualPivot" type="Node3D" parent="CustodianBoss"]
+script = ExtResource("3_custodian_visual")
 
 [node name="Body" type="MeshInstance3D" parent="CustodianBoss/VisualPivot"]
 transform = Transform3D(1.15, 0, 0, 0, 1.15, 0, 0, 0, 1.15, 0, 1.2, 0)
@@ -141,7 +154,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 7.25, 0)
 visible = false
 modulate = Color(1, 0.78, 0.36, 1)
 billboard = 1
-text = "THE CUSTODIAN"
+text = "THE PATTERN"
 font_size = 42
 
 [node name="RoomExit" type="Area3D" parent="."]

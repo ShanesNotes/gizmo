@@ -196,3 +196,10 @@ Rubric: Opus = seam-shaping/cross-system judgment; Sonnet = specified single-fil
 | HZ-098 | region grammar into the run generator (shattered-meridian graph + encounter beats) | Codex | rooms | ready-for-agent | plan-P4 |
 | HZ-099 | lore promotion request: benefactor names + door/codex copy (research §6 answers) | lore-canvas | lore | ready-for-agent | plan-P5 |
 - Phase 2-5 authority: docs/hades-pivot/ECOSYSTEM-WIRING-PLAN.md + each sibling's canon (read owning canon FIRST per ecosystem protocol).
+- PLAYTEST FEEDBACK (Shane, 2026-07-06 ~10pm, first human session): (1) music shifts far too frequent — songs never build; new strategy = long-form vibe-setting, lean heavy into JAZZTRONICA SEGs + BRG bridges for combat slices, switch on run milestones not per-room; (2) attacks need more feedback — DAMAGE NUMBERS; (3) dash needs a short cooldown; (4) combat must feel fluid and engaging, not flat. Directive: full Fable pass on the whole game — one Fable agent per lab folder (Shane explicitly overrides the no-Fable-subagent tiering law for this push), world must be immersive and beautiful.
+| HZ-100 | music strategy rework: long-form composition pacing (Shane note 1) | FABLE-audio | audio | done | 095 |
+| HZ-101B | damage numbers + dash cooldown + combat fluidity (Shane notes 2-4) | FABLE-combat | feel | done | 084 |
+| HZ-102B | gouache look pass per design-system canon | FABLE-look | look | done | plan-P3 |
+| HZ-103B | region grammar + level identity per level-design canon | FABLE-level | rooms | done | plan-P4 |
+| HZ-104B | lore copy pass: telegraphs, boons, codex voice per lore canon | FABLE-lore | lore | done | plan-P5 |
+| HZ-105B | AAA animation pipeline: rig/clips/weapon, movement identity | FABLE-assets | assets | done | plan-P2 |

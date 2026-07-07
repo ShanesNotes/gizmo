@@ -56,6 +56,7 @@ func _initialize() -> void:
 	print("Running room template pool tests...")
 	_test_expected_template_set()
 	_test_templates_validate_and_match_metadata()
+	_test_combat_templates_carry_spawn_clear_dressing_variants()
 	print("")
 	if _failed == 0 and _passed > 0:
 		print("PASS - %d checks" % _passed)
@@ -117,6 +118,94 @@ func _test_templates_validate_and_match_metadata() -> void:
 
 		_assert_scene_authoring_contract(template_id, instance)
 		instance.free()
+
+# Landmark dressing (landmark-taxonomy.yaml): combat rooms carry authored
+# greybox prop variants; exactly one survives per run room (picked by seed in
+# the orchestrator). Props must never intrude on the spawn containment box so
+# the containment/separation pins stay green.
+const EXPECTED_DRESSING_VARIANTS := {
+	"combat_small": 3,
+	"combat_large": 3,
+}
+const SPAWN_KEEP_OUT_MARGIN := 0.25
+
+func _test_combat_templates_carry_spawn_clear_dressing_variants() -> void:
+	for template_id in EXPECTED_DRESSING_VARIANTS.keys():
+		var template := _load_template("%s/%s.tres" % [TEMPLATE_DIR, template_id])
+		if template == null or template.scene == null:
+			_check("%s dressing test has a loadable scene" % template_id, false)
+			continue
+		var instance := template.scene.instantiate()
+		_assert_dressing_contract(template_id, instance)
+		instance.free()
+
+func _assert_dressing_contract(template_id: String, root_node: Node) -> void:
+	var anchor := root_node.find_child("CameraAnchor", true, false) as Marker3D
+	_check("%s dressing test finds CameraAnchor" % template_id, anchor != null)
+	if anchor == null:
+		return
+	var keep_out_half := Vector2(
+		float(anchor.get_meta("camera_half_extent_x", 0.0)) + SPAWN_KEEP_OUT_MARGIN,
+		float(anchor.get_meta("camera_half_extent_z", 0.0)) + SPAWN_KEEP_OUT_MARGIN
+	)
+	var keep_out_center := Vector2(anchor.position.x, anchor.position.z)
+
+	var variants: Array[Node] = []
+	for node in _flatten_nodes(root_node):
+		if String(node.name).begins_with("DressingVariant"):
+			variants.append(node)
+	_check_eq(
+		"%s carries the authored dressing variant count" % template_id,
+		variants.size(),
+		EXPECTED_DRESSING_VARIANTS[template_id]
+	)
+
+	for variant in variants:
+		var props: Array[CSGBox3D] = []
+		for node in _flatten_nodes(variant):
+			if node is CSGBox3D:
+				props.append(node)
+		_check("%s %s has at least two greybox props" % [template_id, variant.name], props.size() >= 2)
+		for prop in props:
+			_check(
+				"%s %s prop %s stays outside the spawn containment box" % [template_id, variant.name, prop.name],
+				_prop_outside_keep_out(prop, root_node, keep_out_center, keep_out_half)
+			)
+			_check(
+				"%s %s prop %s keeps collision for readable blocking" % [template_id, variant.name, prop.name],
+				prop.use_collision
+			)
+
+func _prop_outside_keep_out(prop: CSGBox3D, root_node: Node, center: Vector2, half: Vector2) -> bool:
+	var to_room := _room_space_transform(prop, root_node)
+	var extents: Vector3 = prop.size * 0.5
+	var min_x := INF
+	var max_x := -INF
+	var min_z := INF
+	var max_z := -INF
+	for sx in [-1.0, 1.0]:
+		for sy in [-1.0, 1.0]:
+			for sz in [-1.0, 1.0]:
+				var corner := to_room * Vector3(extents.x * sx, extents.y * sy, extents.z * sz)
+				min_x = minf(min_x, corner.x)
+				max_x = maxf(max_x, corner.x)
+				min_z = minf(min_z, corner.z)
+				max_z = maxf(max_z, corner.z)
+	return (
+		max_x < center.x - half.x
+		or min_x > center.x + half.x
+		or max_z < center.y - half.y
+		or min_z > center.y + half.y
+	)
+
+func _room_space_transform(node: Node3D, root_node: Node) -> Transform3D:
+	var accumulated := Transform3D.IDENTITY
+	var cursor: Node = node
+	while cursor != null and cursor != root_node:
+		if cursor is Node3D:
+			accumulated = (cursor as Node3D).transform * accumulated
+		cursor = cursor.get_parent()
+	return accumulated
 
 func _load_template(path: String) -> RoomTemplate:
 	var resource := load(path)

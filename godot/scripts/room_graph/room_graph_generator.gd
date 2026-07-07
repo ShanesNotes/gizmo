@@ -11,6 +11,9 @@ extends RefCounted
 ## door telegraphs.
 
 const BRANCH_CHANCE: float = 0.55
+## encounter-beats.yaml `trial`: a diegetic danger spike before relief/climax,
+## expressed through the existing difficulty_tier knob on the penultimate room.
+const TRIAL_TIER_BONUS: float = 0.12
 const REST_ROOM_CHANCE: float = 0.35
 const REWARD_ROOM_CHANCE: float = 0.25
 const DOOR_SINGLE: String = "RoomExit"
@@ -33,6 +36,7 @@ static func generate(
 		active_rng = RandomNumberGenerator.new()
 		active_rng.randomize()
 
+	var route := RegionTable.pick_route(active_rng)
 	var fixture_indices := _pick_fixture_indices(room_count, active_rng)
 	var shop_index := int(fixture_indices["shop"])
 	var elite_index := int(fixture_indices["elite"])
@@ -62,7 +66,11 @@ static func generate(
 			reward_indices
 		)
 		room.reward_type = _pick_reward_type(i, shop_index, rest_index, reward_indices, active_rng)
+		room.region_id = RegionTable.region_for_index(route, i, room_count)
+		room.display_name = RegionTable.display_name_for(room.region_id, _room_reads_as_landmark(room.template, i, room_count))
 		room.difficulty_tier = float(i) / float(maxi(room_count - 1, 1))
+		if room_count >= 3 and i == room_count - 2:
+			room.difficulty_tier = minf(room.difficulty_tier + TRIAL_TIER_BONUS, 1.0)
 		room.state = RoomNode.State.LOCKED if i > 0 else RoomNode.State.AVAILABLE
 		graph.rooms.append(room)
 
@@ -75,6 +83,15 @@ static func generate(
 
 	graph.entry_room_id = graph.rooms[0].room_id if not graph.rooms.is_empty() else ""
 	return graph
+
+## BOSS and ELITE rooms read as the region's landmark ("The Last Ember"); all
+## other rooms carry the region name itself ("Brasswind Highlands").
+static func _room_reads_as_landmark(template: RoomTemplate, index: int, room_count: int) -> bool:
+	if index == room_count - 1:
+		return true
+	if template == null:
+		return false
+	return template.room_type == RoomTemplate.RoomType.ELITE or template.room_type == RoomTemplate.RoomType.BOSS
 
 static func _pick_template(
 	pool: Array[RoomTemplate],

@@ -969,7 +969,7 @@ func _assert_hud_matches_run_start(run) -> void:
 	_assert_spawned_enemies_inside_current_room_bounds(run, "integration run start")
 
 func _assert_summary_labels(screen: EndScreen, summary: Dictionary, prefix: String) -> void:
-	_check_eq("%s summary result label" % prefix, _summary_label(screen, "ResultValue"), "COMPLETE" if bool(summary.get("victory", false)) else "LOST")
+	_check_eq("%s summary result label" % prefix, _summary_label(screen, "ResultValue"), "KEPT" if bool(summary.get("victory", false)) else "FAILED")
 	_check_eq("%s summary rooms label" % prefix, _summary_label(screen, "RoomsValue"), str(int(summary.get("rooms_cleared", -1))))
 	_check_eq("%s summary boons label" % prefix, _summary_label(screen, "BoonsValue"), str(int(summary.get("boons_taken", -1))))
 	_check_eq("%s summary scrap label" % prefix, _summary_label(screen, "ScrapValue"), str(int(summary.get("scrap_banked", -1))))

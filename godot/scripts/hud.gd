@@ -89,6 +89,36 @@ func render_spark(charge: float, charge_max: float) -> void:
 		_spark_status.text = "%d%%" % int(roundf((safe_charge / safe_max) * 100.0))
 
 
+## Payload-driven region toast: the orchestrator passes the entered room's
+## display name (drawn from the Shattered Meridian region graph) and the HUD
+## shows it briefly. The label is built lazily so the .tscn stays untouched.
+const REGION_TOAST_HOLD_SECONDS := 2.2
+const REGION_TOAST_FADE_SECONDS := 0.6
+const REGION_TOAST_BRASS := Color(0.7882, 0.5647, 0.4196, 1.0)
+
+var _region_toast: Label = null
+
+func render_region_toast(text: String) -> void:
+	if text.strip_edges() == "":
+		return
+	if _region_toast == null or not is_instance_valid(_region_toast):
+		_region_toast = Label.new()
+		_region_toast.name = "RegionToast"
+		_region_toast.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		_region_toast.grow_horizontal = Control.GROW_DIRECTION_BOTH
+		_region_toast.add_theme_font_size_override("font_size", 26)
+		_region_toast.add_theme_color_override("font_color", REGION_TOAST_BRASS)
+		add_child(_region_toast)
+		_region_toast.set_anchors_preset(Control.PRESET_CENTER_TOP)
+		_region_toast.offset_top = 46.0
+	_region_toast.text = text
+	_region_toast.modulate = Color(1.0, 1.0, 1.0, 1.0)
+	_region_toast.visible = true
+	var tween := _region_toast.create_tween()
+	tween.tween_interval(REGION_TOAST_HOLD_SECONDS)
+	tween.tween_property(_region_toast, "modulate:a", 0.0, REGION_TOAST_FADE_SECONDS)
+
+
 ## Payload-driven boon loadout rows (HZ-052). Controller passes picked boons when the
 ## run has kit slots filled; clears and repopulates on each call.
 func render_boons(picked: Array[BoonDef]) -> void:

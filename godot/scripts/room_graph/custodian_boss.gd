@@ -389,7 +389,7 @@ func _apply_boss_visuals() -> void:
 		visual_pivot = pivot
 	var label := _nameplate()
 	if label != null:
-		label.text = "THE CUSTODIAN"
+		label.text = "THE PATTERN"
 		label.visible = false
 
 func _nameplate() -> Label3D:

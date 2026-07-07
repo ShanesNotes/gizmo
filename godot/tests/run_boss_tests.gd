@@ -32,6 +32,7 @@ func _run_tests() -> void:
 	await _test_custodian_contact_suppression_and_ledger_invariants()
 	await _test_custodian_is_snapshot_damageable_enemy()
 	await _test_boss_arena_uses_custodian_model()
+	await _test_custodian_visual_presides_over_the_arena()
 	print("")
 	if _failed == 0 and _passed > 0:
 		print("PASS - %d checks" % _passed)
@@ -378,6 +379,41 @@ func _test_boss_arena_uses_custodian_model() -> void:
 	if model != null:
 		_check_between("Custodian model reads big at roughly 3-4x player scale", model.scale.y, 3.0, 4.25)
 		_check("Custodian model exposes a MeshInstance3D for combat effects", _first_mesh_under(model) != null)
+	arena.queue_free()
+	await process_frame
+
+func _test_custodian_visual_presides_over_the_arena() -> void:
+	# Presiding, not walking: slow levitation, no gait bob tied to speed,
+	# no flinch — and the boss script keeps ownership of pivot yaw.
+	var arena := BossArenaScene.instantiate()
+	root.add_child(arena)
+	await process_frame
+	var boss := arena.get_node_or_null("CustodianBoss") as CharacterBody3D
+	var pivot := boss.get_node_or_null("VisualPivot") as Node3D if boss != null else null
+	var model := pivot.get_node_or_null("CustodianBossModel") as Node3D if pivot != null else null
+	_check("custodian pivot carries the presiding visual script", pivot != null and pivot.has_method("update_motion"))
+	if pivot == null or model == null or not pivot.has_method("update_motion"):
+		arena.queue_free()
+		await process_frame
+		return
+
+	var base_y: float = model.position.y
+	var min_y := base_y
+	var max_y := base_y
+	for i in range(20):
+		pivot.call("update_motion", 0.1)
+		min_y = minf(min_y, model.position.y)
+		max_y = maxf(max_y, model.position.y)
+	_check("custodian levitates on a slow cycle", max_y - min_y > 0.05)
+	_check("custodian levitation stays stately, never a stomp", max_y - min_y < 0.35)
+	_check("custodian survey sway never usurps pivot yaw", absf(model.rotation.y) <= 0.05)
+
+	boss.velocity = Vector3(4.0, 0.0, 0.0)
+	for i in range(10):
+		pivot.call("update_motion", 0.05)
+	_check("custodian inclines faintly while repositioning", model.rotation.x > 0.02)
+	boss.velocity = Vector3.ZERO
+
 	arena.queue_free()
 	await process_frame
 

@@ -104,6 +104,13 @@ func _test_default_boon_pool_is_fully_tagged_with_valid_benefactors() -> void:
 		&"spark_cast": &"marksman",
 		&"codex_passive": &"hearthguard",
 	}
+	var expected_display: Dictionary = {
+		&"bearer": "the Bearer",
+		&"hearthguard": "the Hearthguard",
+		&"swordbearer": "the Swordbearer",
+		&"marksman": "the Marksman",
+		&"company": "the Company",
+	}
 	var seen: Dictionary = {}
 
 	_check_eq("default boon pool keeps ten boons", pool.size(), 10)
@@ -112,9 +119,14 @@ func _test_default_boon_pool_is_fully_tagged_with_valid_benefactors() -> void:
 		_check("%s has a benefactor role-id" % boon.boon_id, boon.benefactor != &"")
 		_check("%s benefactor role-id is valid" % boon.boon_id, BoonDef.VALID_BENEFACTOR_IDS.has(boon.benefactor))
 		_check_eq(
-			"%s benefactor display uses placeholder role label" % boon.boon_id,
+			"%s benefactor display uses the lore role-title" % boon.boon_id,
 			boon.benefactor_display_name,
-			boon.benefactor_placeholder_display_name()
+			String(expected_display.get(boon.benefactor, ""))
+		)
+		_check(
+			"%s description is authored, not placeholder" % boon.boon_id,
+			not boon.description.is_empty()
+				and boon.description != "A run-scoped upgrade for this chamber chain."
 		)
 	for boon_id in expected.keys():
 		_check_eq("default pool tags %s" % boon_id, seen.get(boon_id, &""), expected[boon_id])

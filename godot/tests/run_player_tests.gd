@@ -21,6 +21,10 @@ func _initialize() -> void:
 	await _test_player_collision_shape_contract_is_byte_identical()
 	await _test_player_visual_faces_motor_direction_smoothly()
 	await _test_player_visual_idle_bob_and_movement_lean()
+	_test_animation_controller_state_to_clip_mapping()
+	await _test_animation_controller_builds_clip_library_on_rig()
+	await _test_animation_controller_follows_action_states()
+	await _test_weapon_mount_attaches_to_right_hand()
 	_test_player_vitals_guard_recharges_after_damage_delay()
 	_test_player_vitals_damage_lockout_limits_burst_contact()
 	_test_player_vitals_spark_charge_bands_and_clamps()
@@ -157,7 +161,7 @@ func _test_player_scene_instantiates_with_stable_nodes() -> void:
 	_check("AbilityInputRouter node exists", player.get_node_or_null("AbilityInputRouter") is AbilityInputRouter)
 	_check("router is bound to the scene AbilityComponent", player.ability_input_router.ability_component == player.ability_component)
 	_check_almost("scene dash duration is Hades-spec ~0.25s", player.motor.dash_duration, 0.25)
-	_check_almost("legacy root visual turn is disabled so GizmoVisual owns facing", player.turn_speed, 0.0)
+	_check("legacy root turn_speed export is fully removed (GizmoVisual owns facing)", not ("turn_speed" in player))
 	_check("scene root is tagged for player-only trigger filters", player.is_in_group(&"player"))
 
 	await _cleanup(player)
@@ -238,6 +242,140 @@ func _test_player_visual_idle_bob_and_movement_lean() -> void:
 	_check("movement lean tilts the model into horizontal velocity", absf(model.rotation.z) > 0.05)
 	_check("movement lean remains subtle", absf(model.rotation.z) <= 0.35)
 
+	await _cleanup(player)
+
+func _test_animation_controller_state_to_clip_mapping() -> void:
+	var Controller := load("res://scripts/player/gizmo_animation_controller.gd")
+	_check("GizmoAnimationController script exists", Controller != null)
+	if Controller == null:
+		return
+	_check_eq(
+		"IDLE while still maps to idle clip",
+		Controller.clip_for_state(PlayerActionStateMachine.ActionState.IDLE, false), &"idle"
+	)
+	_check_eq(
+		"IDLE while moving maps to run clip",
+		Controller.clip_for_state(PlayerActionStateMachine.ActionState.IDLE, true), &"run"
+	)
+	_check_eq(
+		"DASH maps to dash clip",
+		Controller.clip_for_state(PlayerActionStateMachine.ActionState.DASH, true), &"dash"
+	)
+	_check_eq(
+		"ATTACK maps to attack clip",
+		Controller.clip_for_state(PlayerActionStateMachine.ActionState.ATTACK, false), &"attack"
+	)
+	_check_eq(
+		"SPECIAL maps to attack clip",
+		Controller.clip_for_state(PlayerActionStateMachine.ActionState.SPECIAL, false), &"attack"
+	)
+	_check_eq(
+		"CAST maps to attack clip",
+		Controller.clip_for_state(PlayerActionStateMachine.ActionState.CAST, false), &"attack"
+	)
+	_check_eq(
+		"HITSTUN maps to hit_react clip",
+		Controller.clip_for_state(PlayerActionStateMachine.ActionState.HITSTUN, true), &"hit_react"
+	)
+	_check_eq(
+		"SURGE maps to surge clip",
+		Controller.clip_for_state(PlayerActionStateMachine.ActionState.SURGE, false), &"surge"
+	)
+
+func _test_animation_controller_builds_clip_library_on_rig() -> void:
+	var player = await _new_player()
+	var controller: Node = player.get_node_or_null("AnimationController")
+	_check("AnimationController node exists in gizmo_player.tscn", controller != null)
+	if controller == null:
+		await _cleanup(player)
+		return
+
+	var anim_player := controller.get("animation_player") as AnimationPlayer
+	_check("controller builds an AnimationPlayer on ready", anim_player != null)
+	if anim_player == null:
+		await _cleanup(player)
+		return
+
+	for clip_name in [&"idle", &"run", &"dash", &"attack", &"hit_react", &"surge"]:
+		_check("clip library contains %s" % clip_name, anim_player.has_animation("gizmo/%s" % clip_name))
+	var idle_clip := anim_player.get_animation("gizmo/idle")
+	var run_clip := anim_player.get_animation("gizmo/run")
+	var attack_clip := anim_player.get_animation("gizmo/attack")
+	var dash_clip := anim_player.get_animation("gizmo/dash")
+	if idle_clip != null and run_clip != null and attack_clip != null and dash_clip != null:
+		_check("idle clip loops", idle_clip.loop_mode == Animation.LOOP_LINEAR)
+		_check("run clip loops", run_clip.loop_mode == Animation.LOOP_LINEAR)
+		_check("attack clip is one-shot", attack_clip.loop_mode == Animation.LOOP_NONE)
+		_check("dash clip is one-shot", dash_clip.loop_mode == Animation.LOOP_NONE)
+		# Effective cadence = clip length / RUN_EAGERNESS playback multiplier: the
+		# authored 0.72s walk cycle still plays as Gizmo's eager patter.
+		var eagerness := float(controller.get("RUN_EAGERNESS"))
+		_check("run cadence plays as a quick patter (<= 0.6s effective cycle)", run_clip.length / maxf(eagerness, 0.001) <= 0.6)
+		_check("clips carry bone rotation tracks", idle_clip.get_track_count() > 0)
+	# Arbitration contract (two concurrent animation lanes, one skeleton):
+	# when the authored-clip GizmoAnimator is present and not deferring, it owns
+	# playback and the fallback controller must be inert; otherwise the fallback
+	# controller starts on idle. Exactly one authority, never both.
+	var animator: Node = player.get_node_or_null("GizmoAnimator")
+	var animator_owns := animator != null and not bool(animator.get("defer_to_fallback_controller"))
+	if animator_owns:
+		_check_eq("superseded fallback player is stopped by arbitration", anim_player.current_animation, "")
+		var tree := animator.get("animation_tree") as AnimationTree
+		_check("authored-clip AnimationTree is the single live authority", tree != null and tree.active)
+		_check("arbitration disables fallback controller processing", controller.process_mode == Node.PROCESS_MODE_DISABLED)
+	else:
+		_check_eq("controller starts on the idle clip", anim_player.current_animation, "gizmo/idle")
+	await _cleanup(player)
+
+func _test_animation_controller_follows_action_states() -> void:
+	var player = await _new_player()
+	var controller: Node = player.get_node_or_null("AnimationController")
+	var anim_player: AnimationPlayer = null
+	if controller != null:
+		anim_player = controller.get("animation_player") as AnimationPlayer
+	_check("controller + AnimationPlayer present for state-follow test", anim_player != null)
+	if anim_player == null:
+		await _cleanup(player)
+		return
+
+	player.velocity = Vector3.RIGHT * player.move_speed
+	controller.call("update_animation", 0.016)
+	_check_eq("full-speed movement plays the run clip", anim_player.current_animation, "gizmo/run")
+	_check("run clip speed scales with velocity", anim_player.speed_scale > 0.9)
+
+	player.velocity = Vector3.ZERO
+	controller.call("update_animation", 0.016)
+	_check_eq("standing still returns to the idle clip", anim_player.current_animation, "gizmo/idle")
+
+	var event := InputEventAction.new()
+	event.action = ACTION_DASH
+	event.pressed = true
+	player.ability_input_router._unhandled_input(event)
+	controller.call("update_animation", 0.016)
+	_check_eq("dash press plays the dash clip", anim_player.current_animation, "gizmo/dash")
+
+	await _cleanup(player)
+
+func _test_weapon_mount_attaches_to_right_hand() -> void:
+	var player = await _new_player()
+	var skeleton := player.get_node_or_null("VisualPivot/Model/UniRigArmature/Skeleton3D") as Skeleton3D
+	_check("skeleton present for weapon mount test", skeleton != null)
+	if skeleton == null:
+		await _cleanup(player)
+		return
+	var mount := skeleton.get_node_or_null("WeaponMount") as BoneAttachment3D
+	_check("WeaponMount BoneAttachment3D exists under the skeleton", mount != null)
+	if mount != null:
+		# The mount follows the clip source: authored gizmo_clips.glb swings the
+		# Bone_019-hand arm; the code-built fallback swings the Bone_024-hand arm.
+		var expected_bone := "Bone_019" if ResourceLoader.exists("res://assets/animations/gizmo_clips.glb", "PackedScene") else "Bone_024"
+		_check_eq("WeaponMount rides the swing-arm hand bone", mount.bone_name, expected_bone)
+		_check("WeaponMount carries a weapon model", mount.get_child_count() > 0)
+	# Never two visible wrenches: the arbitration winner's mount is the only
+	# visible one (GizmoAnimator hides the fallback WeaponMount when it owns).
+	var animator_mount := skeleton.get_node_or_null("GizmoWeaponMount") as BoneAttachment3D
+	if animator_mount != null and mount != null:
+		_check("exactly one weapon mount is visible", not mount.visible)
 	await _cleanup(player)
 
 func _test_player_vitals_guard_recharges_after_damage_delay() -> void:

@@ -67,6 +67,7 @@ var elapsed_seconds: float = 0.0
 var scrap_earned: int = 0
 var sparks_earned: int = 0
 var active_run_bonuses: Dictionary = {}
+var _boss_phase_count := 0
 var combat_resolvers: CombatResolvers = null
 var current_boss = null
 
@@ -134,6 +135,12 @@ func start_run(
 			audio_director = get_node_or_null("/root/AudioDirector")
 		if audio_director != null and audio_director.has_method(&"begin_run_silence"):
 			audio_director.call(&"begin_run_silence")
+		_speak_voice(&"margin_sendoff")
+	# Meta seam: dash-charge upgrades flow into the kit (fable-combat handoff).
+	if _run_active:
+		var kit := _player_ability_kit()
+		if kit != null and kit.has_method(&"set_bonus_dash_charges"):
+			kit.set_bonus_dash_charges(int(active_run_bonuses.get("extra_dash_charges", 0)))
 	_transitioning = false
 	_death_teardown_complete = false
 	if _run_active:
@@ -326,6 +333,7 @@ func _load_current_room() -> void:
 		push_error("RunOrchestrator: room template scene root must be Node3D.")
 		return
 	rooms_root.add_child(current_room_root)
+	_select_dressing_variant(current_room_root)
 	_spawn_index_in_room = 0
 
 	_place_player_at_spawn(current_room_root)
@@ -334,7 +342,29 @@ func _load_current_room() -> void:
 		camera.enter_room(current_room_root)
 	_start_room_director(room)
 	_render_hud_payloads()
+	if hud != null:
+		hud.render_region_toast(room.display_name)
 	room_loaded.emit(room, current_room_root)
+
+## Landmark dressing: combat rooms author 2-3 DressingVariant prop groups
+## (landmark-taxonomy.yaml); one is kept per visit, the rest are removed.
+## Reads _rng.state without rolling so seed-pinned director budgets and spawn
+## placement stay untouched.
+func _select_dressing_variant(room_root: Node3D) -> void:
+	var variants := room_root.find_children("DressingVariant*", "Node3D", true, false)
+	if variants.size() <= 1:
+		return
+	var keep_index := 0
+	if _rng != null:
+		keep_index = int(_rng.state % variants.size())
+	for i in range(variants.size()):
+		if i == keep_index:
+			continue
+		var discarded := variants[i]
+		var parent := discarded.get_parent()
+		if parent != null:
+			parent.remove_child(discarded)
+		discarded.queue_free()
 
 func _cleanup_current_room() -> void:
 	_invalidate_pending_wave_spawns()
@@ -422,6 +452,7 @@ func _start_room_director(room: RoomNode) -> void:
 	if _room_is_boss(room):
 		current_director = null
 		_set_audio_zone_state(&"BOSS")
+		_speak_voice(&"pattern_intro")
 		_start_boss_room()
 		return
 	if _room_clears_without_director(room):
@@ -492,6 +523,9 @@ func _start_boss_intro() -> void:
 			current_boss.call("show_nameplate", true)
 		if camera != null:
 			camera.target = current_boss
+			# Cosmetic nameplate-beat push-in (presentation only).
+			if camera.has_method("push_in"):
+				camera.call("push_in", 1.0)
 
 func _tick_boss_intro(delta: float) -> void:
 	if _boss_intro_hold_remaining <= 0.0:
@@ -506,6 +540,8 @@ func _tick_boss_intro(delta: float) -> void:
 
 func _finish_boss_intro(begin_fight: bool) -> void:
 	_boss_intro_hold_remaining = 0.0
+	if camera != null and camera.has_method("release_push"):
+		camera.call("release_push")
 	if current_boss != null and is_instance_valid(current_boss) and current_boss.has_method("show_nameplate"):
 		current_boss.call("show_nameplate", false)
 	if begin_fight and current_boss != null and is_instance_valid(current_boss) and current_boss.has_method("begin_fight"):
@@ -679,6 +715,7 @@ func _on_enemy_died(spawn_id: String) -> void:
 	current_director.notify_kill(spawn_id)
 
 func _on_boss_died(spawn_id: String) -> void:
+	_speak_voice(&"pattern_death")
 	if not _run_active or _death_teardown_complete:
 		return
 	if combat_resolvers != null and is_instance_valid(combat_resolvers):
@@ -702,6 +739,8 @@ func _on_boss_died(spawn_id: String) -> void:
 func _on_boss_add_wave_requested(requests: Array[Dictionary]) -> void:
 	if not _run_active or _death_teardown_complete:
 		return
+	_boss_phase_count += 1
+	_speak_voice(StringName("pattern_phase_%d" % clampi(_boss_phase_count, 1, 3)))
 	for request in requests:
 		_spawn_from_request(request)
 
@@ -724,6 +763,7 @@ func _on_director_room_cleared() -> void:
 	_clear_spawned_enemies()
 	_set_audio_zone_state(ZONE_STATE_CLEARED)
 	_set_audio_pressure()
+	_maybe_speak_boss_warning()
 	if run_controller != null:
 		run_controller.notify_room_cleared()
 
@@ -835,6 +875,8 @@ func _on_flow_bridge_reward_granted(reward_type: RoomNode.RewardType, connection
 		_apply_reward_type_for_exit(reward_type, connection)
 
 func _on_player_vitals_died() -> void:
+	if current_boss != null and is_instance_valid(current_boss):
+		_speak_voice(&"pattern_player_defeat")
 	if not _run_active:
 		return
 	_run_active = false
@@ -943,6 +985,22 @@ func _notify_audio_vitals() -> void:
 			float(player_vitals.guard), float(player_vitals.max_guard),
 			float(player_vitals.hp), float(player_vitals.max_hp))
 
+func _maybe_speak_boss_warning() -> void:
+	## Margin warns once when the cleared room borders the boss chamber.
+	if run_controller == null or run_controller.graph == null:
+		return
+	for next_id in run_controller.graph.get_next_room_ids(run_controller.current_room_id):
+		var next_room := run_controller.graph.get_room(next_id)
+		if next_room != null and _room_is_boss(next_room):
+			_speak_voice(&"margin_boss_warning")
+			return
+
+func _speak_voice(line_id: StringName) -> void:
+	if audio_director == null or not is_instance_valid(audio_director):
+		audio_director = get_node_or_null("/root/AudioDirector")
+	if audio_director != null and audio_director.has_method(&"play_voice_line"):
+		audio_director.call(&"play_voice_line", line_id)
+
 func _set_audio_zone_state(state: StringName) -> void:
 	if audio_director == null or not is_instance_valid(audio_director):
 		audio_director = get_node_or_null("/root/AudioDirector")
@@ -1020,6 +1078,7 @@ func _render_hp_payload(hp: int, max_hp: int) -> void:
 		hp_label.text = "%d / %d" % [maxi(0, hp), maxi(0, max_hp)]
 
 func _reset_run_stats() -> void:
+	_boss_phase_count = 0
 	rooms_cleared = 0
 	boons_taken = 0
 	elapsed_seconds = 0.0
@@ -1067,18 +1126,36 @@ func _ability_states() -> Array:
 		states.append(state)
 	return states
 
+const BENEFACTOR_DISPLAY_NAMES: Dictionary = {
+	&"bearer": "the Bearer",
+	&"hearthguard": "the Hearthguard",
+	&"swordbearer": "the Swordbearer",
+	&"marksman": "the Marksman",
+	&"company": "the Company",
+}
+
 func _default_boon_pool() -> Array[BoonDef]:
 	var pool: Array[BoonDef] = []
-	pool.append(_make_default_boon(&"spark_attack", "Spark-Cut", BoonDef.Rarity.COMMON, BoonDef.Slot.ATTACK, &"swordbearer"))
-	pool.append(_make_default_boon(&"gear_dash", "Gyre Step", BoonDef.Rarity.RARE, BoonDef.Slot.DASH, &"bearer"))
-	pool.append(_make_default_boon(&"core_special", "Brass Overdrive", BoonDef.Rarity.EPIC, BoonDef.Slot.SPECIAL, &"swordbearer"))
-	pool.append(_make_default_boon(&"codex_cast", "Codex Shard", BoonDef.Rarity.COMMON, BoonDef.Slot.CAST, &"marksman"))
-	pool.append(_make_default_boon(&"humanity_guard", "Humanity's Reserve", BoonDef.Rarity.LEGENDARY, BoonDef.Slot.PASSIVE, &"company"))
-	pool.append(_make_default_boon(&"ember_attack", "Ember Teeth", BoonDef.Rarity.RARE, BoonDef.Slot.ATTACK, &"swordbearer"))
-	pool.append(_make_default_boon(&"brass_dash", "Brass Wake", BoonDef.Rarity.COMMON, BoonDef.Slot.DASH, &"bearer"))
-	pool.append(_make_default_boon(&"gear_special", "Gearbreak Pulse", BoonDef.Rarity.RARE, BoonDef.Slot.SPECIAL, &"swordbearer"))
-	pool.append(_make_default_boon(&"spark_cast", "Warmth Shard", BoonDef.Rarity.EPIC, BoonDef.Slot.CAST, &"marksman"))
-	pool.append(_make_default_boon(&"codex_passive", "Codex Margin", BoonDef.Rarity.COMMON, BoonDef.Slot.PASSIVE, &"hearthguard"))
+	pool.append(_make_default_boon(&"spark_attack", "Spark-Cut", BoonDef.Rarity.COMMON, BoonDef.Slot.ATTACK, &"swordbearer",
+		"Each strike carries a flare of the kept light. The cold gives way where it lands."))
+	pool.append(_make_default_boon(&"gear_dash", "Gyre Step", BoonDef.Rarity.RARE, BoonDef.Slot.DASH, &"bearer",
+		"A step learned from one who carried others. The dash bears Gizmo through what would break him."))
+	pool.append(_make_default_boon(&"core_special", "Brass Overdrive", BoonDef.Rarity.EPIC, BoonDef.Slot.SPECIAL, &"swordbearer",
+		"The old gears remember their maker's haste. For a breath, Gizmo works beyond what he was built to."))
+	pool.append(_make_default_boon(&"codex_cast", "Codex Shard", BoonDef.Rarity.COMMON, BoonDef.Slot.CAST, &"marksman",
+		"A page of the record, folded sharp. The cast flies true toward what must be marked."))
+	pool.append(_make_default_boon(&"humanity_guard", "Humanity's Reserve", BoonDef.Rarity.LEGENDARY, BoonDef.Slot.PASSIVE, &"company",
+		"What was kept together holds together. When Gizmo is nearly broken, the company of the kept stands with him."))
+	pool.append(_make_default_boon(&"ember_attack", "Ember Teeth", BoonDef.Rarity.RARE, BoonDef.Slot.ATTACK, &"swordbearer",
+		"The strike bites, and the bite keeps burning. A stubborn ember refuses the cold the last word."))
+	pool.append(_make_default_boon(&"brass_dash", "Brass Wake", BoonDef.Rarity.COMMON, BoonDef.Slot.DASH, &"bearer",
+		"The dash leaves warmth behind it, the way a lamp leaves light down a dark hall."))
+	pool.append(_make_default_boon(&"gear_special", "Gearbreak Pulse", BoonDef.Rarity.RARE, BoonDef.Slot.SPECIAL, &"swordbearer",
+		"One honest blow, held until it matters. It staggers the housekeeping that outlived the house."))
+	pool.append(_make_default_boon(&"spark_cast", "Warmth Shard", BoonDef.Rarity.EPIC, BoonDef.Slot.CAST, &"marksman",
+		"A mote of gathered warmth, sent to a chosen mark. It does not miss what it was meant for."))
+	pool.append(_make_default_boon(&"codex_passive", "Codex Margin", BoonDef.Rarity.COMMON, BoonDef.Slot.PASSIVE, &"hearthguard",
+		"Margin writes small mercies in the gutters of the record. What Gizmo keeps, keeps him."))
 	return pool
 
 func _make_default_boon(
@@ -1087,14 +1164,18 @@ func _make_default_boon(
 	rarity: BoonDef.Rarity,
 	slot: BoonDef.Slot,
 	benefactor: StringName,
+	description: String,
 ) -> BoonDef:
 	var boon := BoonDef.new()
 	boon.boon_id = boon_id
 	boon.display_name = display_name
-	boon.description = "A run-scoped upgrade for this chamber chain."
+	boon.description = description
 	boon.rarity = rarity
 	boon.slot = slot
 	boon.benefactor = benefactor
+	boon.benefactor_display_name = String(
+		BENEFACTOR_DISPLAY_NAMES.get(benefactor, boon.benefactor_placeholder_display_name())
+	)
 	boon.domain = "spark"
 	boon.validate_benefactor()
 	return boon

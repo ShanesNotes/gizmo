@@ -25,8 +25,12 @@ func _initialize() -> void:
 	await _test_windup_survives_contact_jitter_but_resets_on_escape()
 	await _test_stagger_suppresses_movement_and_attack_until_window()
 	await _test_take_damage_emits_died_once()
+	await _test_take_damage_spawns_floating_damage_number()
+	await _test_contact_damage_spawns_red_player_number()
 	await _test_scene_instantiates_headless()
 	await _test_scene_visual_models_follow_configured_archetype()
+	await _test_visual_motion_identity_per_archetype()
+	await _test_visual_hit_recoil_kicks_and_decays()
 	await _test_spawn_windup_blocks_movement_and_contact_until_elapsed()
 	await _test_scene_stagger_ticks_down_during_spawn_windup()
 	await _test_scene_chase_emits_damage_event_data_without_player_wiring()
@@ -283,6 +287,63 @@ func _test_take_damage_emits_died_once() -> void:
 
 	await _cleanup(enemy)
 
+func _test_take_damage_spawns_floating_damage_number() -> void:
+	var enemy = await _new_enemy()
+	enemy.configure("bruiser", "w0:bruiser:9")
+	var before := _label3d_nodes(root)
+	enemy.take_damage(12.4)
+	var spawned := _new_label3d_since(before)
+	_check_eq("landed hit spawns one floating damage number", spawned.size(), 1)
+	if spawned.size() == 1:
+		_check_eq("damage number shows the rounded amount", spawned[0].text, "12")
+		_check("damage number is not parented to the corpse-to-be", not enemy.is_ancestor_of(spawned[0]))
+	before = _label3d_nodes(root)
+	enemy.take_damage(999.0)
+	_check_eq("killing blow still spawns a damage number", _new_label3d_since(before).size(), 1)
+	before = _label3d_nodes(root)
+	enemy.take_damage(50.0)
+	_check_eq("damage on a dead enemy spawns no number", _new_label3d_since(before).size(), 0)
+	for label in _label3d_nodes(root):
+		label.queue_free()
+	await _cleanup(enemy)
+
+func _test_contact_damage_spawns_red_player_number() -> void:
+	var enemy = await _new_enemy()
+	if _object_has_property(enemy, "spawn_windup"):
+		enemy.set("spawn_windup", 0.0)
+	enemy.configure("chaff", "w0:chaff:9")
+	var target_position := Vector3(0.5, 0.0, 0.0)
+	enemy.tick_chase(target_position, 0.63)
+	var before := _label3d_nodes(root)
+	enemy.tick_chase(target_position, 0.03)
+	var spawned := _new_label3d_since(before)
+	_check_eq("released contact hit spawns one player damage number", spawned.size(), 1)
+	if spawned.size() == 1:
+		_check_eq("player damage number shows the contact damage", spawned[0].text, "1")
+		_check("player damage number reads red", spawned[0].modulate.r > 0.7 and spawned[0].modulate.g < 0.5)
+		_check(
+			"player damage number floats above the player, not the enemy",
+			Vector2(spawned[0].global_position.x, spawned[0].global_position.z).distance_to(Vector2(target_position.x, target_position.z)) < 1.0
+		)
+	for label in _label3d_nodes(root):
+		label.queue_free()
+	await _cleanup(enemy)
+
+func _label3d_nodes(node: Node) -> Array[Label3D]:
+	var found: Array[Label3D] = []
+	if node is Label3D:
+		found.append(node)
+	for child in node.get_children():
+		found.append_array(_label3d_nodes(child))
+	return found
+
+func _new_label3d_since(before: Array[Label3D]) -> Array[Label3D]:
+	var fresh: Array[Label3D] = []
+	for label in _label3d_nodes(root):
+		if not before.has(label):
+			fresh.append(label)
+	return fresh
+
 func _test_scene_instantiates_headless() -> void:
 	var enemy = await _new_enemy()
 
@@ -373,6 +434,90 @@ func _test_scene_visual_models_follow_configured_archetype() -> void:
 	_check("unknown visual archetype does not keep a bruiser GLB model", fallback_pivot != null and fallback_pivot.get_node_or_null("BruiserUnitModel") == null)
 	_check("unknown visual archetype does not keep an elite GLB model", fallback_pivot != null and fallback_pivot.get_node_or_null("EliteEnforcerModel") == null)
 	await _cleanup(fallback_enemy)
+
+func _test_visual_motion_identity_per_archetype() -> void:
+	# Chaff hovers and spins; bruiser stomp-lumbers without spinning; elite
+	# glides dead-level with banking only. Cosmetic layer — collision untouched.
+	var chaff_fixture: Dictionary = await _new_configured_enemy("chaff", "motion:chaff")
+	var chaff = chaff_fixture["enemy"]
+	var chaff_model := chaff.get_node_or_null("VisualPivot/ChaffDroneModel") as Node3D
+	var chaff_visual := chaff.get_node_or_null("VisualPivot") as Node3D
+	_check("chaff model + motion API present", chaff_model != null and chaff_visual.has_method("update_motion"))
+	if chaff_model != null and chaff_visual.has_method("update_motion"):
+		var yaw_before: float = chaff_model.rotation.y
+		var base_y: float = chaff_model.position.y
+		var min_y := base_y
+		var max_y := base_y
+		for i in range(12):
+			chaff_visual.call("update_motion", 0.05)
+			min_y = minf(min_y, chaff_model.position.y)
+			max_y = maxf(max_y, chaff_model.position.y)
+		_check("chaff spins continuously while alive", absf(chaff_model.rotation.y - yaw_before) > 0.1)
+		_check("chaff hover-bobs even when stationary", max_y - min_y > 0.02)
+	await _cleanup_enemy(chaff)
+
+	var bruiser_fixture: Dictionary = await _new_configured_enemy("bruiser", "motion:bruiser")
+	var bruiser = bruiser_fixture["enemy"]
+	var bruiser_model := bruiser.get_node_or_null("VisualPivot/BruiserUnitModel") as Node3D
+	var bruiser_visual := bruiser.get_node_or_null("VisualPivot") as Node3D
+	_check("bruiser model + motion API present", bruiser_model != null and bruiser_visual.has_method("update_motion"))
+	if bruiser_model != null and bruiser_visual.has_method("update_motion"):
+		var base_y: float = bruiser_visual.get("_model_base_position").y
+		var still_max := base_y
+		for i in range(8):
+			bruiser_visual.call("update_motion", 0.05)
+			still_max = maxf(still_max, bruiser_model.position.y)
+		_check_almost("bruiser does not bob while standing still", still_max, base_y, 0.001)
+		bruiser.velocity = Vector3(0.0, 0.0, bruiser.move_speed)
+		var moving_max := base_y
+		for i in range(12):
+			bruiser_visual.call("update_motion", 0.05)
+			moving_max = maxf(moving_max, bruiser_model.position.y)
+		_check("bruiser stomp-lumbers while moving", moving_max > base_y + 0.03)
+		_check_almost("bruiser never spins", bruiser_model.rotation.y, 0.0, 0.001)
+	await _cleanup_enemy(bruiser)
+
+	var elite_fixture: Dictionary = await _new_configured_enemy("elite", "motion:elite")
+	var elite = elite_fixture["enemy"]
+	var elite_model := elite.get_node_or_null("VisualPivot/EliteEnforcerModel") as Node3D
+	var elite_visual := elite.get_node_or_null("VisualPivot") as Node3D
+	_check("elite model + motion API present", elite_model != null and elite_visual.has_method("update_motion"))
+	if elite_model != null and elite_visual.has_method("update_motion"):
+		var base_y: float = elite_visual.get("_model_base_position").y
+		elite.velocity = Vector3(elite.move_speed, 0.0, 0.0)
+		var glide_min := base_y
+		var glide_max := base_y
+		for i in range(10):
+			elite_visual.call("update_motion", 0.05)
+			glide_min = minf(glide_min, elite_model.position.y)
+			glide_max = maxf(glide_max, elite_model.position.y)
+		_check_almost("elite glides dead-level (no bob at any speed)", glide_max - glide_min, 0.0, 0.001)
+		_check("elite banks into lateral velocity", absf(elite_model.rotation.z) > 0.05)
+		_check_almost("elite never spins", elite_model.rotation.y, 0.0, 0.001)
+	await _cleanup_enemy(elite)
+
+func _test_visual_hit_recoil_kicks_and_decays() -> void:
+	var fixture: Dictionary = await _new_configured_enemy("chaff", "recoil:chaff")
+	var enemy = fixture["enemy"]
+	var model := enemy.get_node_or_null("VisualPivot/ChaffDroneModel") as Node3D
+	var visual := enemy.get_node_or_null("VisualPivot") as Node3D
+	_check("recoil fixture has model + motion API", model != null and visual.has_method("update_motion"))
+	if model == null or not visual.has_method("update_motion"):
+		await _cleanup_enemy(enemy)
+		return
+
+	enemy.take_damage(1.0)
+	visual.call("update_motion", 0.01)
+	_check("hit recoil kicks the model backward", model.position.z < -0.05)
+
+	for i in range(12):
+		visual.call("update_motion", 0.05)
+	_check_almost("hit recoil decays back to rest", model.position.z, 0.0, 0.005)
+	await _cleanup_enemy(enemy)
+
+func _cleanup_enemy(enemy: Node) -> void:
+	enemy.queue_free()
+	await process_frame
 
 func _test_spawn_windup_blocks_movement_and_contact_until_elapsed() -> void:
 	var enemy = await _new_enemy()

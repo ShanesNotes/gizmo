@@ -26,6 +26,7 @@ func _initialize() -> void:
 	await _test_open_for_shows_telegraph_for_all_reward_types()
 	await _test_seal_hides_telegraph_label()
 	await _test_reopen_updates_telegraph_text_and_color()
+	await _test_open_for_pulses_unlock_shine()
 	print("")
 	if _failed == 0 and _passed > 0:
 		print("PASS - %d checks" % _passed)
@@ -366,10 +367,26 @@ func _test_reopen_updates_telegraph_text_and_color() -> void:
 	await process_frame
 
 	label = _telegraph_label(door)
-	_check_eq("reopen replaces telegraph text", label.text if label != null else "", "HEAL")
+	_check_eq("reopen replaces telegraph text", label.text if label != null else "", "MENDING")
 	if label != null:
 		_check("reopen replaces telegraph color", label.modulate.is_equal_approx(_pinned_telegraph_colors()[RoomNode.RewardType.HEAL]))
 		_check("reopen shows telegraph again", label.visible)
+	await _cleanup([door])
+
+func _test_open_for_pulses_unlock_shine() -> void:
+	var door: Variant = await _new_door()
+	door.open_for(_make_connection("RoomExitA"), RoomNode.RewardType.BOON)
+	await process_frame
+
+	var shine := door.get_node_or_null(NodePath("UnlockShine")) as OmniLight3D
+	_check("open_for spawns an UnlockShine light", shine != null)
+	if shine != null:
+		_check("unlock shine flashes warm on open (energy > 0)", shine.light_energy > 0.0)
+
+	door.seal()
+	shine = door.get_node_or_null(NodePath("UnlockShine")) as OmniLight3D
+	if shine != null:
+		_check_eq("seal snuffs the unlock shine", shine.light_energy, 0.0)
 	await _cleanup([door])
 
 func _reward_type_value(name: String, fallback: int) -> int:
@@ -382,11 +399,11 @@ func _pinned_telegraph_text() -> Dictionary:
 		RoomNode.RewardType.BOON: "BOON",
 		RoomNode.RewardType.SCRAP: "SCRAP",
 		RoomNode.RewardType.SPARKS: "SPARKS",
-		RoomNode.RewardType.HAMMER: "HAMMER",
-		RoomNode.RewardType.HEAL: "HEAL",
-		RoomNode.RewardType.SHOP: "SHOP",
-		_reward_type_value("REST", MISSING_REST_REWARD_TYPE): "REST",
-		_reward_type_value("REWARD", MISSING_REWARD_REWARD_TYPE): "REWARD",
+		RoomNode.RewardType.HAMMER: "INGENUITY",
+		RoomNode.RewardType.HEAL: "MENDING",
+		RoomNode.RewardType.SHOP: "TRADE",
+		_reward_type_value("REST", MISSING_REST_REWARD_TYPE): "SANCTUARY",
+		_reward_type_value("REWARD", MISSING_REWARD_REWARD_TYPE): "RELIQUARY",
 	}
 
 func _pinned_telegraph_colors() -> Dictionary:

@@ -1,4 +1,4 @@
-[gd_scene load_steps=7 format=3]
+[gd_scene load_steps=8 format=3]
 
 [sub_resource type="Environment" id="Env_res"]
 background_mode = 1
@@ -7,6 +7,17 @@ ambient_light_source = 2
 ambient_light_color = Color(0.677, 0.692, 0.735, 1)
 ambient_light_energy = 0.78
 tonemap_mode = 2
+glow_enabled = true
+glow_intensity = 0.35
+glow_blend_mode = 2
+fog_enabled = true
+fog_light_color = Color(0.431, 0.478, 0.447, 1)
+fog_light_energy = 0.85
+fog_density = 0.008
+fog_sky_affect = 0.0
+adjustment_enabled = true
+adjustment_contrast = 1.05
+adjustment_saturation = 0.96
 
 [sub_resource type="StandardMaterial3D" id="Mat_floor"]
 albedo_color = Color(0.255, 0.246, 0.254, 1)
@@ -22,6 +33,10 @@ emission_enabled = true
 emission = Color(0.28, 0.18, 0.08, 1)
 emission_energy_multiplier = 0.45
 roughness = 0.82
+
+[sub_resource type="StandardMaterial3D" id="Mat_dressing"]
+albedo_color = Color(0.42, 0.36, 0.28, 1)
+roughness = 0.88
 
 [sub_resource type="BoxShape3D" id="DoorShapeNorth"]
 size = Vector3(3, 2.2, 1.2)
@@ -66,6 +81,66 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.35, -5.75)
 use_collision = true
 size = Vector3(5.0, 0.7, 1.2)
 material = SubResource("Mat_obstacle")
+
+[node name="DressingVariantA" type="Node3D" parent="Geometry"]
+
+[node name="FallenPillarA" type="CSGBox3D" parent="Geometry/DressingVariantA"]
+transform = Transform3D(0.965926, 0, 0.258819, 0, 1, 0, -0.258819, 0, 0.965926, -8.5, 0.4, -5.5)
+use_collision = true
+size = Vector3(4.5, 0.8, 0.9)
+material = SubResource("Mat_dressing")
+
+[node name="FallenPillarB" type="CSGBox3D" parent="Geometry/DressingVariantA"]
+transform = Transform3D(0.906308, 0, -0.422618, 0, 1, 0, 0.422618, 0, 0.906308, -9.5, 0.35, -3.2)
+use_collision = true
+size = Vector3(3.2, 0.7, 0.8)
+material = SubResource("Mat_dressing")
+
+[node name="FallenPillarC" type="CSGBox3D" parent="Geometry/DressingVariantA"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.6, 0.3, -7.0)
+use_collision = true
+size = Vector3(2, 0.6, 0.7)
+material = SubResource("Mat_dressing")
+
+[node name="DressingVariantB" type="Node3D" parent="Geometry"]
+
+[node name="BrassMonolith" type="CSGBox3D" parent="Geometry/DressingVariantB"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8.2, 1.6, -6.2)
+use_collision = true
+size = Vector3(1.6, 3.2, 1.6)
+material = SubResource("Mat_dressing")
+
+[node name="MonolithPlinth" type="CSGBox3D" parent="Geometry/DressingVariantB"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8.2, 0.25, -6.2)
+use_collision = true
+size = Vector3(3, 0.5, 3)
+material = SubResource("Mat_dressing")
+
+[node name="MonolithShard" type="CSGBox3D" parent="Geometry/DressingVariantB"]
+transform = Transform3D(0.766044, 0, 0.642788, 0, 1, 0, -0.642788, 0, 0.766044, 6.6, 0.4, -7.6)
+use_collision = true
+size = Vector3(0.9, 0.8, 0.9)
+material = SubResource("Mat_dressing")
+
+[node name="DressingVariantC" type="Node3D" parent="Geometry"]
+
+[node name="BridgeSpanA" type="CSGBox3D" parent="Geometry/DressingVariantC"]
+transform = Transform3D(0.965926, 0, 0.258819, 0, 1, 0, -0.258819, 0, 0.965926, 7.8, 0.5, 6.5)
+use_collision = true
+size = Vector3(4, 0.4, 1.8)
+material = SubResource("Mat_dressing")
+
+[node name="BridgeSpanB" type="CSGBox3D" parent="Geometry/DressingVariantC"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10.4, 0.2, 6.5)
+use_collision = true
+size = Vector3(1.6, 0.4, 1.8)
+material = SubResource("Mat_dressing")
+
+[node name="BridgeRubble" type="CSGBox3D" parent="Geometry/DressingVariantC"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8.9, 0.15, 8.3)
+use_collision = true
+size = Vector3(1.2, 0.3, 1)
+material = SubResource("Mat_dressing")
 
 [node name="RoomExitPadA" type="CSGBox3D" parent="Geometry"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.04, -9.0)

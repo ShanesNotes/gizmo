@@ -144,6 +144,12 @@ func tick_chase(target_position: Vector3, delta: float) -> Dictionary:
 		event["source_position"] = global_position
 		damage_event.emit(event)
 		result["damage_event"] = event
+		CombatEffectsScript.spawn_damage_number(
+			get_parent(),
+			Vector3(target_position.x, target_position.y + 2.1, target_position.z),
+			float(event.get("damage", 0)),
+			CombatEffectsScript.PLAYER_HIT_NUMBER_COLOR
+		)
 	return result
 
 func take_damage(amount: float, charges_spark: bool = true) -> float:
@@ -156,11 +162,24 @@ func take_damage(amount: float, charges_spark: bool = true) -> float:
 	if applied > 0.0:
 		damage_taken.emit(spawn_id, applied, charges_spark)
 		CombatEffectsScript.flash_hit(visual_pivot)
+		CombatEffectsScript.spawn_damage_number(
+			get_parent(),
+			global_position + Vector3(0.0, 1.9, 0.0),
+			applied
+		)
+		CombatEffectsScript.hit_stop(self)
 	if hp <= 0.0 and not _dead:
 		_dead = true
 		velocity = Vector3.ZERO
 		died.emit(spawn_id)
 		_notify_audio_event(&"enemy_death")
+		CombatEffectsScript.spawn_burst_ring(
+			get_parent(),
+			global_position,
+			1.1,
+			Color(1.0, 0.45, 0.2, 0.85)
+		)
+		CombatEffectsScript.shake_active_camera(self)
 	return hp
 
 func is_dead() -> bool:

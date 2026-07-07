@@ -100,7 +100,7 @@ func _test_hub_identity_visual_nameplates_and_blocker() -> void:
 			var forward := Vector3(visual.call("visual_forward_direction"))
 			_check("hub visual faces placeholder velocity without player motor", forward.dot(Vector3.RIGHT) > 0.9)
 
-	_check_nameplate(hub, "RunDoor/RunDoorNameplate", "THE RUN", Color(0.96, 0.68, 0.28, 1))
+	_check_nameplate(hub, "RunDoor/RunDoorNameplate", "THE VIGIL", Color(0.96, 0.68, 0.28, 1))
 	_check_nameplate(hub, "MirrorAnchor/MirrorNameplate", "MIRROR", Color(0.48, 0.9, 0.58, 1))
 	_check_nameplate(hub, "CodexAnchor/CodexNameplate", "CODEX", Color(0.72, 0.52, 1, 1))
 

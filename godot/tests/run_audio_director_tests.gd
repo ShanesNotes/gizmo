@@ -17,8 +17,13 @@ func _run_tests() -> void:
 	await _test_bus_layout_has_contract_buses()
 	await _test_master_bus_uses_hard_limiter()
 	await _test_manifest_music_cues_register_and_loop()
-	await _test_v2_pressure_variant_and_presence()
+	await _test_v2_run_arc_persists_across_rooms()
+	await _test_v2_arc_min_play_guard_and_bridge()
+	await _test_v2_milestones_cut_through_guard()
 	await _test_v2_vitals_overlay_and_defeat_sequence()
+	await _test_voice_seam_missing_and_unknown_lines_noop()
+	await _test_voice_duck_and_restore_with_interrupt()
+	await _test_voice_variant_selection_is_seed_deterministic()
 	await _test_notify_event_known_unknown_and_round_robin_pool()
 	await _test_contract_seam_and_describe_surface()
 	await _test_registered_state_crossfades_to_target_cue()
@@ -95,27 +100,117 @@ func _test_manifest_music_cues_register_and_loop() -> void:
 
 	await _cleanup_director(director)
 
-func _test_v2_pressure_variant_and_presence() -> void:
+func _test_v2_run_arc_persists_across_rooms() -> void:
 	var director := await _new_director()
 	director.begin_run_silence()
+	var rolled: Dictionary = director.describe()
+	_check("run start rolls a musical arc", rolled.get("v2_arc_active", false) == true)
+	var seg_a := String(rolled.get("v2_arc_seg_a", ""))
+	var seg_b := String(rolled.get("v2_arc_seg_b", ""))
+	_check("arc SEG A comes from the JAZZ combat pool", director.V2_ARC_SEG_POOL.has(StringName(seg_a)))
+	_check("arc SEG B comes from the JAZZ combat pool", director.V2_ARC_SEG_POOL.has(StringName(seg_b)))
+	_check("arc SEG B differs from SEG A", seg_a != seg_b)
+	_check("arc picks a bridge", String(rolled.get("v2_arc_bridge", "")) != "")
+
 	_request_zone_state(director, &"COMBAT")
 	_check_eq("silence hold blocks zone playback", String(director.describe().get("last_noop_reason", "")), "v2_playback_held")
-	director.set_pressure(0.3)
+	director.set_pressure(0.5)
 	await _wait_seconds(director.crossfade_seconds + 0.05)
 	var desc: Dictionary = director.describe()
-	_check_eq("pressure >= engage flips variant to JAZZ", desc.get("v2_variant", ""), "JAZZ")
-	_check_eq("ROAM under pressure plays the JAZZ file", desc.get("active_cue_id", ""), "v2:ROAM:JAZZ")
+	_check_eq("engagement enters the arc's SEG A in JAZZ", String(desc.get("active_cue_id", "")), "v2:%s:JAZZ" % seg_a)
+	_check_eq("combat stretch lives in the JAZZ variant", desc.get("v2_variant", ""), "JAZZ")
+	var crossfades := int(desc.get("crossfade_count", -1))
+
+	# Rooms do NOT retrigger music: combat, shop, and rest requests all hold the arc.
+	for room_state in [&"COMBAT", &"SHOP", &"REST", &"COMBAT"]:
+		_request_zone_state(director, room_state)
+	await process_frame
+	var held: Dictionary = director.describe()
+	_check_eq("room churn keeps the arc's SEG A playing", String(held.get("active_cue_id", "")), "v2:%s:JAZZ" % seg_a)
+	_check_eq("room churn never crossfades", int(held.get("crossfade_count", -1)), crossfades)
+	_check_eq("room hold records its no-op reason", String(held.get("last_noop_reason", "")), "v2_arc_hold")
+	_check_eq("zone requests are still recorded for the seam", String(held.get("requested_music_state", "")), "COMBAT")
+
+	# Pressure swings no longer flip the variant mid-track.
 	director.set_pressure(0.0)
-	_check_eq("variant dwell blocks an instant relax", String(director.describe().get("v2_variant", "")), "JAZZ")
-	director._variant_last_switch_ms = Time.get_ticks_msec() - 21000
-	director.set_pressure(0.0)
+	director.set_pressure(0.9)
+	await process_frame
+	var after_pressure: Dictionary = director.describe()
+	_check_eq("pressure swings leave the arc track alone", String(after_pressure.get("active_cue_id", "")), "v2:%s:JAZZ" % seg_a)
+	_check_eq("pressure swings do not crossfade", int(after_pressure.get("crossfade_count", -1)), crossfades)
+	await _cleanup_director(director)
+
+func _test_v2_arc_min_play_guard_and_bridge() -> void:
+	var director := await _new_director()
+	director.begin_run_silence()
+	director.set_pressure(0.5)
 	await _wait_seconds(director.crossfade_seconds + 0.05)
-	_check_eq("post-dwell relax returns to ORCH", String(director.describe().get("v2_variant", "")), "ORCH")
-	_check_eq("relaxed ROAM plays the ORCH file", String(director.describe().get("active_cue_id", "")), "v2:ROAM:ORCH")
+	var desc: Dictionary = director.describe()
+	var seg_a := String(desc.get("v2_arc_seg_a", ""))
+	var seg_b := String(desc.get("v2_arc_seg_b", ""))
+	var bridge := String(desc.get("v2_arc_bridge", ""))
+	_check("arc SEG A has a real track length", float(director._active_stream_length) > 30.0)
+
+	# A room transition before the minimum-play point must NOT advance the arc.
+	_request_zone_state(director, &"COMBAT")
+	await process_frame
+	_check_eq("early room transition holds SEG A (min-play guard)", String(director.describe().get("active_cue_id", "")), "v2:%s:JAZZ" % seg_a)
+
+	# Simulate the track having breathed past the minimum-play fraction.
+	director._cue_started_ms = Time.get_ticks_msec() - int(0.7 * director._active_stream_length * 1000.0)
+	_request_zone_state(director, &"COMBAT")
+	await _wait_seconds(director.crossfade_seconds + 0.05)
+	var brg_desc: Dictionary = director.describe()
+	_check_eq("post-min-play room transition enters the JAZZ bridge", String(brg_desc.get("active_cue_id", "")), "v2:brg:%s:JAZZ" % bridge)
+	_check_eq("bridge is the arc's connective stage", String(brg_desc.get("v2_arc_stage", "")), "BRIDGE")
+	var bridge_player := director.get_node_or_null(String(brg_desc.get("active_lane", ""))) as AudioStreamPlayer
+	_check("bridge plays once (non-looping)", bridge_player != null and not _stream_loops(bridge_player.stream))
+
+	# When the bridge finishes, SEG B takes over and loops.
+	if bridge_player != null:
+		bridge_player.stop()
+	await process_frame
+	await _wait_seconds(director.crossfade_seconds + 0.05)
+	var seg_b_desc: Dictionary = director.describe()
+	_check_eq("bridge resolves into the arc's SEG B", String(seg_b_desc.get("active_cue_id", "")), "v2:%s:JAZZ" % seg_b)
+	var seg_b_player := director.get_node_or_null(String(seg_b_desc.get("active_lane", ""))) as AudioStreamPlayer
+	_check("SEG B loops for the rest of the stretch", seg_b_player != null and _stream_loops(seg_b_player.stream))
+
+	# Further rooms hold on SEG B; the arc has no fourth stage.
+	director._cue_started_ms = Time.get_ticks_msec() - int(0.9 * director._active_stream_length * 1000.0)
+	_request_zone_state(director, &"COMBAT")
+	await process_frame
+	_check_eq("SEG B holds through remaining rooms", String(director.describe().get("active_cue_id", "")), "v2:%s:JAZZ" % seg_b)
+	await _cleanup_director(director)
+
+func _test_v2_milestones_cut_through_guard() -> void:
+	var director := await _new_director()
+	director.begin_run_silence()
+	director.set_pressure(0.5)
+	await _wait_seconds(director.crossfade_seconds + 0.05)
+	var seg_a := String(director.describe().get("v2_arc_seg_a", ""))
+	_check_eq("arc is playing SEG A before the boss", String(director.describe().get("active_cue_id", "")), "v2:%s:JAZZ" % seg_a)
+
+	# BOSS is a hard milestone: it cuts immediately even though SEG A is fresh.
 	_request_zone_state(director, &"BOSS")
 	var boss_desc: Dictionary = director.describe()
 	_check("BOSS routes to REKINDLE_SIEGE", String(boss_desc.get("active_cue_id", "")).begins_with("v2:REKINDLE_SIEGE"))
 	_check_almost_eq("siege entry is an immediate cut", float((boss_desc.get("last_crossfade", {}) as Dictionary).get("duration", -1.0)), 0.0)
+	_check("BOSS milestone ends the run arc", boss_desc.get("v2_arc_active", true) == false)
+
+	# Hub return is a hard milestone too, and lands in ORCH.
+	_request_zone_state(director, &"HUB")
+	await _wait_seconds(director.crossfade_seconds + 0.05)
+	var hub_desc: Dictionary = director.describe()
+	_check_eq("hub return plays the sanctuary in ORCH", String(hub_desc.get("active_cue_id", "")), "v2:SANCTUARY:ORCH")
+	_check_eq("hub rests in the ORCH variant", hub_desc.get("v2_variant", ""), "ORCH")
+
+	# In the hub, pressure noise must not restart or flip anything.
+	var crossfades := int(hub_desc.get("crossfade_count", -1))
+	director.set_pressure(0.9)
+	director.set_pressure(0.0)
+	await process_frame
+	_check_eq("hub ignores pressure churn", int(director.describe().get("crossfade_count", -1)), crossfades)
 	await _cleanup_director(director)
 
 func _test_v2_vitals_overlay_and_defeat_sequence() -> void:
@@ -130,6 +225,77 @@ func _test_v2_vitals_overlay_and_defeat_sequence() -> void:
 	var after: Dictionary = director.describe()
 	_check("defeat override releases after the silence beat", after.get("v2_ui_override", true) == false)
 	_check_eq("defeat plays SEG_06 ORCH once", String(after.get("active_cue_id", "")), "v2:RUINS:ORCH")
+	await _cleanup_director(director)
+
+func _test_voice_seam_missing_and_unknown_lines_noop() -> void:
+	var director := await _new_director()
+	_check("AudioDirector exposes play_voice_line seam", director.has_method(&"play_voice_line"))
+	var before: Dictionary = director.describe()
+	_check_eq("describe exposes last_voice_line", String(before.get("last_voice_line", "?")), "")
+	_check_eq("describe exposes voice_speaking", before.get("voice_speaking", true), false)
+
+	# Manifest-known line whose files do not exist yet (reserved dark entry).
+	director.play_voice_line(&"margin_codex_entry")
+	await process_frame
+	var missing: Dictionary = director.describe()
+	_check_eq("manifest line with no files is a silent no-op", String(missing.get("last_noop_reason", "")), "missing_voice_line")
+	_check_eq("missing files leave voice_speaking false", missing.get("voice_speaking", true), false)
+
+	director.play_voice_line(&"no_such_line")
+	_check_eq("unknown line records its no-op reason", String(director.describe().get("last_noop_reason", "")), "unknown_voice_line")
+
+	# The manifest carries the announced speakers.
+	_check("manifest knows the Margin death variants", int(director.VOICE_LINE_MANIFEST.get(&"margin_death", 0)) == 3)
+	_check("manifest knows a Custodian line", int(director.VOICE_LINE_MANIFEST.get(&"pattern_intro", 0)) >= 1)
+	await _cleanup_director(director)
+
+func _test_voice_duck_and_restore_with_interrupt() -> void:
+	var director := await _new_director()
+	var music_index := AudioServer.get_bus_index(&"Music")
+	var base_db := AudioServer.get_bus_volume_db(music_index)
+
+	var first := _new_stream()
+	var second := _new_stream()
+	director.register_voice_line(&"pattern_intro", [first])
+	director.register_voice_line(&"margin_codex_entry", [second])
+
+	director.play_voice_line(&"pattern_intro")
+	await process_frame
+	var speaking: Dictionary = director.describe()
+	_check_eq("voice line marks the director speaking", speaking.get("voice_speaking", false), true)
+	_check_eq("last_voice_line records the line id", String(speaking.get("last_voice_line", "")), "pattern_intro")
+	_check("voice lane rides the VoiceReserved bus", director._voice_player != null and director._voice_player.bus == "VoiceReserved")
+	_check("voice lane is playing the registered stream", director._voice_player.stream == first)
+	_check_almost_eq("speaking ducks the Music bus by 4 dB", AudioServer.get_bus_volume_db(music_index), base_db - 4.0)
+
+	# A new line interrupts the old one; the duck holds without stacking.
+	director.play_voice_line(&"margin_codex_entry")
+	await process_frame
+	_check("new line interrupts the previous stream", director._voice_player.stream == second)
+	_check_almost_eq("interrupt does not stack the duck", AudioServer.get_bus_volume_db(music_index), base_db - 4.0)
+
+	director._voice_player.emit_signal(&"finished")
+	await process_frame
+	var done: Dictionary = director.describe()
+	_check_eq("finished line clears voice_speaking", done.get("voice_speaking", true), false)
+	_check_almost_eq("finished line restores the Music bus", AudioServer.get_bus_volume_db(music_index), base_db)
+	await _cleanup_director(director)
+	_check_almost_eq("director teardown leaves the Music bus at rest", AudioServer.get_bus_volume_db(music_index), base_db)
+
+func _test_voice_variant_selection_is_seed_deterministic() -> void:
+	var director := await _new_director()
+	var variants: Array[AudioStream] = [_new_stream(), _new_stream(), _new_stream()]
+	director.register_voice_line(&"margin_death", variants)
+
+	var expected_rng := RandomNumberGenerator.new()
+	expected_rng.seed = 20260706
+	var expected_index := expected_rng.randi_range(0, variants.size() - 1)
+
+	director._voice_rng.seed = 20260706
+	director.play_voice_line(&"margin_death")
+	await process_frame
+	_check("seeded rng picks the expected variant", director._voice_player.stream == variants[expected_index])
+	_check_eq("describe exposes the picked variant index", int(director.describe().get("last_voice_variant", -1)), expected_index)
 	await _cleanup_director(director)
 
 func _test_notify_event_known_unknown_and_round_robin_pool() -> void:
@@ -337,7 +503,9 @@ func _test_cueless_state_is_headless_safe() -> void:
 	await process_frame
 	var desc: Dictionary = director.describe()
 
-	_check_eq("cueless state keeps manifest cues registered", desc["registered_cue_count"], 2)
+	# Legacy EL demo loops are deleted; the v2 score table is the music source
+	# of truth and cue registration happens on demand.
+	_check_eq("cueless state registers no legacy manifest cues", desc["registered_cue_count"], 0)
 	_check_eq("cueless state has no active cue", desc["active_cue_id"], "")
 	_check_eq("cueless state does not crossfade", desc["crossfade_count"], 0)
 	_check_eq("cueless state records missing cue binding", desc["last_noop_reason"], "missing_state_cue")
@@ -356,7 +524,7 @@ func _test_autoload_registration() -> void:
 	_check("AudioDirector autoload exposes notify_event", autoload.has_method(&"notify_event"))
 	_check("AudioDirector autoload exposes describe", autoload.has_method(&"describe"))
 	var desc: Dictionary = autoload.describe()
-	_check_eq("AudioDirector autoload registers manifest music cues", desc["registered_cue_count"], 2)
+	_check_eq("AudioDirector autoload registers no legacy manifest cues", desc["registered_cue_count"], 0)
 	_check_eq("AudioDirector autoload registers manifest SFX events", int(desc.get("sfx_registered_event_count", -1)), 10)
 	_check_eq("AudioDirector autoload owns pooled SFX players", int(desc.get("sfx_pool_size", -1)), 8)
 
