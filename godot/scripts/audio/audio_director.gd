@@ -32,8 +32,12 @@ const VOICE_LINE_MANIFEST := {
 	&"pattern_phase_3": 1,
 	&"pattern_player_defeat": 1,
 	&"pattern_death": 1,
-	# Reserved (unrecorded — future codex reading; also the dark-line test hook).
-	&"margin_codex_entry": 1,
+	# Codex readings (recorded 2026-07-07-codex-readings; one variant per
+	# entry, indexed by scripts/codex/codex_entries.gd variant_index order).
+	&"margin_codex_entry": 6,
+	# Reserved dark line (intentionally unrecorded — the missing-file no-op
+	# test hook; do not record files for this id).
+	&"margin_reserved_dark": 1,
 	# The saints of the church (scripts: voice-scripts-v2-saints.md; canon:
 	# gizmo-lore canon/saints-of-the-church.md; batch 2026-07-07-saints-batch).
 	&"saint_bearer_meeting": 1,
