@@ -272,6 +272,48 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 0.04, -16)
 size = Vector3(3.5, 0.08, 1.4)
 material = SubResource("Mat_exit")
 
+[node name="DressingVariantA" type="Node3D" parent="."]
+
+[node name="WestMarketCrate" type="CSGBox3D" parent="DressingVariantA"]
+transform = Transform3D(0.965926, 0, 0.258819, 0, 1, 0, -0.258819, 0, 0.965926, -15.0, 0.55, -4.0)
+use_collision = true
+size = Vector3(2.2, 1.1, 1.2)
+material = SubResource("Mat_obstacle")
+
+[node name="EastMarketCrate" type="CSGBox3D" parent="DressingVariantA"]
+transform = Transform3D(0.965926, 0, -0.258819, 0, 1, 0, 0.258819, 0, 0.965926, 14.0, 0.55, -2.0)
+use_collision = true
+size = Vector3(2.2, 1.1, 1.2)
+material = SubResource("Mat_obstacle")
+
+[node name="WestLowBasket" type="CSGCylinder3D" parent="DressingVariantA"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -9.0, 0.18, -8.0)
+use_collision = false
+radius = 0.7
+height = 0.36
+sides = 12
+material = SubResource("Mat_brass")
+
+[node name="DressingVariantB" type="Node3D" parent="."]
+
+[node name="SouthWestShelf" type="CSGBox3D" parent="DressingVariantB"]
+transform = Transform3D(0.906308, 0, -0.422618, 0, 1, 0, 0.422618, 0, 0.906308, -10.0, 0.6, 9.0)
+use_collision = true
+size = Vector3(3.0, 1.2, 1.1)
+material = SubResource("Mat_counter")
+
+[node name="SouthEastShelf" type="CSGBox3D" parent="DressingVariantB"]
+transform = Transform3D(0.906308, 0, 0.422618, 0, 1, 0, -0.422618, 0, 0.906308, 12.0, 0.6, 9.0)
+use_collision = true
+size = Vector3(3.0, 1.2, 1.1)
+material = SubResource("Mat_counter")
+
+[node name="EastLowLedgerStand" type="CSGBox3D" parent="DressingVariantB"]
+transform = Transform3D(0.984808, 0, -0.173648, 0, 1, 0, 0.173648, 0, 0.984808, 14.0, 0.2, -8.0)
+use_collision = false
+size = Vector3(2.0, 0.4, 1.0)
+material = SubResource("Mat_brass")
+
 [node name="CameraAnchor" type="Marker3D" parent="."]
 metadata/camera_half_extent_x = 9.0
 metadata/camera_half_extent_z = 7.0

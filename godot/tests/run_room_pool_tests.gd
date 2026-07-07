@@ -56,6 +56,7 @@ const REGION_LAYER_TEMPLATE_IDS := ["combat_small", "combat_large", "elite_arena
 const ACT1_REGION_LAYER_NAMES := ["RegionLayer_HEARTH", "RegionLayer_BRASS", "RegionLayer_VERDANT", "RegionLayer_RUST"]
 const REGION_LAYER_NAME_PATTERN := "^RegionLayer_(HEARTH|BRASS|VERDANT|RUST)$"
 const REGION_DOOR_APRON_RADIUS := 0.22
+const STAGE_TWO_GATE_SCENE := "res://assets/world_kits/clockwork_observatory/gear_gate_01/gear_gate_01.tscn"
 
 var _passed := 0
 var _failed := 0
@@ -64,8 +65,9 @@ func _initialize() -> void:
 	print("Running room template pool tests...")
 	_test_expected_template_set()
 	_test_templates_validate_and_match_metadata()
-	_test_combat_templates_carry_spawn_clear_dressing_variants()
+	_test_room_templates_carry_clear_dressing_variants()
 	_test_act1_combat_region_layers()
+	_test_elite_arena_stage_two_teases()
 	_test_shop_interior_is_a_safe_shop()
 	_test_hazard_strips_land_only_in_combat_rooms()
 	_test_rooms_share_the_cosmos_backdrop()
@@ -131,18 +133,19 @@ func _test_templates_validate_and_match_metadata() -> void:
 		_assert_scene_authoring_contract(template_id, instance)
 		instance.free()
 
-# Landmark dressing (landmark-taxonomy.yaml): combat rooms carry authored
-# greybox prop variants; exactly one survives per run room (picked by seed in
-# the orchestrator). Props must never intrude on the spawn containment box so
-# the containment/separation pins stay green.
-const EXPECTED_DRESSING_VARIANTS := {
-	"combat_small": 3,
-	"combat_large": 3,
-}
-const SPAWN_KEEP_OUT_MARGIN := 0.25
+# Landmark dressing (landmark-taxonomy.yaml): authored room variants make
+# revisits read differently; exactly one survives per run room (picked by seed
+# in the orchestrator). Safe rooms carry lighter variants than combat spaces.
+const DRESSING_VARIANT_TEMPLATE_IDS := ["combat_small", "combat_large", "elite_arena", "reward_cache", "shop_small"]
+const EXPECTED_DRESSING_VARIANT_NAMES := ["DressingVariantA", "DressingVariantB"]
+const LIGHT_DRESSING_TEMPLATE_IDS := ["reward_cache", "shop_small"]
+const DRESSING_DOOR_APRON_RADIUS := 0.25
+const SPAWN_KEEP_OUT_RADIUS := 2.5
+const COVER_MIN_HEIGHT := 1.0
+const COVER_MAX_HEIGHT := 1.6
 
-func _test_combat_templates_carry_spawn_clear_dressing_variants() -> void:
-	for template_id in EXPECTED_DRESSING_VARIANTS.keys():
+func _test_room_templates_carry_clear_dressing_variants() -> void:
+	for template_id in DRESSING_VARIANT_TEMPLATE_IDS:
 		var template := _load_template("%s/%s.tres" % [TEMPLATE_DIR, template_id])
 		if template == null or template.scene == null:
 			_check("%s dressing test has a loadable scene" % template_id, false)
@@ -152,41 +155,104 @@ func _test_combat_templates_carry_spawn_clear_dressing_variants() -> void:
 		instance.free()
 
 func _assert_dressing_contract(template_id: String, root_node: Node) -> void:
-	var anchor := root_node.find_child("CameraAnchor", true, false) as Marker3D
-	_check("%s dressing test finds CameraAnchor" % template_id, anchor != null)
-	if anchor == null:
+	var root_3d := root_node as Node3D
+	_check("%s dressing test instantiates a Node3D root" % template_id, root_3d != null)
+	if root_3d == null:
 		return
-	var keep_out_half := Vector2(
-		float(anchor.get_meta("camera_half_extent_x", 0.0)) + SPAWN_KEEP_OUT_MARGIN,
-		float(anchor.get_meta("camera_half_extent_z", 0.0)) + SPAWN_KEEP_OUT_MARGIN
-	)
-	var keep_out_center := Vector2(anchor.position.x, anchor.position.z)
 
-	var variants: Array[Node] = []
+	var top_level_variants: Array[Node] = []
+	for node in root_node.get_children():
+		if String(node.name).begins_with("DressingVariant"):
+			top_level_variants.append(node)
+
+	var variant_names: Array = []
+	for variant in top_level_variants:
+		variant_names.append(String(variant.name))
+	variant_names.sort()
+
+	_check_eq(
+		"%s carries exactly the two top-level dressing variants" % template_id,
+		variant_names,
+		EXPECTED_DRESSING_VARIANT_NAMES
+	)
+
+	var recursive_variant_count := 0
 	for node in _flatten_nodes(root_node):
 		if String(node.name).begins_with("DressingVariant"):
-			variants.append(node)
-	_check_eq(
-		"%s carries the authored dressing variant count" % template_id,
-		variants.size(),
-		EXPECTED_DRESSING_VARIANTS[template_id]
+			recursive_variant_count += 1
+	_check_eq("%s carries no nested/extra dressing variants" % template_id, recursive_variant_count, 2)
+
+	var floor_node := root_node.find_child("Floor", true, false) as CSGBox3D
+	_check("%s dressing apron test finds Floor" % template_id, floor_node != null)
+	if floor_node == null:
+		return
+	var floor_half := Vector2(floor_node.size.x * 0.5, floor_node.size.z * 0.5)
+
+	var doors := root_node.find_children("RoomExit*", "Area3D", true, false)
+	_check("%s dressing apron test finds at least one door" % template_id, doors.size() > 0)
+	if doors.is_empty():
+		return
+
+	var spawn := root_node.find_child("SpawnMarker", true, false) as Marker3D
+	_check("%s dressing test finds SpawnMarker" % template_id, spawn != null)
+	if spawn == null:
+		return
+
+	for variant in top_level_variants:
+		var pieces: Array[Node] = []
+		for node in _flatten_nodes(variant):
+			if node is CSGBox3D or node is CSGCylinder3D:
+				pieces.append(node)
+
+		var expected_min := 2 if LIGHT_DRESSING_TEMPLATE_IDS.has(template_id) else 4
+		var expected_max := 3 if LIGHT_DRESSING_TEMPLATE_IDS.has(template_id) else 6
+		_check(
+			"%s %s has the expected dressing density" % [template_id, variant.name],
+			pieces.size() >= expected_min and pieces.size() <= expected_max
+		)
+
+		for piece in pieces:
+			_assert_dressing_piece_contract(template_id, variant, piece, root_3d, floor_half, doors, spawn)
+
+func _assert_dressing_piece_contract(
+	template_id: String,
+	variant: Node,
+	piece: Node,
+	root_node: Node3D,
+	floor_half: Vector2,
+	doors: Array[Node],
+	spawn: Marker3D
+) -> void:
+	var piece_3d := piece as Node3D
+	var normalized := _normalized_room_position(piece_3d, root_node, floor_half)
+	for door in doors:
+		var door_node := door as Node3D
+		var door_normalized := _normalized_room_position(door_node, root_node, floor_half)
+		_check(
+			"%s %s piece %s stays out of %s apron" % [template_id, variant.name, piece.name, door_node.name],
+			maxf(absf(normalized.x - door_normalized.x), absf(normalized.y - door_normalized.y)) > DRESSING_DOOR_APRON_RADIUS
+		)
+
+	_check(
+		"%s %s piece %s clears SpawnMarker radius" % [template_id, variant.name, piece.name],
+		_dressing_piece_clears_spawn(piece_3d, root_node, spawn)
 	)
 
-	for variant in variants:
-		var props: Array[CSGBox3D] = []
-		for node in _flatten_nodes(variant):
-			if node is CSGBox3D:
-				props.append(node)
-		_check("%s %s has at least two greybox props" % [template_id, variant.name], props.size() >= 2)
-		for prop in props:
-			_check(
-				"%s %s prop %s stays outside the spawn containment box" % [template_id, variant.name, prop.name],
-				_prop_outside_keep_out(prop, root_node, keep_out_center, keep_out_half)
-			)
-			_check(
-				"%s %s prop %s keeps collision for readable blocking" % [template_id, variant.name, prop.name],
-				prop.use_collision
-			)
+	var height := _dressing_piece_height(piece)
+	_check(
+		"%s %s piece %s uses cover or flavor height" % [template_id, variant.name, piece.name],
+		height < COVER_MIN_HEIGHT or (height >= COVER_MIN_HEIGHT and height <= COVER_MAX_HEIGHT)
+	)
+	if height >= COVER_MIN_HEIGHT and height <= COVER_MAX_HEIGHT:
+		_check(
+			"%s %s cover-height piece %s has collision" % [template_id, variant.name, piece.name],
+			bool(piece.get("use_collision"))
+		)
+	elif height < COVER_MIN_HEIGHT:
+		_check(
+			"%s %s low flavor piece %s has no collision" % [template_id, variant.name, piece.name],
+			not bool(piece.get("use_collision"))
+		)
 
 func _test_act1_combat_region_layers() -> void:
 	var layer_name_regex := RegEx.new()
@@ -268,13 +334,12 @@ func _assert_region_layer_geometry_door_aprons(template_id: String, root_node: N
 		for node in _flatten_nodes(layer):
 			if not _is_region_layer_geometry_node(node):
 				continue
-			var to_room := _room_space_transform(node as Node3D, root_node)
-			var n := Vector2(to_room.origin.x / half.x, to_room.origin.z / half.y)
+			var n := _normalized_room_position(node as Node3D, root_node, half)
 			if absf(n.y) > 1.0:
 				continue
 			for door in doors:
 				var door_node := door as Node3D
-				var dn := Vector2(door_node.position.x / half.x, door_node.position.z / half.y)
+				var dn := _normalized_room_position(door_node, root_node, half)
 				if maxf(absf(n.x - dn.x), absf(n.y - dn.y)) <= REGION_DOOR_APRON_RADIUS:
 					violation = "%s/%s near %s at %s" % [layer.name, node.name, door_node.name, n]
 					break
@@ -288,6 +353,44 @@ func _assert_region_layer_geometry_door_aprons(template_id: String, root_node: N
 		],
 		violation == ""
 	)
+
+func _test_elite_arena_stage_two_teases() -> void:
+	var packed := load("res://scenes/rooms/elite_arena.tscn") as PackedScene
+	_check("elite_arena stage-two tease scene loads", packed != null)
+	if packed == null:
+		return
+
+	var instance := packed.instantiate() as Node3D
+	_check("elite_arena stage-two tease scene instantiates as Node3D", instance != null)
+	if instance == null:
+		return
+
+	_assert_stage_two_tease(instance, "RegionLayer_VERDANT")
+	_assert_stage_two_tease(instance, "RegionLayer_RUST")
+	instance.free()
+
+func _assert_stage_two_tease(root_node: Node3D, layer_name: String) -> void:
+	var layer := root_node.get_node_or_null("RegionLayers/%s" % layer_name) as Node3D
+	_check("elite_arena %s exists for stage-two tease" % layer_name, layer != null)
+	if layer == null:
+		return
+
+	var tease := layer.get_node_or_null("StageTwoTease") as Node3D
+	_check("elite_arena %s has StageTwoTease" % layer_name, tease != null)
+	if tease == null:
+		return
+
+	var gate_count := 0
+	var light_count := 0
+	for child in tease.get_children():
+		if child is OmniLight3D:
+			light_count += 1
+		var scene_path := String(child.get("scene_file_path"))
+		if scene_path == STAGE_TWO_GATE_SCENE or (child.has_meta("asset_id") and String(child.get_meta("asset_id")) == "gear_gate_01"):
+			gate_count += 1
+
+	_check("elite_arena %s StageTwoTease has an instanced gear gate" % layer_name, gate_count >= 1)
+	_check("elite_arena %s StageTwoTease has at least two OmniLights" % layer_name, light_count >= 2)
 
 func _is_region_layer_geometry_node(node: Node) -> bool:
 	return (
@@ -388,6 +491,55 @@ func _prop_outside_keep_out(prop: CSGBox3D, root_node: Node, center: Vector2, ha
 		or max_z < center.y - half.y
 		or min_z > center.y + half.y
 	)
+
+func _dressing_piece_height(piece: Node) -> float:
+	if piece is CSGBox3D:
+		return (piece as CSGBox3D).size.y
+	if piece is CSGCylinder3D:
+		return (piece as CSGCylinder3D).height
+	return 0.0
+
+func _dressing_piece_clears_spawn(piece: Node3D, root_node: Node, spawn: Marker3D) -> bool:
+	var to_room := _room_space_transform(piece, root_node)
+	var spawn_x := spawn.position.x
+	var spawn_z := spawn.position.z
+
+	if piece is CSGBox3D:
+		var extents: Vector3 = (piece as CSGBox3D).size * 0.5
+		var min_x := INF
+		var max_x := -INF
+		var min_z := INF
+		var max_z := -INF
+		for sx in [-1.0, 1.0]:
+			for sy in [-1.0, 1.0]:
+				for sz in [-1.0, 1.0]:
+					var corner := to_room * Vector3(extents.x * sx, extents.y * sy, extents.z * sz)
+					min_x = minf(min_x, corner.x)
+					max_x = maxf(max_x, corner.x)
+					min_z = minf(min_z, corner.z)
+					max_z = maxf(max_z, corner.z)
+		var dx := 0.0
+		if spawn_x < min_x:
+			dx = min_x - spawn_x
+		elif spawn_x > max_x:
+			dx = spawn_x - max_x
+		var dz := 0.0
+		if spawn_z < min_z:
+			dz = min_z - spawn_z
+		elif spawn_z > max_z:
+			dz = spawn_z - max_z
+		return Vector2(dx, dz).length() >= SPAWN_KEEP_OUT_RADIUS
+
+	if piece is CSGCylinder3D:
+		var radius := (piece as CSGCylinder3D).radius
+		var center := Vector2(to_room.origin.x, to_room.origin.z)
+		return center.distance_to(Vector2(spawn_x, spawn_z)) - radius >= SPAWN_KEEP_OUT_RADIUS
+
+	return true
+
+func _normalized_room_position(node: Node3D, root_node: Node, floor_half: Vector2) -> Vector2:
+	var to_room := _room_space_transform(node, root_node)
+	return Vector2(to_room.origin.x / floor_half.x, to_room.origin.z / floor_half.y)
 
 func _room_space_transform(node: Node3D, root_node: Node) -> Transform3D:
 	var accumulated := Transform3D.IDENTITY

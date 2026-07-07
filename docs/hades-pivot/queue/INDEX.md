@@ -203,7 +203,9 @@ Rubric: Opus = seam-shaping/cross-system judgment; Sonnet = specified single-fil
 | HZ-103B | region grammar + level identity per level-design canon | FABLE-level | rooms | done | plan-P4 |
 | HZ-104B | lore copy pass: telegraphs, boons, codex voice per lore canon | FABLE-lore | lore | done | plan-P5 |
 | HZ-105B | AAA animation pipeline: rig/clips/weapon, movement identity | FABLE-assets | assets | done | plan-P2 |
-| HZ-106B | wire-next from asset lab: beacon HearthLight state, sanctuary relief zone, gear_gate open state; hub sky one-liner; room-clear sting playback; bridge_arch kit-bash | any | world | ready-for-agent | 34 |
+| HZ-106B | wire-next from asset lab: beacon HearthLight state, sanctuary relief zone, gear_gate open state; hub sky one-liner; room-clear sting playback; bridge_arch kit-bash | any | world | done (levels lane 2026-07-07, PR #41) | 34 |
+| HZ-109B | region palette into floor/fog (region layers made the gap visible); RegionLayers for rest/reward/shop; kit-scene boot preload (first-load hitch); door emblem size pass | any | world | backlog | 106B |
+| HZ-110B | ambient beds: loudness finishing pass + A1 canon registration (audio lab; demo-provisional tonight) | audio | audio | backlog | 106B |
 | HZ-107B | deflake stochastic contact-damage balance check (~50% flap, flagged by asset lab + 2 ship batteries) | codex | tests | ready-for-agent | 34 |
 | HZ-108B | design-sweep follow-ups: world-state palette tinting in-engine; region voice dialects into room identity | FABLE | look/lore | backlog | 34 |
 | HZ-110 | weapon family 2 groundwork: lantern_staff_01 (procedural bpy, zero-spend) — mesh+wrapper+grip proof installed at godot/assets/weapons/; CORE LANE: wire kit mechanics (moveset/boons) when ready — wrapper is the interface, grip proof in ceremony/assets/2026-07-07-lantern-staff-grip-*.png | night/assets → core | assets | handoff-ready | — |
