@@ -64,10 +64,16 @@ const MOTION_PROFILES := {
 const RECOIL_DURATION := 0.22
 const WINDUP_WOBBLE_HZ := 9.0
 const CHAFF_TUMBLE_SINK := 0.45
+const AFFIX_FRENZIED: StringName = &"frenzied"
+const AFFIX_SHIELDED: StringName = &"shielded"
+const AFFIX_WARDED: StringName = &"warded"
 
 var _model_instance: Node3D = null
 var _model_base_position: Vector3 = Vector3.ZERO
 var _motion_time: float = 0.0
+var _affix_time: float = 0.0
+var _affix_id: StringName = &""
+var _affix_material: StandardMaterial3D = null
 var _spin_angle: float = 0.0
 var _recoil_remaining: float = 0.0
 var _windup_amount: float = 0.0
@@ -96,6 +102,7 @@ func update_motion(delta: float) -> void:
 		_death_time += safe_delta
 		_apply_death_motion(profile, safe_delta)
 		return
+	_tick_affix_pulse(safe_delta)
 	_death_time = 0.0
 	var move_amount := _parent_move_amount()
 	_motion_time += safe_delta * (0.6 + 0.8 * move_amount)
@@ -150,6 +157,11 @@ func _apply_death_motion(profile: Dictionary, safe_delta: float) -> void:
 
 func play_hit_recoil() -> void:
 	_recoil_remaining = 1.0
+
+func apply_affix_visual(affix_id: StringName) -> void:
+	_affix_id = affix_id
+	_affix_time = 0.0
+	_apply_affix_material()
 
 func _on_parent_damage_taken(_spawn_id: String, _amount: float, _charges_spark: bool) -> void:
 	play_hit_recoil()
@@ -235,6 +247,7 @@ func _instance_model(archetype: String) -> void:
 	_windup_amount = 0.0
 	_death_time = 0.0
 	_attach_animation_controller(archetype)
+	_apply_affix_material()
 
 ## Rigged models carry a Skeleton3D + clip AnimationPlayer; give them the
 ## two-tier controller so authored clips drive locomotion/telegraph/hit/death.
@@ -255,8 +268,86 @@ func _clear_model() -> void:
 		if child != placeholder:
 			child.queue_free()
 	_model_instance = null
+	_affix_material = null
 
 func _set_placeholder_visible(visible: bool) -> void:
 	var placeholder := get_node_or_null(placeholder_path) as Node3D
 	if placeholder != null:
 		placeholder.visible = visible
+
+func _apply_affix_material() -> void:
+	var mesh := _affix_mesh()
+	if mesh == null:
+		return
+	if _affix_id == &"":
+		if mesh.material_override == _affix_material:
+			mesh.material_override = null
+		_affix_material = null
+		return
+	_affix_material = _new_affix_material(_affix_color(), _affix_energy())
+	mesh.material_override = _affix_material
+
+func _tick_affix_pulse(delta: float) -> void:
+	if _affix_id == &"":
+		return
+	var mesh := _affix_mesh()
+	if mesh != null and _affix_material != null and mesh.material_override == null:
+		mesh.material_override = _affix_material
+	if _affix_material == null:
+		_apply_affix_material()
+		return
+	_affix_time += maxf(delta, 0.0)
+	var speed := 8.0 if _affix_id == AFFIX_FRENZIED else 3.0
+	var base_energy := _affix_energy()
+	var pulse := 0.72 + 0.28 * sin(_affix_time * TAU * speed)
+	_affix_material.emission_energy_multiplier = base_energy * pulse
+
+func _affix_mesh() -> MeshInstance3D:
+	if _model_instance != null and is_instance_valid(_model_instance):
+		return _first_mesh_under(_model_instance)
+	var placeholder := get_node_or_null(placeholder_path)
+	if placeholder is MeshInstance3D:
+		return placeholder as MeshInstance3D
+	if placeholder != null:
+		return _first_mesh_under(placeholder)
+	return null
+
+func _first_mesh_under(node: Node) -> MeshInstance3D:
+	if node is MeshInstance3D:
+		return node as MeshInstance3D
+	for child in node.get_children():
+		var found := _first_mesh_under(child)
+		if found != null:
+			return found
+	return null
+
+func _new_affix_material(color: Color, energy: float) -> StandardMaterial3D:
+	var material := StandardMaterial3D.new()
+	material.albedo_color = color
+	material.emission_enabled = true
+	material.emission = Color(color.r, color.g, color.b, 1.0)
+	material.emission_energy_multiplier = energy
+	material.roughness = 0.82
+	return material
+
+func _affix_color() -> Color:
+	match _affix_id:
+		AFFIX_FRENZIED:
+			return Color(1.0, 0.34, 0.12, 1.0)
+		AFFIX_WARDED:
+			return Color(0.58, 0.34, 1.0, 1.0)
+		AFFIX_SHIELDED:
+			return Color(0.44, 0.62, 0.82, 1.0)
+		_:
+			return Color(1.0, 1.0, 1.0, 1.0)
+
+func _affix_energy() -> float:
+	match _affix_id:
+		AFFIX_FRENZIED:
+			return 1.35
+		AFFIX_WARDED:
+			return 1.05
+		AFFIX_SHIELDED:
+			return 0.95
+		_:
+			return 0.0

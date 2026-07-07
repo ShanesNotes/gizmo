@@ -17,6 +17,8 @@ func _initialize() -> void:
 	_test_combat_room_budget_estimates_scale_by_tier()
 	_test_elite_room_budget_requests_punctuation_enemy()
 	_test_high_tier_elite_room_ends_with_double_elite_seed_sweep()
+	_test_affix_rolls_are_seeded_and_elite_only()
+	_test_affix_travels_through_real_spawn_request()
 	_test_tier_zero_opening_pressure_is_capped_across_seed_sweep()
 	_test_wave_count_is_bounded_and_deterministic()
 	_test_planned_waves_never_empty_across_seed_sweep()
@@ -119,6 +121,37 @@ func _test_high_tier_elite_room_ends_with_double_elite_seed_sweep() -> void:
 
 	_check_eq("high-tier elite seed sweep ends on a double-elite final wave", misses.size(), 0)
 
+func _test_affix_rolls_are_seeded_and_elite_only() -> void:
+	var first := _make_director_for_kind(1.0, 44, RoomDirector.ROOM_KIND_ELITE)
+	var second := _make_director_for_kind(1.0, 44, RoomDirector.ROOM_KIND_ELITE)
+	_check_eq("same seed replays the same elite affix plan", _affix_plan(first.planned_waves()), _affix_plan(second.planned_waves()))
+
+	var seen: Dictionary = {}
+	for seed in range(1, 91):
+		var director := _make_director_for_kind(1.0, seed, RoomDirector.ROOM_KIND_ELITE)
+		for wave: Array in director.planned_waves():
+			for request: Dictionary in wave:
+				var archetype := String(request.get("archetype", ""))
+				var affix := String(request.get("affix", ""))
+				if archetype == RoomDirector.ARCHETYPE_ELITE:
+					_check("elite request seed %d carries exactly one known affix" % seed, _is_known_affix(affix))
+					seen[affix] = true
+				else:
+					_check_eq("non-elite request seed %d has no affix" % seed, affix, "")
+	_check_eq("seed sweep can roll shielded elites", seen.has("shielded"), true)
+	_check_eq("seed sweep can roll frenzied elites", seen.has("frenzied"), true)
+	_check_eq("seed sweep can roll warded elites", seen.has("warded"), true)
+
+func _test_affix_travels_through_real_spawn_request() -> void:
+	var director := _make_director_for_kind(1.0, 12, RoomDirector.ROOM_KIND_ELITE)
+	var elite_request := _first_request_for_archetype(director.planned_waves(), RoomDirector.ARCHETYPE_ELITE)
+	_check("planned elite spawn request exists", not elite_request.is_empty())
+	if elite_request.is_empty():
+		return
+	_check("planned elite spawn request carries affix key", elite_request.has("affix"))
+	_check("planned elite spawn request affix is known", _is_known_affix(String(elite_request.get("affix", ""))))
+	_check_eq("elite spawn request rolls one affix for the request", typeof(elite_request.get("affix", "")), TYPE_STRING)
+
 func _test_tier_zero_opening_pressure_is_capped_across_seed_sweep() -> void:
 	const OPENING_PRESSURE_CAP := 3
 	const OPENING_TOTAL_FLOOR := 4
@@ -194,11 +227,16 @@ func _test_start_exposes_spawn_requests_as_plain_data() -> void:
 		_check("spawn request has archetype", request.has("archetype"))
 		_check("spawn request has count", request.has("count"))
 		_check("spawn request has spawn_ids", request.has("spawn_ids"))
+		_check("spawn request has affix", request.has("affix"))
 		_check("spawn request archetype stays abstract", [
 			RoomDirector.ARCHETYPE_CHAFF,
 			RoomDirector.ARCHETYPE_BRUISER,
 			"elite",
 		].has(String(request["archetype"])))
+		if String(request["archetype"]) == RoomDirector.ARCHETYPE_ELITE:
+			_check("elite spawn request carries one known affix", _is_known_affix(String(request["affix"])))
+		else:
+			_check_eq("non-elite spawn request carries empty affix", String(request["affix"]), "")
 		_check("spawn request count is positive", int(request["count"]) > 0)
 		var spawn_ids: Array = request.get("spawn_ids", [])
 		_check_eq("spawn request ids match count", spawn_ids.size(), int(request["count"]))
@@ -350,6 +388,23 @@ func _wave_archetype_count(wave: Array, archetype: String) -> int:
 		if String(request.get("archetype", "")) == archetype:
 			total += int(request.get("count", 0))
 	return total
+
+func _affix_plan(waves: Array[Array]) -> Array[String]:
+	var affixes: Array[String] = []
+	for wave: Array in waves:
+		for request: Dictionary in wave:
+			affixes.append("%s:%s" % [String(request.get("archetype", "")), String(request.get("affix", ""))])
+	return affixes
+
+func _first_request_for_archetype(waves: Array[Array], archetype: String) -> Dictionary:
+	for wave: Array in waves:
+		for request: Dictionary in wave:
+			if String(request.get("archetype", "")) == archetype:
+				return request.duplicate(true)
+	return {}
+
+func _is_known_affix(affix: String) -> bool:
+	return ["shielded", "frenzied", "warded"].has(affix)
 
 func _first_live_spawn_id(director: RoomDirector) -> String:
 	if not director.has_method("remaining_spawn_ids"):

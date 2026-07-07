@@ -29,13 +29,27 @@ keepsake depth, Keeper Rank meta, input feel, elite/boss mechanics, HZ-107B.
   red in full batteries yet green solo. Clear-drive rebuilt frame-generous +
   presence-over-window; floor check tolerance −0.15.
 
+### Wave 2 — PR #43
+- **Keepsake depth** (backlog 3): rarity pity (weight ×(1+0.6·streak), hard pity
+  at streak 3 guarantees an Epic+ slot), the Pattern's Bargain (25% roll reserves
+  a costed Rare+ keepsake into the last offer slot + `bargain_offered` signal),
+  three authored bargain keepsakes (The Pattern's Bargain / Counterfeit Shard /
+  Borrowed Interval), reciprocal synergy pairs (ember_attack↔cast,
+  gear_dash↔passive), `offer_flare(best_rarity)` for the UI lane to flare on.
+- **Input feel** (backlog 5): 0.12s attack input buffer in AbilityComponent
+  (attack-only by design — dash is the cancel and clears the buffer); commit-frame
+  swing soft-lock (range ×1.15, ±60°) snapping motor facing to the nearest
+  damageable enemy; swing_timing.gd remains the only timing truth.
+- **PerfProbe tree gate** (backlog 7 stretch): `count_nodes()` public; damage-number
+  flood asserts pool cap at the scene-tree level. Grok's "probe counts scene-tree
+  nodes" item verified already-landed.
+- Sheriff 04:05 uid ruling: complied; also carried the missing sidecars for lore
+  lane's `codex_book.gd` / `_probe_lantern_grip_proof.gd`.
+
 ## IN FLIGHT / QUEUED
-- Brief 3 (keepsake depth: pity math, Pattern's Bargain, reciprocal synergies,
-  offer_flare signal) — brief written, launching post-wave-1.
-- Brief 4 (input feel: 0.12s attack buffer, swing soft-lock) — brief written.
-- Brief 5 (elite affixes shielded/frenzied/warded + PROTOCOL: QUARANTINE Pattern
-  phase mechanic) — brief written.
-- Backlog 8 (TTK balance pass) — after mechanics settle.
+- Brief 5 (elite affixes shielded/frenzied/warded + "PROTOCOL: QUARANTINE" Pattern
+  phase-3 arena mechanic) — Codex building now; wave 3 on green + ceremony shots.
+- Backlog 8 (TTK balance pass incl. affixed-elite bands) — after brief 5 lands.
 
 ## NEEDS SHANE
 - Mirror currency: shards added as a PARALLEL purchase path (scrap untouched).

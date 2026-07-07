@@ -136,6 +136,13 @@ func _test_tier_mapping() -> void:
 	_check_eq("player-hit damage number uses red color", player_label.modulate if player_label != null else Color.BLACK, CombatEffectsScript.PLAYER_HIT_NUMBER_COLOR)
 	await _cleanup(player_fx)
 
+	var shielded_fx = await _new_fx()
+	_pop(shielded_fx, Vector3.ZERO, 9.0, {"shielded": true, "player_hit": true, "crit": true, "boosted": true})
+	var shielded_label := _first_active_label(shielded_fx)
+	_check_eq("shielded damage number uses compact shield font", shielded_label.font_size if shielded_label != null else -1, 54)
+	_check_eq("shielded damage number uses grey-blue color", shielded_label.modulate if shielded_label != null else Color.BLACK, CombatEffectsScript.SHIELDED_NUMBER_COLOR)
+	await _cleanup(shielded_fx)
+
 func _test_reuse_reset() -> void:
 	var fx = await _new_fx()
 	var origin := Vector3(4.0, 0.0, 4.0)
