@@ -175,6 +175,9 @@ func _return_to_hub(victory: bool) -> void:
 		push_error("AppShell could not save meta state on hub return: %s" % save_error)
 
 	_show_hub()
+	var director := get_node_or_null("/root/AudioDirector")
+	if director != null and director.has_method(&"play_ui_context"):
+		director.call(&"play_ui_context", &"victory_sequence" if victory else &"defeat_reflection")
 	summary["victory"] = victory
 	summary["scrap_banked"] = banked_scrap
 	summary["sparks_banked"] = banked_sparks
