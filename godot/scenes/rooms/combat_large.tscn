@@ -1,7 +1,9 @@
-[gd_scene load_steps=13 format=3]
+[gd_scene load_steps=30 format=3]
 
 [ext_resource type="Script" path="res://scripts/room_graph/room_hazard.gd" id="1_hazard"]
 [ext_resource type="Sky" path="res://assets/sky/gizmo_cosmos_sky_procedural.tres" id="sky_cosmos"]
+[ext_resource type="Script" path="res://scripts/room_graph/room_fixture.gd" id="fixture_region"]
+[ext_resource type="PackedScene" path="res://assets/world_kits/clockwork_observatory/gear_ring_01/gear_ring_01.tscn" id="gear_region"]
 
 [sub_resource type="Environment" id="Env_res"]
 background_mode = 2
@@ -62,6 +64,77 @@ size = Vector3(1.2, 2.2, 3.4)
 
 [sub_resource type="BoxShape3D" id="HazardShapeFlank"]
 size = Vector3(2.6, 1.2, 10.0)
+
+
+[sub_resource type="StandardMaterial3D" id="Mat_hearth_brass"]
+albedo_color = Color(0.72, 0.52, 0.28, 1)
+metallic = 0.35
+roughness = 0.72
+
+[sub_resource type="StandardMaterial3D" id="Mat_hearth_violet_emissive"]
+albedo_color = Color(0.46, 0.34, 0.68, 1)
+emission_enabled = true
+emission = Color(0.46, 0.34, 0.68, 1)
+emission_energy_multiplier = 1.0
+roughness = 0.65
+
+[sub_resource type="StandardMaterial3D" id="Mat_hearth_indigo_vista"]
+albedo_color = Color(0.09, 0.07, 0.16, 1)
+roughness = 0.95
+
+[sub_resource type="StandardMaterial3D" id="Mat_brass_gold"]
+albedo_color = Color(0.82, 0.62, 0.3, 1)
+metallic = 0.4
+roughness = 0.68
+
+[sub_resource type="StandardMaterial3D" id="Mat_brass_terrace"]
+albedo_color = Color(0.85, 0.8, 0.68, 1)
+roughness = 0.86
+
+[sub_resource type="StandardMaterial3D" id="Mat_brass_shadow_vista"]
+albedo_color = Color(0.11, 0.12, 0.2, 1)
+roughness = 0.96
+
+[sub_resource type="StandardMaterial3D" id="Mat_verdant_moss"]
+albedo_color = Color(0.38, 0.52, 0.3, 1)
+roughness = 0.9
+
+[sub_resource type="StandardMaterial3D" id="Mat_verdant_bark"]
+albedo_color = Color(0.45, 0.32, 0.22, 1)
+roughness = 0.88
+
+[sub_resource type="StandardMaterial3D" id="Mat_verdant_violet_emissive"]
+albedo_color = Color(0.46, 0.34, 0.68, 1)
+emission_enabled = true
+emission = Color(0.46, 0.34, 0.68, 1)
+emission_energy_multiplier = 1.15
+roughness = 0.62
+
+[sub_resource type="StandardMaterial3D" id="Mat_verdant_canopy_vista"]
+albedo_color = Color(0.13, 0.18, 0.11, 1)
+roughness = 0.96
+
+[sub_resource type="StandardMaterial3D" id="Mat_rust_brown"]
+albedo_color = Color(0.48, 0.3, 0.18, 1)
+roughness = 0.82
+
+[sub_resource type="StandardMaterial3D" id="Mat_rust_oil_black"]
+albedo_color = Color(0.1, 0.09, 0.08, 1)
+roughness = 0.42
+
+[sub_resource type="StandardMaterial3D" id="Mat_rust_ember_emissive"]
+albedo_color = Color(0.9, 0.4, 0.12, 1)
+emission_enabled = true
+emission = Color(0.9, 0.4, 0.12, 1)
+emission_energy_multiplier = 1.1
+roughness = 0.6
+
+[sub_resource type="StandardMaterial3D" id="Mat_rust_vista"]
+albedo_color = Color(0.13, 0.09, 0.07, 1)
+roughness = 0.95
+
+[sub_resource type="SphereShape3D" id="Shape_region_cache"]
+radius = 1.2
 
 [node name="CombatLarge" type="Node3D"]
 
@@ -191,65 +264,81 @@ use_collision = true
 size = Vector3(3.6, 0.24, 4.0)
 material = SubResource("Mat_terrace")
 
-[node name="DressingVariantA" type="Node3D" parent="Geometry"]
+[node name="DressingVariantA" type="Node3D" parent="."]
 
-[node name="FallenPillarA" type="CSGBox3D" parent="Geometry/DressingVariantA"]
-transform = Transform3D(0.965926, 0, 0.258819, 0, 1, 0, -0.258819, 0, 0.965926, -20.5, 0.45, -16.0)
+[node name="CenterCrossNorth" type="CSGBox3D" parent="DressingVariantA"]
+transform = Transform3D(0.984808, 0, 0.173648, 0, 1, 0, -0.173648, 0, 0.984808, 0, 0.6, -4.6)
 use_collision = true
-size = Vector3(5, 0.9, 1)
+size = Vector3(8.0, 1.2, 1.2)
+material = SubResource("Mat_obstacle")
+
+[node name="CenterCrossSouth" type="CSGBox3D" parent="DressingVariantA"]
+transform = Transform3D(0.984808, 0, -0.173648, 0, 1, 0, 0.173648, 0, 0.984808, 0, 0.55, 4.8)
+use_collision = true
+size = Vector3(7.4, 1.1, 1.2)
+material = SubResource("Mat_obstacle")
+
+[node name="CenterDrumWest" type="CSGCylinder3D" parent="DressingVariantA"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5.8, 0.6, 0)
+use_collision = true
+radius = 0.9
+height = 1.2
+sides = 10
 material = SubResource("Mat_dressing")
 
-[node name="FallenPillarB" type="CSGBox3D" parent="Geometry/DressingVariantA"]
-transform = Transform3D(0.866025, 0, -0.5, 0, 1, 0, 0.5, 0, 0.866025, -22.6, 0.4, -12.6)
+[node name="CenterDrumEast" type="CSGCylinder3D" parent="DressingVariantA"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.8, 0.6, 0)
 use_collision = true
-size = Vector3(3.4, 0.8, 0.9)
+radius = 0.9
+height = 1.2
+sides = 10
 material = SubResource("Mat_dressing")
 
-[node name="FallenPillarC" type="CSGBox3D" parent="Geometry/DressingVariantA"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -18.6, 0.3, -18.6)
-use_collision = true
-size = Vector3(2.2, 0.6, 0.8)
+[node name="LowSouthSurveyPlinth" type="CSGBox3D" parent="DressingVariantA"]
+transform = Transform3D(0.939693, 0, 0.34202, 0, 1, 0, -0.34202, 0, 0.939693, 0, 0.2, 9.4)
+use_collision = false
+size = Vector3(5.2, 0.4, 1.2)
 material = SubResource("Mat_dressing")
 
-[node name="DressingVariantB" type="Node3D" parent="Geometry"]
+[node name="DressingVariantB" type="Node3D" parent="."]
 
-[node name="BrassMonolith" type="CSGBox3D" parent="Geometry/DressingVariantB"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 20.6, 1.9, -17.0)
+[node name="NorthWestLaneWall" type="CSGBox3D" parent="DressingVariantB"]
+transform = Transform3D(0.965926, 0, 0.258819, 0, 1, 0, -0.258819, 0, 0.965926, -14.0, 0.6, -13.0)
 use_collision = true
-size = Vector3(1.8, 3.8, 1.8)
+size = Vector3(6.0, 1.2, 1.1)
+material = SubResource("Mat_obstacle")
+
+[node name="NorthEastLaneWall" type="CSGBox3D" parent="DressingVariantB"]
+transform = Transform3D(0.965926, 0, -0.258819, 0, 1, 0, 0.258819, 0, 0.965926, 14.0, 0.6, -13.0)
+use_collision = true
+size = Vector3(6.0, 1.2, 1.1)
+material = SubResource("Mat_obstacle")
+
+[node name="EastLanePier" type="CSGBox3D" parent="DressingVariantB"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 20.0, 0.65, 4.0)
+use_collision = true
+size = Vector3(1.4, 1.3, 6.0)
+material = SubResource("Mat_obstacle")
+
+[node name="WestLaneDrum" type="CSGCylinder3D" parent="DressingVariantB"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -18.0, 0.6, -4.0)
+use_collision = true
+radius = 0.85
+height = 1.2
+sides = 10
 material = SubResource("Mat_dressing")
 
-[node name="MonolithPlinth" type="CSGBox3D" parent="Geometry/DressingVariantB"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 20.6, 0.3, -17.0)
-use_collision = true
-size = Vector3(3.6, 0.6, 3.6)
+[node name="SouthWestLowRubble" type="CSGBox3D" parent="DressingVariantB"]
+transform = Transform3D(0.906308, 0, -0.422618, 0, 1, 0, 0.422618, 0, 0.906308, -16.0, 0.22, 12.0)
+use_collision = false
+size = Vector3(5.0, 0.44, 1.1)
 material = SubResource("Mat_dressing")
 
-[node name="MonolithShard" type="CSGBox3D" parent="Geometry/DressingVariantB"]
-transform = Transform3D(0.766044, 0, 0.642788, 0, 1, 0, -0.642788, 0, 0.766044, 17.8, 0.5, -19.2)
+[node name="NorthCenterBrace" type="CSGBox3D" parent="DressingVariantB"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.55, -15.5)
 use_collision = true
-size = Vector3(1, 1, 1)
-material = SubResource("Mat_dressing")
-
-[node name="DressingVariantC" type="Node3D" parent="Geometry"]
-
-[node name="BridgeSpanA" type="CSGBox3D" parent="Geometry/DressingVariantC"]
-transform = Transform3D(0.965926, 0, 0.258819, 0, 1, 0, -0.258819, 0, 0.965926, 19.5, 0.55, 16.5)
-use_collision = true
-size = Vector3(4.6, 0.5, 2)
-material = SubResource("Mat_dressing")
-
-[node name="BridgeSpanB" type="CSGBox3D" parent="Geometry/DressingVariantC"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 23.0, 0.25, 16.5)
-use_collision = true
-size = Vector3(2.4, 0.4, 2)
-material = SubResource("Mat_dressing")
-
-[node name="BridgeRubble" type="CSGBox3D" parent="Geometry/DressingVariantC"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 20.8, 0.2, 18.9)
-use_collision = true
-size = Vector3(1.4, 0.4, 1.2)
-material = SubResource("Mat_dressing")
+size = Vector3(4.8, 1.1, 1.1)
+material = SubResource("Mat_obstacle")
 
 [node name="RoomExitPadA" type="CSGBox3D" parent="Geometry"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.04, -24.0)
@@ -279,3 +368,390 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -30.2, 1.1, 3.0)
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="RoomExitB"]
 shape = SubResource("DoorShapeWest")
+
+[node name="RegionLayers" type="Node3D" parent="."]
+
+[node name="RegionLayer_HEARTH" type="Node3D" parent="RegionLayers"]
+
+[node name="HearthDominantLight" type="OmniLight3D" parent="RegionLayers/RegionLayer_HEARTH"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -19.22, 4.2, -4.68)
+light_color = Color(0.72, 0.52, 0.28, 1)
+light_energy = 1.25
+omni_range = 12
+
+[node name="HearthAccentLight" type="OmniLight3D" parent="RegionLayers/RegionLayer_HEARTH"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 13.02, 4.6, 15.08)
+light_color = Color(0.46, 0.34, 0.68, 1)
+light_energy = 1.05
+omni_range = 10.5
+
+[node name="HearthVistaGrazingLight" type="OmniLight3D" parent="RegionLayers/RegionLayer_HEARTH"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.96, 1.15, 22.36)
+light_color = Color(0.72, 0.52, 0.28, 1)
+light_energy = 0.95
+omni_range = 11
+
+[node name="HearthVistaRimLight" type="OmniLight3D" parent="RegionLayers/RegionLayer_HEARTH"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -5.5, 34)
+light_color = Color(0.46, 0.34, 0.68, 1)
+light_energy = 0.65
+omni_range = 12.0
+
+[node name="HearthBrassPlatformNW" type="CSGBox3D" parent="RegionLayers/RegionLayer_HEARTH"]
+transform = Transform3D(0.951057, 0, 0.309017, 0, 1, 0, -0.309017, 0, 0.951057, -16.12, 0.6, -14.04)
+use_collision = true
+size = Vector3(6, 1.2, 2.75)
+material = SubResource("Mat_hearth_brass")
+
+[node name="HearthBrassPlatformSE" type="CSGBox3D" parent="RegionLayers/RegionLayer_HEARTH"]
+transform = Transform3D(0.978148, 0, -0.207912, 0, 1, 0, 0.207912, 0, 0.978148, 6.82, 0.55, 13.52)
+use_collision = true
+size = Vector3(5.25, 1.1, 2.25)
+material = SubResource("Mat_hearth_brass")
+
+[node name="HearthLowRing" type="CSGCylinder3D" parent="RegionLayers/RegionLayer_HEARTH"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.86, 0.18, 5.2)
+use_collision = false
+radius = 2.5
+height = 0.36
+sides = 18
+material = SubResource("Mat_hearth_brass")
+
+[node name="HearthVioletCore" type="CSGCylinder3D" parent="RegionLayers/RegionLayer_HEARTH"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.86, 0.45, 5.2)
+use_collision = false
+radius = 0.8125
+height = 0.2
+sides = 14
+material = SubResource("Mat_hearth_violet_emissive")
+
+[node name="HearthVistaIslandA" type="CSGBox3D" parent="RegionLayers/RegionLayer_HEARTH"]
+transform = Transform3D(0.990268, 0, -0.139173, 0, 1, 0, 0.139173, 0, 0.990268, -13.95, -4.2, 31)
+use_collision = false
+size = Vector3(6.25, 0.55, 3.75)
+material = SubResource("Mat_hearth_indigo_vista")
+
+[node name="HearthVistaIslandB" type="CSGBox3D" parent="RegionLayers/RegionLayer_HEARTH"]
+transform = Transform3D(0.984808, 0, 0.173648, 0, 1, 0, -0.173648, 0, 0.984808, 0, -5.8, 35)
+use_collision = false
+size = Vector3(5.25, 0.5, 3.125)
+material = SubResource("Mat_hearth_indigo_vista")
+
+[node name="HearthVistaIslandC" type="CSGBox3D" parent="RegionLayers/RegionLayer_HEARTH"]
+transform = Transform3D(0.951057, 0, -0.309017, 0, 1, 0, 0.309017, 0, 0.951057, 14.26, -7, 38)
+use_collision = false
+size = Vector3(4.5, 0.45, 2.625)
+material = SubResource("Mat_hearth_indigo_vista")
+
+[node name="HearthSecretCache" type="Area3D" parent="RegionLayers/RegionLayer_HEARTH"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -22.94, 0.75, -17.68)
+script = ExtResource("fixture_region")
+fixture_kind = 0
+scrap_amount = 15
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="RegionLayers/RegionLayer_HEARTH/HearthSecretCache"]
+shape = SubResource("Shape_region_cache")
+
+[node name="CacheMarker" type="CSGSphere3D" parent="RegionLayers/RegionLayer_HEARTH/HearthSecretCache"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.55, 0)
+use_collision = false
+radius = 0.28
+material = SubResource("Mat_hearth_violet_emissive")
+
+[node name="CacheGlint" type="OmniLight3D" parent="RegionLayers/RegionLayer_HEARTH/HearthSecretCache"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.45, 0)
+light_color = Color(0.72, 0.52, 0.28, 1)
+light_energy = 1.2
+omni_range = 3.0
+
+[node name="RegionLayer_BRASS" type="Node3D" parent="RegionLayers"]
+
+[node name="BrassDominantLight" type="OmniLight3D" parent="RegionLayers/RegionLayer_BRASS"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -19.22, 4.2, -4.68)
+light_color = Color(0.82, 0.62, 0.3, 1)
+light_energy = 1.25
+omni_range = 12
+
+[node name="BrassAccentLight" type="OmniLight3D" parent="RegionLayers/RegionLayer_BRASS"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 13.02, 4.6, 15.08)
+light_color = Color(0.85, 0.8, 0.68, 1)
+light_energy = 1.05
+omni_range = 10.5
+
+[node name="BrassVistaGrazingLight" type="OmniLight3D" parent="RegionLayers/RegionLayer_BRASS"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.96, 1.15, 22.36)
+light_color = Color(0.82, 0.62, 0.3, 1)
+light_energy = 0.95
+omni_range = 11
+
+[node name="BrassVistaRimLight" type="OmniLight3D" parent="RegionLayers/RegionLayer_BRASS"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -5.5, 34)
+light_color = Color(0.85, 0.8, 0.68, 1)
+light_energy = 0.65
+omni_range = 12.0
+
+[node name="BrassTerraceLow" type="CSGBox3D" parent="RegionLayers/RegionLayer_BRASS"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -11.78, 0.5, -1.04)
+use_collision = true
+size = Vector3(8.75, 1, 3.75)
+material = SubResource("Mat_brass_terrace")
+
+[node name="BrassTerraceStep" type="CSGBox3D" parent="RegionLayers/RegionLayer_BRASS"]
+transform = Transform3D(0.965926, 0, -0.258819, 0, 1, 0, 0.258819, 0, 0.965926, 4.65, 0.65, 8.84)
+use_collision = true
+size = Vector3(6.25, 1.3, 3.25)
+material = SubResource("Mat_brass_terrace")
+
+[node name="BrassTerraceHigh" type="CSGBox3D" parent="RegionLayers/RegionLayer_BRASS"]
+transform = Transform3D(0.978148, 0, 0.207912, 0, 1, 0, -0.207912, 0, 0.978148, 14.88, 0.55, 15.6)
+use_collision = true
+size = Vector3(5.625, 1.1, 2.75)
+material = SubResource("Mat_brass_gold")
+
+[node name="BrassGearSilhouette" parent="RegionLayers/RegionLayer_BRASS" instance=ExtResource("gear_region")]
+transform = Transform3D(0.12, 0, 0, 0, 0.12, 0, 0, 0, 0.12, -16.74, 1.4, 14.04)
+
+[node name="BrassVistaSpireA" type="CSGBox3D" parent="RegionLayers/RegionLayer_BRASS"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -13.02, -6, 31)
+use_collision = false
+size = Vector3(1.375, 8, 1.375)
+material = SubResource("Mat_brass_shadow_vista")
+
+[node name="BrassVistaSpireB" type="CSGBox3D" parent="RegionLayers/RegionLayer_BRASS"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -6.2, 34.5)
+use_collision = false
+size = Vector3(1.625, 8.4, 1.25)
+material = SubResource("Mat_brass_shadow_vista")
+
+[node name="BrassVistaSpireC" type="CSGBox3D" parent="RegionLayers/RegionLayer_BRASS"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 13.02, -6.4, 38)
+use_collision = false
+size = Vector3(1.25, 7.6, 1.5)
+material = SubResource("Mat_brass_shadow_vista")
+
+[node name="BrassSecretCache" type="Area3D" parent="RegionLayers/RegionLayer_BRASS"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 22.32, 0.75, 18.72)
+script = ExtResource("fixture_region")
+fixture_kind = 0
+scrap_amount = 15
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="RegionLayers/RegionLayer_BRASS/BrassSecretCache"]
+shape = SubResource("Shape_region_cache")
+
+[node name="CacheMarker" type="CSGSphere3D" parent="RegionLayers/RegionLayer_BRASS/BrassSecretCache"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.55, 0)
+use_collision = false
+radius = 0.28
+material = SubResource("Mat_brass_gold")
+
+[node name="CacheGlint" type="OmniLight3D" parent="RegionLayers/RegionLayer_BRASS/BrassSecretCache"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.45, 0)
+light_color = Color(0.82, 0.62, 0.3, 1)
+light_energy = 1.2
+omni_range = 3.0
+
+[node name="RegionLayer_VERDANT" type="Node3D" parent="RegionLayers"]
+
+[node name="VerdantDominantLight" type="OmniLight3D" parent="RegionLayers/RegionLayer_VERDANT"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -19.22, 4.2, -4.68)
+light_color = Color(0.38, 0.52, 0.3, 1)
+light_energy = 1.25
+omni_range = 12
+
+[node name="VerdantAccentLight" type="OmniLight3D" parent="RegionLayers/RegionLayer_VERDANT"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 13.02, 4.6, 15.08)
+light_color = Color(0.46, 0.34, 0.68, 1)
+light_energy = 1.05
+omni_range = 10.5
+
+[node name="VerdantVistaGrazingLight" type="OmniLight3D" parent="RegionLayers/RegionLayer_VERDANT"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.96, 1.15, 22.36)
+light_color = Color(0.38, 0.52, 0.3, 1)
+light_energy = 0.95
+omni_range = 11
+
+[node name="VerdantVistaRimLight" type="OmniLight3D" parent="RegionLayers/RegionLayer_VERDANT"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -5.5, 34)
+light_color = Color(0.46, 0.34, 0.68, 1)
+light_energy = 0.65
+omni_range = 12.0
+
+[node name="VerdantMossMoundA" type="CSGCylinder3D" parent="RegionLayers/RegionLayer_VERDANT"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10.54, 0.55, 7.28)
+use_collision = true
+radius = 2.625
+height = 1.1
+sides = 12
+material = SubResource("Mat_verdant_moss")
+
+[node name="VerdantMossMoundB" type="CSGCylinder3D" parent="RegionLayers/RegionLayer_VERDANT"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 11.16, 0.5, -6.24)
+use_collision = true
+radius = 2.25
+height = 1
+sides = 12
+material = SubResource("Mat_verdant_moss")
+
+[node name="VerdantRootWallSW" type="CSGBox3D" parent="RegionLayers/RegionLayer_VERDANT"]
+transform = Transform3D(0.882948, 0, 0.469472, 0, 1, 0, -0.469472, 0, 0.882948, -19.22, 0.7, 15.08)
+use_collision = true
+size = Vector3(6.5, 1.4, 1.375)
+material = SubResource("Mat_verdant_bark")
+
+[node name="VerdantRootWallE" type="CSGBox3D" parent="RegionLayers/RegionLayer_VERDANT"]
+transform = Transform3D(0.819152, 0, -0.573576, 0, 1, 0, 0.573576, 0, 0.819152, 17.36, 0.65, 10.92)
+use_collision = true
+size = Vector3(5.25, 1.3, 1.25)
+material = SubResource("Mat_verdant_bark")
+
+[node name="VerdantMemoryMoteA" type="CSGSphere3D" parent="RegionLayers/RegionLayer_VERDANT"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5.58, 1.55, 4.68)
+use_collision = false
+radius = 0.25
+material = SubResource("Mat_verdant_violet_emissive")
+
+[node name="VerdantMemoryMoteB" type="CSGSphere3D" parent="RegionLayers/RegionLayer_VERDANT"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.1, 1.8, 7.02)
+use_collision = false
+radius = 0.225
+material = SubResource("Mat_verdant_violet_emissive")
+
+[node name="VerdantMemoryMoteC" type="CSGSphere3D" parent="RegionLayers/RegionLayer_VERDANT"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8.06, 1.7, 8.32)
+use_collision = false
+radius = 0.2
+material = SubResource("Mat_verdant_violet_emissive")
+
+[node name="VerdantVistaCanopy" type="CSGBox3D" parent="RegionLayers/RegionLayer_VERDANT"]
+transform = Transform3D(0.999391, 0, 0.034899, 0, 1, 0, -0.034899, 0, 0.999391, 0, -3.6, 32)
+use_collision = false
+size = Vector3(22.5, 1, 6.25)
+material = SubResource("Mat_verdant_canopy_vista")
+
+[node name="VerdantVistaTrunkA" type="CSGBox3D" parent="RegionLayers/RegionLayer_VERDANT"]
+transform = Transform3D(0.984808, 0, -0.173648, 0, 1, 0, 0.173648, 0, 0.984808, -11.16, -6.3, 35.5)
+use_collision = false
+size = Vector3(1.5, 7, 1.5)
+material = SubResource("Mat_verdant_canopy_vista")
+
+[node name="VerdantVistaTrunkB" type="CSGBox3D" parent="RegionLayers/RegionLayer_VERDANT"]
+transform = Transform3D(0.978148, 0, 0.207912, 0, 1, 0, -0.207912, 0, 0.978148, 11.16, -6.5, 38)
+use_collision = false
+size = Vector3(1.375, 7.4, 1.375)
+material = SubResource("Mat_verdant_canopy_vista")
+
+[node name="VerdantSecretCache" type="Area3D" parent="RegionLayers/RegionLayer_VERDANT"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -22.32, 0.75, 18.72)
+script = ExtResource("fixture_region")
+fixture_kind = 0
+scrap_amount = 15
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="RegionLayers/RegionLayer_VERDANT/VerdantSecretCache"]
+shape = SubResource("Shape_region_cache")
+
+[node name="CacheMarker" type="CSGSphere3D" parent="RegionLayers/RegionLayer_VERDANT/VerdantSecretCache"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.55, 0)
+use_collision = false
+radius = 0.28
+material = SubResource("Mat_verdant_violet_emissive")
+
+[node name="CacheGlint" type="OmniLight3D" parent="RegionLayers/RegionLayer_VERDANT/VerdantSecretCache"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.45, 0)
+light_color = Color(0.46, 0.34, 0.68, 1)
+light_energy = 1.2
+omni_range = 3.0
+
+[node name="RegionLayer_RUST" type="Node3D" parent="RegionLayers"]
+
+[node name="RustDominantLight" type="OmniLight3D" parent="RegionLayers/RegionLayer_RUST"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -19.22, 4.2, -4.68)
+light_color = Color(0.48, 0.3, 0.18, 1)
+light_energy = 1.25
+omni_range = 12
+
+[node name="RustAccentLight" type="OmniLight3D" parent="RegionLayers/RegionLayer_RUST"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 13.02, 4.6, 15.08)
+light_color = Color(0.9, 0.4, 0.12, 1)
+light_energy = 1.05
+omni_range = 10.5
+
+[node name="RustVistaGrazingLight" type="OmniLight3D" parent="RegionLayers/RegionLayer_RUST"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.96, 1.15, 22.36)
+light_color = Color(0.48, 0.3, 0.18, 1)
+light_energy = 0.95
+omni_range = 11
+
+[node name="RustVistaRimLight" type="OmniLight3D" parent="RegionLayers/RegionLayer_RUST"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -5.5, 34)
+light_color = Color(0.9, 0.4, 0.12, 1)
+light_energy = 0.65
+omni_range = 12.0
+
+[node name="RustTitanRibA" type="CSGBox3D" parent="RegionLayers/RegionLayer_RUST"]
+transform = Transform3D(0.913545, 0, -0.406737, 0, 1, 0, 0.406737, 0, 0.913545, 17.05, 0.38, -14.04)
+use_collision = true
+size = Vector3(8.75, 1.3, 1.75)
+material = SubResource("Mat_rust_brown")
+
+[node name="RustTitanRibB" type="CSGBox3D" parent="RegionLayers/RegionLayer_RUST"]
+transform = Transform3D(0.951057, 0, 0.309017, 0, 1, 0, -0.309017, 0, 0.951057, -11.16, 0.32, 7.28)
+use_collision = true
+size = Vector3(6.25, 1.1, 1.625)
+material = SubResource("Mat_rust_brown")
+
+[node name="RustTitanBlockC" type="CSGBox3D" parent="RegionLayers/RegionLayer_RUST"]
+transform = Transform3D(0.819152, 0, 0.573576, 0, 1, 0, -0.573576, 0, 0.819152, 3.1, 0.45, 15.08)
+use_collision = true
+size = Vector3(4.5, 1.4, 2.5)
+material = SubResource("Mat_rust_brown")
+
+[node name="RustOilSlickA" type="CSGBox3D" parent="RegionLayers/RegionLayer_RUST"]
+transform = Transform3D(0.990268, 0, -0.139173, 0, 1, 0, 0.139173, 0, 0.990268, -16.74, 0.03, -3.64)
+use_collision = false
+size = Vector3(6.875, 0.04, 3.25)
+material = SubResource("Mat_rust_oil_black")
+
+[node name="RustOilSlickB" type="CSGBox3D" parent="RegionLayers/RegionLayer_RUST"]
+transform = Transform3D(0.961262, 0, 0.275637, 0, 1, 0, -0.275637, 0, 0.961262, 13.64, 0.03, 3.64)
+use_collision = false
+size = Vector3(5.625, 0.04, 2.75)
+material = SubResource("Mat_rust_oil_black")
+
+[node name="RustVistaTitanHull" type="CSGBox3D" parent="RegionLayers/RegionLayer_RUST"]
+transform = Transform3D(0.978148, 0, -0.207912, 0, 1, 0, 0.207912, 0, 0.978148, 0, -5, 34)
+use_collision = false
+size = Vector3(22.5, 8, 3.75)
+material = SubResource("Mat_rust_vista")
+
+[node name="RustVistaTitanShoulder" type="CSGBox3D" parent="RegionLayers/RegionLayer_RUST"]
+transform = Transform3D(0.961262, 0, 0.275637, 0, 1, 0, -0.275637, 0, 0.961262, 13.95, -6, 38)
+use_collision = false
+size = Vector3(7.5, 6, 2.5)
+material = SubResource("Mat_rust_vista")
+
+[node name="RustVistaBrokenArm" type="CSGBox3D" parent="RegionLayers/RegionLayer_RUST"]
+transform = Transform3D(0.927184, 0, -0.374607, 0, 1, 0, 0.374607, 0, 0.927184, -13.95, -7, 36)
+use_collision = false
+size = Vector3(8.75, 2, 2.5)
+material = SubResource("Mat_rust_vista")
+
+[node name="RustSecretCache" type="Area3D" parent="RegionLayers/RegionLayer_RUST"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 22.32, 0.75, -17.68)
+script = ExtResource("fixture_region")
+fixture_kind = 0
+scrap_amount = 15
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="RegionLayers/RegionLayer_RUST/RustSecretCache"]
+shape = SubResource("Shape_region_cache")
+
+[node name="CacheMarker" type="CSGSphere3D" parent="RegionLayers/RegionLayer_RUST/RustSecretCache"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.55, 0)
+use_collision = false
+radius = 0.28
+material = SubResource("Mat_rust_ember_emissive")
+
+[node name="CacheGlint" type="OmniLight3D" parent="RegionLayers/RegionLayer_RUST/RustSecretCache"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.45, 0)
+light_color = Color(0.9, 0.4, 0.12, 1)
+light_energy = 1.2
+omni_range = 3.0

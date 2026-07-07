@@ -1,12 +1,14 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=4 format=3]
 
 [ext_resource type="PackedScene" path="res://assets/landmarks/beacon_01/beacon_01.glb" id="1_glb"]
+[ext_resource type="Script" path="res://assets/landmarks/beacon_01/beacon_landmark.gd" id="2_script"]
 
 [sub_resource type="CylinderShape3D" id="col1"]
 radius = 4.42
 height = 12.0441762
 
 [node name="Beacon01" type="Node3D"]
+script = ExtResource("2_script")
 metadata/asset_id = "beacon_01"
 metadata/asset_class = "landmark"
 metadata/source_brief = "gizmo-asset-pipeline/briefs/landmarks/beacon_01.brief.yaml"

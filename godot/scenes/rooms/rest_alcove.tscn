@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" path="res://scripts/room_graph/room_fixture.gd" id="1_fixture"]
 [ext_resource type="Sky" path="res://assets/sky/gizmo_cosmos_sky_panorama.tres" id="sky_cosmos"]
+[ext_resource type="PackedScene" path="res://assets/landmarks/sanctuary_01/sanctuary_01.tscn" id="2_sanctuary"]
 
 [sub_resource type="Environment" id="Env_res"]
 background_mode = 2
@@ -39,13 +40,6 @@ emission = Color(0.16, 0.34, 0.30, 1)
 emission_energy_multiplier = 0.45
 roughness = 0.82
 
-[sub_resource type="StandardMaterial3D" id="Mat_fixture"]
-albedo_color = Color(0.62, 0.96, 0.84, 1)
-emission_enabled = true
-emission = Color(0.18, 0.42, 0.34, 1)
-emission_energy_multiplier = 0.55
-roughness = 0.78
-
 [sub_resource type="StandardMaterial3D" id="Mat_ember_garden"]
 albedo_color = Color(0.95, 0.6, 0.3, 1)
 emission_enabled = true
@@ -57,8 +51,8 @@ roughness = 0.7
 size = Vector3(3, 2.2, 1.2)
 
 [sub_resource type="CylinderShape3D" id="RestShape"]
-height = 1.2
-radius = 1.15
+height = 2.0
+radius = 3.5
 
 [node name="RestAlcove" type="Node3D"]
 
@@ -128,21 +122,17 @@ height = 0.8
 sides = 8
 material = SubResource("Mat_ember_garden")
 
+[node name="Sanctuary" parent="Geometry" instance=ExtResource("2_sanctuary")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 2.4)
+
 [node name="RestFixture" type="Area3D" parent="Geometry"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.42, 2.4)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.0, 2.4)
 script = ExtResource("1_fixture")
 fixture_kind = 1
 scrap_amount = 0
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Geometry/RestFixture"]
 shape = SubResource("RestShape")
-
-[node name="RestVisual" type="CSGCylinder3D" parent="Geometry/RestFixture"]
-use_collision = true
-radius = 0.9
-height = 0.84
-sides = 12
-material = SubResource("Mat_fixture")
 
 [node name="RoomExitPad" type="CSGBox3D" parent="Geometry"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.04, -15.0)

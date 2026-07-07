@@ -115,7 +115,21 @@ const SFX_EVENT_MANIFEST := {
 	&"gizmo_chirp_hurt": "res://audio/sfx/gizmo_chirp_hurt.wav",
 	&"gizmo_chirp_effort": "res://audio/sfx/gizmo_chirp_effort.wav",
 	&"gizmo_chirp_curious": "res://audio/sfx/gizmo_chirp_curious.wav",
+	&"room_clear_sting": "res://audio/music/sting_room_clear.ogg",
 }
+
+## ── Region ambience (levels lane 2026-07-07): one looping bed per act-1
+## region on the Ambience bus, under the music. Driven at room load by
+## DressingLoader.apply_region_layer; beds are demo-provisional handoffs from
+## the audio lab (provenance: gizmo-audio-canon 2026-07-07-region-ambient-beds).
+const AMBIENT_BED_MANIFEST := {
+	&"HEARTH": "res://audio/ambient/ambient_hearth.ogg",
+	&"BRASS": "res://audio/ambient/ambient_brass.ogg",
+	&"VERDANT": "res://audio/ambient/ambient_verdant.ogg",
+	&"RUST": "res://audio/ambient/ambient_rust.ogg",
+}
+const AMBIENT_BUS := &"Ambience"
+const AMBIENT_VOLUME_DB := -8.0
 
 @export_range(0.0, 10.0, 0.01, "or_greater") var crossfade_seconds: float = 1.25
 
@@ -227,6 +241,10 @@ func set_zone_state(state: StringName) -> void:
 
 	_last_zone_request = state
 	_requested_music_state = state
+	# Room-clear sting rides the SFX pool; music-path bookkeeping is untouched.
+	if state == MUSIC_STATE_CLEARED:
+		notify_event(&"room_clear_sting")
+		_last_noop_reason = &""
 	# CLEARED is not a zone in v2: the zone stays, pressure relaxes elsewhere.
 	if _v2_loaded and state == &"CLEARED":
 		_last_noop_reason = &"v2_cleared_pressure_only"
@@ -294,6 +312,41 @@ func notify_event(event: StringName) -> void:
 	var event_key := String(event)
 	_sfx_event_counts[event_key] = int(_sfx_event_counts.get(event_key, 0)) + 1
 
+var _ambient_player: AudioStreamPlayer = null
+var _active_ambient_region: StringName = &""
+
+## Region ambience: idempotent per region; unknown regions stop the bed rather
+## than let a stale one bleed into the wrong place.
+func set_region_ambience(region_id: StringName) -> void:
+	if region_id == _active_ambient_region:
+		return
+	var path := String(AMBIENT_BED_MANIFEST.get(region_id, ""))
+	if path.is_empty():
+		_active_ambient_region = &""
+		if _ambient_player != null:
+			_ambient_player.stop()
+		return
+	if not ResourceLoader.exists(path):
+		return
+	var stream := load(path) as AudioStream
+	if stream == null:
+		return
+	if stream is AudioStreamOggVorbis:
+		(stream as AudioStreamOggVorbis).loop = true
+	_ensure_ambient_player()
+	_ambient_player.stream = stream
+	_ambient_player.play()
+	_active_ambient_region = region_id
+
+func _ensure_ambient_player() -> void:
+	if _ambient_player != null:
+		return
+	_ambient_player = AudioStreamPlayer.new()
+	_ambient_player.name = "AmbientLane"
+	_ambient_player.bus = String(AMBIENT_BUS)
+	_ambient_player.volume_db = AMBIENT_VOLUME_DB
+	add_child(_ambient_player)
+
 func describe() -> Dictionary:
 	_ensure_music_lanes()
 	_ensure_sfx_pool()
@@ -342,6 +395,8 @@ func describe() -> Dictionary:
 		"last_sfx_event": String(_last_sfx_event),
 		"last_sfx_player": _last_sfx_player_name,
 		"next_sfx_player_index": _sfx_pool_index,
+		"active_ambient_region": String(_active_ambient_region),
+		"ambient_playing": _ambient_player != null and _ambient_player.playing,
 	}
 
 func _cue_id_for_state(state: StringName) -> StringName:

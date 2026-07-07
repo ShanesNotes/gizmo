@@ -135,6 +135,48 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.04, -15.0)
 size = Vector3(3.5, 0.08, 1.4)
 material = SubResource("Mat_exit")
 
+[node name="DressingVariantA" type="Node3D" parent="."]
+
+[node name="WestReliquaryBlock" type="CSGBox3D" parent="DressingVariantA"]
+transform = Transform3D(0.965926, 0, 0.258819, 0, 1, 0, -0.258819, 0, 0.965926, -7.0, 0.55, -3.2)
+use_collision = true
+size = Vector3(2.2, 1.1, 1.2)
+material = SubResource("Mat_obstacle")
+
+[node name="EastReliquaryBlock" type="CSGBox3D" parent="DressingVariantA"]
+transform = Transform3D(0.965926, 0, -0.258819, 0, 1, 0, 0.258819, 0, 0.965926, 7.0, 0.55, -3.2)
+use_collision = true
+size = Vector3(2.2, 1.1, 1.2)
+material = SubResource("Mat_obstacle")
+
+[node name="WestVotiveBowl" type="CSGCylinder3D" parent="DressingVariantA"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8.2, 0.16, 5.2)
+use_collision = false
+radius = 0.75
+height = 0.32
+sides = 12
+material = SubResource("Mat_fixture")
+
+[node name="DressingVariantB" type="Node3D" parent="."]
+
+[node name="BackScreenLeft" type="CSGBox3D" parent="DressingVariantB"]
+transform = Transform3D(0.984808, 0, 0.173648, 0, 1, 0, -0.173648, 0, 0.984808, -6.0, 0.55, -8.5)
+use_collision = true
+size = Vector3(3.0, 1.1, 1.0)
+material = SubResource("Mat_obstacle")
+
+[node name="BackScreenRight" type="CSGBox3D" parent="DressingVariantB"]
+transform = Transform3D(0.984808, 0, -0.173648, 0, 1, 0, 0.173648, 0, 0.984808, 6.0, 0.55, -8.5)
+use_collision = true
+size = Vector3(3.0, 1.1, 1.0)
+material = SubResource("Mat_obstacle")
+
+[node name="EastLowOfferingTray" type="CSGBox3D" parent="DressingVariantB"]
+transform = Transform3D(0.906308, 0, -0.422618, 0, 1, 0, 0.422618, 0, 0.906308, 8.2, 0.18, 4.6)
+use_collision = false
+size = Vector3(2.0, 0.36, 1.0)
+material = SubResource("Mat_aisle")
+
 [node name="CameraAnchor" type="Marker3D" parent="."]
 metadata/camera_half_extent_x = 8.0
 metadata/camera_half_extent_z = 6.5

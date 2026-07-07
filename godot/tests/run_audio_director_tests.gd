@@ -307,7 +307,7 @@ func _test_notify_event_known_unknown_and_round_robin_pool() -> void:
 	_check("AudioDirector exposes notify_event seam", director.has_method(&"notify_event"))
 	var before: Dictionary = director.describe()
 	var initial_count := int(before.get("sfx_play_count", -1))
-	_check_eq("SFX manifest registers fourteen events", int(before.get("sfx_registered_event_count", -1)), 14)
+	_check_eq("SFX manifest registers fifteen events", int(before.get("sfx_registered_event_count", -1)), 15)
 	_check_eq("SFX pool preallocates eight players", int(before.get("sfx_pool_size", -1)), 8)
 
 	if director.has_method(&"notify_event"):
@@ -421,6 +421,20 @@ func _test_unknown_cue_noops_without_stopping_current_music() -> void:
 	var cleared: Dictionary = director.describe()
 	_check_eq("v2 CLEARED is pressure-only (zone unchanged)", cleared["active_music_state"], "TEST_A")
 	_check_eq("v2 CLEARED records its no-op reason", cleared["last_noop_reason"], "v2_cleared_pressure_only")
+	_check_eq("CLEARED fires the room-clear sting", cleared["last_sfx_event"], "room_clear_sting")
+
+	# Region ambience seam (levels lane 2026-07-07).
+	for region in ["HEARTH", "BRASS", "VERDANT", "RUST"]:
+		_check("ambient bed for %s exists on disk" % region,
+			ResourceLoader.exists(String(director.AMBIENT_BED_MANIFEST[StringName(region)])))
+	director.set_region_ambience(&"BRASS")
+	var amb: Dictionary = director.describe()
+	_check_eq("region ambience activates the requested bed", amb["active_ambient_region"], "BRASS")
+	_check("region ambience bed is playing", amb["ambient_playing"] == true)
+	director.set_region_ambience(&"NO_SUCH_REGION")
+	var amb_off: Dictionary = director.describe()
+	_check_eq("unknown region stops the ambient bed", amb_off["active_ambient_region"], "")
+	_check("unknown region leaves nothing playing", amb_off["ambient_playing"] == false)
 
 	await _cleanup_director(director)
 
@@ -529,7 +543,7 @@ func _test_autoload_registration() -> void:
 	_check("AudioDirector autoload exposes describe", autoload.has_method(&"describe"))
 	var desc: Dictionary = autoload.describe()
 	_check_eq("AudioDirector autoload registers no legacy manifest cues", desc["registered_cue_count"], 0)
-	_check_eq("AudioDirector autoload registers manifest SFX events", int(desc.get("sfx_registered_event_count", -1)), 14)
+	_check_eq("AudioDirector autoload registers manifest SFX events", int(desc.get("sfx_registered_event_count", -1)), 15)
 	_check_eq("AudioDirector autoload owns pooled SFX players", int(desc.get("sfx_pool_size", -1)), 8)
 
 func _new_director() -> Node:

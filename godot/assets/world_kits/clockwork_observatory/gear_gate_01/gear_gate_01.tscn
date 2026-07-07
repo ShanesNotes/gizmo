@@ -1,11 +1,13 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=4 format=3]
 
 [ext_resource type="PackedScene" path="res://assets/world_kits/clockwork_observatory/gear_gate_01/gear_gate_01.glb" id="1_glb"]
+[ext_resource type="Script" path="res://assets/world_kits/clockwork_observatory/gear_gate_01/gear_gate.gd" id="2_script"]
 
 [sub_resource type="BoxShape3D" id="col1"]
 size = Vector3(4.97, 4.97, 0.91)
 
 [node name="GearGate01" type="Node3D"]
+script = ExtResource("2_script")
 metadata/asset_id = "gear_gate_01"
 metadata/asset_class = "world_kit"
 metadata/source_brief = "gizmo-asset-pipeline/briefs/world_kits/gear_gate_01.brief.yaml"
