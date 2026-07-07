@@ -12,5 +12,23 @@
   "date": "2026-07-06",
   "authored_by": "fable enemy-animation principal",
   "motion_language": "the thesis made flesh — 1.05s frozen-apex blade windup matching enemy_brain, single-frame thrust, no follow-through; death is a power-cut fold then a hard off-axis list",
-  "verification": "per-pose stills rendered via --render-dir and visually reviewed at Diablo camera angle"
+  "verification": "per-pose stills rendered via --render-dir and visually reviewed at Diablo camera angle",
+  "texture_budget_settlement": {
+    "date": "2026-07-07",
+    "operation": "Blender 5.1.2 headless embedded image bufferView patch: texture_0 albedo capped 2048x2048 -> 1024x1024; loose Godot texture rewritten from the same patched PNG bytes; no scene re-export, no decimation.",
+    "before": {
+      "glb_bytes": 8176972,
+      "loose_texture_bytes": 6999679,
+      "texture_size": [2048, 2048],
+      "glb_sha256": "b30cf140083f6e938ac09066e0c31fbe9742b0e91412a6a08414146bea4c7a70"
+    },
+    "after": {
+      "glb_bytes": 3054600,
+      "loose_texture_bytes": 1877308,
+      "texture_size": [1024, 1024],
+      "glb_sha256": "b58095fc7dcbef9b5d80ea8cafb2b18a2e6b35a66f6961de0542ef1e80e7b16e",
+      "loose_texture_sha256": "4ee4c466668a40ad832d4a53265438c4a2d512a73caa47466924da0e86dea12a"
+    },
+    "bpy_verification": "Clip list and frame ranges identical before/after; 24-bone armature, mesh vertex counts, vertex-group counts, and armature modifiers unchanged."
+  }
 }

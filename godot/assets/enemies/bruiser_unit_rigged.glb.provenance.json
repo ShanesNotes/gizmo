@@ -12,5 +12,23 @@
   "date": "2026-07-06",
   "authored_by": "fable enemy-animation principal",
   "motion_language": "hyperscaler thesis — frictionless, economical, wrong; telegraph is slow and total (0.85s windup matching enemy_brain), strike instant, death a forward timber",
-  "verification": "per-pose stills rendered via --render-dir and visually reviewed; attack apex/strike, hit, death, walk checked at Diablo camera angle"
+  "verification": "per-pose stills rendered via --render-dir and visually reviewed; attack apex/strike, hit, death, walk checked at Diablo camera angle",
+  "texture_budget_settlement": {
+    "date": "2026-07-07",
+    "operation": "Blender 5.1.2 headless embedded image bufferView patch: texture_0 albedo capped 2048x2048 -> 1024x1024; loose Godot texture rewritten from the same patched PNG bytes; no scene re-export, no decimation.",
+    "before": {
+      "glb_bytes": 7017492,
+      "loose_texture_bytes": 5898716,
+      "texture_size": [2048, 2048],
+      "glb_sha256": "e2be462ca4567c6fee69793562d1f90154a397e1bfb6e7b84ad840089d12c1a2"
+    },
+    "after": {
+      "glb_bytes": 2883716,
+      "loose_texture_bytes": 1764937,
+      "texture_size": [1024, 1024],
+      "glb_sha256": "294a31e33026204ef7a6d422fb94d5032708dfb87df64eba0917816275d0daf9",
+      "loose_texture_sha256": "3f0c96bd70f2b6211f2882895a91dfeb51e96ed00991c7b0fd5d9a3fff579fcf"
+    },
+    "bpy_verification": "Clip list and frame ranges identical before/after; 24-bone armature, mesh vertex counts, vertex-group counts, and armature modifiers unchanged."
+  }
 }
