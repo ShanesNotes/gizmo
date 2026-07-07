@@ -62,6 +62,7 @@ func _run_tests() -> void:
 	await _test_opening_beats_are_canon_shaped()
 	await _test_opening_cinematic_staging_rules()
 	await _test_opening_registers_and_speaks_ordered_lines()
+	await _test_margin_figure_reveals_at_the_portrait_beat()
 	await _test_opening_skip_finishes_once()
 	await _test_opening_skip_during_title_finishes_once()
 	await _test_opening_missing_title_sting_is_noop()
@@ -245,6 +246,24 @@ func _test_opening_registers_and_speaks_ordered_lines() -> void:
 		second_played,
 		StringName(OpeningSequenceScript.BEATS[first_voice_index + 1].get("voice"))
 	)
+
+	await _cleanup(opening)
+	await _cleanup(director)
+
+func _test_margin_figure_reveals_at_the_portrait_beat() -> void:
+	var director := StubVoiceDirector.new()
+	root.add_child(director)
+	var opening := await _new_opening(director)
+
+	var figure := opening.get_node_or_null("MarginFigure") as Node3D
+	_check("opening stages Margin's physical figure at the campfire", figure != null)
+	_check("Margin's figure is hidden before her reveal (voice before image)", figure != null and not figure.visible)
+
+	var portrait_index := _first_portrait_beat_index()
+	_check("opening has a portrait/Margin reveal beat", portrait_index >= 0)
+	await _advance_opening_to_beat(opening, director, portrait_index)
+
+	_check("Margin's figure resolves into view on the reveal beat", figure != null and figure.visible)
 
 	await _cleanup(opening)
 	await _cleanup(director)
