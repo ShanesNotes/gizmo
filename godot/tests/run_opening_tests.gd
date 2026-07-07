@@ -63,6 +63,7 @@ func _run_tests() -> void:
 	await _test_opening_cinematic_staging_rules()
 	await _test_opening_registers_and_speaks_ordered_lines()
 	await _test_margin_figure_reveals_at_the_portrait_beat()
+	await _test_gizmo_is_seated_at_the_campfire()
 	await _test_opening_skip_finishes_once()
 	await _test_opening_skip_during_title_finishes_once()
 	await _test_opening_missing_title_sting_is_noop()
@@ -264,6 +265,23 @@ func _test_margin_figure_reveals_at_the_portrait_beat() -> void:
 	await _advance_opening_to_beat(opening, director, portrait_index)
 
 	_check("Margin's figure resolves into view on the reveal beat", figure != null and figure.visible)
+
+	await _cleanup(opening)
+	await _cleanup(director)
+
+func _test_gizmo_is_seated_at_the_campfire() -> void:
+	var director := StubVoiceDirector.new()
+	root.add_child(director)
+	var opening := await _new_opening(director)
+
+	var animator := opening.get_node_or_null("GizmoAnimator")
+	_check("opening attaches the Gizmo animation controller", animator != null)
+	if animator != null and animator.has_method("is_cinematic_holding"):
+		# is_cinematic_holding only latches if campfire_sit actually grafted from
+		# the authored clip GLB and is playing — proves Gizmo is seated, not idling.
+		_check("Gizmo is seated at the fire (campfire_sit holds the cinematic)", bool(animator.is_cinematic_holding()))
+	else:
+		_check("Gizmo animation controller exposes the campfire seam", false)
 
 	await _cleanup(opening)
 	await _cleanup(director)
