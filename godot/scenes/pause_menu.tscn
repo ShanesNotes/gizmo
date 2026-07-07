@@ -1,6 +1,7 @@
-[gd_scene load_steps=7 format=3]
+[gd_scene load_steps=8 format=3]
 
 [ext_resource type="Script" path="res://scripts/ui/pause_menu.gd" id="1_pause"]
+[ext_resource type="PackedScene" path="res://scenes/controls_card.tscn" id="4_controls_card"]
 [ext_resource type="Theme" path="res://scenes/hud_theme.tres" id="2_theme"]
 [ext_resource type="PackedScene" path="res://scenes/settings_panel.tscn" id="3_settings"]
 
@@ -143,6 +144,18 @@ theme_override_styles/hover = SubResource("sb_btn_hover")
 theme_override_styles/pressed = SubResource("sb_btn_pressed")
 text = "SETTINGS"
 
+[node name="HowToKeepButton" type="Button" parent="Root/Center/Panel/Margin/VBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(180, 44)
+layout_mode = 2
+size_flags_horizontal = 4
+focus_mode = 2
+theme_override_font_sizes/font_size = 18
+theme_override_styles/normal = SubResource("sb_btn_normal")
+theme_override_styles/hover = SubResource("sb_btn_hover")
+theme_override_styles/pressed = SubResource("sb_btn_pressed")
+text = "HOW TO KEEP"
+
 [node name="AbandonButton" type="Button" parent="Root/Center/Panel/Margin/VBox"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(180, 44)
@@ -154,6 +167,19 @@ theme_override_styles/normal = SubResource("sb_btn_normal")
 theme_override_styles/hover = SubResource("sb_btn_hover")
 theme_override_styles/pressed = SubResource("sb_btn_pressed")
 text = "ABANDON VIGIL"
+
+[node name="ControlsCardCenter" type="CenterContainer" parent="Root"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="ControlsCard" parent="Root/ControlsCardCenter" instance=ExtResource("4_controls_card")]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
 
 [node name="SettingsPanel" parent="." instance=ExtResource("3_settings")]
 unique_name_in_owner = true

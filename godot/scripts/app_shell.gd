@@ -28,7 +28,11 @@ class PlaceholderRunSurface:
 	func start_run(run_bonuses: Dictionary) -> void:
 		received_bonuses = run_bonuses.duplicate(true)
 
+const OpeningSceneDefault := preload("res://scenes/opening.tscn")
+
 @export var meta_save_path: String = MetaState.DEFAULT_SAVE_PATH
+@export var opening_scene: PackedScene = OpeningSceneDefault
+@export var opening_seen_path: String = OpeningSequence.DEFAULT_SEEN_PATH
 @export var hub_scene: PackedScene = HubSceneDefault
 @export var run_surface_scene: PackedScene = RunSceneDefault
 @export var end_screen_scene: PackedScene = EndScreenSceneDefault
@@ -50,7 +54,40 @@ func _ready() -> void:
 	_resolve_audio_director()
 	_load_meta_state()
 	lifecycle = RunLifecycle.new(meta_state)
+	if _should_show_opening():
+		_show_opening()
+	else:
+		_show_hub()
+
+# ── First-boot opening region (campfire intro; playtest 2, Lane 4) ──────────
+
+func _should_show_opening() -> bool:
+	if opening_scene == null:
+		return false
+	if OpeningSequence.replay_requested:
+		OpeningSequence.replay_requested = false
+		return true
+	return not OpeningSequence.has_seen(opening_seen_path)
+
+func _show_opening() -> void:
+	var opening: Node = opening_scene.instantiate()
+	if opening == null:
+		push_error("AppShell could not instantiate the opening scene.")
+		_show_hub()
+		return
+	if opening.has_signal(&"finished"):
+		opening.connect(&"finished", Callable(self, "_on_opening_finished"))
+	# The opening speaks the hub-intro lines itself; do not repeat them.
+	_margin_intro_spoken = true
+	_swap_content(opening)
+
+func _on_opening_finished() -> void:
+	var save_error := OpeningSequence.mark_seen(opening_seen_path)
+	if save_error != OK:
+		push_error("AppShell could not persist the opening seen flag: %s" % save_error)
 	_show_hub()
+
+# ── End first-boot opening region ────────────────────────────────────────────
 
 func _load_meta_state() -> void:
 	var loaded: Resource = MetaState.load_from_path(meta_save_path)

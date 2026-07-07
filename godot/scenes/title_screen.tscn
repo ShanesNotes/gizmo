@@ -116,6 +116,18 @@ theme_override_styles/hover = SubResource("sb_btn_hover")
 theme_override_styles/pressed = SubResource("sb_btn_pressed")
 text = "START"
 
+[node name="ReplayOpeningButton" type="Button" parent="Center/Menu"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(190, 44)
+layout_mode = 2
+size_flags_horizontal = 4
+focus_mode = 2
+theme_override_font_sizes/font_size = 18
+theme_override_styles/normal = SubResource("sb_btn_normal")
+theme_override_styles/hover = SubResource("sb_btn_hover")
+theme_override_styles/pressed = SubResource("sb_btn_pressed")
+text = "REPLAY THE CAMPFIRE"
+
 [node name="SettingsButton" type="Button" parent="Center/Menu"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(190, 44)

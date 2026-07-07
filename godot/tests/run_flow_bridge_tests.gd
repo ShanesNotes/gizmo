@@ -406,6 +406,9 @@ func _test_real_boon_draft_ui_satisfies_bridge_contract_headless() -> void:
 
 	bridge.request_exit(connection)
 	await process_frame
+	# The rarity reveal beat is async now (epic pause-beat); drivers await the seam.
+	if not ui.is_reveal_finished():
+		await ui.reveal_finished
 
 	_check("real BoonDraftUI becomes visible when presented by the bridge", ui.visible)
 	_check("real BoonDraftUI accepts the third offer", ui.choose_offer(2))

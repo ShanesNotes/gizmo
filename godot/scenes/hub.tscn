@@ -120,6 +120,25 @@ size = Vector3(2.8, 2.2, 1.2)
 [sub_resource type="BoxShape3D" id="RunDoorBlocker_shape"]
 size = Vector3(3, 2.4, 0.35)
 
+[sub_resource type="StyleBoxFlat" id="MirrorPanel_style"]
+content_margin_left = 16.0
+content_margin_top = 12.0
+content_margin_right = 16.0
+content_margin_bottom = 14.0
+bg_color = Color(0.12, 0.09, 0.06, 0.92)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.72, 0.52, 0.28, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+
+[sub_resource type="BoxShape3D" id="MirrorZone_shape"]
+size = Vector3(3.2, 2.4, 3.2)
+
 [sub_resource type="CapsuleShape3D" id="Gizmo_capsule_shape"]
 radius = 0.35
 height = 1.1
@@ -214,6 +233,13 @@ no_depth_test = true
 text = "MIRROR"
 font_size = 36
 outline_size = 8
+
+[node name="MirrorZone" type="Area3D" parent="."]
+unique_name_in_owner = true
+transform = Transform3D(0.707107, 0, -0.707107, 0, 1, 0, 0.707107, 0, 0.707107, -3.6, 1.0, -0.9)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="MirrorZone"]
+shape = SubResource("MirrorZone_shape")
 
 [node name="CodexAnchor" type="Marker3D" parent="."]
 transform = Transform3D(0.707107, 0, 0.707107, 0, 1, 0, -0.707107, 0, 0.707107, 4.3, 0.65, -1.5)
@@ -316,6 +342,88 @@ text = "Run surface failed to load - run the import step (see docs/hades-pivot/e
 horizontal_alignment = 1
 vertical_alignment = 1
 autowrap_mode = 3
+
+[node name="MirrorPanel" type="PanelContainer" parent="HubUi/Root"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 4
+anchor_top = 0.5
+anchor_bottom = 0.5
+offset_left = 24.0
+offset_top = -150.0
+offset_right = 420.0
+offset_bottom = 150.0
+grow_vertical = 2
+theme_override_styles/panel = SubResource("MirrorPanel_style")
+
+[node name="VBox" type="VBoxContainer" parent="HubUi/Root/MirrorPanel"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="MirrorTitle" type="Label" parent="HubUi/Root/MirrorPanel/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.96, 0.78, 0.4, 1)
+theme_override_colors/font_outline_color = Color(0.08, 0.06, 0.05, 0.9)
+theme_override_constants/outline_size = 3
+theme_override_font_sizes/font_size = 24
+text = "THE MIRROR - KEPT GRACES"
+horizontal_alignment = 1
+
+[node name="MirrorHint" type="Label" parent="HubUi/Root/MirrorPanel/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.82, 0.72, 0.58, 1)
+theme_override_font_sizes/font_size = 14
+text = "Spend banked scrap on lasting graces."
+horizontal_alignment = 1
+
+[node name="MirrorRow_dash_charges" type="HBoxContainer" parent="HubUi/Root/MirrorPanel/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="RowLabel" type="Label" parent="HubUi/Root/MirrorPanel/VBox/MirrorRow_dash_charges"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.9, 0.86, 0.78, 1)
+theme_override_font_sizes/font_size = 17
+text = "GYRE STEP - +1 dash charge"
+
+[node name="BuyButton" type="Button" parent="HubUi/Root/MirrorPanel/VBox/MirrorRow_dash_charges"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "50 SCRAP"
+
+[node name="MirrorRow_guard_max" type="HBoxContainer" parent="HubUi/Root/MirrorPanel/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="RowLabel" type="Label" parent="HubUi/Root/MirrorPanel/VBox/MirrorRow_guard_max"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.9, 0.86, 0.78, 1)
+theme_override_font_sizes/font_size = 17
+text = "HEARTHPLATE - +guard"
+
+[node name="BuyButton" type="Button" parent="HubUi/Root/MirrorPanel/VBox/MirrorRow_guard_max"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "50 SCRAP"
+
+[node name="MirrorRow_draft_rerolls" type="HBoxContainer" parent="HubUi/Root/MirrorPanel/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="RowLabel" type="Label" parent="HubUi/Root/MirrorPanel/VBox/MirrorRow_draft_rerolls"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.9, 0.86, 0.78, 1)
+theme_override_font_sizes/font_size = 17
+text = "MARGIN'S GRACE - +1 draft reroll"
+
+[node name="BuyButton" type="Button" parent="HubUi/Root/MirrorPanel/VBox/MirrorRow_draft_rerolls"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "50 SCRAP"
 
 [node name="GradeLayer" type="CanvasLayer" parent="."]
 layer = -1

@@ -9,7 +9,7 @@ const STATS := {
 	ARCHETYPE_CHAFF: {
 		"archetype": ARCHETYPE_CHAFF,
 		"max_hp": 30.0,
-		"damage": 1,
+		"damage": 20,
 		"move_speed": 2.1,
 		"contact_radius": 0.9,
 		"attack_release_radius": 1.125,
@@ -21,7 +21,7 @@ const STATS := {
 	ARCHETYPE_BRUISER: {
 		"archetype": ARCHETYPE_BRUISER,
 		"max_hp": 140.0,
-		"damage": 1,
+		"damage": 30,
 		"move_speed": 1.65,
 		"contact_radius": 1.35,
 		"attack_release_radius": 1.6875,
@@ -33,7 +33,7 @@ const STATS := {
 	ARCHETYPE_ELITE: {
 		"archetype": ARCHETYPE_ELITE,
 		"max_hp": 640.0,
-		"damage": 2,
+		"damage": 45,
 		"move_speed": 1.25,
 		"contact_radius": 1.75,
 		"attack_release_radius": 2.1875,

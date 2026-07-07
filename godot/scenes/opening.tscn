@@ -1,0 +1,198 @@
+[gd_scene load_steps=13 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/opening_sequence.gd" id="1_opening"]
+[ext_resource type="PackedScene" uid="uid://qa2ralfsy66q" path="res://assets/gizmo.glb" id="2_gizmo"]
+[ext_resource type="PackedScene" path="res://scenes/controls_card.tscn" id="3_card"]
+[ext_resource type="FontFile" path="res://assets/fonts/EBGaramond-Italic.ttf" id="4_garamond_italic"]
+
+[sub_resource type="Environment" id="env_opening"]
+background_mode = 1
+background_color = Color(0.0157, 0.0157, 0.0392, 1.0)
+ambient_light_source = 2
+ambient_light_color = Color(0.1608, 0.1608, 0.2510, 1.0)
+ambient_light_energy = 0.35
+tonemap_mode = 2
+glow_enabled = true
+glow_intensity = 0.5
+glow_bloom = 0.15
+fog_enabled = true
+fog_light_color = Color(0.0431, 0.0431, 0.0902, 1.0)
+fog_density = 0.015
+
+[sub_resource type="StandardMaterial3D" id="mat_ground"]
+albedo_color = Color(0.0784, 0.0706, 0.0980, 1.0)
+roughness = 0.95
+
+[sub_resource type="PlaneMesh" id="mesh_ground"]
+material = SubResource("mat_ground")
+size = Vector2(30, 30)
+
+[sub_resource type="StandardMaterial3D" id="mat_log"]
+albedo_color = Color(0.1961, 0.1294, 0.0902, 1.0)
+roughness = 0.9
+
+[sub_resource type="CylinderMesh" id="mesh_log"]
+material = SubResource("mat_log")
+top_radius = 0.06
+bottom_radius = 0.075
+height = 0.85
+
+[sub_resource type="StandardMaterial3D" id="mat_flame"]
+transparency = 1
+albedo_color = Color(1.0, 0.5490, 0.2000, 0.85)
+emission_enabled = true
+emission = Color(1.0, 0.5686, 0.2196, 1.0)
+emission_energy_multiplier = 4.0
+
+[sub_resource type="SphereMesh" id="mesh_flame"]
+material = SubResource("mat_flame")
+radius = 0.12
+height = 0.34
+
+[sub_resource type="SphereMesh" id="mesh_ember"]
+material = SubResource("mat_flame")
+radius = 0.24
+height = 0.22
+
+[node name="Opening" type="Node3D"]
+script = ExtResource("1_opening")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("env_opening")
+
+[node name="Camera3D" type="Camera3D" parent="."]
+position = Vector3(0.5, 1.5, 3.6)
+rotation = Vector3(-0.24, 0.1, 0)
+fov = 42.0
+current = true
+
+[node name="FillLight" type="DirectionalLight3D" parent="."]
+rotation = Vector3(-0.95, 0.55, 0)
+light_color = Color(0.4392, 0.4902, 0.7412, 1.0)
+light_energy = 0.12
+
+[node name="Ground" type="MeshInstance3D" parent="."]
+mesh = SubResource("mesh_ground")
+
+[node name="Campfire" type="Node3D" parent="."]
+
+[node name="Log1" type="MeshInstance3D" parent="Campfire"]
+position = Vector3(0, 0.09, 0)
+rotation = Vector3(0, 0, 1.35)
+mesh = SubResource("mesh_log")
+
+[node name="Log2" type="MeshInstance3D" parent="Campfire"]
+position = Vector3(0.03, 0.1, 0.05)
+rotation = Vector3(1.35, 1.0, 0)
+mesh = SubResource("mesh_log")
+
+[node name="Log3" type="MeshInstance3D" parent="Campfire"]
+position = Vector3(-0.05, 0.11, -0.03)
+rotation = Vector3(1.3, -1.1, 0.2)
+mesh = SubResource("mesh_log")
+
+[node name="EmberBed" type="MeshInstance3D" parent="Campfire"]
+position = Vector3(0, 0.1, 0)
+mesh = SubResource("mesh_ember")
+
+[node name="Flame" type="MeshInstance3D" parent="Campfire"]
+position = Vector3(0, 0.3, 0)
+mesh = SubResource("mesh_flame")
+
+[node name="FireLight" type="OmniLight3D" parent="Campfire"]
+unique_name_in_owner = true
+position = Vector3(0, 0.7, 0)
+light_color = Color(1.0, 0.6392, 0.3216, 1.0)
+light_energy = 2.4
+omni_range = 8.0
+shadow_enabled = true
+
+[node name="Gizmo" parent="." instance=ExtResource("2_gizmo")]
+position = Vector3(-0.95, 0, 0.15)
+rotation = Vector3(0, 0.95, 0)
+scale = Vector3(0.55, 0.55, 0.55)
+
+[node name="Ui" type="CanvasLayer" parent="."]
+
+[node name="Root" type="Control" parent="Ui"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="CaptionLabel" type="Label" parent="Ui/Root"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 80.0
+offset_top = -160.0
+offset_right = -80.0
+offset_bottom = -88.0
+grow_horizontal = 2
+grow_vertical = 0
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 2
+theme_override_colors/font_color = Color(0.9216, 0.8588, 0.7294, 1.0)
+theme_override_colors/font_shadow_color = Color(0.0, 0.0, 0.0, 0.75)
+theme_override_constants/shadow_offset_x = 1
+theme_override_constants/shadow_offset_y = 2
+theme_override_fonts/font = ExtResource("4_garamond_italic")
+theme_override_font_sizes/font_size = 32
+
+[node name="PortraitReveal" type="TextureRect" parent="Ui/Root"]
+unique_name_in_owner = true
+layout_mode = 1
+anchor_left = 0.66
+anchor_top = 0.12
+anchor_right = 0.95
+anchor_bottom = 0.72
+expand_mode = 1
+stretch_mode = 5
+
+[node name="SkipLabel" type="Label" parent="Ui/Root"]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -180.0
+offset_top = 20.0
+offset_right = -24.0
+offset_bottom = 44.0
+grow_horizontal = 0
+horizontal_alignment = 2
+text = "ESC — skip"
+theme_override_colors/font_color = Color(0.7569, 0.6667, 0.5686, 0.6)
+theme_override_font_sizes/font_size = 14
+
+[node name="ControlsBlock" type="CenterContainer" parent="Ui/Root"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+visible = false
+
+[node name="VBox" type="VBoxContainer" parent="Ui/Root/ControlsBlock"]
+layout_mode = 2
+theme_override_constants/separation = 18
+
+[node name="ControlsCard" parent="Ui/Root/ControlsBlock/VBox" instance=ExtResource("3_card")]
+layout_mode = 2
+
+[node name="SkipHintLabel" type="Label" parent="Ui/Root/ControlsBlock/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "press any key to keep"
+horizontal_alignment = 1
+theme_override_colors/font_color = Color(0.7569, 0.6667, 0.5686, 0.9)
+theme_override_fonts/font = ExtResource("4_garamond_italic")
+theme_override_font_sizes/font_size = 18

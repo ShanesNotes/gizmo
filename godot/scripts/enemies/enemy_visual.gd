@@ -5,10 +5,13 @@ const ARCHETYPE_CHAFF := "chaff"
 const ARCHETYPE_BRUISER := "bruiser"
 const ARCHETYPE_ELITE := "elite"
 
+## Bruiser/elite load the Meshy-rigged GLBs (mesh + 24-bone rig + authored
+## clips; see *.provenance.json) so EnemyAnimationController can pose bones.
+## Chaff stays the unrigged drone — its identity is procedural.
 const MODEL_SCENES := {
 	ARCHETYPE_CHAFF: preload("res://assets/enemies/chaff_drone.glb"),
-	ARCHETYPE_BRUISER: preload("res://assets/enemies/bruiser_unit.glb"),
-	ARCHETYPE_ELITE: preload("res://assets/enemies/elite_enforcer.glb"),
+	ARCHETYPE_BRUISER: preload("res://assets/enemies/bruiser_unit_rigged.glb"),
+	ARCHETYPE_ELITE: preload("res://assets/enemies/elite_enforcer_rigged.glb"),
 }
 
 const MODEL_NAMES := {

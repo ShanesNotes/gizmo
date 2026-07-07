@@ -223,8 +223,12 @@ func _test_v2_vitals_overlay_and_defeat_sequence() -> void:
 	_check("defeat reflection holds a UI override", director.describe().get("v2_ui_override", false) == true)
 	await _wait_seconds(3.2)
 	var after: Dictionary = director.describe()
-	_check("defeat override releases after the silence beat", after.get("v2_ui_override", true) == false)
 	_check_eq("defeat plays SEG_06 ORCH once", String(after.get("active_cue_id", "")), "v2:RUINS:ORCH")
+	# The override HOLDS while the reflection piece plays (no doubling with the
+	# hub zone — Shane playtest 2); it releases on the one-shot's finished.
+	_check("defeat override holds through the reflection one-shot", after.get("v2_ui_override", false) == true)
+	director._on_ui_one_shot_finished()
+	_check("override releases when the reflection finishes", director.describe().get("v2_ui_override", true) == false)
 	await _cleanup_director(director)
 
 func _test_voice_seam_missing_and_unknown_lines_noop() -> void:
@@ -303,7 +307,7 @@ func _test_notify_event_known_unknown_and_round_robin_pool() -> void:
 	_check("AudioDirector exposes notify_event seam", director.has_method(&"notify_event"))
 	var before: Dictionary = director.describe()
 	var initial_count := int(before.get("sfx_play_count", -1))
-	_check_eq("SFX manifest registers ten events", int(before.get("sfx_registered_event_count", -1)), 10)
+	_check_eq("SFX manifest registers fourteen events", int(before.get("sfx_registered_event_count", -1)), 14)
 	_check_eq("SFX pool preallocates eight players", int(before.get("sfx_pool_size", -1)), 8)
 
 	if director.has_method(&"notify_event"):
@@ -525,7 +529,7 @@ func _test_autoload_registration() -> void:
 	_check("AudioDirector autoload exposes describe", autoload.has_method(&"describe"))
 	var desc: Dictionary = autoload.describe()
 	_check_eq("AudioDirector autoload registers no legacy manifest cues", desc["registered_cue_count"], 0)
-	_check_eq("AudioDirector autoload registers manifest SFX events", int(desc.get("sfx_registered_event_count", -1)), 10)
+	_check_eq("AudioDirector autoload registers manifest SFX events", int(desc.get("sfx_registered_event_count", -1)), 14)
 	_check_eq("AudioDirector autoload owns pooled SFX players", int(desc.get("sfx_pool_size", -1)), 8)
 
 func _new_director() -> Node:

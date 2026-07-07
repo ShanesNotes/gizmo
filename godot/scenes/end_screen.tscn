@@ -160,7 +160,7 @@ theme_override_font_sizes/font_size = 20
 layout_mode = 2
 theme_type_variation = &"CapsLabel"
 size_flags_horizontal = 3
-text = "BOONS KEPT"
+text = "KEEPSAKES"
 theme_override_colors/font_color = Color(0.7569, 0.6667, 0.5686, 1.0)
 theme_override_font_sizes/font_size = 15
 
@@ -202,6 +202,54 @@ unique_name_in_owner = true
 theme_type_variation = &"NumericLabel"
 layout_mode = 2
 text = "0:00"
+horizontal_alignment = 2
+theme_override_font_sizes/font_size = 20
+
+[node name="EnemiesFelledCap" type="Label" parent="Root/Center/Panel/Margin/VBox/Stats"]
+layout_mode = 2
+theme_type_variation = &"CapsLabel"
+size_flags_horizontal = 3
+text = "Enemies FELLED"
+theme_override_colors/font_color = Color(0.7569, 0.6667, 0.5686, 1.0)
+theme_override_font_sizes/font_size = 15
+
+[node name="EnemiesFelledValue" type="Label" parent="Root/Center/Panel/Margin/VBox/Stats"]
+unique_name_in_owner = true
+theme_type_variation = &"NumericLabel"
+layout_mode = 2
+text = "0 chaff / 0 bruiser / 0 elite / 0 boss"
+horizontal_alignment = 2
+theme_override_font_sizes/font_size = 20
+
+[node name="SparksRescuedCap" type="Label" parent="Root/Center/Panel/Margin/VBox/Stats"]
+layout_mode = 2
+theme_type_variation = &"CapsLabel"
+size_flags_horizontal = 3
+text = "Sparks rescued"
+theme_override_colors/font_color = Color(0.7569, 0.6667, 0.5686, 1.0)
+theme_override_font_sizes/font_size = 15
+
+[node name="SparksRescuedValue" type="Label" parent="Root/Center/Panel/Margin/VBox/Stats"]
+unique_name_in_owner = true
+theme_type_variation = &"NumericLabel"
+layout_mode = 2
+text = "0"
+horizontal_alignment = 2
+theme_override_font_sizes/font_size = 20
+
+[node name="DeepestRegionCap" type="Label" parent="Root/Center/Panel/Margin/VBox/Stats"]
+layout_mode = 2
+theme_type_variation = &"CapsLabel"
+size_flags_horizontal = 3
+text = "Deepest region"
+theme_override_colors/font_color = Color(0.7569, 0.6667, 0.5686, 1.0)
+theme_override_font_sizes/font_size = 15
+
+[node name="DeepestRegionValue" type="Label" parent="Root/Center/Panel/Margin/VBox/Stats"]
+unique_name_in_owner = true
+theme_type_variation = &"NumericLabel"
+layout_mode = 2
+text = "Unknown"
 horizontal_alignment = 2
 theme_override_font_sizes/font_size = 20
 

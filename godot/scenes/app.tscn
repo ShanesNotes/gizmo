@@ -1,8 +1,14 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://scripts/app_shell.gd" id="1_app_shell"]
+[ext_resource type="PackedScene" path="res://scenes/speaker_panel.tscn" id="2_speaker"]
+[ext_resource type="PackedScene" path="res://scenes/objective_banner.tscn" id="3_banner"]
 
 [node name="App" type="Node"]
 script = ExtResource("1_app_shell")
 
 [node name="ContentSlot" type="Node" parent="."]
+
+[node name="SpeakerPanel" parent="." instance=ExtResource("2_speaker")]
+
+[node name="ObjectiveBanner" parent="." instance=ExtResource("3_banner")]

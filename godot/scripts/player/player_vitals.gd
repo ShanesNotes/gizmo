@@ -7,17 +7,21 @@ signal spark_surge_changed(charge: float, charge_max: float)
 signal damage_taken(absorbed: int, hp_damage: int)
 signal player_died()
 
+## Halo-CE vitals model (playtest 2, on top of ADR 0007's sanctuary language):
+## guard is a flat recharging SHIELD BAR in shield points; hp is a small stack
+## of HULL BLOCKS. A hit while the shield is up only drains shield — overflow
+## from the breaking hit never reaches the hull (break grace). A hit while the
+## shield is down ticks exactly ONE hull block regardless of its damage value.
+## Hull never regenerates in-run; sanctuary refills shield only.
 @export_range(1, 99) var max_hp: int = 3
-@export_range(0, 99) var max_guard: int = 10
-## ADR 0007 staged model: guard recharges one pip at a time after a damage
-## delay; true HP does not regenerate in this component.
-@export_range(0.0, 30.0, 0.1) var guard_recharge_delay: float = 2.0
-@export_range(0.0, 30.0, 0.1) var guard_recharge_rate: float = 1.0
-@export_range(0.0, 5.0, 0.05) var damage_lockout: float = 1.8
+@export_range(0, 999) var max_guard: int = 100
+@export_range(0.0, 30.0, 0.1) var guard_recharge_delay: float = 2.5
+@export_range(0.0, 200.0, 0.1) var guard_recharge_rate: float = 40.0
+@export_range(0.0, 5.0, 0.05) var damage_lockout: float = 0.6
 @export_group("Spark Surge")
 @export_range(1.0, 999.0, 1.0) var spark_surge_charge_max: float = 100.0
 @export_range(0.0, 100.0, 0.1) var spark_damage_dealt_charge_rate: float = 5.0
-@export_range(0.0, 100.0, 0.1) var spark_guard_damage_taken_charge_rate: float = 20.0
+@export_range(0.0, 100.0, 0.1) var spark_guard_damage_taken_charge_rate: float = 1.0
 
 var hp: int = max_hp
 var guard: int = max_guard
@@ -54,16 +58,19 @@ func apply_damage(amount: int) -> Dictionary:
 		return _damage_result(absorbed, hp_damage)
 
 	if guard > 0:
+		# Shield up: the bar eats the whole hit. Overflow from the breaking
+		# hit never reaches the hull (Halo-CE break grace).
 		absorbed = mini(guard, incoming)
 		guard -= absorbed
-		incoming -= absorbed
 		if absorbed > 0:
 			record_guard_damage_taken(absorbed)
 			_notify_audio_event(&"guard_hit")
-
-	if incoming > 0:
-		hp_damage = mini(hp, incoming)
+	else:
+		# Shield down: exactly one hull block per hit, whatever the number.
+		hp_damage = mini(hp, 1)
 		hp -= hp_damage
+		if hp_damage > 0:
+			_notify_audio_event(&"guard_hit")
 
 	if absorbed > 0 or hp_damage > 0:
 		_damage_lockout_remaining = maxf(damage_lockout, 0.0)

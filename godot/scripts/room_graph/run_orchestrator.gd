@@ -17,6 +17,12 @@ const SPAWN_GOLDEN_ANGLE := 2.399963
 const SPAWN_CANDIDATE_COUNT := 48
 const SPAWN_EDGE_CLEARANCE := 0.75
 const SPAWN_SEPARATION_DISTANCE := 1.1
+## In-run shop economy: walk-over pedestal offers priced in run scrap.
+const SHOP_OFFERS := {
+	"guard_refill": 15,
+	"cast_ammo": 25,
+	"draft_reroll": 20,
+}
 const ZONE_STATE_COMBAT: StringName = &"COMBAT"
 const ZONE_STATE_CLEARED: StringName = &"CLEARED"
 const BOSS_INTRO_HOLD_SECONDS := 1.0
@@ -66,6 +72,12 @@ var boons_taken: int = 0
 var elapsed_seconds: float = 0.0
 var scrap_earned: int = 0
 var sparks_earned: int = 0
+var enemies_felled: Dictionary = {
+	"chaff": 0,
+	"bruiser": 0,
+	"elite": 0,
+	"boss": 0,
+}
 var active_run_bonuses: Dictionary = {}
 var _boss_phase_count := 0
 var combat_resolvers: CombatResolvers = null
@@ -78,6 +90,7 @@ var _death_teardown_complete := false
 var _cleared_room_ids: Dictionary = {}
 var _rewarded_exit_keys: Dictionary = {}
 var _claimed_fixture_keys: Dictionary = {}
+var _purchased_cast_ammo: int = 0
 var _spawn_index_in_room: int = 0
 var _spawn_bounds_warning_room_ids: Dictionary = {}
 var _boss_intro_hold_remaining: float = 0.0
@@ -155,9 +168,29 @@ func run_summary(victory: bool = false) -> Dictionary:
 		"boons_taken": boons_taken,
 		"scrap_banked": scrap_earned,
 		"sparks_banked": sparks_earned,
+		"sparks_rescued": sparks_earned,
+		"enemies_felled": enemies_felled.duplicate(),
+		"deepest_region": _deepest_region_name(),
 		"survived_seconds": elapsed_seconds,
 		"elapsed": elapsed_seconds,
 	}
+
+func _deepest_region_name() -> String:
+	if run_controller == null or run_controller.graph == null:
+		return ""
+	var current_room := run_controller.graph.get_room(run_controller.current_room_id)
+	if current_room != null and not current_room.display_name.is_empty():
+		return current_room.display_name
+
+	var deepest := ""
+	for room in run_controller.graph.rooms:
+		if (
+			room != null
+			and not room.display_name.is_empty()
+			and [RoomNode.State.ENTERED, RoomNode.State.CLEARED, RoomNode.State.REWARDED].has(room.state)
+		):
+			deepest = room.display_name
+	return deepest
 
 func grant_fixture_scrap_once(fixture_key: String, amount: int = SCRAP_REWARD_VALUE) -> bool:
 	if not _run_active or _death_teardown_complete or _transitioning:
@@ -178,6 +211,61 @@ func refill_fixture_guard_once(fixture_key: String) -> bool:
 	player_vitals.refill_guard()
 	_render_hud_payloads()
 	return true
+
+func shop_offer_price(offer_id: String) -> int:
+	return int(SHOP_OFFERS.get(offer_id, 0))
+
+func purchase_shop_offer_once(fixture_key: String, offer_id: String) -> bool:
+	if not _run_active or _death_teardown_complete or _transitioning:
+		return false
+	if not SHOP_OFFERS.has(offer_id):
+		return false
+	var price := shop_offer_price(offer_id)
+	if scrap_earned < price:
+		return false
+	if not _claim_fixture_key(fixture_key):
+		return false
+	if not _apply_shop_offer(offer_id):
+		_claimed_fixture_keys.erase(fixture_key.strip_edges())
+		return false
+
+	scrap_earned -= price
+	_render_hud_payloads()
+	return true
+
+func _apply_shop_offer(offer_id: String) -> bool:
+	match offer_id:
+		"guard_refill":
+			if player_vitals == null:
+				return false
+			player_vitals.refill_guard()
+			return true
+		"cast_ammo":
+			var kit := _player_ability_kit()
+			var cast_ability := kit.get_ability(&"cast") if kit != null else null
+			if cast_ability == null:
+				return false
+			cast_ability.set("max_ammo", int(cast_ability.get("max_ammo")) + 1)
+			_purchased_cast_ammo += 1
+			kit.cast_ammo()
+			return true
+		"draft_reroll":
+			active_run_bonuses["draft_rerolls"] = int(active_run_bonuses.get("draft_rerolls", 0)) + 1
+			return true
+		_:
+			return false
+
+## Shop cast-capacity purchases are run-scoped; unwind them if this orchestrator
+## starts another run (fresh run scenes never carry them).
+func _unwind_purchased_cast_ammo() -> void:
+	if _purchased_cast_ammo <= 0:
+		return
+	var kit := _player_ability_kit()
+	var cast_ability := kit.get_ability(&"cast") if kit != null else null
+	if cast_ability != null:
+		cast_ability.set("max_ammo", maxi(1, int(cast_ability.get("max_ammo")) - _purchased_cast_ammo))
+		kit.cast_ammo()
+	_purchased_cast_ammo = 0
 
 func reclaim_cast_shard_once(shard_key: String) -> bool:
 	var resolver := _ensure_combat_resolvers()
@@ -695,6 +783,12 @@ func _warn_missing_spawn_bounds(reason: String) -> void:
 	_spawn_bounds_warning_room_ids[room_key] = true
 	push_warning("RunOrchestrator: spawn containment disabled for %s: %s." % [room_name, reason])
 
+func _credit_enemy_felled(archetype: String) -> void:
+	var key := "boss" if archetype == "custodian" else archetype
+	if not enemies_felled.has(key):
+		return
+	enemies_felled[key] = int(enemies_felled[key]) + 1
+
 func _on_enemy_died(spawn_id: String) -> void:
 	if not _run_active or _death_teardown_complete:
 		return
@@ -702,6 +796,8 @@ func _on_enemy_died(spawn_id: String) -> void:
 		combat_resolvers.reclaim_cast_shards_for_spawn_id(spawn_id)
 	var enemy := spawned_enemies.get(spawn_id) as Node
 	if enemy != null and is_instance_valid(enemy):
+		if enemy is GreyboxEnemy:
+			_credit_enemy_felled(String((enemy as GreyboxEnemy).archetype))
 		if enemy.has_method(&"play_death_pop_then_free"):
 			enemy.call(&"play_death_pop_then_free")
 		else:
@@ -722,6 +818,7 @@ func _on_boss_died(spawn_id: String) -> void:
 		combat_resolvers.reclaim_cast_shards_for_spawn_id(spawn_id)
 	var boss := spawned_enemies.get(spawn_id) as Node
 	if boss != null and is_instance_valid(boss):
+		_credit_enemy_felled("boss")
 		_clear_boss_telegraphs(boss)
 		if boss.has_method(&"play_death_pop_then_free"):
 			boss.call(&"play_death_pop_then_free")
@@ -946,6 +1043,7 @@ func _room_clears_without_director(room: RoomNode) -> bool:
 	return [
 		RoomTemplate.RoomType.REST,
 		RoomTemplate.RoomType.REWARD,
+		RoomTemplate.RoomType.SHOP,
 	].has(room.template.room_type)
 
 func _set_audio_room_zone(room: RoomNode) -> void:
@@ -1084,9 +1182,16 @@ func _reset_run_stats() -> void:
 	elapsed_seconds = 0.0
 	scrap_earned = 0
 	sparks_earned = 0
+	enemies_felled = {
+		"chaff": 0,
+		"bruiser": 0,
+		"elite": 0,
+		"boss": 0,
+	}
 	_cleared_room_ids.clear()
 	_rewarded_exit_keys.clear()
 	_claimed_fixture_keys.clear()
+	_unwind_purchased_cast_ammo()
 	if combat_resolvers != null and is_instance_valid(combat_resolvers):
 		combat_resolvers.reset_for_run()
 	_spawn_index_in_room = 0
@@ -1135,28 +1240,120 @@ const BENEFACTOR_DISPLAY_NAMES: Dictionary = {
 }
 
 func _default_boon_pool() -> Array[BoonDef]:
+	# Rarity ladder for the felt "number go up": common ~+10%, rare ~+20%,
+	# epic ~+30-35% (trade-offs buy more), legendary ~+45%-class.
 	var pool: Array[BoonDef] = []
-	pool.append(_make_default_boon(&"spark_attack", "Spark-Cut", BoonDef.Rarity.COMMON, BoonDef.Slot.ATTACK, &"swordbearer",
-		"Each strike carries a flare of the kept light. The cold gives way where it lands."))
-	pool.append(_make_default_boon(&"gear_dash", "Gyre Step", BoonDef.Rarity.RARE, BoonDef.Slot.DASH, &"bearer",
-		"A step learned from one who carried others. The dash bears Gizmo through what would break him."))
-	pool.append(_make_default_boon(&"core_special", "Brass Overdrive", BoonDef.Rarity.EPIC, BoonDef.Slot.SPECIAL, &"swordbearer",
-		"The old gears remember their maker's haste. For a breath, Gizmo works beyond what he was built to."))
-	pool.append(_make_default_boon(&"codex_cast", "Codex Shard", BoonDef.Rarity.COMMON, BoonDef.Slot.CAST, &"marksman",
-		"A page of the record, folded sharp. The cast flies true toward what must be marked."))
-	pool.append(_make_default_boon(&"humanity_guard", "Humanity's Reserve", BoonDef.Rarity.LEGENDARY, BoonDef.Slot.PASSIVE, &"company",
-		"What was kept together holds together. When Gizmo is nearly broken, the company of the kept stands with him."))
-	pool.append(_make_default_boon(&"ember_attack", "Ember Teeth", BoonDef.Rarity.RARE, BoonDef.Slot.ATTACK, &"swordbearer",
-		"The strike bites, and the bite keeps burning. A stubborn ember refuses the cold the last word."))
-	pool.append(_make_default_boon(&"brass_dash", "Brass Wake", BoonDef.Rarity.COMMON, BoonDef.Slot.DASH, &"bearer",
-		"The dash leaves warmth behind it, the way a lamp leaves light down a dark hall."))
-	pool.append(_make_default_boon(&"gear_special", "Gearbreak Pulse", BoonDef.Rarity.RARE, BoonDef.Slot.SPECIAL, &"swordbearer",
-		"One honest blow, held until it matters. It staggers the housekeeping that outlived the house."))
-	pool.append(_make_default_boon(&"spark_cast", "Warmth Shard", BoonDef.Rarity.EPIC, BoonDef.Slot.CAST, &"marksman",
-		"A mote of gathered warmth, sent to a chosen mark. It does not miss what it was meant for."))
-	pool.append(_make_default_boon(&"codex_passive", "Codex Margin", BoonDef.Rarity.COMMON, BoonDef.Slot.PASSIVE, &"hearthguard",
-		"Margin writes small mercies in the gutters of the record. What Gizmo keeps, keeps him."))
+
+	var spark_attack := _make_default_boon(&"spark_attack", "Spark-Cut", BoonDef.Rarity.COMMON, BoonDef.Slot.ATTACK, &"swordbearer",
+		"Each strike carries a flare of the kept light. The cold gives way where it lands.")
+	spark_attack.ability_modifiers.append(_pool_modifier(&"spark_attack_damage", &"attack", 1.10))
+	pool.append(spark_attack)
+
+	var gear_dash := _make_default_boon(&"gear_dash", "Gyre Step", BoonDef.Rarity.RARE, BoonDef.Slot.DASH, &"bearer",
+		"A step learned from one who carried others. The dash bears Gizmo through what would break him.")
+	gear_dash.ability_modifiers.append(_pool_modifier(&"gear_dash_recharge", &"dash", 1.0, 0.75, 1.0, 1.15))
+	pool.append(gear_dash)
+
+	var core_special := _make_default_boon(&"core_special", "Brass Overdrive", BoonDef.Rarity.EPIC, BoonDef.Slot.SPECIAL, &"swordbearer",
+		"The old gears remember their maker's haste. For a breath, Gizmo works beyond what he was built to.")
+	core_special.ability_modifiers.append(_pool_modifier(&"core_special_power", &"special", 1.35, 0.85))
+	pool.append(core_special)
+
+	var codex_cast := _make_default_boon(&"codex_cast", "Codex Shard", BoonDef.Rarity.COMMON, BoonDef.Slot.CAST, &"marksman",
+		"A page of the record, folded sharp. The cast flies true toward what must be marked.")
+	codex_cast.bonus_cast_ammo = 1
+	pool.append(codex_cast)
+
+	var humanity_guard := _make_default_boon(&"humanity_guard", "Humanity's Reserve", BoonDef.Rarity.LEGENDARY, BoonDef.Slot.PASSIVE, &"company",
+		"What was kept together holds together. When Gizmo is nearly broken, the company of the kept stands with him.")
+	humanity_guard.max_guard_delta = 3
+	humanity_guard.guard_recharge_rate_multiplier = 1.4
+	pool.append(humanity_guard)
+
+	var ember_attack := _make_default_boon(&"ember_attack", "Ember Teeth", BoonDef.Rarity.RARE, BoonDef.Slot.ATTACK, &"swordbearer",
+		"The strike bites, and the bite keeps burning. A stubborn ember refuses the cold the last word.")
+	ember_attack.ability_modifiers.append(_pool_modifier(&"ember_attack_damage", &"attack", 1.20))
+	pool.append(ember_attack)
+
+	var brass_dash := _make_default_boon(&"brass_dash", "Brass Wake", BoonDef.Rarity.COMMON, BoonDef.Slot.DASH, &"bearer",
+		"The dash leaves warmth behind it, the way a lamp leaves light down a dark hall.")
+	brass_dash.ability_modifiers.append(_pool_modifier(&"brass_dash_recharge", &"dash", 1.0, 0.85))
+	pool.append(brass_dash)
+
+	var gear_special := _make_default_boon(&"gear_special", "Gearbreak Pulse", BoonDef.Rarity.RARE, BoonDef.Slot.SPECIAL, &"swordbearer",
+		"One honest blow, held until it matters. It staggers the housekeeping that outlived the house.")
+	gear_special.ability_modifiers.append(_pool_modifier(&"gear_special_power", &"special", 1.20))
+	pool.append(gear_special)
+
+	var spark_cast := _make_default_boon(&"spark_cast", "Warmth Shard", BoonDef.Rarity.EPIC, BoonDef.Slot.CAST, &"marksman",
+		"A mote of gathered warmth, sent to a chosen mark. It does not miss what it was meant for.")
+	spark_cast.ability_modifiers.append(_pool_modifier(&"spark_cast_damage", &"cast", 1.30))
+	spark_cast.bonus_cast_ammo = 1
+	pool.append(spark_cast)
+
+	var codex_passive := _make_default_boon(&"codex_passive", "Codex Margin", BoonDef.Rarity.COMMON, BoonDef.Slot.PASSIVE, &"hearthguard",
+		"Margin writes small mercies in the gutters of the record. What Gizmo keeps, keeps him.")
+	codex_passive.guard_recharge_rate_multiplier = 1.2
+	pool.append(codex_passive)
+
+	# Trade-off: all the warmth into the blow, none held back for the guard.
+	var flame_attack := _make_default_boon(&"flame_attack", "Unbanked Flame", BoonDef.Rarity.EPIC, BoonDef.Slot.ATTACK, &"swordbearer",
+		"Every coal onto the fire at once. The strike blazes — but nothing is held back to guard the keeper.")
+	flame_attack.ability_modifiers.append(_pool_modifier(&"flame_attack_damage", &"attack", 1.35))
+	flame_attack.guard_recharge_rate_multiplier = 0.5
+	pool.append(flame_attack)
+
+	# Trade-off: the mainspring wound past its rating.
+	var spring_special := _make_default_boon(&"spring_special", "Overwound Mainspring", BoonDef.Rarity.EPIC, BoonDef.Slot.SPECIAL, &"swordbearer",
+		"Wound past what the maker marked safe. The blow lands like a falling bell — and the housing thins.")
+	spring_special.ability_modifiers.append(_pool_modifier(&"spring_special_power", &"special", 1.50))
+	spring_special.max_guard_delta = -2
+	pool.append(spring_special)
+
+	# Synergy: the cast catches fire from a held attack keepsake.
+	var volley_cast := _make_default_boon(&"volley_cast", "Kindled Volley", BoonDef.Rarity.RARE, BoonDef.Slot.CAST, &"marksman",
+		"A shard that remembers the strike that lit it. Held beside a sword-warmed keepsake, it burns brighter.")
+	volley_cast.ability_modifiers.append(_pool_modifier(&"volley_cast_damage", &"cast", 1.15))
+	volley_cast.synergy_with_slot = BoonDef.Slot.ATTACK
+	volley_cast.synergy_ability_modifiers.append(_pool_modifier(&"volley_cast_synergy", &"cast", 1.30))
+	pool.append(volley_cast)
+
+	# Synergy: the company fights harder for a keeper who keeps moving.
+	var company_passive := _make_default_boon(&"company_passive", "Sworn Company", BoonDef.Rarity.EPIC, BoonDef.Slot.PASSIVE, &"company",
+		"The kept stand closer when the keeper will not stand still. Carry a way through, and they lend the arm.")
+	company_passive.guard_recharge_rate_multiplier = 1.15
+	company_passive.synergy_with_slot = BoonDef.Slot.DASH
+	company_passive.synergy_ability_modifiers.append(_pool_modifier(&"company_passive_synergy", &"attack", 1.20))
+	pool.append(company_passive)
+
+	var maker_attack := _make_default_boon(&"maker_attack", "Maker's Cadence", BoonDef.Rarity.LEGENDARY, BoonDef.Slot.ATTACK, &"swordbearer",
+		"The rhythm his maker worked by, remembered in the wrists. Every blow arrives the way love does: sooner, and harder than the cold expects.")
+	maker_attack.ability_modifiers.append(_pool_modifier(&"maker_attack_cadence", &"attack", 1.45, 1.0, 0.85))
+	pool.append(maker_attack)
+
+	var light_passive := _make_default_boon(&"light_passive", "Answering Light", BoonDef.Rarity.RARE, BoonDef.Slot.PASSIVE, &"hearthguard",
+		"Warmth answers warmth. Every blow struck for the kept hurries the surge that keeps them.")
+	light_passive.surge_charge_rate_multiplier = 1.4
+	pool.append(light_passive)
+
 	return pool
+
+func _pool_modifier(
+	modifier_id: StringName,
+	target_ability_id: StringName,
+	damage_multiplier: float = 1.0,
+	cooldown_multiplier: float = 1.0,
+	recovery_multiplier: float = 1.0,
+	dash_speed_multiplier: float = 1.0,
+) -> AbilityModifier:
+	var modifier := AbilityModifier.new()
+	modifier.modifier_id = modifier_id
+	modifier.target_ability_id = target_ability_id
+	modifier.damage_multiplier = damage_multiplier
+	modifier.cooldown_multiplier = cooldown_multiplier
+	modifier.recovery_multiplier = recovery_multiplier
+	modifier.dash_speed_multiplier = dash_speed_multiplier
+	return modifier
 
 func _make_default_boon(
 	boon_id: StringName,

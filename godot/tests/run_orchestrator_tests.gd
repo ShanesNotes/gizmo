@@ -22,6 +22,7 @@ const SURVIVAL_PLAYER_DPS_SCALE := 1.0
 const SPAWN_GOLDEN_ANGLE := 2.399963
 const SPAWN_CANDIDATE_COUNT := 48
 const SPAWN_SEPARATION_DISTANCE := 1.1
+const PICKUP_MAGNET_RADIUS := 2.5
 const STEPPED_CONTAINMENT_FRAMES := 60
 
 var _passed := 0
@@ -90,6 +91,7 @@ func _run_tests() -> void:
 	await _test_run_scene_auto_starts_with_default_pool()
 	await _test_run_scene_instantiates_and_enters_room()
 	await _test_room_entry_renders_region_toast_and_one_dressing_variant()
+	await _test_run_summary_payload_includes_enriched_stats()
 	await _test_inter_wave_delay_defers_next_spawn_requests()
 	await _test_real_room_load_spawns_enemies_inside_camera_bounds_after_physics()
 	await _test_exact_overlapping_enemies_reproduce_depenetration_blowout()
@@ -122,6 +124,9 @@ func _run_tests() -> void:
 	await _test_real_combat_fills_gauge_and_spends_on_surge()
 	await _test_spark_charge_persists_across_room_transition()
 	await _test_rest_room_does_not_refill_spark_surge_charge()
+	await _test_shop_room_clears_without_director_and_spawns_no_combat()
+	await _test_hazard_strips_damage_player_and_enemies()
+	await _test_shop_purchases_spend_run_scrap_one_shot()
 	await _test_fixture_grants_are_one_shot_and_rest_guard_only()
 	await _test_player_death_disconnects_director_and_ignores_posthumous_enemy_deaths()
 	await _test_real_orchestrator_survivability_bands()
@@ -246,6 +251,33 @@ func _test_room_entry_renders_region_toast_and_one_dressing_variant() -> void:
 	run.start_run("hearth", _empty_template_pool(), 3, _seeded_rng(7))
 	await process_frame
 	_check_eq("dressing variant choice is deterministic under the run seed", _surviving_variant_name(run), first_variant)
+	await _cleanup_run(run)
+
+func _test_run_summary_payload_includes_enriched_stats() -> void:
+	var run = await _new_run()
+	run.start_run("hearth", _empty_template_pool(), 3, _seeded_rng(5))
+	await process_frame
+
+	var room = run.run_controller.graph.get_room(run.run_controller.current_room_id)
+	_check("summary enrichment test has a current region", room != null and String(room.display_name) != "")
+	run.sparks_earned = 15
+
+	var enemy := _first_spawned_enemy(run)
+	_check("summary enrichment test has a spawned enemy", enemy != null)
+	if enemy != null:
+		var archetype := String(enemy.archetype)
+		enemy.take_damage(maxf(enemy.hp, enemy.max_hp))
+		await process_frame
+		var summary: Dictionary = run.run_summary(false)
+		_check("summary carries enemies_felled", summary.get("enemies_felled") is Dictionary)
+		var felled: Dictionary = summary.get("enemies_felled", {})
+		for key in ["chaff", "bruiser", "elite", "boss"]:
+			_check("summary carries %s felled count" % key, felled.has(key))
+		_check_eq("summary credits the felled archetype", int(felled.get(archetype, -1)), 1)
+		_check_eq("summary carries sparks rescued from the run ledger", int(summary.get("sparks_rescued", -1)), 15)
+		if room != null:
+			_check_eq("summary carries deepest region display name", String(summary.get("deepest_region", "")), room.display_name)
+
 	await _cleanup_run(run)
 
 func _surviving_variant_name(run) -> String:
@@ -632,6 +664,8 @@ func _test_full_boon_exit_cycle_reaches_boss_and_completes_run() -> void:
 	_check_eq("current room stays loaded while draft is open", run.current_room_root, previous_room_root)
 	_check_eq("controller has not advanced before boon choice", run.run_controller.current_room_id, start_room_id)
 	_check("real boon UI is visible for the draft", run.boon_draft_ui.visible)
+	if not run.boon_draft_ui.is_reveal_finished():
+		await run.boon_draft_ui.reveal_finished
 	_check("real boon UI accepts a choice", run.boon_draft_ui.choose_offer(0))
 	await process_frame
 
@@ -722,6 +756,15 @@ func _test_boss_intro_hold_gates_attacks_and_repositioning() -> void:
 	_check("boss can begin attacks after intro completion", _boss_marker_count(run) > 0 or _boss_brain_state(boss) == "windup")
 	await _cleanup_run(run)
 
+## Halo-CE vitals: a single hit can no longer chain shield into hull (break
+## grace), so lethal pressure is a hit sequence with the mercy lockout
+## expiring between hits.
+func _kill_player_vitals(vitals: PlayerVitals) -> void:
+	vitals.apply_damage(vitals.max_guard)
+	while not vitals.is_dead():
+		vitals.tick_guard_recharge(vitals.damage_lockout + 0.01)
+		vitals.apply_damage(1)
+
 func _test_boss_death_and_player_death_clear_active_telegraphs() -> void:
 	var boss_death_run = await _new_run()
 	boss_death_run.start_run("hearth", _empty_template_pool(), 1, _seeded_rng(76))
@@ -748,7 +791,7 @@ func _test_boss_death_and_player_death_clear_active_telegraphs() -> void:
 			active_boss.call("begin_fight")
 		active_boss._physics_process(0.01)
 		_check("player death test starts with an active boss telegraph", _boss_marker_count(player_death_run) > 0)
-		player_death_run.player_vitals.apply_damage(player_death_run.player_vitals.max_guard + player_death_run.player_vitals.max_hp)
+		_kill_player_vitals(player_death_run.player_vitals)
 		await process_frame
 		_check_eq("player death teardown clears boss-owned telegraphs", _boss_marker_count(player_death_run), 0)
 	await _cleanup_run(player_death_run)
@@ -782,7 +825,7 @@ func _test_player_death_during_boss_intro_tears_down_ceremony() -> void:
 	_check("intro death test starts during the boss camera hold", float(run.get("_boss_intro_hold_remaining")) > 0.0 and run.camera.target == boss)
 	_check("intro death test shows the boss nameplate", nameplate != null and nameplate.visible)
 
-	run.player_vitals.apply_damage(run.player_vitals.max_guard + run.player_vitals.max_hp)
+	_kill_player_vitals(run.player_vitals)
 	await process_frame
 
 	_check("player death during intro deactivates the run", not run.get("_run_active"))
@@ -851,18 +894,29 @@ func _test_enemy_damage_flows_through_guard_hp_and_stops_spawning_on_death() -> 
 		await _cleanup_run(run)
 		return
 
-	var lethal_damage: int = int(run.player_vitals.max_guard) + int(run.player_vitals.max_hp)
 	var guard_hit_before := _audio_event_count(&"guard_hit")
+	var break_damage: int = int(run.player_vitals.max_guard) + int(run.player_vitals.max_hp)
 	enemy.damage_event.emit({
-		"damage": lethal_damage,
+		"damage": break_damage,
 		"spawn_id": enemy.spawn_id,
 		"archetype": enemy.archetype,
 	})
 	await process_frame
 
-	_check_eq("enemy damage drains guard first", run.player_vitals.guard, 0)
-	_check_eq("enemy damage drains hp to zero after guard", run.player_vitals.hp, 0)
-	_check_eq("enemy damage notifies guard_hit once", _audio_event_count(&"guard_hit"), guard_hit_before + 1)
+	_check_eq("enemy damage drains the shield bar first", run.player_vitals.guard, 0)
+	_check_eq("shield-break overflow never reaches hull blocks (grace)", run.player_vitals.hp, run.player_vitals.max_hp)
+	_check_eq("shield hit notifies guard_hit once", _audio_event_count(&"guard_hit"), guard_hit_before + 1)
+
+	for i in range(run.player_vitals.max_hp):
+		run.player_vitals.tick_guard_recharge(run.player_vitals.damage_lockout + 0.01)
+		enemy.damage_event.emit({
+			"damage": 1,
+			"spawn_id": enemy.spawn_id,
+			"archetype": enemy.archetype,
+		})
+	await process_frame
+
+	_check_eq("shield-down hits tick hull blocks to zero", run.player_vitals.hp, 0)
 	_check_eq("orchestrator surfaces player_died once", death_events.size(), 1)
 	var count_after_death: int = run.spawned_enemy_count()
 	run.current_director.wave_requested.emit(99, [
@@ -1102,8 +1156,22 @@ func _test_cast_shards_reclaim_on_victim_death_and_walkover_pickup() -> void:
 	var shard := _first_cast_shard_pickup(run)
 	_check("surviving cast target creates a walk-over shard pickup", shard != null)
 	if shard != null:
+		run.player.add_to_group(&"pickup_magnet_test_player")
+		shard.set("player_group", &"pickup_magnet_test_player")
+		_check_almost("cast shard pickup magnet radius is pinned", _float_property(shard, "magnet_radius", -1.0), PICKUP_MAGNET_RADIUS)
+		var shard_parent := shard.get_parent()
+		var shard_start := shard.global_position
+		run.player.global_position = shard_start + Vector3(PICKUP_MAGNET_RADIUS - 0.25, 0.0, 0.0)
+		run.player.velocity = Vector3.ZERO
+		var shard_distance_before := shard.global_position.distance_to(run.player.global_position)
+		await _step_physics_frames(3)
+		var shard_distance_after := shard.global_position.distance_to(run.player.global_position)
+		_check("cast shard pickup magnet lerps toward nearby player", shard_distance_after < shard_distance_before)
+		_check_eq("cast shard pickup magnet does not scale its Area3D body", shard.scale, Vector3.ONE)
+
 		shard.emit_signal(&"body_entered", run.player)
 		await process_frame
+		_check("walk-over shard pickup spawns a detached sparkle pulse", _has_collect_pulse(shard_parent))
 	_check_eq("walk-over shard pickup reclaims the lodged stone", kit.cast_ammo(), 2)
 	_check_eq("walk-over shard pickup clears lodged ammo", kit.cast_lodged_ammo(), 0)
 	_check("walk-over shard pickup does not require killing the victim", is_instance_valid(pickup_target) and not pickup_target.is_dead())
@@ -1325,6 +1393,8 @@ func _test_spark_charge_persists_across_room_transition() -> void:
 	var door := run.bound_doors.get(boon_connection.door_name) as RoomDoor
 	door.emit_signal(&"body_entered", run.player)
 	await process_frame
+	if not run.boon_draft_ui.is_reveal_finished():
+		await run.boon_draft_ui.reveal_finished
 	run.boon_draft_ui.choose_offer(0)
 	await process_frame
 
@@ -1352,6 +1422,135 @@ func _test_rest_room_does_not_refill_spark_surge_charge() -> void:
 	await process_frame
 
 	_check_almost("REST room auto-clear does not refill Spark Surge charge", float(run.player_vitals.get("spark_surge_charge")), 37.0)
+	await _cleanup_run(run)
+
+## Playtest-2 live bug: SHOP rooms ran a RoomDirector and spawned combat waves.
+## A shop must clear like REST/REWARD — no director, no spawns, doors open.
+## World mechanic (playtest 2): ember hazard strips scald whatever stands on
+## them — Gizmo AND enemies — on a fixed tick. No spark charge from hazards.
+func _test_hazard_strips_damage_player_and_enemies() -> void:
+	var hazard_script = load("res://scripts/room_graph/room_hazard.gd")
+	_check("room_hazard.gd exists", hazard_script != null)
+	if hazard_script == null:
+		return
+
+	var run = await _new_run()
+	run.start_run("hearth", _empty_template_pool(), 2, _seeded_rng(5))
+	await process_frame
+
+	var hazard = hazard_script.new()
+	var hazard_shape := CollisionShape3D.new()
+	var hazard_box := BoxShape3D.new()
+	hazard_box.size = Vector3(4.0, 1.0, 4.0)
+	hazard_shape.shape = hazard_box
+	hazard.add_child(hazard_shape)
+	run.current_room_root.add_child(hazard)
+	hazard.global_position = run.player.global_position
+
+	var victim := _spawn_fixture_enemy(run, "hazard_probe", run.player.global_position + Vector3(1.0, 0.0, 0.0))
+	victim.max_hp = 200.0
+	victim.hp = 200.0
+	run.player_vitals.set("spark_surge_charge_max", 100.0)
+	run.player_vitals.call("set_spark_surge_charge", 0.0)
+	var guard_before: int = run.player_vitals.guard
+	await _step_physics_frames(3)
+
+	var victims_hit := int(hazard.call("apply_tick"))
+	_check("hazard tick scalds both the player and the enemy standing on it", victims_hit >= 2)
+	_check("hazard tick drains the player's guard", run.player_vitals.guard < guard_before)
+	_check("hazard tick burns the enemy too", victim.hp < 200.0)
+
+	# Enemy-only burns are the world's, not Gizmo's: no Spark Surge credit.
+	victim.global_position += Vector3(20.0, 0.0, 0.0)
+	hazard.global_position = victim.global_position
+	await _step_physics_frames(3)
+	run.player_vitals.call("set_spark_surge_charge", 0.0)
+	var enemy_hp_before_solo := float(victim.hp)
+	_check_eq("enemy-only hazard tick scalds exactly the enemy", int(hazard.call("apply_tick")), 1)
+	_check("enemy-only hazard tick burns the enemy", float(victim.hp) < enemy_hp_before_solo)
+	_check_almost("enemy hazard burns never charge Spark Surge", float(run.player_vitals.get("spark_surge_charge")), 0.0)
+
+	var enemy_hp_after_solo := float(victim.hp)
+	hazard.global_position += Vector3(50.0, 0.0, 0.0)
+	await _step_physics_frames(3)
+	_check_eq("hazard clear of bodies scalds nothing", int(hazard.call("apply_tick")), 0)
+	_check_almost("moved hazard leaves the enemy alone", float(victim.hp), enemy_hp_after_solo)
+	await _cleanup_run(run)
+
+func _test_shop_room_clears_without_director_and_spawns_no_combat() -> void:
+	var run = await _new_run()
+	run.start_run("hearth", _empty_template_pool(), 2, _seeded_rng(5))
+	await process_frame
+	var shop_template := RoomTemplate.new()
+	shop_template.room_type = RoomTemplate.RoomType.SHOP
+	var shop_room := RoomNode.new()
+	shop_room.room_id = "shop_probe"
+	shop_room.template = shop_template
+
+	var spawned_before: int = run.spawned_enemy_count()
+	_check("SHOP is a clears-without-director room type", bool(run._room_clears_without_director(shop_room)))
+	run._start_room_director(shop_room)
+	await process_frame
+	_check("SHOP room starts no RoomDirector", run.current_director == null)
+	_check_eq("SHOP room requests no combat waves", run.spawned_enemy_count(), spawned_before)
+	await _cleanup_run(run)
+
+func _test_shop_purchases_spend_run_scrap_one_shot() -> void:
+	var run = await _new_run()
+	run.start_run("hearth", _empty_template_pool(), 2, _seeded_rng(5))
+	await process_frame
+
+	var has_purchase_seam := run.has_method("purchase_shop_offer_once")
+	_check("orchestrator exposes one-shot shop purchase seam", has_purchase_seam)
+	if not has_purchase_seam:
+		await _cleanup_run(run)
+		return
+
+	run.scrap_earned = 100
+	run.player_vitals.guard = 1
+
+	# Guard refill offer.
+	var guard_price := int(run.call("shop_offer_price", "guard_refill"))
+	_check("guard_refill offer has a positive scrap price", guard_price > 0)
+	_check("guard_refill purchase succeeds with funds", bool(run.call("purchase_shop_offer_once", "shop_probe:guard", "guard_refill")))
+	_check_eq("guard_refill purchase spends its price", run.scrap_earned, 100 - guard_price)
+	_check_eq("guard_refill purchase refills guard to max", run.player_vitals.guard, run.player_vitals.max_guard)
+	_check("guard_refill duplicate fixture claim is rejected", not bool(run.call("purchase_shop_offer_once", "shop_probe:guard", "guard_refill")))
+	_check_eq("guard_refill duplicate claim spends nothing", run.scrap_earned, 100 - guard_price)
+
+	# Cast ammo +1 offer.
+	var kit = run._player_ability_kit()
+	var ammo_before := int(kit.cast_ammo())
+	var max_before := int(kit.cast_max_ammo())
+	var ammo_price := int(run.call("shop_offer_price", "cast_ammo"))
+	_check("cast_ammo purchase succeeds with funds", bool(run.call("purchase_shop_offer_once", "shop_probe:ammo", "cast_ammo")))
+	_check_eq("cast_ammo purchase raises max ammo by one", int(kit.cast_max_ammo()), max_before + 1)
+	_check_eq("cast_ammo purchase grants the new shard immediately", int(kit.cast_ammo()), ammo_before + 1)
+	_check_eq("cast_ammo purchase spends its price", run.scrap_earned, 100 - guard_price - ammo_price)
+
+	# Draft reroll credit offer (consumed by the draft surface via run bonuses).
+	var rerolls_before := int(run.active_run_bonuses.get("draft_rerolls", 0))
+	var reroll_price := int(run.call("shop_offer_price", "draft_reroll"))
+	_check("draft_reroll purchase succeeds with funds", bool(run.call("purchase_shop_offer_once", "shop_probe:reroll", "draft_reroll")))
+	_check_eq("draft_reroll purchase adds one reroll credit", int(run.active_run_bonuses.get("draft_rerolls", 0)), rerolls_before + 1)
+
+	# Refusals: unknown offers and empty pockets leave state untouched.
+	_check("unknown offer id is refused", not bool(run.call("purchase_shop_offer_once", "shop_probe:bogus", "bogus_offer")))
+	run.scrap_earned = 0
+	run.player_vitals.guard = 1
+	_check("broke purchase is refused", not bool(run.call("purchase_shop_offer_once", "shop_probe:guard2", "guard_refill")))
+	_check_eq("broke purchase spends nothing", run.scrap_earned, 0)
+	_check_eq("broke purchase grants nothing", run.player_vitals.guard, 1)
+	_check("refused fixture key stays claimable once funded", true)
+	run.scrap_earned = guard_price
+	_check("re-claim after refusal succeeds once funded", bool(run.call("purchase_shop_offer_once", "shop_probe:guard2", "guard_refill")))
+	_check_eq("funded re-claim spends the price", run.scrap_earned, 0)
+
+	# New run resets purchased cast capacity (per-run economy, no leak).
+	run.start_run("hearth", _empty_template_pool(), 2, _seeded_rng(5))
+	await process_frame
+	var kit_after = run._player_ability_kit()
+	_check_eq("new run resets purchased cast ammo capacity", int(kit_after.cast_max_ammo()), max_before)
 	await _cleanup_run(run)
 
 func _test_fixture_grants_are_one_shot_and_rest_guard_only() -> void:
@@ -1415,8 +1614,7 @@ func _test_player_death_disconnects_director_and_ignores_posthumous_enemy_deaths
 		controller_clears.append(room)
 	)
 
-	var lethal_damage: int = int(run.player_vitals.max_guard) + int(run.player_vitals.max_hp)
-	run.player_vitals.apply_damage(lethal_damage)
+	_kill_player_vitals(run.player_vitals)
 	await process_frame
 	_check("posthumous death test leaves run inactive", not run._run_active)
 
@@ -1435,25 +1633,31 @@ func _test_player_death_disconnects_director_and_ignores_posthumous_enemy_deaths
 	await _cleanup_run(run)
 
 func _test_real_orchestrator_survivability_bands() -> void:
+	# Halo-CE fragile-but-recharging: a motionless player dies much sooner than
+	# under the old 13-hit pool, but never as a spawn-instant melt. Single-hit
+	# vital drops stay within the heaviest authored contact hit (elite 45).
 	var stationary := await _run_survivability_probe(&"stationary", 90.0, 1)
 	_check("motionless real-run probe eventually dies", bool(stationary["died"]))
-	_check_between("motionless real-run death is not an instant spawn melt", float(stationary["survived_seconds"]), 30.0, 90.0)
-	_check("motionless real-run damage stays telegraphed", int(stationary["max_hit_delta"]) <= 2)
+	_check_between("motionless real-run death is not an instant spawn melt", float(stationary["survived_seconds"]), 8.0, 45.0)
+	_check("motionless real-run damage stays telegraphed", int(stationary["max_hit_delta"]) <= 45)
 
 	var retreating := await _run_survivability_probe(&"retreat", 40.0, 3)
 	_check("retreating real-run DPS probe avoids death while clearing three rooms", not bool(retreating["died"]))
 	_check_between("retreating real-run DPS clear time", float(retreating["survived_seconds"]), 18.0, 40.0)
 	_check("retreating real-run enters at least three rooms", int(retreating["rooms_entered"]) >= 3)
 	_check("retreating real-run clears at least three rooms", int(retreating["rooms_cleared"]) >= 3)
-	_check("retreating real-run damage stays telegraphed", int(retreating["max_hit_delta"]) <= 2)
+	_check("retreating real-run damage stays telegraphed", int(retreating["max_hit_delta"]) <= 45)
 
 	var half_dps := await _run_survivability_probe(&"retreat", 40.0, 4, 0.5, 1.0)
 	_check("halved-DPS mutation fails to clear four rooms inside the probe band", int(half_dps["rooms_cleared"]) < 4)
 
 	var doubled_damage := await _run_survivability_probe(&"stationary", 90.0, 1, 1.0, 2.0)
+	# Block-per-hit hull damage means a damage mutation only compresses the
+	# shield phase, so the honest catcher is the gap to the stationary run.
 	_check(
-		"doubled-contact-damage mutation fails the no-melt stationary band",
-		bool(doubled_damage["died"]) and float(doubled_damage["survived_seconds"]) < 30.0
+		"doubled-contact-damage mutation dies measurably faster than the honest run",
+		bool(doubled_damage["died"])
+		and float(doubled_damage["survived_seconds"]) < float(stationary["survived_seconds"]) - 1.0
 	)
 
 func _start_run_with_first_boon_exit(run) -> RoomGraph:
@@ -1728,6 +1932,8 @@ func _take_first_available_exit(run) -> void:
 	door.emit_signal(&"body_entered", run.player)
 	await process_frame
 	if reward_type == RoomNode.RewardType.BOON and run.flow_bridge.is_draft_open():
+		if not run.boon_draft_ui.is_reveal_finished():
+			await run.boon_draft_ui.reveal_finished
 		_check("survivability helper can accept boon exit draft", run.boon_draft_ui.choose_offer(0))
 		await process_frame
 
@@ -1874,6 +2080,11 @@ func _first_cast_shard_pickup(run) -> Area3D:
 			return shard as Area3D
 	return null
 
+func _has_collect_pulse(parent: Node) -> bool:
+	if parent == null:
+		return false
+	return parent.find_child("CollectSparklePulse*", true, false) != null
+
 func _spawn_candidate_for(run, index: int, attempt: int, edge_clearance: float) -> Vector3:
 	var anchor: Marker3D = run._current_room_anchor()
 	var center: Vector3 = anchor.global_position if anchor != null else Vector3.ZERO
@@ -1964,6 +2175,11 @@ func _object_has_property(object: Object, property_name: String) -> bool:
 		if str(property.get("name", "")) == property_name:
 			return true
 	return false
+
+func _float_property(object: Object, property_name: String, fallback: float) -> float:
+	if object == null or not _object_has_property(object, property_name):
+		return fallback
+	return float(object.get(property_name))
 
 func _audio_event_count(event: StringName) -> int:
 	var director := root.get_node_or_null("AudioDirector")

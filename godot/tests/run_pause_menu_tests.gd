@@ -46,6 +46,7 @@ func _run_tests() -> void:
 	await _test_overlay_visibility_tracks_external_pause_state()
 	await _test_resume_button_unpauses_tree()
 	await _test_settings_button_opens_shared_panel()
+	await _test_how_to_keep_button_opens_controls_card()
 	await _test_pause_guard_rejects_inactive_run_surface()
 	await _test_real_app_shell_parented_end_screen_blocks_pause_guard()
 	await _test_real_paused_death_teardown_unpauses_and_cancel_stays_blocked()
@@ -144,6 +145,8 @@ func _new_real_app(save_path: String) -> Node:
 	_remove_save(save_path)
 	var app := AppScene.instantiate()
 	app.meta_save_path = save_path
+	# First-boot campfire opening is covered by run_opening_tests.gd.
+	app.opening_scene = null
 	root.add_child(app)
 	await process_frame
 	return app
@@ -404,3 +407,33 @@ func _test_run_scene_instances_pause_overlay() -> void:
 
 	run.queue_free()
 	await _flush_free_queue()
+
+func _test_how_to_keep_button_opens_controls_card() -> void:
+	var harness := await _new_harness()
+	var menu := harness["menu"] as Node
+
+	menu._unhandled_input(_make_cancel_event())
+	await process_frame
+	_check("pause opens before HOW TO KEEP test", paused)
+
+	var button := menu.get_node_or_null("Root/Center/Panel/Margin/VBox/HowToKeepButton") as Button
+	var card := menu.find_child("ControlsCard", true, false)
+	_check("pause menu has a HOW TO KEEP button", button is Button)
+	_check("pause menu instances the controls card", card != null)
+	_check("controls card starts closed", card != null and not bool(card.call(&"is_open")))
+
+	if button != null:
+		button.emit_signal(&"pressed")
+	await process_frame
+	_check("HOW TO KEEP opens the controls card", card != null and bool(card.call(&"is_open")))
+
+	menu._unhandled_input(_make_cancel_event())
+	await process_frame
+	_check("ui_cancel closes the controls card first", card != null and not bool(card.call(&"is_open")))
+	_check("closing the controls card keeps the tree paused", paused)
+
+	menu._unhandled_input(_make_cancel_event())
+	await process_frame
+	_check("next ui_cancel resumes play", not paused)
+
+	await _cleanup_harness(harness)

@@ -7,16 +7,19 @@ extends CanvasLayer
 ## reaches into the Simulation on its own. The .tscn ships with sensible default
 ## widget values so running this scene standalone shows a populated HUD.
 
-const GUARD_PIP_MAX := 12
-const GUARD_PIP_SIZE := Vector2(14.0, 14.0)
-const GUARD_PIP_BRASS := Color(0.7882, 0.5647, 0.4196, 1.0)
-const GUARD_PIP_EMPTY_ALPHA := 0.25
 const ABILITY_SLOT_DIM_ALPHA := 0.4
 const SPARK_READY_EPSILON := 0.001
+## Halo-CE vitals presentation: guard renders as one flat recharging shield
+## bar; hp renders as discrete hull blocks (divider ticks over the warm bar).
+const HP_BLOCKS := 3
+const SHIELD_HIT_FLASH := Color(0.95, 0.25, 0.2, 1.0)
 
-@onready var _guard_pips: HBoxContainer = %GuardPips
+@onready var _shield_bar: ProgressBar = %ShieldBar
 @onready var _hp_bar: ProgressBar = %HpBar
 @onready var _hp_label: Label = %HpLabel
+
+func _ready() -> void:
+	_build_hp_block_dividers()
 @onready var _sparks_label: Label = %SparksLabel
 @onready var _spark_gauge: PanelContainer = %SparkGauge
 @onready var _spark_fill: ProgressBar = %SparkFill
@@ -34,44 +37,27 @@ func render(sim: Simulation) -> void:
 	_sparks_label.text = str(sim.xp)
 
 
-## Payload-driven guard pips (ADR 0007). Controller passes guard values when the
-## player entity exists; the Simulation has no guard fields in this rescope.
-var _last_guard_filled := 0
+## Payload-driven shield bar (ADR 0007 guard, Halo-CE presentation). Controller
+## passes guard values when the player entity exists; the Simulation has no
+## guard fields in this rescope. Same seam name, bar semantics.
+var _last_shield := -1
 
 func render_guard(guard: int, guard_max: int) -> void:
-	var max_pips := clampi(guard_max, 0, GUARD_PIP_MAX)
-	if max_pips <= 0:
-		_guard_pips.visible = false
-		_last_guard_filled = 0
+	if guard_max <= 0:
+		_shield_bar.visible = false
+		_last_shield = -1
 		return
 
-	_ensure_guard_pip_count(max_pips)
-	var filled := clampi(guard, 0, max_pips)
-	_guard_pips.visible = true
-	var pips := _guard_pips.get_children()
-	for i in pips.size():
-		var pip := pips[i] as ColorRect
-		pip.visible = i < max_pips
-		if pip.visible:
-			var alpha := 1.0 if i < filled else GUARD_PIP_EMPTY_ALPHA
-			pip.color = Color(GUARD_PIP_BRASS.r, GUARD_PIP_BRASS.g, GUARD_PIP_BRASS.b, alpha)
-	# Guard-hit read (HZ-084): flash the pips just lost, red, ~0.2s.
-	if filled < _last_guard_filled:
-		for i in range(filled, mini(_last_guard_filled, pips.size())):
-			var lost_pip := pips[i] as ColorRect
-			if lost_pip == null or not lost_pip.visible:
-				continue
-			# 0.92 alpha: visually a hard red flash, but below the full-alpha
-			# threshold the HUD contract uses to mean "filled" (pinned in tests).
-			lost_pip.color = Color(0.95, 0.25, 0.2, 0.92)
-			var tween := lost_pip.create_tween()
-			tween.tween_property(
-				lost_pip,
-				"color",
-				Color(GUARD_PIP_BRASS.r, GUARD_PIP_BRASS.g, GUARD_PIP_BRASS.b, GUARD_PIP_EMPTY_ALPHA),
-				0.2
-			)
-	_last_guard_filled = filled
+	var filled := clampi(guard, 0, guard_max)
+	_shield_bar.visible = true
+	_shield_bar.max_value = float(guard_max)
+	_shield_bar.value = float(filled)
+	# Shield-hit read (HZ-084 carried forward): red flash on any drop.
+	if _last_shield >= 0 and filled < _last_shield:
+		_shield_bar.modulate = SHIELD_HIT_FLASH
+		var tween := _shield_bar.create_tween()
+		tween.tween_property(_shield_bar, "modulate", Color(1.0, 1.0, 1.0, 1.0), 0.2)
+	_last_shield = filled
 
 func render_spark(charge: float, charge_max: float) -> void:
 	var safe_max := maxf(charge_max, 0.0)
@@ -195,13 +181,23 @@ func _make_ability_slot(state: Dictionary) -> PanelContainer:
 	return panel
 
 
-func _ensure_guard_pip_count(count: int) -> void:
-	while _guard_pips.get_child_count() < count:
-		var pip := ColorRect.new()
-		pip.name = "Pip%d" % _guard_pips.get_child_count()
-		pip.custom_minimum_size = GUARD_PIP_SIZE
-		pip.color = GUARD_PIP_BRASS
-		_guard_pips.add_child(pip)
+## The hull bar reads as discrete blocks: thin divider ticks split the warm
+## bar into HP_BLOCKS segments. The orchestrator keeps driving HpBar's ratio;
+## the ticks are pure presentation.
+func _build_hp_block_dividers() -> void:
+	if _hp_bar == null:
+		return
+	for i in range(1, HP_BLOCKS):
+		var divider := ColorRect.new()
+		divider.name = "BlockDivider%d" % i
+		divider.color = Color(0.08, 0.06, 0.05, 0.9)
+		divider.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_hp_bar.add_child(divider)
+		divider.set_anchors_preset(Control.PRESET_LEFT_WIDE)
+		divider.anchor_left = float(i) / float(HP_BLOCKS)
+		divider.anchor_right = divider.anchor_left
+		divider.offset_left = -1.0
+		divider.offset_right = 1.0
 
 
 func _ability_kind_label(kind: int) -> String:

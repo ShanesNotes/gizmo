@@ -21,6 +21,10 @@ var picked_boon_ids: Array[StringName] = []
 var picked_boons_by_slot: Dictionary = {}
 var _installed_ability_kit: AbilityComponent
 var _installed_runtime_modifiers: Array[AbilityModifier] = []
+## Pre-draft snapshots of the exported params boons may touch, so slot
+## replacement and run reset always rebuild from the true base values.
+var _vitals_base: Dictionary = {}
+var _cast_ammo_base: int = -1
 
 static func rarity_weight_for(rarity: BoonDef.Rarity) -> float:
 	match rarity:
@@ -93,7 +97,7 @@ func accept_boon(boon: BoonDef, ability_kit: AbilityComponent) -> bool:
 	picked_boons_by_slot[boon.slot] = boon
 	picked_boons.append(boon)
 	picked_boon_ids.append(boon.boon_id)
-	_reinstall_picked_boon_modifiers(ability_kit)
+	_reinstall_picked_boon_effects(ability_kit)
 	boon_accepted.emit(boon)
 	return true
 
@@ -101,11 +105,18 @@ func picked_boon_for_slot(slot: BoonDef.Slot) -> BoonDef:
 	return picked_boons_by_slot.get(slot) as BoonDef
 
 func reset_run() -> void:
-	_remove_installed_modifiers()
+	_remove_installed_effects()
 	picked_boons.clear()
 	picked_boon_ids.clear()
 	picked_boons_by_slot.clear()
 	draft_reset.emit()
+
+## True while `boon` has a picked partner (a different boon) in its synergy slot.
+func synergy_active_for(boon: BoonDef) -> bool:
+	if boon == null or not boon.has_synergy():
+		return false
+	var partner := picked_boons_by_slot.get(boon.synergy_with_slot) as BoonDef
+	return partner != null and partner != boon
 
 func _remove_picked_boon(boon: BoonDef) -> void:
 	var index := picked_boons.find(boon)
@@ -114,20 +125,103 @@ func _remove_picked_boon(boon: BoonDef) -> void:
 	picked_boon_ids.erase(boon.boon_id)
 	picked_boons_by_slot.erase(boon.slot)
 
-func _reinstall_picked_boon_modifiers(ability_kit: AbilityComponent) -> void:
-	_remove_installed_modifiers()
+func _reinstall_picked_boon_effects(ability_kit: AbilityComponent) -> void:
+	_remove_installed_effects()
 	_installed_ability_kit = ability_kit
+	_snapshot_bases(ability_kit)
 	for boon in picked_boons:
 		for modifier in boon.create_runtime_modifiers():
 			ability_kit.ability_modifiers.append(modifier)
 			_installed_runtime_modifiers.append(modifier)
+		if synergy_active_for(boon):
+			for modifier in boon.synergy_ability_modifiers:
+				if modifier == null:
+					continue
+				var runtime_modifier := modifier.duplicate(true) as AbilityModifier
+				if runtime_modifier != null:
+					ability_kit.ability_modifiers.append(runtime_modifier)
+					_installed_runtime_modifiers.append(runtime_modifier)
+	_apply_vitals_effects(ability_kit)
+	_apply_cast_ammo_effects(ability_kit)
 
-func _remove_installed_modifiers() -> void:
+func _remove_installed_effects() -> void:
 	if _installed_ability_kit != null and is_instance_valid(_installed_ability_kit):
 		for modifier in _installed_runtime_modifiers:
 			_installed_ability_kit.ability_modifiers.erase(modifier)
+		_restore_vitals_base(_installed_ability_kit)
+		_restore_cast_ammo_base(_installed_ability_kit)
 	_installed_runtime_modifiers.clear()
 	_installed_ability_kit = null
+	_vitals_base.clear()
+	_cast_ammo_base = -1
+
+func _snapshot_bases(ability_kit: AbilityComponent) -> void:
+	var vitals := _kit_vitals(ability_kit)
+	if vitals != null and _vitals_base.is_empty():
+		_vitals_base = {
+			"guard_recharge_rate": vitals.guard_recharge_rate,
+			"guard_recharge_delay": vitals.guard_recharge_delay,
+			"max_guard": vitals.max_guard,
+			"spark_damage_dealt_charge_rate": vitals.spark_damage_dealt_charge_rate,
+		}
+	var cast_ability := ability_kit.get_ability(&"cast") as CastAbility
+	if cast_ability != null and _cast_ammo_base < 0:
+		_cast_ammo_base = cast_ability.max_ammo
+
+func _apply_vitals_effects(ability_kit: AbilityComponent) -> void:
+	var vitals := _kit_vitals(ability_kit)
+	if vitals == null or _vitals_base.is_empty():
+		return
+	var rate_multiplier := 1.0
+	var delay_multiplier := 1.0
+	var surge_multiplier := 1.0
+	var guard_delta := 0
+	for boon in picked_boons:
+		rate_multiplier *= boon.guard_recharge_rate_multiplier
+		delay_multiplier *= boon.guard_recharge_delay_multiplier
+		surge_multiplier *= boon.surge_charge_rate_multiplier
+		guard_delta += boon.max_guard_delta
+	vitals.guard_recharge_rate = maxf(0.0, float(_vitals_base["guard_recharge_rate"]) * rate_multiplier)
+	vitals.guard_recharge_delay = maxf(0.0, float(_vitals_base["guard_recharge_delay"]) * delay_multiplier)
+	vitals.max_guard = maxi(0, int(_vitals_base["max_guard"]) + guard_delta)
+	vitals.spark_damage_dealt_charge_rate = maxf(
+		0.0, float(_vitals_base["spark_damage_dealt_charge_rate"]) * surge_multiplier
+	)
+	vitals.guard = mini(vitals.guard, vitals.max_guard)
+
+func _apply_cast_ammo_effects(ability_kit: AbilityComponent) -> void:
+	var cast_ability := ability_kit.get_ability(&"cast") as CastAbility
+	if cast_ability == null or _cast_ammo_base < 0:
+		return
+	var ammo_delta := 0
+	for boon in picked_boons:
+		ammo_delta += boon.bonus_cast_ammo
+	cast_ability.max_ammo = maxi(0, _cast_ammo_base + ammo_delta)
+
+func _restore_vitals_base(ability_kit: AbilityComponent) -> void:
+	var vitals := _kit_vitals(ability_kit)
+	if vitals == null or _vitals_base.is_empty():
+		return
+	vitals.guard_recharge_rate = float(_vitals_base["guard_recharge_rate"])
+	vitals.guard_recharge_delay = float(_vitals_base["guard_recharge_delay"])
+	vitals.max_guard = int(_vitals_base["max_guard"])
+	vitals.spark_damage_dealt_charge_rate = float(_vitals_base["spark_damage_dealt_charge_rate"])
+	vitals.guard = mini(vitals.guard, vitals.max_guard)
+
+func _restore_cast_ammo_base(ability_kit: AbilityComponent) -> void:
+	if _cast_ammo_base < 0:
+		return
+	var cast_ability := ability_kit.get_ability(&"cast") as CastAbility
+	if cast_ability != null:
+		cast_ability.max_ammo = _cast_ammo_base
+
+func _kit_vitals(ability_kit: AbilityComponent) -> PlayerVitals:
+	if ability_kit == null:
+		return null
+	var vitals := ability_kit.player_vitals
+	if vitals != null and is_instance_valid(vitals):
+		return vitals
+	return null
 
 func _eligible_unique_pool(
 	pool: Array[BoonDef],

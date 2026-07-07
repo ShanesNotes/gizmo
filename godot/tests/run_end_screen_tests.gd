@@ -14,6 +14,7 @@ func _initialize() -> void:
 	print("Running end-screen tests...")
 	await _test_run_summary_renders_victory_payload()
 	await _test_run_summary_renders_loss_payload()
+	await _test_run_summary_renders_enriched_stats()
 	await _test_end_screen_declares_blocking_overlay_group()
 	await _test_summary_fades_in_from_ink()
 	await _test_retired_copy_tokens_are_absent()
@@ -83,6 +84,28 @@ func _test_run_summary_renders_loss_payload() -> void:
 	_check_eq("loss title", _label_text(screen, "Root/Center/Panel/Margin/VBox/TitleLabel"), "THE LIGHT FAILED")
 	_check_eq("loss result stat", _label_text(screen, "Root/Center/Panel/Margin/VBox/Stats/ResultValue"), "FAILED")
 	_check_eq("zero survived stat", _label_text(screen, "Root/Center/Panel/Margin/VBox/Stats/SurvivedValue"), "0:00")
+
+	await _cleanup(screen)
+
+func _test_run_summary_renders_enriched_stats() -> void:
+	var screen := await _new_screen()
+	screen.show_run_summary({
+		"enemies_felled": {
+			"chaff": 6,
+			"bruiser": 2,
+			"elite": 1,
+			"boss": 1,
+		},
+		"sparks_rescued": 15,
+		"deepest_region": "The Last Ember",
+	})
+
+	_check_eq("enemies label", _label_text(screen, "Root/Center/Panel/Margin/VBox/Stats/EnemiesFelledCap"), "Enemies FELLED")
+	_check_eq("enemies stat", _label_text(screen, "Root/Center/Panel/Margin/VBox/Stats/EnemiesFelledValue"), "6 chaff / 2 bruiser / 1 elite / 1 boss")
+	_check_eq("sparks rescued label", _label_text(screen, "Root/Center/Panel/Margin/VBox/Stats/SparksRescuedCap"), "Sparks rescued")
+	_check_eq("sparks rescued stat", _label_text(screen, "Root/Center/Panel/Margin/VBox/Stats/SparksRescuedValue"), "15")
+	_check_eq("deepest region label", _label_text(screen, "Root/Center/Panel/Margin/VBox/Stats/DeepestRegionCap"), "Deepest region")
+	_check_eq("deepest region stat", _label_text(screen, "Root/Center/Panel/Margin/VBox/Stats/DeepestRegionValue"), "The Last Ember")
 
 	await _cleanup(screen)
 

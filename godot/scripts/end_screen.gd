@@ -7,6 +7,7 @@ extends CanvasLayer
 ## this long instead of popping (the panel is visible immediately; only its
 ## modulate alpha is animated, so overlay/visibility contracts are untouched).
 const INK_FADE_SECONDS := 0.8
+const FELLED_ARCHETYPES: Array[String] = ["chaff", "bruiser", "elite", "boss"]
 
 var _fade_tween: Tween = null
 
@@ -18,6 +19,9 @@ var _fade_tween: Tween = null
 @onready var _boons_value: Label = %BoonsValue
 @onready var _scrap_value: Label = %ScrapValue
 @onready var _survived_value: Label = %SurvivedValue
+@onready var _enemies_felled_value: Label = %EnemiesFelledValue
+@onready var _sparks_rescued_value: Label = %SparksRescuedValue
+@onready var _deepest_region_value: Label = %DeepestRegionValue
 @onready var _retry_button: Button = %RetryButton
 
 func _ready() -> void:
@@ -39,9 +43,19 @@ func show_run_summary(stats: Dictionary) -> void:
 	_boons_value.text = str(maxi(0, int(stats.get("boons_taken", 0))))
 	_scrap_value.text = str(maxi(0, int(stats.get("scrap_banked", 0))))
 	_survived_value.text = Hud.format_clock(maxf(0.0, float(stats.get("survived_seconds", 0.0))))
+	_enemies_felled_value.text = _format_enemies_felled(stats.get("enemies_felled", {}))
+	_sparks_rescued_value.text = str(maxi(0, int(stats.get("sparks_rescued", stats.get("sparks_banked", 0)))))
+	_deepest_region_value.text = String(stats.get("deepest_region", "Unknown"))
 	_play_ink_fade()
 	_root.visible = true
 	_retry_button.grab_focus()
+
+func _format_enemies_felled(value: Variant) -> String:
+	var counts: Dictionary = value if value is Dictionary else {}
+	var parts: Array[String] = []
+	for archetype in FELLED_ARCHETYPES:
+		parts.append("%d %s" % [maxi(0, int(counts.get(archetype, 0))), archetype])
+	return " / ".join(parts)
 
 func _play_ink_fade() -> void:
 	if _fade_tween != null and _fade_tween.is_valid():
