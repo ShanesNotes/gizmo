@@ -130,7 +130,6 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.0, 2.4)
 script = ExtResource("1_fixture")
 fixture_kind = 1
 scrap_amount = 0
-magnet_radius = 0.0
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Geometry/RestFixture"]
 shape = SubResource("RestShape")
