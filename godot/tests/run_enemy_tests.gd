@@ -152,6 +152,25 @@ func _test_archetype_ttk_bands_use_real_melee_kit() -> void:
 	_check_between("elite TTK is in 3-10s band", float(elite_ttk["seconds"]), 3.0, 10.0)
 	_check("elite requires meaningfully more hits than bruiser", int(elite_ttk["hits"]) > int(bruiser_ttk["hits"]))
 
+	# Affixed-elite TTK (backlog 8): effective hp under intended play must stay
+	# inside the elite 3-10s band — shielded adds its 35% overshield, frenzied
+	# trades hp away, warded is banded ISOLATED (killing the ward first IS the
+	# intended play; with the ward alive it only needs a hard sponge ceiling).
+	var elite_hp := float(EnemyArchetypesScript.stats_for("elite")["max_hp"])
+	var shielded_ttk := _melee_ttk_for_hp(elite_hp * 1.35, attack)
+	var frenzied_ttk := _melee_ttk_for_hp(elite_hp * 0.8, attack)
+	var warded_isolated_ttk := _melee_ttk_for_hp(elite_hp, attack)
+	var warded_with_ward_ttk := _melee_ttk_for_hp(elite_hp * 2.0, attack)
+	_check_between("shielded elite TTK stays in the elite band", float(shielded_ttk["seconds"]), 3.0, 10.0)
+	_check_between("frenzied elite TTK stays in the elite band", float(frenzied_ttk["seconds"]), 3.0, 10.0)
+	_check_between("warded elite (isolated) TTK stays in the elite band", float(warded_isolated_ttk["seconds"]), 3.0, 10.0)
+	_check("warded elite under an active ward never becomes a sponge (<=15s)", float(warded_with_ward_ttk["seconds"]) <= 15.0)
+	_check(
+		"affix ordering reads: frenzied dies fastest, shielded slowest",
+		float(frenzied_ttk["seconds"]) < float(elite_ttk["seconds"])
+		and float(elite_ttk["seconds"]) < float(shielded_ttk["seconds"])
+	)
+
 func _test_contact_cadence_does_not_melt_guard() -> void:
 	var chaff_events := _contact_damage_events_in_seconds(EnemyArchetypesScript.stats_for("chaff"), 5.0)
 	var bruiser_events := _contact_damage_events_in_seconds(EnemyArchetypesScript.stats_for("bruiser"), 5.0)
