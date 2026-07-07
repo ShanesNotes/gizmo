@@ -31,6 +31,11 @@ static func sample_over_frames(tree: SceneTree, frames: int = 60) -> Dictionary:
 	report["line"] = line
 	return report
 
+## Public scene-tree node counter so suites can gate on tree growth directly
+## (HZ-107B stretch: PerfProbe is the one node-counting truth).
+static func count_nodes(node: Node) -> int:
+	return _count_tree_nodes(node)
+
 static func _count_tree_nodes(node: Node) -> int:
 	var count := 1
 	for child in node.get_children():

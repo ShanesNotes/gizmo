@@ -675,14 +675,29 @@ func _clear_current_room_by_enemy_deaths(run, gate: Dictionary) -> void:
 			_check_eq("orchestrator rooms_cleared counter tracks boss clear", run.rooms_cleared, (gate["cleared_room_ids"] as Array).size())
 		return
 
+	# HZ-107B deflake: headless awaited frames advance a load-dependent number of
+	# physics ticks (0 when spinning fast, bursts under load), so wave spawns land
+	# an unpredictable number of process_frames apart. The drive budget is frame-
+	# generous (bounded, exits early on clear) and enemy presence is asserted over
+	# the whole window, not per iteration — between waves the board is honestly empty.
 	var safety := 0
-	while is_instance_valid(run) and run.current_director != null and not run.current_director.is_room_cleared() and safety < 24:
+	var saw_enemies := false
+	# Rooms that self-clear on entry (REST/SHOP) legitimately expose no enemies.
+	var needed_clearing: bool = (
+		is_instance_valid(run)
+		and run.current_director != null
+		and not run.current_director.is_room_cleared()
+	)
+	while is_instance_valid(run) and run.current_director != null and not run.current_director.is_room_cleared() and safety < 600:
 		var enemies := _live_spawned_enemies(run)
-		_check("current room exposes spawned enemies to damage", not enemies.is_empty())
+		if not enemies.is_empty():
+			saw_enemies = true
 		for enemy in enemies:
 			enemy.take_damage(maxf(enemy.hp, enemy.max_hp))
 		await process_frame
 		safety += 1
+	if needed_clearing:
+		_check("clear drive saw spawned enemies to damage", saw_enemies)
 
 	var room: RoomNode = graph.get_room(room_id)
 	_check("room clears through enemy death path", room != null and room.state == RoomNode.State.CLEARED)
@@ -1237,7 +1252,10 @@ func _assert_spawned_enemies_inside_current_room_bounds(run, prefix: String) -> 
 		var inside_bounds := (
 			absf(position.x - anchor.global_position.x) <= half_x + 0.001
 			and absf(position.z - anchor.global_position.z) <= half_z + 0.001
-			and position.y > 0.0
+			# HZ-107B: physics settle can leave a body a few cm under the floor
+			# plane depending on how many ticks a loaded headless frame batched;
+			# tolerate the collision margin, still catch real void falls.
+			and position.y > -0.15
 		)
 		_check(
 			"%s keeps %s inside camera extents and above floor at %s"

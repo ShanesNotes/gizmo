@@ -12,6 +12,12 @@ const CastAbilityScript := preload("res://scripts/abilities/cast_ability.gd")
 const PlayerActionStateMachineScript := preload("res://scripts/abilities/player_action_state_machine.gd")
 const PlayerVitalsScript := preload("res://scripts/player/player_vitals.gd")
 
+class BlockedAttackAbility:
+	extends AttackAbility
+
+	func can_activate(_caster: Node) -> bool:
+		return false
+
 var _passed := 0
 var _failed := 0
 
@@ -19,6 +25,11 @@ func _initialize() -> void:
 	print("Running ability-kit tests...")
 	await _test_dash_grants_iframes_for_its_duration()
 	await _test_attack_combo_chains_within_window_and_resets_after()
+	await _test_attack_press_buffers_through_recovery_once()
+	await _test_attack_press_buffers_through_cooldown_once()
+	await _test_buffered_attack_expires_before_long_recovery_ends()
+	await _test_dash_cancel_clears_buffered_attack()
+	await _test_non_attack_and_non_recovery_failures_do_not_buffer()
 	await _test_special_respects_resource_cost_and_cooldown()
 	await _test_cast_ammo_consumes_reclaims_and_empty_fails()
 	await _test_surge_requires_full_gauge_and_empties_on_use()
@@ -90,6 +101,124 @@ func _test_attack_combo_chains_within_window_and_resets_after() -> void:
 	_check_eq("combo resets after the chain window expires", kit.combo_step(), 0)
 	_check("next attack after reset activates", kit.try_activate(&"attack"))
 	_check_eq("next attack restarts at combo step 1", kit.combo_step(), 1)
+	await _cleanup(body)
+
+func _test_attack_press_buffers_through_recovery_once() -> void:
+	var harness := await _new_kit()
+	var body: Node = harness["body"]
+	var kit: AbilityComponent = harness["kit"]
+	var attack := kit.get_ability(&"attack") as AttackAbility
+	attack.step_recovery = [0.10, 0.10, 0.10]
+	var started_steps: Array[int] = []
+	kit.attack_started.connect(func(step: int, _damage: float) -> void:
+		started_steps.append(step)
+	)
+
+	_check("buffer test first attack activates", kit.try_activate(&"attack"))
+	_check("buffer test second attack press during recovery returns false", not kit.try_activate(&"attack"))
+	_check("buffer test records a buffered attack on the kit", kit.has_buffered_attack())
+	kit.tick(0.09)
+	_check_eq("buffer test does not fire before recovery ends", started_steps, [1])
+	_check("buffer test keeps the attack fresh before expiry", kit.has_buffered_attack())
+	kit.tick(0.02)
+	_check_eq("buffer test auto-fires the second attack exactly once", started_steps, [1, 2])
+	_check("buffer test clears the buffered attack after firing", not kit.has_buffered_attack())
+	kit.tick(0.30)
+	_check_eq("buffer test does not replay the buffered attack again", started_steps, [1, 2])
+	await _cleanup(body)
+
+func _test_attack_press_buffers_through_cooldown_once() -> void:
+	var harness := await _new_kit()
+	var body: Node = harness["body"]
+	var kit: AbilityComponent = harness["kit"]
+	var attack := kit.get_ability(&"attack") as AttackAbility
+	attack.cooldown = 0.10
+	attack.step_recovery = [0.01, 0.01, 0.01]
+	var started_steps: Array[int] = []
+	kit.attack_started.connect(func(step: int, _damage: float) -> void:
+		started_steps.append(step)
+	)
+
+	_check("cooldown buffer first attack activates", kit.try_activate(&"attack"))
+	kit.tick(0.02)
+	_check("cooldown buffer second attack press returns false", not kit.try_activate(&"attack"))
+	_check("cooldown buffer records a buffered attack", kit.has_buffered_attack())
+	kit.tick(0.07)
+	_check_eq("cooldown buffer waits while attack cooldown remains", started_steps, [1])
+	kit.tick(0.02)
+	_check_eq("cooldown buffer fires once cooldown finishes", started_steps, [1, 2])
+	_check("cooldown buffer clears after firing", not kit.has_buffered_attack())
+	await _cleanup(body)
+
+func _test_buffered_attack_expires_before_long_recovery_ends() -> void:
+	var harness := await _new_kit()
+	var body: Node = harness["body"]
+	var kit: AbilityComponent = harness["kit"]
+	var attack := kit.get_ability(&"attack") as AttackAbility
+	attack.step_recovery = [0.30, 0.30, 0.30]
+	var started_steps: Array[int] = []
+	kit.attack_started.connect(func(step: int, _damage: float) -> void:
+		started_steps.append(step)
+	)
+
+	_check("expiry test first attack activates", kit.try_activate(&"attack"))
+	_check("expiry test second attack press buffers during recovery", not kit.try_activate(&"attack"))
+	_check("expiry test starts with a buffered attack", kit.has_buffered_attack())
+	kit.tick(0.13)
+	_check("expiry test clears the buffer after 0.12s", not kit.has_buffered_attack())
+	kit.tick(0.20)
+	_check_eq("expiry test never auto-fires after the stale buffer", started_steps, [1])
+	await _cleanup(body)
+
+func _test_dash_cancel_clears_buffered_attack() -> void:
+	var harness := await _new_kit()
+	var body: Node = harness["body"]
+	var kit: AbilityComponent = harness["kit"]
+	var attack := kit.get_ability(&"attack") as AttackAbility
+	var dash := kit.get_ability(&"dash") as DashAbility
+	attack.step_recovery = [0.10, 0.10, 0.10]
+	dash.cooldown = 0.0
+	dash.dash_duration = 0.05
+	var started_steps: Array[int] = []
+	kit.attack_started.connect(func(step: int, _damage: float) -> void:
+		started_steps.append(step)
+	)
+
+	_check("dash-clear test first attack activates", kit.try_activate(&"attack"))
+	_check("dash-clear test second attack press buffers", not kit.try_activate(&"attack"))
+	_check("dash-clear test has a buffered attack before dash", kit.has_buffered_attack())
+	_check("dash-clear test dash-cancel activates", kit.try_activate(&"dash", Vector3.RIGHT))
+	_check("dash-clear test dash activation clears buffered attack", not kit.has_buffered_attack())
+	kit.tick(0.20)
+	_check_eq("dash-clear test never auto-fires after dash-cancel", started_steps, [1])
+	await _cleanup(body)
+
+func _test_non_attack_and_non_recovery_failures_do_not_buffer() -> void:
+	var harness := await _new_kit()
+	var body: Node = harness["body"]
+	var kit: AbilityComponent = harness["kit"]
+	var attack := kit.get_ability(&"attack") as AttackAbility
+	var cast := kit.get_ability(&"cast") as CastAbility
+	attack.step_recovery = [0.10, 0.10, 0.10]
+	cast.recovery_time = 0.10
+
+	_check("non-buffer test attack starts lockout", kit.try_activate(&"attack"))
+	_check("non-buffer test special press during recovery fails", not kit.try_activate(&"special"))
+	_check("non-buffer test special press does not buffer attack", not kit.has_buffered_attack())
+	_check("non-buffer test cast press during recovery fails", not kit.try_activate(&"cast"))
+	_check("non-buffer test cast press does not buffer attack", not kit.has_buffered_attack())
+	kit.tick(0.20)
+
+	_check("non-buffer test cast starts its own recovery", kit.try_activate(&"cast"))
+	_check("non-buffer test attack during cast recovery fails", not kit.try_activate(&"attack"))
+	_check("non-buffer test attack during cast recovery does not buffer", not kit.has_buffered_attack())
+	kit.tick(0.20)
+
+	var blocked_attack := BlockedAttackAbility.new()
+	blocked_attack.step_recovery = [0.01, 0.01, 0.01]
+	kit.grant(blocked_attack)
+	_check("non-buffer test blocked attack fails conditions", not kit.try_activate(&"attack"))
+	_check("non-buffer test conditions_unmet attack does not buffer", not kit.has_buffered_attack())
 	await _cleanup(body)
 
 func _test_special_respects_resource_cost_and_cooldown() -> void:

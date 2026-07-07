@@ -8,6 +8,7 @@ const RunScene := preload("res://scenes/run.tscn")
 const RoomNode := preload("res://scripts/room_graph/room_node.gd")
 const RoomTemplate := preload("res://scripts/room_graph/room_template.gd")
 const SwingTiming := preload("res://scripts/room_graph/swing_timing.gd")
+const CombatEffectsScript := preload("res://scripts/room_graph/combat_effects.gd")
 const RoomConnection := preload("res://scripts/room_graph/room_connection.gd")
 const RoomDoorScript := preload("res://scripts/room_graph/room_door.gd")
 const AttackAbilityScript := preload("res://scripts/abilities/attack_ability.gd")
@@ -83,6 +84,20 @@ class TwoDoorPhysicsProbe:
 		set_physics_process(false)
 		callback_ran.emit()
 
+class AudioEventProbe:
+	extends Node
+
+	var sfx_event_counts: Dictionary = {}
+
+	func notify_event(event: StringName) -> void:
+		var key := String(event)
+		sfx_event_counts[key] = int(sfx_event_counts.get(key, 0)) + 1
+
+	func describe() -> Dictionary:
+		return {
+			"sfx_event_counts": sfx_event_counts.duplicate(true),
+		}
+
 func _initialize() -> void:
 	print("Running run orchestrator tests...")
 	call_deferred("_run_tests")
@@ -114,6 +129,9 @@ func _run_tests() -> void:
 	await _test_dash_audio_hook_follows_ability_signal()
 	await _test_real_attack_damages_front_enemy_only_and_charges_spark()
 	await _test_special_resolver_heavy_wide_arc_skips_windup_and_charges_spark()
+	await _test_attack_soft_lock_snaps_commit_facing_to_nearby_enemy()
+	await _test_attack_soft_lock_ignores_targets_outside_angle()
+	await _test_attack_soft_lock_can_be_disabled()
 	await _test_swing_damage_lands_on_animation_contact_frame()
 	await _test_cast_resolver_hits_first_target_consumes_ammo_and_charges_spark()
 	await _test_cast_shards_reclaim_on_victim_death_and_walkover_pickup()
@@ -1133,6 +1151,103 @@ func _test_special_resolver_heavy_wide_arc_skips_windup_and_charges_spark() -> v
 	_check_eq("special hit notifies melee_hit once", _audio_event_count(&"melee_hit"), melee_hit_before + 1)
 	await _cleanup_run(run)
 
+func _test_attack_soft_lock_snaps_commit_facing_to_nearby_enemy() -> void:
+	var run = await _new_run()
+	run.start_run("hearth", _empty_template_pool(), 2, _seeded_rng(41))
+	await process_frame
+
+	var kit: AbilityComponent = run._player_ability_kit()
+	var motor = run.player.get("motor") if run.player != null else null
+	_check("soft-lock snap test has an AbilityComponent", kit != null)
+	_check("soft-lock snap test has a player motor", motor is Object)
+	if kit == null or not (motor is Object):
+		await _cleanup_run(run)
+		return
+
+	_park_live_enemies_far_from_player(run)
+	var starting_facing := Vector3(0.0, 0.0, -1.0)
+	(motor as Object).set("facing_direction", starting_facing)
+	var target_direction := _rotated_xz(starting_facing, deg_to_rad(25.0))
+	var target := _spawn_fixture_enemy(
+		run,
+		"soft_lock_snap_probe",
+		run.player.global_position + target_direction * (run.combat_resolvers.melee_range * 0.90)
+	)
+	_check("soft-lock snap test spawns a live target", target != null)
+	if target == null:
+		await _cleanup_run(run)
+		return
+
+	_check("soft-lock snap test attack activates", kit.try_activate(&"attack"))
+	var snapped_facing := Vector3((motor as Object).get("facing_direction")).normalized()
+	_check("soft-lock snaps facing toward the 25-degree target", snapped_facing.dot(target_direction) > 0.99)
+	await _cleanup_run(run)
+
+func _test_attack_soft_lock_ignores_targets_outside_angle() -> void:
+	var run = await _new_run()
+	run.start_run("hearth", _empty_template_pool(), 2, _seeded_rng(42))
+	await process_frame
+
+	var kit: AbilityComponent = run._player_ability_kit()
+	var motor = run.player.get("motor") if run.player != null else null
+	_check("soft-lock angle test has an AbilityComponent", kit != null)
+	_check("soft-lock angle test has a player motor", motor is Object)
+	if kit == null or not (motor is Object):
+		await _cleanup_run(run)
+		return
+
+	_park_live_enemies_far_from_player(run)
+	var starting_facing := Vector3(0.0, 0.0, -1.0)
+	(motor as Object).set("facing_direction", starting_facing)
+	var target_direction := _rotated_xz(starting_facing, deg_to_rad(90.0))
+	var target := _spawn_fixture_enemy(
+		run,
+		"soft_lock_angle_probe",
+		run.player.global_position + target_direction * (run.combat_resolvers.melee_range * 0.90)
+	)
+	_check("soft-lock angle test spawns a live target", target != null)
+	if target == null:
+		await _cleanup_run(run)
+		return
+
+	_check("soft-lock angle test attack activates", kit.try_activate(&"attack"))
+	var facing_after_attack := Vector3((motor as Object).get("facing_direction")).normalized()
+	_check("soft-lock ignores the 90-degree target", facing_after_attack.dot(starting_facing) > 0.99)
+	await _cleanup_run(run)
+
+func _test_attack_soft_lock_can_be_disabled() -> void:
+	var run = await _new_run()
+	run.start_run("hearth", _empty_template_pool(), 2, _seeded_rng(43))
+	await process_frame
+
+	var kit: AbilityComponent = run._player_ability_kit()
+	var motor = run.player.get("motor") if run.player != null else null
+	_check("soft-lock disabled test has an AbilityComponent", kit != null)
+	_check("soft-lock disabled test has a player motor", motor is Object)
+	if kit == null or not (motor is Object):
+		await _cleanup_run(run)
+		return
+
+	run.combat_resolvers.configure({"soft_lock_enabled": false})
+	_park_live_enemies_far_from_player(run)
+	var starting_facing := Vector3(0.0, 0.0, -1.0)
+	(motor as Object).set("facing_direction", starting_facing)
+	var target_direction := _rotated_xz(starting_facing, deg_to_rad(25.0))
+	var target := _spawn_fixture_enemy(
+		run,
+		"soft_lock_disabled_probe",
+		run.player.global_position + target_direction * (run.combat_resolvers.melee_range * 0.90)
+	)
+	_check("soft-lock disabled test spawns a live target", target != null)
+	if target == null:
+		await _cleanup_run(run)
+		return
+
+	_check("soft-lock disabled test attack activates", kit.try_activate(&"attack"))
+	var facing_after_attack := Vector3((motor as Object).get("facing_direction")).normalized()
+	_check("soft_lock_enabled=false leaves facing unchanged", facing_after_attack.dot(starting_facing) > 0.99)
+	await _cleanup_run(run)
+
 ## Animation-led melee (playtest 2): swing damage lands on the clip's contact
 ## frame, not on input. The resolver holds a pending swing for the SwingTiming
 ## contact delay; a dash-cancel before contact drops the hit (Hades rule).
@@ -1231,14 +1346,25 @@ func _test_cast_resolver_hits_first_target_consumes_ammo_and_charges_spark() -> 
 	run.player_vitals.set("spark_surge_charge_max", 300.0)
 	run.player_vitals.set("spark_damage_dealt_charge_rate", 1.0)
 	run.player_vitals.call("set_spark_surge_charge", 0.0)
+	var audio_probe := _install_audio_event_probe()
 	var first_before := first_enemy.hp
 	var farther_before := farther_enemy.hp
 	var side_before := side_enemy.hp
 	var cast_before := _audio_event_count(&"cast_shot")
+	var lodge_before := _audio_event_count(&"cast_lodge")
+	var ammo_events: Array = []
+	kit.cast_ammo_changed.connect(func(current_ammo: int, max_ammo: int, lodged_ammo: int) -> void:
+		ammo_events.append([current_ammo, max_ammo, lodged_ammo])
+	)
+	var shard_parent := run.current_room_root as Node
+	var bolt_before := _cast_bolt_fx_nodes(shard_parent).size()
+	var hit_flight_seconds: float = (run.player.global_position + Vector3(0.0, 1.2, 0.0)) \
+		.distance_to(first_enemy.global_position + Vector3(0.0, 1.1, 0.0)) / CombatEffectsScript.CAST_BOLT_SPEED
 
 	_check("cast activates with available ammo", kit.try_activate(&"cast"))
 	await process_frame
 
+	_check_eq("cast hit spawns exactly one bolt FX under the shard parent", _cast_bolt_fx_nodes(shard_parent).size(), bolt_before + 1)
 	_check_almost("cast damages the first target in the facing corridor", first_before - first_enemy.hp, cast.potency)
 	_check_almost("cast stops at the first target instead of piercing", farther_before - farther_enemy.hp, 0.0)
 	_check_almost("cast respects the narrow corridor arc", side_before - side_enemy.hp, 0.0)
@@ -1246,6 +1372,30 @@ func _test_cast_resolver_hits_first_target_consumes_ammo_and_charges_spark() -> 
 	_check_eq("cast lodges one ammo stone", kit.cast_lodged_ammo(), 1)
 	_check_almost("cast dealt damage charges Spark Surge", float(run.player_vitals.get("spark_surge_charge")), cast.potency)
 	_check_eq("cast signal notifies cast_shot once", _audio_event_count(&"cast_shot"), cast_before + 1)
+	_check_eq("cast hit notifies cast_lodge once", _audio_event_count(&"cast_lodge"), lodge_before + 1)
+	await _wait_seconds(hit_flight_seconds + 0.08)
+	_check_eq("cast hit bolt frees itself after its flight", _cast_bolt_fx_nodes(shard_parent).size(), bolt_before)
+
+	kit.tick(1.0)
+	var enemy_index := 0
+	for enemy in _live_spawned_enemies(run):
+		enemy.clear_chase_target()
+		enemy.global_position = run.player.global_position - _player_forward(run) * (4.0 + float(enemy_index))
+		enemy.velocity = Vector3.ZERO
+		enemy_index += 1
+	var miss_lodge_before := _audio_event_count(&"cast_lodge")
+	var miss_bolt_before := _cast_bolt_fx_nodes(shard_parent).size()
+	var miss_end: Vector3 = run.player.global_position + _player_forward(run) * float(run.cast_range)
+	var miss_flight_seconds: float = (run.player.global_position + Vector3(0.0, 1.2, 0.0)) \
+		.distance_to(miss_end + Vector3(0.0, 1.1, 0.0)) / CombatEffectsScript.CAST_BOLT_SPEED
+	_check("cast miss activates with remaining ammo", kit.try_activate(&"cast"))
+	await process_frame
+	_check_eq("cast miss spawns exactly one bolt FX under the shard parent", _cast_bolt_fx_nodes(shard_parent).size(), miss_bolt_before + 1)
+	_check_eq("cast miss does not notify cast_lodge", _audio_event_count(&"cast_lodge"), miss_lodge_before)
+	_check_eq("cast ammo changed payloads preserve lodged counts", ammo_events, [[1, 2, 1], [0, 2, 2]])
+	await _wait_seconds(miss_flight_seconds + 0.08)
+	_check_eq("cast miss bolt frees itself after its flight", _cast_bolt_fx_nodes(shard_parent).size(), miss_bolt_before)
+	_restore_audio_event_probe(audio_probe)
 	await _cleanup_run(run)
 
 func _test_cast_shards_reclaim_on_victim_death_and_walkover_pickup() -> void:
@@ -1270,6 +1420,8 @@ func _test_cast_shards_reclaim_on_victim_death_and_walkover_pickup() -> void:
 	cast.cast_time = 0.0
 	cast.recovery_time = 0.05
 
+	var audio_probe := _install_audio_event_probe()
+	var reclaim_before := _audio_event_count(&"cast_reclaim")
 	var death_target := enemies[0]
 	_ready_enemy_for_player_attack(run, death_target, _player_forward(run) * 4.0)
 	death_target.max_hp = cast.potency
@@ -1278,6 +1430,7 @@ func _test_cast_shards_reclaim_on_victim_death_and_walkover_pickup() -> void:
 	await process_frame
 	_check_eq("cast victim death reclaims the lodged stone", kit.cast_ammo(), 2)
 	_check_eq("cast victim death clears lodged ammo", kit.cast_lodged_ammo(), 0)
+	_check_eq("cast victim death notifies cast_reclaim once", _audio_event_count(&"cast_reclaim"), reclaim_before + 1)
 	kit.tick(0.10)
 
 	var pickup_target := enemies[1]
@@ -1290,17 +1443,21 @@ func _test_cast_shards_reclaim_on_victim_death_and_walkover_pickup() -> void:
 	var shard := _first_cast_shard_pickup(run)
 	_check("surviving cast target creates a walk-over shard pickup", shard != null)
 	if shard != null:
+		var shard_parent := shard.get_parent()
+		pickup_target.clear_chase_target()
+		var moved_owner_position := pickup_target.global_position + Vector3(1.4, 0.0, 0.6)
+		pickup_target.global_position = moved_owner_position
+		pickup_target.velocity = Vector3.ZERO
+		await _step_physics_frames(2)
+		_check(
+			"lodged cast shard follows the moved owner chest",
+			shard.global_position.distance_to(moved_owner_position + Vector3(0.0, 1.1, 0.0)) < 0.05
+		)
 		run.player.add_to_group(&"pickup_magnet_test_player")
 		shard.set("player_group", &"pickup_magnet_test_player")
 		_check_almost("cast shard pickup magnet radius is pinned", _float_property(shard, "magnet_radius", -1.0), PICKUP_MAGNET_RADIUS)
-		var shard_parent := shard.get_parent()
-		var shard_start := shard.global_position
-		run.player.global_position = shard_start + Vector3(PICKUP_MAGNET_RADIUS - 0.25, 0.0, 0.0)
+		run.player.global_position = shard.global_position + Vector3(0.1, 0.0, 0.1)
 		run.player.velocity = Vector3.ZERO
-		var shard_distance_before := shard.global_position.distance_to(run.player.global_position)
-		await _step_physics_frames(3)
-		var shard_distance_after := shard.global_position.distance_to(run.player.global_position)
-		_check("cast shard pickup magnet lerps toward nearby player", shard_distance_after < shard_distance_before)
 		_check_eq("cast shard pickup magnet does not scale its Area3D body", shard.scale, Vector3.ONE)
 
 		shard.emit_signal(&"body_entered", run.player)
@@ -1308,7 +1465,9 @@ func _test_cast_shards_reclaim_on_victim_death_and_walkover_pickup() -> void:
 		_check("walk-over shard pickup spawns a detached sparkle pulse", _has_collect_pulse(shard_parent))
 	_check_eq("walk-over shard pickup reclaims the lodged stone", kit.cast_ammo(), 2)
 	_check_eq("walk-over shard pickup clears lodged ammo", kit.cast_lodged_ammo(), 0)
+	_check_eq("walk-over shard pickup notifies cast_reclaim twice total", _audio_event_count(&"cast_reclaim"), reclaim_before + 2)
 	_check("walk-over shard pickup does not require killing the victim", is_instance_valid(pickup_target) and not pickup_target.is_dead())
+	_restore_audio_event_probe(audio_probe)
 	await _cleanup_run(run)
 
 func _test_cast_kills_clear_director_ledger_exactly_once() -> void:
@@ -1853,14 +2012,33 @@ func _test_real_orchestrator_survivability_bands() -> void:
 	var half_dps := await _run_survivability_probe(&"retreat", 40.0, 4, 0.5, 1.0)
 	_check("halved-DPS mutation fails to clear four rooms inside the probe band", int(half_dps["rooms_cleared"]) < 4)
 
-	var doubled_damage := await _run_survivability_probe(&"stationary", 90.0, 1, 1.0, 2.0)
 	# Block-per-hit hull damage means a damage mutation only compresses the
 	# shield phase, so the honest catcher is the gap to the stationary run.
+	# HZ-107B: a single pre-loop `await` lets a load-dependent number of real
+	# physics ticks perturb spawn positions, and that jitter flapped a
+	# single-sample 1s margin ~50% of full-battery runs. Compare medians of
+	# three seeds per condition instead — the compression signal survives the
+	# jitter, single-run noise does not.
+	var stationary_samples: Array[float] = [float(stationary["survived_seconds"])]
+	var doubled_all_died := true
+	var doubled_samples: Array[float] = []
+	for probe_seed in [70, 71, 72]:
+		if probe_seed != 70:
+			var extra := await _run_survivability_probe(&"stationary", 90.0, 1, 1.0, 1.0, probe_seed)
+			stationary_samples.append(float(extra["survived_seconds"]))
+		var mutated := await _run_survivability_probe(&"stationary", 90.0, 1, 1.0, 2.0, probe_seed)
+		doubled_all_died = doubled_all_died and bool(mutated["died"])
+		doubled_samples.append(float(mutated["survived_seconds"]))
 	_check(
 		"doubled-contact-damage mutation dies measurably faster than the honest run",
-		bool(doubled_damage["died"])
-		and float(doubled_damage["survived_seconds"]) < float(stationary["survived_seconds"]) - 1.0
+		doubled_all_died
+		and _median(doubled_samples) < _median(stationary_samples) - 1.0
 	)
+
+func _median(values: Array[float]) -> float:
+	var sorted_values := values.duplicate()
+	sorted_values.sort()
+	return sorted_values[sorted_values.size() / 2]
 
 func _start_run_with_first_boon_exit(run) -> RoomGraph:
 	for seed in range(1, 80):
@@ -1886,14 +2064,15 @@ func _run_survivability_probe(
 	max_seconds: float,
 	target_rooms: int,
 	player_dps_scale: float = 1.0,
-	enemy_damage_multiplier: float = 1.0
+	enemy_damage_multiplier: float = 1.0,
+	rng_seed: int = 70
 ) -> Dictionary:
 	var run = await _new_run()
 	var entered_room_ids: Array[String] = []
 	run.room_loaded.connect(func(room: RoomNode, _room_root: Node3D) -> void:
 		entered_room_ids.append(room.room_id)
 	)
-	run.start_run("hearth", _empty_template_pool(), 8, _seeded_rng(70))
+	run.start_run("hearth", _empty_template_pool(), 8, _seeded_rng(rng_seed))
 	await process_frame
 	if entered_room_ids.is_empty() and run.run_controller.current_room_id != "":
 		entered_room_ids.append(run.run_controller.current_room_id)
@@ -2024,6 +2203,20 @@ func _ready_enemy_for_player_attack(run, enemy: GreyboxEnemy, offset: Vector3) -
 		enemy.tick_chase(run.player.global_position, maxf(enemy.spawn_windup_remaining(), 0.1))
 	enemy.global_position = run.player.global_position + offset
 	enemy.velocity = Vector3.ZERO
+
+func _park_live_enemies_far_from_player(run) -> void:
+	if run == null or run.player == null:
+		return
+	var index := 0
+	for enemy in _live_spawned_enemies(run):
+		if enemy == null or not is_instance_valid(enemy):
+			continue
+		enemy.clear_chase_target()
+		while enemy.is_spawning():
+			enemy.tick_chase(run.player.global_position, maxf(enemy.spawn_windup_remaining(), 0.1))
+		enemy.global_position = run.player.global_position + Vector3(30.0 + float(index), 0.0, 30.0)
+		enemy.velocity = Vector3.ZERO
+		index += 1
 
 func _player_forward(run) -> Vector3:
 	var default_forward := Vector3(0.0, 0.0, -1.0)
@@ -2283,6 +2476,15 @@ func _first_cast_shard_pickup(run) -> Area3D:
 			return shard as Area3D
 	return null
 
+func _cast_bolt_fx_nodes(parent: Node) -> Array[Node]:
+	var bolts: Array[Node] = []
+	if parent == null:
+		return bolts
+	for child in parent.get_children():
+		if child is Node and String(child.name).match("CastBoltFX*"):
+			bolts.append(child as Node)
+	return bolts
+
 func _has_collect_pulse(parent: Node) -> bool:
 	if parent == null:
 		return false
@@ -2410,6 +2612,27 @@ func _audio_event_count(event: StringName) -> int:
 	var counts: Dictionary = desc.get("sfx_event_counts", {})
 	return int(counts.get(String(event), 0))
 
+func _install_audio_event_probe() -> Dictionary:
+	var original := root.get_node_or_null("AudioDirector")
+	if original != null:
+		original.name = "AudioDirectorOriginalForProbe"
+	var probe := AudioEventProbe.new()
+	probe.name = "AudioDirector"
+	root.add_child(probe)
+	return {
+		"original": original,
+		"probe": probe,
+	}
+
+func _restore_audio_event_probe(handle: Dictionary) -> void:
+	var probe := handle.get("probe") as Node
+	if probe != null and is_instance_valid(probe):
+		root.remove_child(probe)
+		probe.free()
+	var original := handle.get("original") as Node
+	if original != null and is_instance_valid(original):
+		original.name = "AudioDirector"
+
 func _test_cast_during_transition_is_gated_with_ammo_intact() -> void:
 	var run = await _new_run()
 	run.start_run("hearth", _empty_template_pool(), 2, _seeded_rng(31))
@@ -2453,10 +2676,22 @@ func _test_failed_shard_reclaim_converts_to_ownerless_pickup() -> void:
 	victim.hp = 200.0
 	var victim_spawn_id: String = victim.spawn_id
 	var resolver: CombatResolvers = run.combat_resolvers
-	var shard_key: String = resolver._register_cast_shard(victim_spawn_id, victim.global_position)
+	var shard_key: String = resolver._register_cast_shard(victim_spawn_id, victim.global_position, victim)
 	# Ammo is already at max, so reclaim_cast_ammo(1) will return 0 → the
 	# lodged shard cannot be banked on victim death.
 	_check("orphan test precondition: ammo already full", kit.cast_ammo() >= 1)
+	var pickup := resolver._cast_shards_by_key.get(shard_key, {}).get("pickup") as Area3D
+	_check("orphan test starts with a live owner-tracking pickup", pickup != null and is_instance_valid(pickup))
+	if pickup != null:
+		victim.clear_chase_target()
+		var moved_owner_position := victim.global_position + Vector3(1.1, 0.0, -0.8)
+		victim.global_position = moved_owner_position
+		victim.velocity = Vector3.ZERO
+		await _step_physics_frames(2)
+		_check(
+			"owner-tracking pickup follows before death",
+			pickup.global_position.distance_to(moved_owner_position + Vector3(0.0, 1.1, 0.0)) < 0.05
+		)
 
 	victim.take_damage(999.0, false)
 	await process_frame
@@ -2466,4 +2701,12 @@ func _test_failed_shard_reclaim_converts_to_ownerless_pickup() -> void:
 	_check_eq("failed reclaim clears the dead spawn_id from the record", String(record.get("spawn_id", "missing")), "")
 	_check("failed reclaim keeps a live pickup", is_instance_valid(record.get("pickup")))
 	_check("failed reclaim leaves no dangling spawn-id mapping", not resolver._cast_shard_keys_by_spawn_id.has(victim_spawn_id))
+	var dropped_pickup := record.get("pickup") as Area3D
+	if dropped_pickup != null:
+		var drop_position := dropped_pickup.global_position
+		_check_almost("failed reclaim drops the lodged pickup to floor height", drop_position.y, 0.45)
+		if is_instance_valid(victim):
+			victim.global_position += Vector3(3.0, 0.0, 0.0)
+			await _step_physics_frames(2)
+			_check("dropped pickup stops tracking the dead owner", dropped_pickup.global_position.distance_to(drop_position) < 0.01)
 	await _cleanup_run(run)

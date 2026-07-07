@@ -11,6 +11,10 @@ extends Node
 const CombatEffectsScript := preload("res://scripts/room_graph/combat_effects.gd")
 const CastShardPickupScript := preload("res://scripts/abilities/cast_shard_pickup.gd")
 const SwingTimingScript := preload("res://scripts/room_graph/swing_timing.gd")
+const CAST_HAND_OFFSET := Vector3(0.0, 1.2, 0.0)
+const CAST_IMPACT_OFFSET := Vector3(0.0, 1.1, 0.0)
+const SOFT_LOCK_RANGE_MULTIPLIER: float = 1.15
+const SOFT_LOCK_HALF_ANGLE_DEGREES: float = 60.0
 
 var melee_range: float = 2.0
 var melee_arc_degrees: float = 120.0
@@ -18,6 +22,7 @@ var special_range: float = 2.75
 var special_arc_degrees: float = 160.0
 var cast_range: float = 8.0
 var cast_arc_degrees: float = 20.0
+var soft_lock_enabled: bool = true
 
 var _player_provider: Callable = Callable()
 var _ability_kit_provider: Callable = Callable()
@@ -40,6 +45,7 @@ func configure(context: Dictionary) -> void:
 	special_arc_degrees = float(context.get("special_arc_degrees", special_arc_degrees))
 	cast_range = float(context.get("cast_range", cast_range))
 	cast_arc_degrees = float(context.get("cast_arc_degrees", cast_arc_degrees))
+	soft_lock_enabled = bool(context.get("soft_lock_enabled", soft_lock_enabled))
 	_player_provider = context.get("player_provider", _player_provider) as Callable
 	_ability_kit_provider = context.get("ability_kit_provider", _ability_kit_provider) as Callable
 	_enemy_snapshot_provider = context.get("enemy_snapshot_provider", _enemy_snapshot_provider) as Callable
@@ -91,15 +97,27 @@ func tick_pending_swings(delta: float) -> void:
 		_pending_swings.erase(swing)
 		_fire_swing(swing)
 
-func _schedule_swing(damage: float, attack_range: float, arc_degrees: float, contact_delay: float) -> void:
+func _schedule_swing(
+	damage: float,
+	attack_range: float,
+	arc_degrees: float,
+	contact_delay: float,
+	opts: Dictionary = {}
+) -> void:
 	if contact_delay <= 0.0:
-		_fire_swing({"damage": damage, "range": attack_range, "arc": arc_degrees})
+		_fire_swing({
+			"damage": damage,
+			"range": attack_range,
+			"arc": arc_degrees,
+			"opts": opts.duplicate(true),
+		})
 		return
 	_pending_swings.append({
 		"time_remaining": contact_delay,
 		"damage": damage,
 		"range": attack_range,
 		"arc": arc_degrees,
+		"opts": opts.duplicate(true),
 	})
 
 func _fire_swing(swing: Dictionary) -> void:
@@ -108,10 +126,12 @@ func _fire_swing(swing: Dictionary) -> void:
 	var kit := _ability_kit()
 	if kit != null and kit.current_action_state() == PlayerActionStateMachine.ActionState.DASH:
 		return
+	var opts: Dictionary = swing.get("opts", {})
 	var hits := _resolve_player_arc_damage(
 		float(swing["damage"]),
 		float(swing["range"]),
-		float(swing["arc"])
+		float(swing["arc"]),
+		opts
 	)
 	if hits > 0:
 		_notify_audio_event(&"melee_hit")
@@ -158,9 +178,10 @@ func _on_player_attack_started(step: int, damage: float) -> void:
 	if not _combat_input_allowed():
 		return
 	var contact_delay := SwingTimingScript.melee_contact_delay(step)
+	_soft_lock_player_facing(melee_range)
 	_spawn_swing_read(melee_range, melee_arc_degrees, contact_delay, -1.0 if step == 2 else 1.0)
 	_apply_melee_lunge()
-	_schedule_swing(damage, melee_range, melee_arc_degrees, contact_delay)
+	_schedule_swing(damage, melee_range, melee_arc_degrees, contact_delay, _damage_pop_opts(&"attack", damage, step))
 
 ## HUD dash-slot cooldown surface: the payload's "ready" flag only reads right
 ## if the HUD re-renders exactly when a cooldown starts and ends.
@@ -188,8 +209,9 @@ func _on_player_special_started(potency: float) -> void:
 	if not _combat_input_allowed():
 		return
 	var contact_delay := SwingTimingScript.special_contact_delay()
+	_soft_lock_player_facing(special_range)
 	_spawn_swing_read(special_range, special_arc_degrees, contact_delay, 1.0)
-	_schedule_swing(potency, special_range, special_arc_degrees, contact_delay)
+	_schedule_swing(potency, special_range, special_arc_degrees, contact_delay, _damage_pop_opts(&"special", potency))
 
 func _on_player_cast_started(potency: float) -> void:
 	if not _combat_input_allowed():
@@ -198,7 +220,7 @@ func _on_player_cast_started(potency: float) -> void:
 		_refund_cast_ammo()
 		return
 	_notify_audio_event(&"cast_shot")
-	_resolve_player_cast_damage(potency)
+	_resolve_player_cast_damage(potency, _damage_pop_opts(&"cast", potency))
 
 func _on_player_cast_ammo_changed(_current_ammo: int, _max_ammo: int, _lodged_ammo: int) -> void:
 	_render_hud()
@@ -214,6 +236,7 @@ func _on_player_surge_started(damage: float, radius: float, stagger_seconds: flo
 	CombatEffectsScript.spawn_surge_shockwave(_shard_parent(), center, radius)
 	CombatEffectsScript.shake_active_camera(active_player, 0.18, 0.12)
 	var snapshot: Array = _enemy_snapshot()
+	var opts := _damage_pop_opts(&"surge", damage)
 	for candidate in snapshot:
 		if not (candidate is GreyboxEnemy) or not is_instance_valid(candidate):
 			continue
@@ -221,7 +244,7 @@ func _on_player_surge_started(damage: float, radius: float, stagger_seconds: flo
 		if enemy.is_dead() or enemy.is_spawning() or _xz_distance(enemy.global_position, center) > radius:
 			continue
 		enemy.stagger(stagger_seconds)
-		enemy.take_damage(damage, false)
+		enemy.take_damage(damage, false, opts)
 	_render_hud()
 
 ## Swing read: an arc trail that sweeps over the clip's windup->contact
@@ -240,7 +263,51 @@ func _spawn_swing_read(swing_range: float, arc_degrees: float, sweep_seconds: fl
 		sweep_sign
 	)
 
-func _resolve_player_arc_damage(damage: float, attack_range: float, arc_degrees: float) -> int:
+func _soft_lock_player_facing(ability_range: float) -> void:
+	if not soft_lock_enabled:
+		return
+	var active_player := _player()
+	if active_player == null:
+		return
+	var motor = active_player.get("motor")
+	if not (motor is Object):
+		return
+	var current_forward := _player_facing_direction(active_player)
+	var target_direction := _soft_lock_direction_to_nearest_enemy(
+		active_player.global_position,
+		current_forward,
+		ability_range * SOFT_LOCK_RANGE_MULTIPLIER
+	)
+	if target_direction == Vector3.ZERO:
+		return
+	(motor as Object).set("facing_direction", target_direction)
+
+func _soft_lock_direction_to_nearest_enemy(center: Vector3, forward: Vector3, max_range: float) -> Vector3:
+	if max_range <= 0.0:
+		return Vector3.ZERO
+	var flat_forward := _flat_forward_or_default(forward)
+	var minimum_dot := cos(deg_to_rad(SOFT_LOCK_HALF_ANGLE_DEGREES))
+	var best_direction := Vector3.ZERO
+	var best_distance := INF
+	for enemy in _damageable_enemy_snapshot():
+		var offset := Vector3(enemy.global_position.x - center.x, 0.0, enemy.global_position.z - center.z)
+		var distance := offset.length()
+		if distance <= 0.000001 or distance > max_range:
+			continue
+		var direction := offset / distance
+		if flat_forward.dot(direction) < minimum_dot:
+			continue
+		if distance < best_distance:
+			best_distance = distance
+			best_direction = direction
+	return best_direction
+
+func _resolve_player_arc_damage(
+	damage: float,
+	attack_range: float,
+	arc_degrees: float,
+	opts: Dictionary = {}
+) -> int:
 	var active_player := _player()
 	if active_player == null or damage <= 0.0:
 		_render_hud()
@@ -251,12 +318,12 @@ func _resolve_player_arc_damage(damage: float, attack_range: float, arc_degrees:
 	for enemy in _damageable_enemy_snapshot():
 		if not _is_enemy_in_player_arc(enemy, center, forward, attack_range, arc_degrees):
 			continue
-		enemy.take_damage(damage, true)
+		enemy.take_damage(damage, true, opts)
 		hits += 1
 	_render_hud()
 	return hits
 
-func _resolve_player_cast_damage(damage: float) -> GreyboxEnemy:
+func _resolve_player_cast_damage(damage: float, opts: Dictionary = {}) -> GreyboxEnemy:
 	var active_player := _player()
 	if active_player == null:
 		# Post-consume abort: never strand the stone (HZ-074 audit HIGH).
@@ -266,16 +333,48 @@ func _resolve_player_cast_damage(damage: float) -> GreyboxEnemy:
 	var center := active_player.global_position
 	var forward := _player_facing_direction(active_player)
 	var target := _first_enemy_in_cast_corridor(center, forward)
+	var cast_origin := center + CAST_HAND_OFFSET
 	if target == null:
-		_register_cast_shard("", center + _flat_forward_or_default(forward) * maxf(cast_range, 0.0))
+		var miss_position := center + _flat_forward_or_default(forward) * maxf(cast_range, 0.0)
+		CombatEffectsScript.spawn_cast_bolt(_shard_parent(), cast_origin, miss_position + CAST_IMPACT_OFFSET)
+		_register_cast_shard("", miss_position)
 		_render_hud()
 		return null
 
-	_register_cast_shard(target.spawn_id, target.global_position)
+	CombatEffectsScript.spawn_cast_bolt(_shard_parent(), cast_origin, target.global_position + CAST_IMPACT_OFFSET)
+	_register_cast_shard(target.spawn_id, target.global_position, target)
+	_notify_audio_event(&"cast_lodge")
 	if damage > 0.0:
-		target.take_damage(damage, true)
+		target.take_damage(damage, true, opts)
 	_render_hud()
 	return target
+
+func _damage_pop_opts(ability_id: StringName, current_damage: float, step: int = 0) -> Dictionary:
+	return {
+		"crit": false,
+		"boosted": _damage_exceeds_base(ability_id, current_damage, step),
+	}
+
+func _damage_exceeds_base(ability_id: StringName, current_damage: float, step: int = 0) -> bool:
+	var base_damage := _base_damage_for(ability_id, step)
+	return base_damage >= 0.0 and current_damage > base_damage + 0.001
+
+func _base_damage_for(ability_id: StringName, step: int = 0) -> float:
+	var kit := _ability_kit()
+	if kit == null and _bound_kit != null and is_instance_valid(_bound_kit):
+		kit = _bound_kit
+	if kit == null:
+		return -1.0
+	var ability := kit.get_ability(ability_id)
+	if ability == null:
+		return -1.0
+	if ability.has_method("damage_for_step"):
+		return float(ability.call("damage_for_step", step))
+	if ability_id == &"surge":
+		var surge_damage = ability.get("damage")
+		if surge_damage != null:
+			return float(surge_damage)
+	return ability.potency
 
 func _first_enemy_in_cast_corridor(center: Vector3, forward: Vector3) -> GreyboxEnemy:
 	var flat_forward := _flat_forward_or_default(forward)
@@ -354,10 +453,10 @@ func _refund_cast_ammo() -> void:
 	if kit != null:
 		kit.reclaim_cast_ammo(1)
 
-func _register_cast_shard(owner_spawn_id: String, position: Vector3) -> String:
+func _register_cast_shard(owner_spawn_id: String, position: Vector3, owner_enemy: Node3D = null) -> String:
 	_cast_shard_sequence += 1
 	var shard_key := "cast_shard:%d" % _cast_shard_sequence
-	var pickup := _spawn_cast_shard_pickup(shard_key, owner_spawn_id, position)
+	var pickup := _spawn_cast_shard_pickup(shard_key, owner_spawn_id, position, owner_enemy)
 	_cast_shards_by_key[shard_key] = {
 		"spawn_id": owner_spawn_id,
 		"pickup": pickup,
@@ -368,14 +467,14 @@ func _register_cast_shard(owner_spawn_id: String, position: Vector3) -> String:
 		_cast_shard_keys_by_spawn_id[owner_spawn_id] = keys
 	return shard_key
 
-func _spawn_cast_shard_pickup(shard_key: String, owner_spawn_id: String, position: Vector3) -> Area3D:
+func _spawn_cast_shard_pickup(shard_key: String, owner_spawn_id: String, position: Vector3, owner_enemy: Node3D = null) -> Area3D:
 	var parent := _shard_parent()
 	if parent == null:
 		return null
 
 	var pickup := CastShardPickupScript.new() as Area3D
 	pickup.name = "CastShardPickup%d" % _cast_shard_sequence
-	pickup.call("configure", shard_key, owner_spawn_id)
+	pickup.call("configure", shard_key, owner_spawn_id, owner_enemy)
 
 	var shape := CollisionShape3D.new()
 	var sphere := SphereShape3D.new()
@@ -399,7 +498,10 @@ func _spawn_cast_shard_pickup(shard_key: String, owner_spawn_id: String, positio
 	pickup.add_child(visual)
 
 	parent.add_child(pickup)
-	pickup.global_position = Vector3(position.x, maxf(position.y, 0.45), position.z)
+	if owner_enemy != null and is_instance_valid(owner_enemy):
+		pickup.global_position = owner_enemy.global_position + CAST_IMPACT_OFFSET
+	else:
+		pickup.global_position = Vector3(position.x, maxf(position.y, 0.45), position.z)
 	return pickup
 
 func _reclaim_cast_shards_for_spawn_id(spawn_id: String) -> void:
@@ -422,6 +524,7 @@ func _reclaim_cast_shard_key(shard_key: String) -> bool:
 	var reclaimed := kit.reclaim_cast_ammo(1)
 	if reclaimed <= 0:
 		return false
+	_notify_audio_event(&"cast_reclaim")
 	_remove_cast_shard_record(shard_key)
 	_render_hud()
 	return true
@@ -433,6 +536,9 @@ func _disown_cast_shard(shard_key: String) -> void:
 	var spawn_id := String(record.get("spawn_id", ""))
 	record["spawn_id"] = ""
 	_cast_shards_by_key[shard_key] = record
+	var pickup := record.get("pickup") as Node
+	if pickup != null and is_instance_valid(pickup) and pickup.has_method(&"release_owner_tracking"):
+		pickup.call(&"release_owner_tracking", true)
 	if spawn_id == "":
 		return
 	var keys: Array = _cast_shard_keys_by_spawn_id.get(spawn_id, [])

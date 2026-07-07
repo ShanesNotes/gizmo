@@ -1,0 +1,8 @@
+{
+  "asset_id": "custodian_boss",
+  "notice": "derived from asset pipeline canon; do not edit as source",
+  "method": "meshy-6 source (see git history 6d4c865, sha256 prefix recorded in night/assets PR #2) rigged + decimated in place: tools/animation/rig_custodian_boss.py (9-bone rig, clips idle/phase_shift/attack/attack_sweep/death; decimated 1351117->140000 faces AFTER skinning; texture capped 2048->1024)",
+  "strike_timing": {"attack": "1.20s overreach_slam telegraph", "attack_sweep": "0.90s audit_sweep telegraph", "source": "boss_brain.gd attack_definition telegraph_seconds"},
+  "date": "2026-07-07",
+  "spend": "0 credits (zero-spend night)"
+}
