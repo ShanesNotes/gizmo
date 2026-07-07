@@ -11,6 +11,7 @@ const PlayerVitalsScript := preload("res://scripts/player/player_vitals.gd")
 const CombatResolversScript := preload("res://scripts/room_graph/combat_resolvers.gd")
 const CustodianBossScript := preload("res://scripts/room_graph/custodian_boss.gd")
 const DressingLoaderScript := preload("res://scripts/room_graph/dressing_loader.gd")
+const DamageNumbersScript := preload("res://scripts/fx/damage_numbers.gd")
 
 const SCRAP_REWARD_VALUE := 10
 const SPARKS_REWARD_VALUE := 5
@@ -78,7 +79,12 @@ var enemies_felled: Dictionary = {
 	"elite": 0,
 	"boss": 0,
 }
+## Keeper Rank tally: combat-class rooms cleared without the player taking any
+## damage (guard or hull). REST/SHOP/REWARD self-clears never count.
+var flawless_rooms: int = 0
+var _room_flawless := true
 var active_run_bonuses: Dictionary = {}
+var damage_numbers_fx: Node = null
 var _boss_phase_count := 0
 var combat_resolvers: CombatResolvers = null
 var current_boss = null
@@ -171,10 +177,18 @@ func run_summary(victory: bool = false) -> Dictionary:
 		"sparks_banked": sparks_earned,
 		"sparks_rescued": sparks_earned,
 		"enemies_felled": enemies_felled.duplicate(),
+		"kills_total": _kills_total(),
+		"flawless_rooms": flawless_rooms,
 		"deepest_region": _deepest_region_name(),
 		"survived_seconds": elapsed_seconds,
 		"elapsed": elapsed_seconds,
 	}
+
+func _kills_total() -> int:
+	var total := 0
+	for value in enemies_felled.values():
+		total += maxi(0, int(value))
+	return total
 
 func _deepest_region_name() -> String:
 	if run_controller == null or run_controller.graph == null:
@@ -296,6 +310,7 @@ func active_spawn_ids() -> Array[String]:
 
 func _ensure_wiring() -> void:
 	var resolver := _ensure_combat_resolvers()
+	_ensure_damage_numbers_fx()
 	if player != null:
 		player_vitals = _ensure_player_vitals(player)
 		if player_vitals != null and not player_vitals.player_died.is_connected(_on_player_vitals_died):
@@ -304,6 +319,8 @@ func _ensure_wiring() -> void:
 			player_vitals.vitals_changed.connect(_on_player_vitals_changed)
 		if player_vitals != null and not player_vitals.spark_surge_changed.is_connected(_on_player_spark_surge_changed):
 			player_vitals.spark_surge_changed.connect(_on_player_spark_surge_changed)
+		if player_vitals != null and not player_vitals.damage_taken.is_connected(_on_player_damage_taken_stats):
+			player_vitals.damage_taken.connect(_on_player_damage_taken_stats)
 		var kit := _player_ability_kit()
 		if kit != null:
 			kit.bind_player_vitals(player_vitals)
@@ -371,6 +388,21 @@ func _ensure_combat_resolvers() -> CombatResolvers:
 	_configure_combat_resolvers(combat_resolvers)
 	return combat_resolvers
 
+func _ensure_damage_numbers_fx() -> Node:
+	if damage_numbers_fx != null and is_instance_valid(damage_numbers_fx):
+		return damage_numbers_fx
+	var parent := _cast_shard_parent()
+	if parent == null:
+		parent = self
+	var existing := parent.get_node_or_null("DamageNumbersFx")
+	if existing != null and existing.has_method("pop"):
+		damage_numbers_fx = existing
+		return damage_numbers_fx
+	damage_numbers_fx = DamageNumbersScript.new() as Node
+	damage_numbers_fx.name = "DamageNumbersFx"
+	parent.add_child(damage_numbers_fx)
+	return damage_numbers_fx
+
 func _configure_combat_resolvers(resolver: CombatResolvers) -> void:
 	if resolver == null:
 		return
@@ -425,6 +457,7 @@ func _load_current_room() -> void:
 	_select_dressing_variant(current_room_root)
 	_apply_grammar_dressing(current_room_root, room)
 	_spawn_index_in_room = 0
+	_room_flawless = true
 
 	_place_player_at_spawn(current_room_root)
 	bound_doors = _bind_room_doors(current_room_root)
@@ -1042,6 +1075,21 @@ func _on_run_controller_room_cleared(room: RoomNode) -> void:
 		return
 	_cleared_room_ids[room.room_id] = true
 	rooms_cleared += 1
+	if _room_flawless and _room_counts_for_flawless(room):
+		flawless_rooms += 1
+
+func _room_counts_for_flawless(room: RoomNode) -> bool:
+	if room == null or room.template == null:
+		return false
+	return room.template.room_type in [
+		RoomTemplate.RoomType.COMBAT,
+		RoomTemplate.RoomType.ELITE,
+		RoomTemplate.RoomType.BOSS,
+	]
+
+func _on_player_damage_taken_stats(absorbed: int, hp_damage: int) -> void:
+	if absorbed > 0 or hp_damage > 0:
+		_room_flawless = false
 
 func _on_boon_accepted(_boon: BoonDef) -> void:
 	boons_taken += 1
@@ -1308,6 +1356,8 @@ func _reset_run_stats() -> void:
 		"elite": 0,
 		"boss": 0,
 	}
+	flawless_rooms = 0
+	_room_flawless = true
 	_cleared_room_ids.clear()
 	_rewarded_exit_keys.clear()
 	_claimed_fixture_keys.clear()

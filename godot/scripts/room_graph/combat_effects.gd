@@ -33,6 +33,8 @@ const DAMAGE_NUMBER_CRIT_COLOR := Color(1.0, 0.62, 0.18, 1.0)
 const PLAYER_HIT_NUMBER_COLOR := Color(0.95, 0.25, 0.2, 1.0)
 const HIT_STOP_SECONDS := 0.05
 const HIT_STOP_TIME_SCALE := 0.05
+const CAST_BOLT_SPEED := 28.0
+const CAST_BOLT_TRAIL_SEGMENTS := 3
 
 static func spawn_damage_number(parent: Node, origin: Vector3, amount: float, color: Color = DAMAGE_NUMBER_COLOR) -> void:
 	if parent == null or not parent.is_inside_tree():
@@ -72,6 +74,57 @@ static func hit_stop(host: Node, duration: float = HIT_STOP_SECONDS) -> void:
 	var timer := host.get_tree().create_timer(maxf(duration, 0.01), true, false, true)
 	timer.timeout.connect(func() -> void:
 		Engine.time_scale = 1.0)
+
+## Cosmetic cast read: a fast ember projectile with a short ghost trail. The
+## resolver still applies damage immediately; this only makes the cast legible.
+static func spawn_cast_bolt(parent: Node, from: Vector3, to: Vector3) -> void:
+	if parent == null or not parent.is_inside_tree():
+		return
+	var root := Node3D.new()
+	root.name = "CastBoltFX"
+	parent.add_child(root)
+	root.global_position = from
+
+	var delta := to - from
+	var distance := delta.length()
+	var direction := delta / distance if distance > 0.000001 else Vector3(0.0, 0.0, -1.0)
+	var flight_seconds := maxf(distance / CAST_BOLT_SPEED, 0.03)
+
+	var core := MeshInstance3D.new()
+	core.name = "Core"
+	var core_mesh := SphereMesh.new()
+	core_mesh.radius = 0.12
+	core_mesh.height = 0.24
+	core.mesh = core_mesh
+	var core_material := _fx_material(FX_IDENTITY_RIM, 2.4)
+	core.material_override = core_material
+	root.add_child(core)
+
+	var trail_materials: Array[StandardMaterial3D] = []
+	for index in range(CAST_BOLT_TRAIL_SEGMENTS):
+		var ghost := MeshInstance3D.new()
+		ghost.name = "Trail%d" % (index + 1)
+		var ghost_mesh := SphereMesh.new()
+		ghost_mesh.radius = 0.09 - float(index) * 0.015
+		ghost_mesh.height = ghost_mesh.radius * 2.0
+		ghost.mesh = ghost_mesh
+		var alpha := 0.52 - float(index) * 0.14
+		var ghost_material := _fx_material(Color(FX_IDENTITY.r, FX_IDENTITY.g, FX_IDENTITY.b, alpha), 1.4)
+		ghost.material_override = ghost_material
+		root.add_child(ghost)
+		ghost.position = -direction * (0.22 + float(index) * 0.18)
+		trail_materials.append(ghost_material)
+
+	var tween := root.create_tween()
+	tween.set_parallel(true)
+	tween.tween_property(root, "global_position", to, flight_seconds) \
+		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tween.tween_property(core, "scale", Vector3.ONE * 0.45, flight_seconds)
+	tween.tween_property(core_material, "albedo_color:a", 0.0, flight_seconds * 0.55) \
+		.set_delay(flight_seconds * 0.45)
+	for material in trail_materials:
+		tween.tween_property(material, "albedo_color:a", 0.0, flight_seconds * 0.8)
+	tween.chain().tween_callback(root.queue_free)
 
 ## Cosmetic camera shake on the active 3D camera, if it is a RoomCamera-style
 ## rig exposing shake(). Safe headless: no camera means no-op.

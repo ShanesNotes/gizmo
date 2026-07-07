@@ -6,6 +6,7 @@ const RunSceneDefault := preload("res://scenes/run.tscn")
 const EndScreenSceneDefault := preload("res://scenes/end_screen.tscn")
 const MetaState := preload("res://scripts/meta/meta_state.gd")
 const RunLifecycle := preload("res://scripts/meta/run_lifecycle.gd")
+const KeeperRankScript := preload("res://scripts/meta/keeper_rank.gd")
 
 const MUSIC_STATE_HUB: StringName = &"HUB"
 const MUSIC_STATE_COMBAT: StringName = &"COMBAT"
@@ -212,6 +213,12 @@ func _return_to_hub(victory: bool) -> void:
 	last_return_was_victory = victory
 	meta_state.last_return_was_victory = victory
 
+	# Keeper Rank seam (core lane): tally the run into spark-shards before
+	# handle_player_death saves the meta state, so shards persist with the run.
+	var shards_earned: int = KeeperRankScript.shards_for_run(summary)
+	meta_state.bank_spark_shards(shards_earned)
+	meta_state.record_run_finished()
+
 	var save_error: Error = lifecycle.handle_player_death(meta_save_path)
 	if save_error != OK:
 		push_error("AppShell could not save meta state on hub return: %s" % save_error)
@@ -230,6 +237,12 @@ func _return_to_hub(victory: bool) -> void:
 	summary["victory"] = victory
 	summary["scrap_banked"] = banked_scrap
 	summary["sparks_banked"] = banked_sparks
+	# Additive Keeper Rank keys — end-screen/design lane reads these defensively.
+	summary["spark_shards_earned"] = shards_earned
+	summary["keeper_lifetime_shards"] = meta_state.lifetime_spark_shards
+	summary["keeper_rank"] = meta_state.keeper_rank()
+	summary["keeper_rank_title"] = KeeperRankScript.title_for_rank(meta_state.keeper_rank())
+	summary["keeper_shards_to_next_rank"] = KeeperRankScript.shards_to_next_rank(meta_state.lifetime_spark_shards)
 	summary["survived_seconds"] = maxf(
 		0.0,
 		float(summary.get("survived_seconds", summary.get("elapsed", 0.0)))
