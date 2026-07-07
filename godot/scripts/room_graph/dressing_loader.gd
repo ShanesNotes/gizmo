@@ -13,10 +13,19 @@ extends RefCounted
 
 const GRAMMAR_PATH := "res://resources/dressing_grammar.json"
 const ASSET_PATH_CANDIDATES := [
+	"res://assets/world_kits/clockwork_observatory/%s/%s.tscn",
+	"res://assets/world_kits/clockwork_observatory/%s_a/%s_a.tscn",
+	"res://assets/landmarks/%s/%s.tscn",
 	"res://assets/world_kit/%s/%s.tscn",
 	"res://assets/world_kit/%s.tscn",
 	"res://assets/props/%s/%s.tscn",
 ]
+## Kit wrappers ship at landmark scale; punctuation-band uses need a clamp
+## (gear_ring_01 is 30m at native scale — as mid punctuation it reads at ~3.6m).
+const ASSET_SCALE_OVERRIDES := {
+	"gear_ring_01": 0.12,
+	"debris_cluster_01": 0.7,
+}
 const PLACEHOLDER_COLORS := {
 	"low": Color(0.4, 0.34, 0.26, 1.0),
 	"mid": Color(0.5, 0.4, 0.26, 1.0),
@@ -66,11 +75,50 @@ static func plan_room(
 	for _i in range(rng.randi_range(int(debris_range[0]), int(debris_range[1]))):
 		placements.append(_place(rng, grammar, "debris_scatter", String(debris_members[rng.randi() % debris_members.size()]), "low", doors, bands))
 
+	# Threshold frames live IN the door aprons (grammar: threshold_frame →
+	# allowed_bands ["door_apron"]). Placement is derived from door layout
+	# alone — no rng consumed, so the scatter stream above stays stable.
+	var frame_members: Array = grammar.get("cluster_archetypes", {}).get("threshold_frame", {}).get("members", [])
+	if frame_members.has("bridge_arch_01"):
+		for door in doors:
+			var dnx := float(door.get("nx", 0.0))
+			var dnz := float(door.get("nz", 0.0))
+			placements.append({
+				"cluster_archetype": "threshold_frame",
+				"asset": "bridge_arch_01",
+				"nx": dnx * 0.9,
+				"nz": dnz * 0.9,
+				"height_class": "tall",
+				"yaw": 0.0 if absf(dnz) >= absf(dnx) else PI * 0.5,
+			})
+
 	return placements
+
+## Region identity layers: a room scene may carry a "RegionLayers" node whose
+## children are named "RegionLayer_<REGION>" (hand-authored palette lighting,
+## geometry accents, vista dressing per region). Only the layer matching the
+## run's region survives; selection is pure name-match — no rng consumed.
+static func apply_region_layer(room_root: Node3D, region_id: String) -> Node3D:
+	if room_root == null:
+		return null
+	var layers := room_root.find_child("RegionLayers", true, false)
+	if layers == null:
+		return null
+	var kept: Node3D = null
+	var wanted := "RegionLayer_%s" % region_id
+	for child in layers.get_children():
+		if child.name == wanted and child is Node3D:
+			kept = child as Node3D
+			continue
+		layers.remove_child(child)
+		child.queue_free()
+	return kept
 
 ## Builds the GrammarDressing layer under room_root. Reads the floor and door
 ## layout from the scene itself; safe no-op when the grammar or floor is absent.
 static func apply_to_room(room_root: Node3D, room_archetype: String, region_id: String, rng_seed: int) -> Node3D:
+	if room_root != null:
+		apply_region_layer(room_root, region_id)
 	var grammar := load_grammar()
 	if grammar.is_empty() or room_root == null:
 		return null
@@ -89,6 +137,10 @@ static func apply_to_room(room_root: Node3D, room_archetype: String, region_id: 
 	container.name = "GrammarDressing"
 	room_root.add_child(container)
 	for placement in plan_room(grammar, room_archetype, region_id, rng_seed, doors):
+		# A threshold frame frames a doorway; a greybox placeholder there would
+		# wall the door off. Skip the placement until the real arch is installed.
+		if String(placement["cluster_archetype"]) == "threshold_frame" and not _asset_scene_exists(String(placement["asset"])):
+			continue
 		var piece := _resolve_asset(String(placement["asset"]), String(placement["height_class"]))
 		piece.set_meta("cluster_archetype", String(placement["cluster_archetype"]))
 		piece.set_meta("asset_id", String(placement["asset"]))
@@ -156,6 +208,13 @@ static func _clear_of_doors(nx: float, nz: float, doors: Array, apron: float) ->
 			return false
 	return true
 
+static func _asset_scene_exists(asset_id: String) -> bool:
+	for pattern in ASSET_PATH_CANDIDATES:
+		var path: String = pattern % ([asset_id, asset_id] if pattern.count("%s") == 2 else [asset_id])
+		if ResourceLoader.exists(path, "PackedScene"):
+			return true
+	return false
+
 ## Asset-lab seam: prefer installed world-kit scenes; greybox placeholder until
 ## they land so the dressing layer works tonight and upgrades itself later.
 static func _resolve_asset(asset_id: String, height_class: String) -> Node3D:
@@ -166,7 +225,10 @@ static func _resolve_asset(asset_id: String, height_class: String) -> Node3D:
 			if scene != null:
 				var instance := scene.instantiate()
 				if instance is Node3D:
-					return instance as Node3D
+					var piece := instance as Node3D
+					if ASSET_SCALE_OVERRIDES.has(asset_id):
+						piece.scale = Vector3.ONE * float(ASSET_SCALE_OVERRIDES[asset_id])
+					return piece
 				instance.free()
 	return _placeholder_for(height_class)
 

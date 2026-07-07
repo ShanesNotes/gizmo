@@ -147,6 +147,7 @@ func _run_tests() -> void:
 	await _test_shop_room_clears_without_director_and_spawns_no_combat()
 	await _test_hazard_strips_damage_player_and_enemies()
 	await _test_grammar_dressing_dresses_rooms_deterministically()
+	await _test_region_layer_selection_keeps_only_matching_layer()
 	await _test_shop_purchases_spend_run_scrap_one_shot()
 	await _test_fixture_grants_are_one_shot_and_rest_guard_only()
 	await _test_player_death_disconnects_director_and_ignores_posthumous_enemy_deaths()
@@ -307,7 +308,10 @@ func _surviving_variant_name(run) -> String:
 	return ""
 
 func _test_inter_wave_delay_defers_next_spawn_requests() -> void:
-	const TEST_DELAY := 0.2
+	# 0.6s (was 0.2s): the strict-zero window must absorb the first-load hitch
+	# frame when room dressing resolves real kit scenes (GLB mesh registration
+	# can cost ~100-300ms on the room's first frame).
+	const TEST_DELAY := 0.6
 	var run = RunScene.instantiate()
 	run.auto_start = false
 	root.add_child(run)
@@ -1768,6 +1772,10 @@ func _test_grammar_dressing_dresses_rooms_deterministically() -> void:
 	var apron := float(grammar.get("bands", {}).get("door_apron_radius", 0.22))
 	var aprons_clear := true
 	for child in dressing.get_children():
+		# threshold_frame is the one cluster canon places IN the apron
+		# (grammar: allowed_bands ["door_apron"]).
+		if String(child.get_meta("cluster_archetype", "")) == "threshold_frame":
+			continue
 		var n := Vector2(child.position.x / half.x, child.position.z / half.y)
 		for door in run.current_room_root.find_children("RoomExit*", "Area3D", true, false):
 			var dn := Vector2(door.position.x / half.x, door.position.z / half.y)
@@ -1782,6 +1790,30 @@ func _test_grammar_dressing_dresses_rooms_deterministically() -> void:
 	var plan_c: Array = loader.plan_room(grammar, archetype, "HEARTH", 5)
 	_check("different seed yields a different dressing plan", str(plan_a) != str(plan_c))
 	await _cleanup_run(run)
+
+## Region identity layers (levels lane 2026-07-07): rooms may carry
+## RegionLayers/RegionLayer_<REGION> subtrees; only the run region's survives.
+func _test_region_layer_selection_keeps_only_matching_layer() -> void:
+	var loader = load("res://scripts/room_graph/dressing_loader.gd")
+	var root := Node3D.new()
+	var layers := Node3D.new()
+	layers.name = "RegionLayers"
+	root.add_child(layers)
+	for region in ["HEARTH", "BRASS", "RUST"]:
+		var layer := Node3D.new()
+		layer.name = "RegionLayer_%s" % region
+		layers.add_child(layer)
+
+	var kept: Node3D = loader.apply_region_layer(root, "BRASS")
+	_check("apply_region_layer returns the surviving layer", kept != null and kept.name == "RegionLayer_BRASS")
+	_check_eq("only the matching region layer survives", layers.get_child_count(), 1)
+	_check("non-matching layers are removed", layers.find_child("RegionLayer_HEARTH", false, false) == null)
+
+	var bare := Node3D.new()
+	_check("rooms without RegionLayers are a safe no-op", loader.apply_region_layer(bare, "BRASS") == null)
+	_check("unknown region leaves zero layers rather than a wrong one", loader.apply_region_layer(root, "NULL") == null and layers.get_child_count() == 0)
+	root.free()
+	bare.free()
 
 ## Playtest-2 live bug: SHOP rooms ran a RoomDirector and spawned combat waves.
 ## A shop must clear like REST/REWARD — no director, no spawns, doors open.

@@ -7,22 +7,47 @@
 [ext_resource type="PackedScene" path="res://scenes/npcs/saint_shrine.tscn" id="5_saint_shrine"]
 [ext_resource type="PackedScene" path="res://scenes/npcs/codex_book.tscn" id="6_codex_book"]
 [ext_resource type="PackedScene" path="res://scenes/npcs/margin_keeper.tscn" id="7_margin_keeper"]
+[ext_resource type="Sky" path="res://assets/sky/gizmo_cosmos_sky_panorama.tres" id="5_sky_cosmos"]
+[ext_resource type="PackedScene" path="res://assets/world_kits/clockwork_observatory/gear_ring_01/gear_ring_01.tscn" id="6_gear_ring"]
+[ext_resource type="PackedScene" path="res://assets/world_kits/clockwork_observatory/orrery_altar_01/orrery_altar_01.tscn" id="7_orrery"]
+[ext_resource type="PackedScene" path="res://assets/world_kits/clockwork_observatory/spark_crystal_cluster_01/spark_crystal_cluster_01.tscn" id="8_crystals"]
 
-[sub_resource type="ProceduralSkyMaterial" id="Sky_mat"]
-sky_top_color = Color(0.09, 0.07, 0.16, 1)
-sky_horizon_color = Color(0.35, 0.24, 0.12, 1)
-ground_bottom_color = Color(0.06, 0.05, 0.08, 1)
-ground_horizon_color = Color(0.24, 0.16, 0.1, 1)
+[sub_resource type="StandardMaterial3D" id="Mat_fire_ring"]
+albedo_color = Color(0.3, 0.24, 0.2, 1)
+roughness = 0.92
 
-[sub_resource type="Sky" id="Sky_res"]
-sky_material = SubResource("Sky_mat")
+[sub_resource type="StandardMaterial3D" id="Mat_fire_ember"]
+albedo_color = Color(1, 0.55, 0.18, 1)
+emission_enabled = true
+emission = Color(1, 0.42, 0.1, 1)
+emission_energy_multiplier = 2.6
+roughness = 0.5
+
+[sub_resource type="StandardMaterial3D" id="Mat_seat_stone"]
+albedo_color = Color(0.34, 0.3, 0.27, 1)
+roughness = 0.95
+
+[sub_resource type="CylinderMesh" id="Fire_ring_mesh"]
+top_radius = 0.85
+bottom_radius = 1.0
+height = 0.4
+
+[sub_resource type="CylinderMesh" id="Fire_ember_mesh"]
+top_radius = 0.5
+bottom_radius = 0.6
+height = 0.5
+
+[sub_resource type="BoxMesh" id="Seat_stone_mesh"]
+size = Vector3(1.3, 0.45, 0.7)
 
 [sub_resource type="ShaderMaterial" id="ShaderMat_grade"]
 shader = ExtResource("4_grade_shader")
 
 [sub_resource type="Environment" id="Env_res"]
 background_mode = 2
-sky = SubResource("Sky_res")
+sky = ExtResource("5_sky_cosmos")
+sky_rotation = Vector3(0, 0.6, 0)
+background_energy_multiplier = 0.9
 ambient_light_source = 2
 ambient_light_color = Color(1, 0.76, 0.48, 1)
 ambient_light_energy = 1.05
@@ -220,6 +245,82 @@ surface_material_override/0 = SubResource("Mat_violet")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.04, -5.25)
 mesh = SubResource("Door_pad_mesh")
 surface_material_override/0 = SubResource("Mat_door")
+
+[node name="Campfire" type="Node3D" parent="Geometry"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.2, 0, 2.2)
+
+[node name="FireRing" type="MeshInstance3D" parent="Geometry/Campfire"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.2, 0)
+mesh = SubResource("Fire_ring_mesh")
+surface_material_override/0 = SubResource("Mat_fire_ring")
+
+[node name="FireEmbers" type="MeshInstance3D" parent="Geometry/Campfire"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.42, 0)
+mesh = SubResource("Fire_ember_mesh")
+surface_material_override/0 = SubResource("Mat_fire_ember")
+
+[node name="FireLight" type="OmniLight3D" parent="Geometry/Campfire"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.4, 0)
+light_color = Color(1, 0.6, 0.26, 1)
+light_energy = 2.4
+omni_range = 7.5
+shadow_enabled = true
+
+[node name="SeatStoneA" type="MeshInstance3D" parent="Geometry/Campfire"]
+transform = Transform3D(0.866025, 0, -0.5, 0, 1, 0, 0.5, 0, 0.866025, -1.7, 0.22, 0.6)
+mesh = SubResource("Seat_stone_mesh")
+surface_material_override/0 = SubResource("Mat_seat_stone")
+
+[node name="SeatStoneB" type="MeshInstance3D" parent="Geometry/Campfire"]
+transform = Transform3D(0.707107, 0, 0.707107, 0, 1, 0, -0.707107, 0, 0.707107, 1.5, 0.22, 1.1)
+mesh = SubResource("Seat_stone_mesh")
+surface_material_override/0 = SubResource("Mat_seat_stone")
+
+[node name="HearthCrystals" type="Node3D" parent="Geometry" instance=ExtResource("8_crystals")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.6, 0, 3.9)
+
+[node name="MirrorFrameRing" type="Node3D" parent="Geometry" instance=ExtResource("6_gear_ring")]
+transform = Transform3D(0.0636396, 0, -0.0636396, 0, 0.09, 0, 0.0636396, 0, 0.0636396, -5.1, 1.5, -2.3)
+
+[node name="MirrorGlow" type="OmniLight3D" parent="Geometry"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.1, 1.6, -1.2)
+light_color = Color(0.6, 0.44, 0.9, 1)
+light_energy = 1.3
+omni_range = 5.0
+
+[node name="CodexDesk" type="Node3D" parent="Geometry" instance=ExtResource("7_orrery")]
+transform = Transform3D(-0.494975, 0, -0.494975, 0, 0.7, 0, 0.494975, 0, -0.494975, 4.8, 0, -2.4)
+
+[node name="CodexGlow" type="OmniLight3D" parent="Geometry"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.0, 1.5, -1.3)
+light_color = Color(1, 0.74, 0.4, 1)
+light_energy = 1.2
+omni_range = 5.0
+
+[node name="ThresholdRing" type="Node3D" parent="Geometry" instance=ExtResource("6_gear_ring")]
+transform = Transform3D(0.12, 0, 0, 0, 0.12, 0, 0, 0, 0.12, 0, 2.9, -5.95)
+
+[node name="BrazierWest" type="MeshInstance3D" parent="Geometry"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.6, 0.25, -5.2)
+mesh = SubResource("Fire_ember_mesh")
+surface_material_override/0 = SubResource("Mat_fire_ember")
+
+[node name="BrazierWestLight" type="OmniLight3D" parent="Geometry"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.6, 1.3, -5.0)
+light_color = Color(1, 0.62, 0.28, 1)
+light_energy = 1.5
+omni_range = 5.5
+
+[node name="BrazierEast" type="MeshInstance3D" parent="Geometry"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.6, 0.25, -5.2)
+mesh = SubResource("Fire_ember_mesh")
+surface_material_override/0 = SubResource("Mat_fire_ember")
+
+[node name="BrazierEastLight" type="OmniLight3D" parent="Geometry"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.6, 1.3, -5.0)
+light_color = Color(1, 0.62, 0.28, 1)
+light_energy = 1.5
+omni_range = 5.5
 
 [node name="HubSpawn" type="Marker3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 3.2)

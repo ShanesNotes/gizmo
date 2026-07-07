@@ -115,6 +115,7 @@ const SFX_EVENT_MANIFEST := {
 	&"gizmo_chirp_hurt": "res://audio/sfx/gizmo_chirp_hurt.wav",
 	&"gizmo_chirp_effort": "res://audio/sfx/gizmo_chirp_effort.wav",
 	&"gizmo_chirp_curious": "res://audio/sfx/gizmo_chirp_curious.wav",
+	&"room_clear_sting": "res://audio/music/sting_room_clear.ogg",
 }
 
 @export_range(0.0, 10.0, 0.01, "or_greater") var crossfade_seconds: float = 1.25
@@ -227,6 +228,10 @@ func set_zone_state(state: StringName) -> void:
 
 	_last_zone_request = state
 	_requested_music_state = state
+	# Room-clear sting rides the SFX pool; music-path bookkeeping is untouched.
+	if state == MUSIC_STATE_CLEARED:
+		notify_event(&"room_clear_sting")
+		_last_noop_reason = &""
 	# CLEARED is not a zone in v2: the zone stays, pressure relaxes elsewhere.
 	if _v2_loaded and state == &"CLEARED":
 		_last_noop_reason = &"v2_cleared_pressure_only"
