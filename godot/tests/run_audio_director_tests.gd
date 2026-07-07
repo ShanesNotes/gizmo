@@ -239,7 +239,7 @@ func _test_voice_seam_missing_and_unknown_lines_noop() -> void:
 	_check_eq("describe exposes voice_speaking", before.get("voice_speaking", true), false)
 
 	# Manifest-known line whose files do not exist yet (reserved dark entry).
-	director.play_voice_line(&"margin_codex_entry")
+	director.play_voice_line(&"margin_reserved_dark")
 	await process_frame
 	var missing: Dictionary = director.describe()
 	_check_eq("manifest line with no files is a silent no-op", String(missing.get("last_noop_reason", "")), "missing_voice_line")

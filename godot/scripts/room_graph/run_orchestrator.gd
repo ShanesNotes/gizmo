@@ -148,6 +148,7 @@ func start_run(
 			audio_director = get_node_or_null("/root/AudioDirector")
 		if audio_director != null and audio_director.has_method(&"begin_run_silence"):
 			audio_director.call(&"begin_run_silence")
+		_reset_voice_run_state()
 		_speak_voice(&"margin_sendoff")
 	# Meta seam: dash-charge upgrades flow into the kit (fable-combat handoff).
 	if _run_active:
@@ -433,6 +434,7 @@ func _load_current_room() -> void:
 	_render_hud_payloads()
 	if hud != null:
 		hud.render_region_toast(room.display_name)
+	_notify_audio_room_entered(room)
 	room_loaded.emit(room, current_room_root)
 
 ## Landmark dressing: combat rooms author 2-3 DressingVariant prop groups
@@ -1118,6 +1120,16 @@ func _notify_audio_vitals() -> void:
 		audio_director.call(&"notify_vitals",
 			float(player_vitals.guard), float(player_vitals.max_guard),
 			float(player_vitals.hp), float(player_vitals.max_hp))
+	# Threshold-address tracking (AUDIO region): damage + low-HP flags.
+	var voice_guard := float(player_vitals.guard)
+	var voice_hp := float(player_vitals.hp)
+	if _voice_last_guard >= 0.0 and (voice_guard < _voice_last_guard or voice_hp < _voice_last_hp):
+		_voice_room_took_damage = true
+	_voice_last_guard = voice_guard
+	_voice_last_hp = voice_hp
+	var voice_max_hp := maxf(float(player_vitals.max_hp), 1.0)
+	if voice_hp > 0.0 and voice_hp / voice_max_hp <= 0.2:
+		_voice_hp_ran_low = true
 
 func _maybe_speak_boss_warning() -> void:
 	## Margin warns once when the cleared room borders the boss chamber.
@@ -1128,6 +1140,60 @@ func _maybe_speak_boss_warning() -> void:
 		if next_room != null and _room_is_boss(next_room):
 			_speak_voice(&"margin_boss_warning")
 			return
+
+## ── AUDIO region: threshold address (lore lane; voice-scripts-v3) ──────────
+## The world addresses the player at thresholds: Margin colors each region
+## entry, the Pattern speaks before the boss door, and run milestones (first
+## flawless clear, near-death survive) get one line each per run. All state
+## here derives from data already flowing through the audio seam.
+var _voice_last_region_id := ""
+var _voice_flawless_spoken := false
+var _voice_near_death_spoken := false
+var _voice_pattern_door_spoken := false
+var _voice_room_took_damage := false
+var _voice_hp_ran_low := false
+var _voice_last_guard := -1.0
+var _voice_last_hp := -1.0
+var _voice_zone_state: StringName = &""
+
+func _reset_voice_run_state() -> void:
+	_voice_last_region_id = ""
+	_voice_flawless_spoken = false
+	_voice_near_death_spoken = false
+	_voice_pattern_door_spoken = false
+	_voice_room_took_damage = false
+	_voice_hp_ran_low = false
+	_voice_last_guard = -1.0
+	_voice_last_hp = -1.0
+	_voice_zone_state = &""
+
+func _notify_audio_room_entered(room: RoomNode) -> void:
+	if room == null:
+		return
+	_voice_room_took_damage = false
+	_voice_hp_ran_low = false
+	_voice_last_guard = -1.0
+	_voice_last_hp = -1.0
+	# The Pattern wins a same-room collision (one line at a time on the bus);
+	# Margin's cleared-room warning (_maybe_speak_boss_warning) stays as is.
+	if not _voice_pattern_door_spoken and _next_rooms_include_boss():
+		_voice_pattern_door_spoken = true
+		_voice_last_region_id = String(room.region_id)
+		_speak_voice(&"pattern_door")
+		return
+	var region_id := String(room.region_id)
+	if region_id != "" and region_id != _voice_last_region_id:
+		_voice_last_region_id = region_id
+		_speak_voice(StringName("margin_region_%s" % region_id.to_lower()))
+
+func _next_rooms_include_boss() -> bool:
+	if run_controller == null or run_controller.graph == null:
+		return false
+	for next_id in run_controller.graph.get_next_room_ids(run_controller.current_room_id):
+		var next_room := run_controller.graph.get_room(next_id)
+		if next_room != null and _room_is_boss(next_room):
+			return true
+	return false
 
 func _speak_voice(line_id: StringName) -> void:
 	if audio_director == null or not is_instance_valid(audio_director):
@@ -1148,6 +1214,18 @@ func _set_audio_zone_state(state: StringName) -> void:
 		return
 	if audio_director.has_method(&"set_zone_state"):
 		audio_director.call(&"set_zone_state", state)
+	# Threshold-address milestones (AUDIO region): fire on combat -> cleared,
+	# yielding to Margin's boss warning when the boss door is next.
+	if _voice_zone_state == ZONE_STATE_COMBAT and state == ZONE_STATE_CLEARED \
+			and not _next_rooms_include_boss():
+		if not _voice_near_death_spoken and _voice_hp_ran_low:
+			_voice_near_death_spoken = true
+			_speak_voice(&"margin_near_death")
+		elif not _voice_flawless_spoken and not _voice_room_took_damage \
+				and _voice_last_hp >= 0.0:
+			_voice_flawless_spoken = true
+			_speak_voice(&"margin_flawless")
+	_voice_zone_state = state
 
 func _clear_spawned_enemies() -> void:
 	for enemy in spawned_enemies.values():
