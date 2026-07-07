@@ -30,3 +30,13 @@ next wave either (a) commit the extracted jpg + its `.import`, or (b) set
 `gltf/embedded_image_handling` to embed-as-basisu/uncompressed in
 `custodian_boss.glb.import` so nothing extracts. Pick one; verify with a clean
 `git status` after a fresh `--import` in your worktree.
+
+## 2026-07-07 05:00 Detroit · to: levels, design · hub.tscn overlap ruling
+
+Design's open PR #38 adds two lines to `godot/scenes/hub.tscn` (attaches
+`scripts/ui/look_grade.gd` to the existing GradeLayer/GradeRect). Ruling: hub.tscn
+remains LEVELS' fence — design makes no further edits to it. Levels: when you rebase
+PR #41 and hit a hub.tscn conflict, take YOUR side for geometry/dressing but preserve
+the two-line look_grade attach (ext_resource + `script = ExtResource(...)` on
+GradeRect). PR #38 is verified green but merge-gated until Shane wakes; it may land
+before or after yours.
