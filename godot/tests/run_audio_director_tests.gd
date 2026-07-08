@@ -16,6 +16,7 @@ func _initialize() -> void:
 func _run_tests() -> void:
 	await _test_bus_layout_has_contract_buses()
 	await _test_master_bus_uses_hard_limiter()
+	await _test_music_bus_uses_sidechain_ducking()
 	await _test_manifest_music_cues_register_and_loop()
 	await _test_v2_run_arc_persists_across_rooms()
 	await _test_v2_arc_min_play_guard_and_bridge()
@@ -59,7 +60,7 @@ func _check_almost_eq(desc: String, actual: float, expected: float, tolerance: f
 	_check("%s (got %.4f, expected %.4f +/- %.4f)" % [desc, actual, expected, tolerance], absf(actual - expected) <= tolerance)
 
 func _test_bus_layout_has_contract_buses() -> void:
-	for bus_name in [&"Music", &"Ambience", &"SFX", &"UI", &"VoiceReserved"]:
+	for bus_name in [&"Music", &"Ambience", &"SFX", &"UI", &"Voice"]:
 		_check("bus layout exposes %s bus" % bus_name, AudioServer.get_bus_index(bus_name) >= 0)
 
 func _test_master_bus_uses_hard_limiter() -> void:
@@ -77,6 +78,30 @@ func _test_master_bus_uses_hard_limiter() -> void:
 		var hard_limiter := effect as AudioEffectHardLimiter
 		_check_almost_eq("hard limiter ceiling_db matches contract", hard_limiter.ceiling_db, -0.5)
 		_check_almost_eq("hard limiter pre_gain_db maps contract threshold", hard_limiter.pre_gain_db, -1.0)
+
+
+func _test_music_bus_uses_sidechain_ducking() -> void:
+	var music_index := AudioServer.get_bus_index(&"Music")
+	_check("Music bus exists for sidechain ducking", music_index >= 0)
+	if music_index < 0:
+		return
+	_check_eq("Music bus keeps inherited resting volume", AudioServer.get_bus_volume_db(music_index), -14.0)
+	_check("Music bus has Voice + SFX compressors", AudioServer.get_bus_effect_count(music_index) >= 2)
+	if AudioServer.get_bus_effect_count(music_index) < 2:
+		return
+	var voice_effect := AudioServer.get_bus_effect(music_index, 0)
+	var sfx_effect := AudioServer.get_bus_effect(music_index, 1)
+	_check("Music effect 0 is the Voice sidechain compressor", voice_effect is AudioEffectCompressor)
+	_check("Music effect 1 is the SFX sidechain compressor", sfx_effect is AudioEffectCompressor)
+	if voice_effect is AudioEffectCompressor:
+		var voice_compressor := voice_effect as AudioEffectCompressor
+		_check_eq("Voice compressor sidechains from Voice", voice_compressor.sidechain, &"Voice")
+		_check("Voice compressor is stronger than 6:1", voice_compressor.ratio >= 6.0)
+		_check("Voice compressor attacks quickly", voice_compressor.attack_us <= 5000.0)
+	if sfx_effect is AudioEffectCompressor:
+		var sfx_compressor := sfx_effect as AudioEffectCompressor
+		_check_eq("SFX compressor sidechains from SFX", sfx_compressor.sidechain, &"SFX")
+		_check("SFX compressor is moderate", sfx_compressor.ratio >= 2.0 and sfx_compressor.ratio <= 4.0)
 
 func _test_manifest_music_cues_register_and_loop() -> void:
 	var director := await _new_director()
@@ -268,21 +293,21 @@ func _test_voice_duck_and_restore_with_interrupt() -> void:
 	var speaking: Dictionary = director.describe()
 	_check_eq("voice line marks the director speaking", speaking.get("voice_speaking", false), true)
 	_check_eq("last_voice_line records the line id", String(speaking.get("last_voice_line", "")), "pattern_intro")
-	_check("voice lane rides the VoiceReserved bus", director._voice_player != null and director._voice_player.bus == "VoiceReserved")
+	_check("voice lane rides the Voice bus", director._voice_player != null and director._voice_player.bus == "Voice")
 	_check("voice lane is playing the registered stream", director._voice_player.stream == first)
-	_check_almost_eq("speaking ducks the Music bus by 4 dB", AudioServer.get_bus_volume_db(music_index), base_db - 4.0)
+	_check_almost_eq("voice playback leaves Music bus at resting gain", AudioServer.get_bus_volume_db(music_index), base_db)
 
 	# A new line interrupts the old one; the duck holds without stacking.
 	director.play_voice_line(&"margin_codex_entry")
 	await process_frame
 	_check("new line interrupts the previous stream", director._voice_player.stream == second)
-	_check_almost_eq("interrupt does not stack the duck", AudioServer.get_bus_volume_db(music_index), base_db - 4.0)
+	_check_almost_eq("interrupt keeps Music bus gain unchanged", AudioServer.get_bus_volume_db(music_index), base_db)
 
 	director._voice_player.emit_signal(&"finished")
 	await process_frame
 	var done: Dictionary = director.describe()
 	_check_eq("finished line clears voice_speaking", done.get("voice_speaking", true), false)
-	_check_almost_eq("finished line restores the Music bus", AudioServer.get_bus_volume_db(music_index), base_db)
+	_check_almost_eq("finished line leaves the Music bus at rest", AudioServer.get_bus_volume_db(music_index), base_db)
 	await _cleanup_director(director)
 	_check_almost_eq("director teardown leaves the Music bus at rest", AudioServer.get_bus_volume_db(music_index), base_db)
 
@@ -307,7 +332,9 @@ func _test_notify_event_known_unknown_and_round_robin_pool() -> void:
 	_check("AudioDirector exposes notify_event seam", director.has_method(&"notify_event"))
 	var before: Dictionary = director.describe()
 	var initial_count := int(before.get("sfx_play_count", -1))
-	_check_eq("SFX manifest registers fifteen events", int(before.get("sfx_registered_event_count", -1)), 15)
+	_check_eq("SFX manifest registers thirteen events", int(before.get("sfx_registered_event_count", -1)), 13)
+	_check_eq("UI manifest registers one event", int(before.get("ui_registered_event_count", -1)), 1)
+	_check_eq("music sting manifest registers one event", int(before.get("music_sting_registered_event_count", -1)), 1)
 	_check_eq("SFX pool preallocates eight players", int(before.get("sfx_pool_size", -1)), 8)
 
 	if director.has_method(&"notify_event"):
@@ -315,7 +342,7 @@ func _test_notify_event_known_unknown_and_round_robin_pool() -> void:
 	await process_frame
 	var unknown_desc: Dictionary = director.describe()
 	_check_eq("unknown SFX event is a silent no-op", int(unknown_desc.get("sfx_play_count", -1)), initial_count)
-	_check_eq("unknown SFX event records no-op reason", unknown_desc.get("last_noop_reason", ""), "unknown_sfx_event")
+	_check_eq("unknown SFX event records no-op reason", unknown_desc.get("last_noop_reason", ""), "unknown_audio_event")
 
 	var events: Array[StringName] = [
 		&"melee_hit",
@@ -325,8 +352,8 @@ func _test_notify_event_known_unknown_and_round_robin_pool() -> void:
 		&"guard_hit",
 		&"door_open",
 		&"boon_pickup",
-		&"ui_click",
 		&"dash_whoosh",
+		&"boss_telegraph",
 	]
 	for event in events:
 		if director.has_method(&"notify_event"):
@@ -336,7 +363,18 @@ func _test_notify_event_known_unknown_and_round_robin_pool() -> void:
 	var after: Dictionary = director.describe()
 	_check_eq("known SFX events advance the pool", int(after.get("sfx_play_count", -1)), initial_count + events.size())
 	_check_eq("round-robin wraps to the first SFX lane after eight plays", after.get("last_sfx_player", ""), "SfxLane1")
-	_check_eq("last known SFX event is recorded", after.get("last_sfx_event", ""), "dash_whoosh")
+	_check_eq("last known SFX event is recorded", after.get("last_sfx_event", ""), "boss_telegraph")
+
+	director.call(&"notify_event", &"ui_click")
+	await process_frame
+	_check_eq("UI click routes through the UI event seam", director.describe().get("last_ui_event", ""), "ui_click")
+	_check("UI click uses the UI bus", director._ui_player != null and director._ui_player.bus == "UI")
+	_check_eq("UI click does not increment SFX play count", int(director.describe().get("sfx_play_count", -1)), initial_count + events.size())
+
+	director.call(&"notify_event", &"room_clear")
+	await process_frame
+	_check_eq("room_clear fires the music sting seam", director.describe().get("last_music_sting_event", ""), "room_clear")
+	_check("room_clear sting uses the Music bus", director._music_sting_player != null and director._music_sting_player.bus == "Music")
 
 	await _cleanup_director(director)
 
@@ -421,7 +459,7 @@ func _test_unknown_cue_noops_without_stopping_current_music() -> void:
 	var cleared: Dictionary = director.describe()
 	_check_eq("v2 CLEARED is pressure-only (zone unchanged)", cleared["active_music_state"], "TEST_A")
 	_check_eq("v2 CLEARED records its no-op reason", cleared["last_noop_reason"], "v2_cleared_pressure_only")
-	_check_eq("CLEARED fires the room-clear sting", cleared["last_sfx_event"], "room_clear_sting")
+	_check_eq("CLEARED does not fire a sting without a room_clear event", cleared["last_music_sting_event"], "")
 
 	# Region ambience seam (levels lane 2026-07-07).
 	for region in ["HEARTH", "BRASS", "VERDANT", "RUST"]:
@@ -543,7 +581,9 @@ func _test_autoload_registration() -> void:
 	_check("AudioDirector autoload exposes describe", autoload.has_method(&"describe"))
 	var desc: Dictionary = autoload.describe()
 	_check_eq("AudioDirector autoload registers no legacy manifest cues", desc["registered_cue_count"], 0)
-	_check_eq("AudioDirector autoload registers manifest SFX events", int(desc.get("sfx_registered_event_count", -1)), 15)
+	_check_eq("AudioDirector autoload registers manifest SFX events", int(desc.get("sfx_registered_event_count", -1)), 13)
+	_check_eq("AudioDirector autoload registers UI events", int(desc.get("ui_registered_event_count", -1)), 1)
+	_check_eq("AudioDirector autoload registers music stings", int(desc.get("music_sting_registered_event_count", -1)), 1)
 	_check_eq("AudioDirector autoload owns pooled SFX players", int(desc.get("sfx_pool_size", -1)), 8)
 
 func _new_director() -> Node:
