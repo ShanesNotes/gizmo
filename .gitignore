@@ -70,3 +70,15 @@ godot/audio/gizmo-soundtrack/*.mp4
 
 # --- local temp/scratch (empty cruft dirs; keep clean for agents) ---
 tmp/
+
+# --- consolidated Gizmo constellation (2026-09-12) ---
+# These are independent git repos and a raw media pack relocated under ~/gizmo so
+# everything Gizmo lives in one folder. They keep their own GitHub origins and are
+# NOT submodules; the game repo must never track their contents. (.scratch/ above
+# already covers the relocated worktrees and the stale asset archive.)
+/asset-pipeline/
+/audio-canon/
+/design-system/
+/level-design/
+/lore/
+/soundtrack/

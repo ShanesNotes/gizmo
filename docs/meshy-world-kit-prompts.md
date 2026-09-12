@@ -1,8 +1,8 @@
 # Meshy World Kit Prompts — Clockwork Observatory v0
 
 Status: historical / forward prompt seed. The active asset-production queue now
-lives in `/home/ark/gizmo-asset-pipeline/queue/QUEUE.yaml`, with current briefs
-under `/home/ark/gizmo-asset-pipeline/briefs/`. Keep this file as provenance for
+lives in `/home/ark/gizmo/asset-pipeline/queue/QUEUE.yaml`, with current briefs
+under `/home/ark/gizmo/asset-pipeline/briefs/`. Keep this file as provenance for
 the early floor/pylon prompt direction; do not treat its target paths or checklist
 as live implementation state.
 

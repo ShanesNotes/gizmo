@@ -2,9 +2,9 @@
 
 `derived from audio canon; do not edit as source`
 
-Canon lives in `/home/ark/gizmo-audio-canon` (`canon/audio-contract.yaml`,
+Canon lives in `/home/ark/gizmo/audio-canon` (`canon/audio-contract.yaml`,
 `canon/cue-map.yaml`, `canon/motifs.yaml`, `canon/production-standards.yaml`). Media source of truth:
-`/home/ark/gizmo-soundtrack` (61 MP4 sources; sha256+durations in audio-canon
+`/home/ark/gizmo/soundtrack` (61 MP4 sources; sha256+durations in audio-canon
 `sources/soundtrack-v2/external-media-manifest.json`). Machine-readable map for
 implementation: `docs/audio/soundtrack_cue_map_v2.json`. **Nothing is auditioned;
 raw MP4s never ship — convert per audio-canon `godot-handoff.yaml`.**

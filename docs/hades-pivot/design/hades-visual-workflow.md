@@ -3,7 +3,7 @@
 Research pass to answer Shane's challenge: our internal "gorgeous" is calibrated against
 our own greybox, not against a shipped, gorgeous game. This document extracts Hades
 (Supergiant, 2020) craft into reproducible rules, then states what our gouache/storybook
-target keeps deliberately different, per `/home/ark/gizmo-design-system/canon/CANON.md`.
+target keeps deliberately different, per `/home/ark/gizmo/design-system/canon/CANON.md`.
 
 **Sourcing note up front:** I do not have pixel-measured screenshot data (no direct frame
 access with a color-picker). Every claim below is either (a) a direct quote/paraphrase from

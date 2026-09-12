@@ -4,7 +4,7 @@ Status: read-only classification for the Path A refactor prep pass. No files wer
 moved, deleted, staged, or rewritten to produce this manifest.
 
 2026-07-04 update: active Meshy/world-kit/asset manufacturing now belongs to the
-sibling asset-pipeline lab at `/home/ark/gizmo-asset-pipeline/`. This manifest is
+sibling asset-pipeline lab at `/home/ark/gizmo/asset-pipeline/`. This manifest is
 kept as historical classification and routing context, not as the active queue.
 
 ## Classification rule
@@ -21,12 +21,12 @@ kept as historical classification and routing context, not as the active queue.
 | Path | Why keep | Caution |
 |---|---|---|
 | `design-handoff/concept art/` | Strong visual source material for Gizmo, enemies, world tone, beacon/tower/workshop/spark references. | Art reference only; concept-art wave/boss implications do not override ADR 0003. |
-| `docs/world-asset-prompts.md` | Forward asset-prompt backlog for image-model → Meshy → Godot workflow. | Snapshot only; reconcile into `/home/ark/gizmo-asset-pipeline/briefs/` before any run. |
+| `docs/world-asset-prompts.md` | Forward asset-prompt backlog for image-model → Meshy → Godot workflow. | Snapshot only; reconcile into `/home/ark/gizmo/asset-pipeline/briefs/` before any run. |
 | `docs/first-level-visual-asset-backlog.md` | Prioritizes top hero/environment assets and records generated reference/Meshy decisions. | Backlog/history, not proof that assets are committed or active. |
 | `docs/_archive/meshy-connector-preflight.md` | Historical operational evidence for Meshy connector availability. | Credential/tool availability must be rechecked before credit-spending work. |
 | `docs/_archive/meshy-mcp-setup.md` | Historical local setup instructions for Meshy MCP. | Never commit `.env` or API keys; run from user shell when needed. |
 | `docs/meshy-world-kit-prompts.md` | First-pass GLB prompt templates for floor/pylon kit. | Snapshot only; current cost, prompt, wrapper, proof, and handoff gates live in the asset-pipeline lab. |
-| `/home/ark/gizmo-audio-canon/sources/ambient/Ambient-sound-design.md` | User-authored sonic identity; strong material language for brass/stone/blue energy. | Contains retired wave-counter/wave-layer language; use identity sections, not mechanics sections, until cleaned. |
+| `/home/ark/gizmo/audio-canon/sources/ambient/Ambient-sound-design.md` | User-authored sonic identity; strong material language for brass/stone/blue energy. | Contains retired wave-counter/wave-layer language; use identity sections, not mechanics sections, until cleaned. |
 | `tools/audio/generate_clockwork_sfx.py` | Reproducible local synthesis path for grounded SFX. | Only promote if matching audio assets/tests are promoted too. |
 | `tools/blender/gen_floating_islands.py` and `tools/blender/optimize_glb.py` | Useful author-time geometry/optimization tools. | ADR 0008 says baker/stagehand tooling must be rebuilt with manifests/provenance before active use. |
 | `tools/run-meshy-mcp.sh` | Useful MCP launcher wrapper. | Keep credentials local; confirm package/API state before use. |

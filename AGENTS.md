@@ -47,8 +47,8 @@ structure. See `CONTEXT.md` and ADRs 0003/0006.
 - `docs/afk/queue/` — current local AFK work queue and landing order until imported/synced
   to GitHub issues.
 - `tools/godot/run_all_checks.sh` — one-command Godot verification gate.
-- `/home/ark/gizmo-audio-canon/` — soundtrack, ambience, SFX canon and Godot audio handoff.
-- `/home/ark/gizmo-soundtrack/` — raw soundtrack source pack; source media only, never
+- `/home/ark/gizmo/audio-canon/` — soundtrack, ambience, SFX canon and Godot audio handoff.
+- `/home/ark/gizmo/soundtrack/` — raw soundtrack source pack; source media only, never
   direct runtime imports.
 
 ## Work rules

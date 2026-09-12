@@ -25,7 +25,7 @@ folders:
     - CONTEXT.md
     - CLAUDE.md
   lore:
-    path: /home/ark/gizmo-lore
+    path: /home/ark/gizmo/lore
     role: lorekeeper / narrative continuity clean canvas
     owns:
     - backstory
@@ -38,7 +38,7 @@ folders:
     - canon/LORE_CANON.md
     - canon/glossary.yaml
   visual_symbolic_design:
-    path: /home/ark/gizmo-design-system
+    path: /home/ark/gizmo/design-system
     role: visual-symbolic design canon clean canvas
     owns:
     - visual-symbolic canon
@@ -54,7 +54,7 @@ folders:
     - canon/acceptance-gates.md
     - canon/shader-matrix.yaml
   level_design:
-    path: /home/ark/gizmo-level-design
+    path: /home/ark/gizmo/level-design
     role: spatial-symbolic level/map design clean canvas
     owns:
     - route grammar
@@ -70,7 +70,7 @@ folders:
     - canon/LEVEL_CANON.md
     - canon/acceptance-gates.md
   audio_canon:
-    path: /home/ark/gizmo-audio-canon
+    path: /home/ark/gizmo/audio-canon
     role: audio engineer / sonic canon clean canvas
     owns:
     - soundtrack cue map
@@ -82,7 +82,7 @@ folders:
     - canon/AUDIO_CANON.md
     - canon/acceptance-gates.md
   soundtrack_source:
-    path: /home/ark/gizmo-soundtrack
+    path: /home/ark/gizmo/soundtrack
     role: raw soundtrack source pack and composition-source folder
     owns:
     - raw soundtrack MP4 sources
@@ -93,7 +93,7 @@ folders:
     - README.md
     - NAVIGATION.yaml
   asset_pipeline:
-    path: /home/ark/gizmo-asset-pipeline
+    path: /home/ark/gizmo/asset-pipeline
     role: asset technical director / canon-to-asset manufacturing lab
     owns:
     - asset briefs
@@ -137,8 +137,8 @@ seam_matrix:
     target: godot/audio/
     mechanism: explicit scripted handoff (canon/godot-handoff.yaml); raw source media never lands in godot/audio/
     owner_files: [canon/godot-handoff.yaml, canon/cue-map.yaml]
-    source_media_root: /home/ark/gizmo-soundtrack
-    current_state: EMPTY BY DESIGN (.gitkeep + README only); raw soundtrack source media lives outside the game repo at /home/ark/gizmo-soundtrack
+    source_media_root: /home/ark/gizmo/soundtrack
+    current_state: EMPTY BY DESIGN (.gitkeep + README only); raw soundtrack source media lives outside the game repo at /home/ark/gizmo/soundtrack
   level_design_to_game:
     what: data-only route graphs + region grammar (no standing landing dir; scenes baked in-repo after handoff)
     target: docs/reference/shattered-meridian-region-graph.json (shared world-grammar source)
@@ -170,31 +170,31 @@ cross_domain_artifacts:
   artifacts:
   - id: shader-look-matrix
     title: shader / look-pipeline matrix (stylization stack -> motif/token/gate mapping)
-    location: /home/ark/gizmo-design-system/canon/shader-matrix.yaml
+    location: /home/ark/gizmo/design-system/canon/shader-matrix.yaml
     hosted_by: visual_symbolic_design
     owner: visual_symbolic_design
     consumers: [asset_pipeline, game, level_design]
     status: canon-mapping; individual shader adoptions proposed/candidate (render-target is a TARGET, gate G12)
   - id: meridian-concordance
     title: the Meridian Concordance (visual canon -> exact sibling ids; lore/level/audio/asset bindings with falsifiable pass/reject)
-    location: /home/ark/gizmo-design-system/canon/concordance.yaml
+    location: /home/ark/gizmo/design-system/canon/concordance.yaml
     hosted_by: visual_symbolic_design
     owner: visual_symbolic_design   # owns the VISUAL half only; sibling ids are read-only citations (ADR 0003)
     consumers: [lore, level_design, audio_canon, asset_pipeline, game]
-    evidence: /home/ark/gizmo-design-system/extraction/cross-domain-binding-ledger.md
-    reconciliation: /home/ark/gizmo-design-system/extraction/reconciliation-2026-07-03-concordance.md
+    evidence: /home/ark/gizmo/design-system/extraction/cross-domain-binding-ledger.md
+    reconciliation: /home/ark/gizmo/design-system/extraction/reconciliation-2026-07-03-concordance.md
     status: canon-mapping; entries candidate until each sibling promotes its side (gates G13/G14)
   - id: gouache-storybook-shader-research
     title: Godot art-style assets research (gouache/storybook stylization; 48 link-verified assets)
-    location: /home/ark/gizmo-level-design/archive/extraction/godot-art-style-assets-research/  # digest: extraction/digests/godot-art-style-assets-digest.md
+    location: /home/ark/gizmo/level-design/archive/extraction/godot-art-style-assets-research/  # digest: extraction/digests/godot-art-style-assets-digest.md
     hosted_by: level_design
     owners: [visual_symbolic_design, asset_pipeline]   # look-facets / manufacturing-facets
     consumers: [visual_symbolic_design, asset_pipeline, game, level_design]
-    reconciliation: /home/ark/gizmo-design-system/extraction/shader-research-reconciliation.md
+    reconciliation: /home/ark/gizmo/design-system/extraction/shader-research-reconciliation.md
     status: research-evidence (not canon; routed per-asset by owning_sibling)
   - id: soundtrack-v2-source-pack
     title: raw Gizmo soundtrack v2 source pack (MP4 cues plus composition/map docs)
-    location: /home/ark/gizmo-soundtrack
+    location: /home/ark/gizmo/soundtrack
     hosted_by: soundtrack_source
     owner: audio_canon
     consumers: [audio_canon, game]

@@ -40,8 +40,8 @@ npm --prefix game-src-phaser run build
 - `tools/godot/run_all_checks.sh` — one-command Godot verification gate.
 
 ## Sibling sources
-- `/home/ark/gizmo-audio-canon/` owns soundtrack cue maps, ambience/SFX grammar, and Godot audio handoff rules.
-- `/home/ark/gizmo-soundtrack/` is the local raw soundtrack source pack: MP4 cues plus composition/map docs. It is not a runtime import folder; convert through audio-canon before placing OGG/WAV derivatives in `godot/audio/`.
+- `/home/ark/gizmo/audio-canon/` owns soundtrack cue maps, ambience/SFX grammar, and Godot audio handoff rules.
+- `/home/ark/gizmo/soundtrack/` is the local raw soundtrack source pack: MP4 cues plus composition/map docs. It is not a runtime import folder; convert through audio-canon before placing OGG/WAV derivatives in `godot/audio/`.
 
 ## Notes
 - The Godot 3D rebuild is the active path; the Phaser source + web build are the reference (mechanics + feel).

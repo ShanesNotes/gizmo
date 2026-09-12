@@ -7,4 +7,4 @@ These docs describe the **pre-refactor art approach** that was quarantined on 20
 `docs/path-a-shattered-meridian-spec.md`, and the discipline repos (e.g. `gizmo-audio-canon/`,
 `gizmo-design-system/`, `gizmo-asset-pipeline/`). Forward-looking prompt/backlog docs stayed
 in `docs/`, but active Meshy/world-kit production now routes through
-`/home/ark/gizmo-asset-pipeline/queue/QUEUE.yaml`.
+`/home/ark/gizmo/asset-pipeline/queue/QUEUE.yaml`.

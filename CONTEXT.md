@@ -98,11 +98,11 @@ not a v1 blocker. Don't expand scope past Path A until it ships.
   `design-handoff/ART_DIRECTION.md`. Art is generated fresh (meshy.ai / ludo) to
   match the HUD; do not hand-author.
 - **Asset manufacturing / Meshy world kits** →
-  `/home/ark/gizmo-asset-pipeline/queue/QUEUE.yaml` and that lab's `briefs/`,
+  `/home/ark/gizmo/asset-pipeline/queue/QUEUE.yaml` and that lab's `briefs/`,
   `canon/`, and promotion reports. Root prompt docs are backlog/provenance only.
-- **Audio canon / runtime handoff** → `/home/ark/gizmo-audio-canon/` owns cue maps,
+- **Audio canon / runtime handoff** → `/home/ark/gizmo/audio-canon/` owns cue maps,
   ambience/SFX grammar, and the Godot handoff law. **Raw soundtrack source media** lives in
-  `/home/ark/gizmo-soundtrack/`; those MP4s are source material only and must be converted
+  `/home/ark/gizmo/soundtrack/`; those MP4s are source material only and must be converted
   through audio-canon rules before anything lands in `godot/audio/`.
 - **3D character model** → `godot/assets/gizmo.glb` (meshy.ai: 53-bone rig, no clips yet)
 - **The Godot build** → `godot/` (snake_case files, PascalCase nodes)

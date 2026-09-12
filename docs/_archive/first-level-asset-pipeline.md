@@ -63,7 +63,7 @@ New imported ambience/SFX in `godot/audio`:
 | `ambiance/distant-stone-fracture.mp3` | 14.00s | Environmental stinger. |
 | `sfx/foot-contact.mp3` | 0.76s | Gizmo footstep or contact one-shot. |
 
-Soundtrack source files were moved to `/home/ark/gizmo-audio-canon/sources/soundtrack/*.mp4`; `godot/audio/` is reserved for explicit Godot-ready imports. Godot gameplay audio should use `AudioStreamMP3`, `AudioStreamOggVorbis`, or WAV for short SFX. Convert selected source cues to `.ogg` or `.mp3` before playlist wiring.
+Soundtrack source files were moved to `/home/ark/gizmo/audio-canon/sources/soundtrack/*.mp4`; `godot/audio/` is reserved for explicit Godot-ready imports. Godot gameplay audio should use `AudioStreamMP3`, `AudioStreamOggVorbis`, or WAV for short SFX. Convert selected source cues to `.ogg` or `.mp3` before playlist wiring.
 
 ## Current Godot scene usage
 

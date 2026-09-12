@@ -21,13 +21,13 @@ The downloaded soundtrack was in `.mp4` containers, so the first-level subset wa
 converted to OGG Vorbis for Godot playback:
 
 1. `godot/audio/music/first_level_01_clockwork_heartbeat.ogg`
-   - Source: `/home/ark/gizmo-audio-canon/sources/soundtrack/1.1-Clockwork_Heartbeat.mp4`
+   - Source: `/home/ark/gizmo/audio-canon/sources/soundtrack/1.1-Clockwork_Heartbeat.mp4`
    - Duration: ~82.64s
 2. `godot/audio/music/first_level_02_sunlight_on_brass.ogg`
-   - Source: `/home/ark/gizmo-audio-canon/sources/soundtrack/1.2-Sunlight_on_Brass.mp4`
+   - Source: `/home/ark/gizmo/audio-canon/sources/soundtrack/1.2-Sunlight_on_Brass.mp4`
    - Duration: ~64.74s
 3. `godot/audio/music/first_level_03_clockwork_wanderer.ogg`
-   - Source: `/home/ark/gizmo-audio-canon/sources/soundtrack/2.1-Clockwork_Wanderer.mp4`
+   - Source: `/home/ark/gizmo/audio-canon/sources/soundtrack/2.1-Clockwork_Wanderer.mp4`
    - Duration: ~112.90s
 
 `GameAudio` plays the first track on scene start and advances/wraps the playlist
@@ -38,7 +38,7 @@ when a track finishes.
 The first-level ambience was redesigned on 2026-06-21 to avoid distracting always-on noise.
 The default autoplay bed now uses only two quiet layers:
 
-- `loops/first_level_sanctuary_bed.ogg` — broad quiet atmosphere converted from `/home/ark/gizmo-audio-canon/sources/soundtrack/Ambient-B-Map-Sanctuary_of_Fallen_Stars.mp4`.
+- `loops/first_level_sanctuary_bed.ogg` — broad quiet atmosphere converted from `/home/ark/gizmo/audio-canon/sources/soundtrack/Ambient-B-Map-Sanctuary_of_Fallen_Stars.mp4`.
 - `core-matrix-long.mp3` — low mechanical room tone.
 
 Beacon/proximity sounds are staged as non-autoplay accent layers instead of constant bed noise:

@@ -8,9 +8,9 @@ watches merges, commits binding arbitration to `docs/hades-pivot/queue/SHERIFF-A
 on gizmo-3d, writes the morning consolidated report.
 
 Launch order (stagger ~1 min so worktree creation doesn't race the git lock):
-1. core (`cd /home/ark/gizmo`) → 2. levels (`cd /home/ark/gizmo-level-design`)
-→ 3. assets (`cd /home/ark/gizmo-asset-pipeline`) → 4. design
-(`cd /home/ark/gizmo-design-system`) → 5. lore (`cd /home/ark/gizmo-lore`).
+1. core (`cd /home/ark/gizmo`) → 2. levels (`cd /home/ark/gizmo/level-design`)
+→ 3. assets (`cd /home/ark/gizmo/asset-pipeline`) → 4. design
+(`cd /home/ark/gizmo/design-system`) → 5. lore (`cd /home/ark/gizmo/lore`).
 
 Merge-priority on conflicts (latecomer rebases and yields outside its fence):
 core > levels > assets > design > lore.
@@ -75,13 +75,13 @@ Cross-fence need = minimal seam + flag it in the PR description.
 NIGHT PROTOCOL (lane id: core):
 - Own worktree, never edit /home/ark/gizmo or /home/ark/gizmo-hades working trees:
   git -C /home/ark/gizmo fetch origin && git -C /home/ark/gizmo worktree add
-  /home/ark/gizmo-night-core -b night/core origin/gizmo-3d   (retry on index.lock; reuse
-  if it exists). Then cp /home/ark/gizmo/.env /home/ark/gizmo-night-core/.env
+  /home/ark/gizmo/.scratch/worktrees/night-core -b night/core origin/gizmo-3d   (retry on index.lock; reuse
+  if it exists). Then cp /home/ark/gizmo/.env /home/ark/gizmo/.scratch/worktrees/night-core/.env
 - Baseline before building: ${GODOT_BIN:-godot} --headless --path godot --import
   --user-data-dir /tmp/godot-night-core   then the full battery (tools/godot/
   run_all_checks.sh or every res://tests/run_*.gd) with the same --user-data-dir.
   Known flake: the stochastic contact-damage check — rerun once before believing red.
-- Codev: spawn Codex via nohup codex exec -C /home/ark/gizmo-night-core -s
+- Codev: spawn Codex via nohup codex exec -C /home/ark/gizmo/.scratch/worktrees/night-core -s
   workspace-write --skip-git-repo-check "$(cat brief.md)" > codex-N.log 2>&1 &
   (account default model is GPT-5.5-Codex; pin xhigh reasoning via -c
   model_reasoning_effort=xhigh if codex exec --help shows it). Write briefs like specs:
@@ -115,7 +115,7 @@ anything visible.
 
 ---
 
-## NIGHTLOOP-2 · WORLD & LEVELS — paste into Fable session opened in /home/ark/gizmo-level-design
+## NIGHTLOOP-2 · WORLD & LEVELS — paste into Fable session opened in /home/ark/gizmo/level-design
 
 ```
 You are the WORLD & LEVELS lane lead for Gizmo's overnight build — a Fable 5 orchestrator
@@ -158,7 +158,7 @@ NIGHT BACKLOG (ordered):
    is yours; screen-space door UI is the design lane's.
 6. STAGE TWO TEASE — a locked gate at stage one's end: different palette bleeding
    through, one vista beyond. Pure presentation, no graph changes (graph shape = core).
-7. AMBIENT SOUND — spawn a lab-native subagent in /home/ark/gizmo-audio-canon (cd there,
+7. AMBIENT SOUND — spawn a lab-native subagent in /home/ark/gizmo/audio-canon (cd there,
    boot per ITS CLAUDE.md, ledger-before-use + provenance sidecars, ElevenLabs
    sound-generation SEQUENTIAL-ONLY — parallel calls corrupt to ~593-byte stubs): one
    ambient bed per region matching its palette/mood, gate-passed OGG only into
@@ -208,7 +208,7 @@ NIGHT PROTOCOL (lane id: levels): identical to all lanes —
 
 ---
 
-## NIGHTLOOP-3 · CHARACTERS & ANIMATION — paste into Fable session opened in /home/ark/gizmo-asset-pipeline
+## NIGHTLOOP-3 · CHARACTERS & ANIMATION — paste into Fable session opened in /home/ark/gizmo/asset-pipeline
 
 ```
 You are the CHARACTERS & ANIMATION lane lead for Gizmo's overnight build — a Fable 5
@@ -266,13 +266,13 @@ promoted asset: fixed-camera proof screenshot in docs/hades-pivot/ceremony/asset
 
 NIGHT PROTOCOL (lane id: assets): identical to all lanes —
 - Worktree: git -C /home/ark/gizmo fetch origin && git -C /home/ark/gizmo worktree add
-  /home/ark/gizmo-night-assets -b night/assets origin/gizmo-3d (retry on lock; reuse if
+  /home/ark/gizmo/.scratch/worktrees/night-assets -b night/assets origin/gizmo-3d (retry on lock; reuse if
   exists); cp /home/ark/gizmo/.env into it; never edit /home/ark/gizmo or
   /home/ark/gizmo-hades directly. Raw generations stay lab-side; only gate-passed
   assets land in godot/assets/.
 - Baseline: headless --import + full battery, --user-data-dir /tmp/godot-night-assets;
   stochastic contact-damage flake → rerun once.
-- Codex codev: nohup codex exec -C /home/ark/gizmo-night-assets -s workspace-write
+- Codex codev: nohup codex exec -C /home/ark/gizmo/.scratch/worktrees/night-assets -s workspace-write
   --skip-git-repo-check "$(cat brief.md)" > codex-N.log 2>&1 &  (xhigh if supported).
   Codex slices: wrapper .tscn authoring, clip-table registration, Blender python
   (bpy) cleanup scripts, metadata/promotion boilerplate. 2-3 briefs always queued;
@@ -292,7 +292,7 @@ NIGHT PROTOCOL (lane id: assets): identical to all lanes —
 
 ---
 
-## NIGHTLOOP-4 · UI/UX & THE GOUACHE LOOK — paste into Fable session opened in /home/ark/gizmo-design-system
+## NIGHTLOOP-4 · UI/UX & THE GOUACHE LOOK — paste into Fable session opened in /home/ark/gizmo/design-system
 
 ```
 You are the UI/UX & LOOK lane lead for Gizmo's overnight build — a Fable 5 orchestrator
@@ -349,12 +349,12 @@ G12 before/afters — Shane sees these with coffee).
 
 NIGHT PROTOCOL (lane id: design): identical to all lanes —
 - Worktree: git -C /home/ark/gizmo fetch origin && git -C /home/ark/gizmo worktree add
-  /home/ark/gizmo-night-design -b night/design origin/gizmo-3d (retry on lock; reuse if
+  /home/ark/gizmo/.scratch/worktrees/night-design -b night/design origin/gizmo-3d (retry on lock; reuse if
   exists); cp /home/ark/gizmo/.env into it; never edit /home/ark/gizmo or
   /home/ark/gizmo-hades directly.
 - Baseline: headless --import + full battery, --user-data-dir /tmp/godot-night-design;
   stochastic contact-damage flake → rerun once.
-- Codex codev: nohup codex exec -C /home/ark/gizmo-night-design -s workspace-write
+- Codex codev: nohup codex exec -C /home/ark/gizmo/.scratch/worktrees/night-design -s workspace-write
   --skip-git-repo-check "$(cat brief.md)" > codex-N.log 2>&1 &  (xhigh if supported).
   Codex slices: shader code off your matrix spec, Control-tree assembly, theme .tres
   authoring, screen layouts. 2-3 briefs queued; liveness = log mtime + 'tokens used';
@@ -374,7 +374,7 @@ NIGHT PROTOCOL (lane id: design): identical to all lanes —
 
 ---
 
-## NIGHTLOOP-5 · LORE, VOICE & CINEMATICS — paste into Fable session opened in /home/ark/gizmo-lore
+## NIGHTLOOP-5 · LORE, VOICE & CINEMATICS — paste into Fable session opened in /home/ark/gizmo/lore
 
 ```
 You are the LORE, VOICE & CINEMATICS lane lead for Gizmo's overnight build — a Fable 5
@@ -448,12 +448,12 @@ godot/audio/. Screenshot/record the opening beats to docs/hades-pivot/ceremony/l
 
 NIGHT PROTOCOL (lane id: lore): identical to all lanes —
 - Worktree: git -C /home/ark/gizmo fetch origin && git -C /home/ark/gizmo worktree add
-  /home/ark/gizmo-night-lore -b night/lore origin/gizmo-3d (retry on lock; reuse if
+  /home/ark/gizmo/.scratch/worktrees/night-lore -b night/lore origin/gizmo-3d (retry on lock; reuse if
   exists); cp /home/ark/gizmo/.env into it; never edit /home/ark/gizmo or
   /home/ark/gizmo-hades directly.
 - Baseline: headless --import + full battery, --user-data-dir /tmp/godot-night-lore;
   stochastic contact-damage flake → rerun once.
-- Codex codev: nohup codex exec -C /home/ark/gizmo-night-lore -s workspace-write
+- Codex codev: nohup codex exec -C /home/ark/gizmo/.scratch/worktrees/night-lore -s workspace-write
   --skip-git-repo-check "$(cat brief.md)" > codex-N.log 2>&1 &  (xhigh if supported).
   Codex slices: opening-sequence staging code, NPC interact scripts, codex unlock
   system, manifest registration + tests. 2-3 briefs queued; liveness = log mtime +

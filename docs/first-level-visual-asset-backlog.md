@@ -3,8 +3,8 @@
 Date: 2026-06-21
 Scope: OMX G006 — image-reference to Meshy asset pipeline for a hookier first level.
 Status: forward backlog / historical evidence. The active asset queue now lives
-in `/home/ark/gizmo-asset-pipeline/queue/QUEUE.yaml`; current production briefs
-live under `/home/ark/gizmo-asset-pipeline/briefs/`. Treat paths in this file as
+in `/home/ark/gizmo/asset-pipeline/queue/QUEUE.yaml`; current production briefs
+live under `/home/ark/gizmo/asset-pipeline/briefs/`. Treat paths in this file as
 old intended handoff targets unless a promotion report installs them into the
 game repo.
 

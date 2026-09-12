@@ -4,9 +4,9 @@ Status: forward backlog snapshot. Active asset manufacturing, prompt locking,
 Meshy spend logging, wrapper proof, and game-repo handoff now live in the sibling
 asset-pipeline lab:
 
-- queue: `/home/ark/gizmo-asset-pipeline/queue/QUEUE.yaml`
-- briefs: `/home/ark/gizmo-asset-pipeline/briefs/`
-- policy/runbook: `/home/ark/gizmo-asset-pipeline/docs/AFK_RUNBOOK.md`
+- queue: `/home/ark/gizmo/asset-pipeline/queue/QUEUE.yaml`
+- briefs: `/home/ark/gizmo/asset-pipeline/briefs/`
+- policy/runbook: `/home/ark/gizmo/asset-pipeline/docs/AFK_RUNBOOK.md`
 
 Use this file as source-reference prompt intent only. Do not paste it directly
 into production or assume its suggested `godot/assets/...` paths exist in the

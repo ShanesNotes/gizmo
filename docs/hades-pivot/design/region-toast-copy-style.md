@@ -1,7 +1,7 @@
 # Region-toast copy style — note from the lore pass (2026-07-06)
 
 For the agent wiring region-entry toasts. Do not treat this as canon; canon lives in
-`/home/ark/gizmo-lore/canon/` (`copy-rules.yaml`, `world-structure.md`). This is the
+`/home/ark/gizmo/lore/canon/` (`copy-rules.yaml`, `world-structure.md`). This is the
 applied style so toast copy lands inside the fence on the first try.
 
 ## Shape

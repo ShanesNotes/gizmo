@@ -5,7 +5,7 @@
 allowed to edit it this wave), `default_bus_layout.tres`, and `app_shell.gd` hookup. May
 NOT touch `room_graph/`, `enemies/`, `player/`, `run.tscn`, or `godot/audio/` assets.
 
-Contract authority: `/home/ark/gizmo-audio-canon/canon/audio-contract.yaml` (read-only —
+Contract authority: `/home/ark/gizmo/audio-canon/canon/audio-contract.yaml` (read-only —
 sibling canvas owns it). No audio files land in `godot/audio/` in this ticket; the lab's
 gate pipeline owns conversion. The seam must run silent-but-correct with placeholder
 streams so the asset handoff later is drop-in by cue_id.

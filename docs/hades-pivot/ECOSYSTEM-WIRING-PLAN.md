@@ -8,7 +8,7 @@ repo implements; cross-domain conflicts get reconciliation notes, never silent p
 ## The miss, named precisely
 The demo wave (PR #28) consumed the audio-canon *interface contract* but not the
 *produced material behind it*. Two ElevenLabs loops were generated while
-`/home/ark/gizmo-soundtrack` holds **61 produced MP4 cues** — a dual-variant score
+`/home/ark/gizmo/soundtrack` holds **61 produced MP4 cues** — a dual-variant score
 (JAZZ = world under pressure / ORCH = world at ease, provisional polarity) with SEG
 (zone segments), AMB (ambient beds incl. vitals overlay), and BRG (12 authored
 transition bridges), plus a machine-readable cue map

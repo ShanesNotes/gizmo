@@ -90,8 +90,8 @@ Accounting stays strict — ledger-before-use, provenance sidecar, no-retry-spen
 reject. Capability map + seams: `docs/audio/elevenlabs-capability.md` (game side),
 `docs/generation-prompts/03-sfx-elevenlabs.md`, `docs/generation-prompts/04-music-ambience.md`,
 and `docs/generation-prompts/05-voices-elevenlabs.md`. Audio-canon production law is in
-`/home/ark/gizmo-audio-canon/canon/production-standards.yaml` and
-`/home/ark/gizmo-audio-canon/canon/godot-handoff.yaml`. Only converted, gate-passed OGG/WAV
+`/home/ark/gizmo/audio-canon/canon/production-standards.yaml` and
+`/home/ark/gizmo/audio-canon/canon/godot-handoff.yaml`. Only converted, gate-passed OGG/WAV
 land in `godot/audio/`; raw generations stay in the audio lab's sources.
 
 ## Teaching contract (explicit `/teach` mode)
