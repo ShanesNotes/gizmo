@@ -1,0 +1,308 @@
+Here’s the first-pass research verdict: **your best bang for buck is a small, coherent pilot library, not a giant unsorted hoard.** Buy/download enough to cover one 2D prototype and one 3D prototype, build the asset indexer, then expand only where the catalog proves agent-friendly.
+
+## Best-value asset stack for Godot
+
+| Priority |                    Asset source | Why it’s high ROI                                                                                                                                                                                                                                                                                                                             | Main caveat                                                                                                                                                               |
+| -------- | ------------------------------: | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **1**    | **Kenney Game Assets All-in-1** | This is the easiest “buy first” choice: **$19.95** for **60,000+ assets** across 2D sprites, 3D models, audio, UI, fonts, and formats including PNG, SVG, OBJ, FBX, GLTF, and OGG. It is also CC0, so commercial use and no attribution are allowed. ([itch.io][1])                                                                           | Broad library, but not always genre-cohesive enough for a polished final game by itself.                                                                                  |
+| **2**    |                  **Quaternius** | Excellent for **3D low-poly procedural worlds**. The free library is CC0, and paid/source tiers for some kits include Godot project files, collisions, shaders, and source files. The Downtown City MegaKit, for example, lists 300+ modular environment pieces and includes Godot v4.5 project support in its source tier. ([Quaternius][2]) | Best value is in modular world kits, not necessarily characters/UI.                                                                                                       |
+| **3**    |                      **KayKit** | Strong cohesive low-poly style. The Complete KayKit collection is listed at **$150** and includes current plus future KayKit packs, which makes sense only if you want to commit to that visual identity. Individual packs include Godot-friendly formats like FBX/GLTF and many are CC0. ([itch.io][3])                                      | $150 is overkill until you know the style fits your games.                                                                                                                |
+| **4**    |             **Ninja Adventure** | Great free/PWYW 2D top-down starter: animated characters, monsters, bosses, items, tilesets, SFX, music, UI, fonts, and Godot 3.x/4.x example projects. It is CC0 and commercial use is allowed. ([itch.io][4])                                                                                                                               | Pixel-art fantasy/ninja aesthetic; less useful for non-RPG/non-top-down games.                                                                                            |
+| **5**    |     **LimeZu Modern Interiors** | Very cheap 2D pixel-art interiors: the complete version unlocks at **$1.50+**, with thousands of PNG assets, animated objects, modular tiles, and multiple tile sizes. Commercial use is allowed in the paid license, but credits are required and redistribution/resale is restricted. ([itch.io][5])                                        | License is not as permissive as CC0; track attribution carefully.                                                                                                         |
+| **6**    |           **ELV Games bundles** | Good for 2D platformer/pixel pipelines. The Complete Platformer World page lists 15 tilesets and 3,000+ tiles, with Godot compatibility; the larger Game Assets Mega Bundle page lists 200+ packs and many asset types. ([itch.io][6])                                                                                                        | License requires credit and includes restrictions such as no AI training, resale, crypto/NFT uses, or claiming assets as your own. ([itch.io][7])                         |
+| **7**    |         **Synty POLYGON packs** | High-quality 3D low-poly production assets. Synty now has a Godot-filtered collection, and as of July 8, 2026, Synty says its 12th birthday sale runs July 8–28 NZT with many asset packs 30–50% off and some rotating deals up to 80% off. ([Synty Store][8])                                                                                | Godot support is pack-specific; Synty says most packs target Unity/Unreal and official support is only Unity/Unreal, so check each pack before buying. ([Synty Store][9]) |
+
+## What I’d buy/download first
+
+For a **$20–$50 pilot library**, I’d start with:
+
+**Kenney All-in-1** as the baseline. It is cheap, huge, CC0, and format-diverse, so it gives your coding agent a clean, low-risk corpus to learn how to navigate. ([itch.io][1])
+
+Then add **free Quaternius packs** plus one targeted Quaternius source kit only after choosing a 3D genre. Quaternius is especially useful for 3D procedural tests because the better kits are modular, low-poly, CC0-friendly, and may include Godot-ready source projects with collisions and shaders. ([Quaternius][2])
+
+For 2D, download **Ninja Adventure** immediately, then add **LimeZu Modern Interiors** for modern top-down interiors or **ELV Complete Platformer World** for platformers. Ninja Adventure is the cleanest license-wise because it is CC0; LimeZu and ELV are useful but need attribution/license tracking. ([itch.io][4])
+
+I would **not** start with Synty as the base corpus unless you specifically want the POLYGON look. Synty can be excellent value on deep sale, but it is higher-friction for Godot because compatibility varies by pack and official support is still Unity/Unreal-focused. ([Synty Store][9])
+
+## Buying rules for “agent-friendly” asset packs
+
+The most important buying criterion is not raw asset count. It is whether the pack can become a clean, searchable, procedural-friendly database.
+
+Prioritize packs with:
+
+| Feature                              | Why it matters for your coding agent                                                                                                                                                                             |
+| ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **CC0 or simple commercial license** | Reduces risk when the agent copies, recombines, generates scenes, or creates derived project files. Kenney, Quaternius, and Ninja Adventure are strong here. ([Kenney][10])                                      |
+| **GLB/GLTF support**                 | Godot’s docs recommend glTF/GLB for 3D import, and `.glb` keeps meshes, textures, and materials packaged more cleanly. ([Godot Engine documentation][11])                                                        |
+| **Godot projects or demos included** | Saves time on import settings, collisions, materials, TileSets, scenes, and animation setup. Ninja Adventure includes Godot 3.x/4.x projects; some Quaternius source kits include Godot projects. ([itch.io][4]) |
+| **Modular grid pieces**              | Essential for procedural 3D worlds using Godot GridMap/MeshLibrary or custom placement systems. Godot GridMap is designed for 3D tile-based maps using MeshLibrary tiles. ([Godot Engine documentation][12])     |
+| **Autotile/terrain-ready 2D tiles**  | Godot TileSet terrain sets can automatically choose correct tile variants for connected terrain, which is very useful for procedural 2D maps. ([Godot Engine documentation][13])                                 |
+| **Consistent style across packs**    | Agentic generation gets much better when the library has one visual grammar: same scale, palette, camera angle, material style, and naming conventions.                                                          |
+| **Source files included**            | `.blend`, `.aseprite`, layered files, or source projects help normalize pivots, scale, collisions, and exports.                                                                                                  |
+
+## Recommended local asset-folder design
+
+Do **not** dump all purchased assets directly into one Godot project. Keep a master asset vault, then generate clean Godot-ready subsets.
+
+Use something like:
+
+```text
+GameAssets/
+  _sources/
+    kenney/
+      kenney_all_in_1/
+        raw/
+        license/
+        manifest_original/
+    quaternius/
+      downtown_city_megakit/
+        raw/
+        source/
+        godot_project_original/
+        license/
+    limezu/
+      modern_interiors/
+        raw/
+        license/
+  _normalized/
+    2d/
+    3d/
+    audio/
+    ui/
+  _godot_ready/
+    prototypes/
+      topdown_2d/
+      lowpoly_3d/
+  _indexes/
+    assets.sqlite
+    asset_index.jsonl
+    asset_index.csv
+    procedural_palette.json
+    contact_sheet.html
+```
+
+The key is to preserve the original downloaded packs untouched under `_sources/`, then let your coding agent produce normalized derivatives under `_normalized/` and `_godot_ready/`.
+
+## Asset index matrix schema
+
+Your indexing agent should create at least three layers of metadata: **legal**, **technical**, and **semantic/procedural**.
+
+A good universal row format:
+
+```json
+{
+  "asset_id": "quaternius_downtown_building_corner_001",
+  "source_creator": "Quaternius",
+  "source_pack": "Downtown City MegaKit",
+  "license": "CC0",
+  "commercial_allowed": true,
+  "attribution_required": false,
+  "ai_training_restricted": false,
+  "original_path": "_sources/quaternius/downtown/raw/buildings/corner_001.glb",
+  "normalized_path": "_normalized/3d/buildings/corner_001.glb",
+  "godot_scene_path": "_godot_ready/lowpoly_3d/buildings/corner_001.tscn",
+  "asset_type": "3d_model",
+  "category": "building",
+  "sub_category": "corner_building",
+  "style": "low_poly",
+  "theme": ["urban", "downtown", "modern"],
+  "procedural_roles": ["street_corner", "city_block_edge"],
+  "snap_grid_size": 1.0,
+  "pivot_location": "bottom_center",
+  "has_collision": true,
+  "has_navigation": false,
+  "dimensions_meters": [4.0, 6.0, 4.0],
+  "poly_count": 1840,
+  "materials": ["wall", "roof", "window"],
+  "texture_count": 2,
+  "preview_image": "_indexes/previews/quaternius_downtown_building_corner_001.png",
+  "agent_notes": "Use on city block corners. Pairs with straight_building_* and road_corner_*."
+}
+```
+
+For **2D tiles**, add:
+
+```json
+{
+  "tile_size": [16, 16],
+  "sheet_path": "tileset.png",
+  "atlas_rect": [64, 32, 16, 16],
+  "view_type": "top_down",
+  "terrain_type": "grass",
+  "terrain_neighbors": ["north", "east", "south", "west"],
+  "collision_shape": "solid",
+  "z_layer": "ground",
+  "autotile_ready": true
+}
+```
+
+For **3D modular kits**, add:
+
+```json
+{
+  "format": "glb",
+  "source_format_available": ["blend", "fbx", "obj"],
+  "gridmap_candidate": true,
+  "mesh_library_id": "urban_buildings",
+  "snap_axes": ["x", "z"],
+  "rotation_steps_degrees": 90,
+  "entry_points": ["north", "south"],
+  "walkable_surfaces": ["roof", "sidewalk"],
+  "occluder_candidate": true
+}
+```
+
+## Godot import strategy
+
+For 3D, prefer packs that ship `.glb` or `.gltf`. Godot’s 3D import docs recommend glTF/GLB; `.blend` import works through Blender’s glTF pipeline, while FBX support exists in Godot 4.3+ through the ufbx importer but still tends to be a higher-risk path than GLB/GLTF. ([Godot Engine documentation][11])
+
+For 2D procedural maps, target Godot **TileSet terrain sets** and `TileMapLayer` terrain APIs. Godot’s terrain system is intended to place correct tile variants automatically, and `set_cells_terrain_connect()` / `set_cells_terrain_path()` are useful for procedural placement when the tileset contains the needed terrain combinations. ([Godot Engine documentation][13])
+
+For 3D procedural maps, target **GridMap + MeshLibrary** for blocky/modular worlds. Godot’s GridMap system is basically the 3D equivalent of TileMap-style level building: it places meshes from a MeshLibrary on a grid, and those tiles can carry collision and navigation data. ([Godot Engine documentation][12])
+
+## Procedural world generation approach
+
+For **2D**, build a `procedural_palette.json` that groups tiles into:
+
+```text
+biome -> terrain -> transition tiles -> decoration -> props -> enemies -> interactables
+```
+
+Then use generation methods like:
+
+```text
+noise map -> biome map -> terrain pass -> terrain connect/autotile pass -> prop scatter -> enemy spawn -> navigation/collision validation
+```
+
+This works especially well with Kenney, Ninja Adventure, LimeZu, and ELV-style tilesets because they include tiles, props, UI, and effects rather than just isolated sprites. ([itch.io][1])
+
+For **3D**, build palettes like:
+
+```text
+terrain_tiles
+road_tiles
+building_modules
+door_modules
+wall_modules
+roof_modules
+props
+foliage
+characters
+vehicles
+lighting
+```
+
+Then use one of these procedural approaches:
+
+| Method                                      | Best for                                   |
+| ------------------------------------------- | ------------------------------------------ |
+| **Grid/random weighted placement**          | Fast roguelike arenas, towns, block worlds |
+| **BSP rooms/corridors**                     | Dungeons, interiors, bases                 |
+| **Wave Function Collapse**                  | Modular kits with strict adjacency rules   |
+| **Noise + scatter**                         | Forests, islands, terrain decoration       |
+| **Road graph + zoning**                     | Cities, towns, racetracks                  |
+| **Hand-authored chunks + random stitching** | Most reliable production approach          |
+
+The best 3D packs for this are modular kits with consistent pivots, grid sizes, and collisions. That is why Quaternius, KayKit, Kenney 3D, and carefully chosen Synty packs are the strongest candidates.
+
+## Synty-specific strategy
+
+Synty is worth watching, but I would buy it opportunistically. The current Synty birthday sale runs July 8–28 NZT, and Synty’s Godot collection page lists Godot-filtered products, including POLYGON Farm, Town, Pirate, Dungeon, City, Heist, Fantasy Kingdom, Apocalypse, and others. ([Synty Store][14])
+
+The catch: Synty’s own FAQ says that for Godot you should check each pack’s compatibility, and that while assets can technically be used in Godot, official support is only for Unity and Unreal. ([Synty Store][9])
+
+So the Synty rule is: **only buy a Synty pack when the pack itself says Godot-compatible, the sale is deep, and the genre matches a project you are actively building.** The recently ended Humble Synty dungeon bundle offered 9 packs worth over $700 for $30, which shows the kind of value worth waiting for, but that specific bundle ended June 22, 2026. ([Synty Store][15])
+
+## License caution for AI-assisted workflows
+
+For your use case, separate **agent indexing** from **AI training**.
+
+Local metadata extraction, thumbnails, search indexes, and Godot import manifests are usually part of normal development workflow. But some licenses explicitly prohibit AI training or redistribution. ELV’s license page, for example, allows commercial use and editing but prohibits AI training, resale/distribution, crypto/NFT use, and claiming assets as your own. ([itch.io][7])
+
+For safest automation:
+
+```text
+Allowed by default:
+- Local cataloging
+- Thumbnails/contact sheets
+- Metadata extraction
+- Godot import files
+- Scene wrappers
+- Procedural placement using purchased assets
+
+Treat as restricted unless license clearly allows:
+- Fine-tuning an image model on the art
+- Publishing the raw catalog
+- Repacking assets into another asset bundle
+- Generating “new” assets that are too close to restricted originals
+- Uploading full asset packs into third-party model training systems
+```
+
+## My recommended acquisition sequence
+
+**Phase 1 — baseline library, cheapest useful corpus**
+
+Buy/download:
+
+```text
+Kenney Game Assets All-in-1
+Quaternius free packs
+Ninja Adventure
+LimeZu Modern Interiors paid unlock
+Selected free KayKit packs
+```
+
+This gives you 2D, 3D, UI, audio, tilemaps, characters, props, and procedural test material for very little money.
+
+**Phase 2 — choose one 3D visual identity**
+
+Pick one:
+
+```text
+Quaternius-focused low-poly modular world
+KayKit-focused cute low-poly world
+Synty POLYGON world, only if on deep sale and Godot-compatible
+```
+
+Do not mix all three heavily at first. Style mismatch will hurt quality more than missing asset count.
+
+**Phase 3 — genre-specific expansion**
+
+Only after the indexer works:
+
+```text
+Top-down RPG: Ninja Adventure + LimeZu + Kenney
+Platformer: ELV + Kenney + selected itch packs
+3D city/town: Quaternius Downtown/Medieval + Kenney + maybe Synty Town/Farm
+3D dungeon: Quaternius/KayKit dungeon + Synty Dungeon only on sale
+UI-heavy sim: Kenney UI + targeted itch UI packs
+```
+
+## Bottom line
+
+Start with **Kenney All-in-1 + free Quaternius + Ninja Adventure + LimeZu paid unlock**. That is the highest-value low-risk testbed for your Godot agent workflow. Add **KayKit Complete** only if you decide to standardize on KayKit’s style. Add **Synty** only on deep sale or bundle pricing, and only after checking pack-level Godot support.
+
+[1]: https://kenney.itch.io/kenney-game-assets "Kenney Game Assets All-in-1 by Kenney"
+[2]: https://quaternius.com/ "Quaternius • Free Game Assets"
+[3]: https://kaylousberg.itch.io/kaykit-complete?utm_source=chatgpt.com "The Complete KayKit by Kay Lousberg"
+[4]: https://pixel-boy.itch.io/ninja-adventure-asset-pack "Ninja Adventure - Asset Pack by pixel-boy"
+[5]: https://limezu.itch.io/moderninteriors "Modern Interiors - RPG Tileset [16X16] by LimeZu"
+[6]: https://elvgames.itch.io/complete-platformer-world-asset-bundle "Complete Platformer World! by ELV Games"
+[7]: https://elvgames.itch.io/mega-bundle "Game Assets Mega Bundle by ELV Games"
+[8]: https://syntystore.com/collections/godot-asset-packs "
+      Godot Asset Packs & 3D Game Assets | Synty
+ – Synty Store"
+[9]: https://syntystore.com/community/faq?srsltid=AfmBOopZp0NL4VdGN1nvCdpkeeVpQl1JoNvqhIsxnT5NMllbnB2F1fsI "
+      Synty Store
+"
+[10]: https://kenney.nl/support "Support · Kenney"
+[11]: https://docs.godotengine.org/en/stable/tutorials/assets_pipeline/importing_3d_scenes/available_formats.html "Available 3D formats — Godot Engine (stable) documentation in English"
+[12]: https://docs.godotengine.org/en/stable/tutorials/3d/using_gridmaps.html "Using GridMaps — Godot Engine (stable) documentation in English"
+[13]: https://docs.godotengine.org/en/stable/tutorials/2d/using_tilesets.html "Using TileSets — Godot Engine (stable) documentation in English"
+[14]: https://syntystore.com/blogs/blog/synty-is-turning-12 "
+      Synty is Turning 12! | Synty Official Blog
+ – Synty Store"
+[15]: https://syntystore.com/blogs/blog/dungeon-game-dev-humble-bundle-2026?srsltid=AfmBOop6rvoLbMvl-W_LRgVuFsoyGB9EIPmdDYCPIG3DTzczdYZxyoEM "
+      Latest Humble Bundle: Synty Dungeon Game Dev Assets
+ – Synty Store"
+
