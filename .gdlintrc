@@ -1,0 +1,68 @@
+# Baseline 2026-09-12: 1886 findings over 562 .gd files. The rules listed under
+# `disable` are the ones the existing code trips; they are deferred so CI starts
+# green, not waived. Counts: max-line-length 1169, class-definitions-order 633,
+# max-returns 44, unused-argument 16, max-file-lines 12, max-public-methods 5,
+# signal-name 3, duplicated-load 3, function-variable-name 1.
+# gdtoolkit lint config. Generated from `gdlint --dump-default-config`,
+# with max-line-length raised to 120 and generated/vendored trees excluded.
+class-definitions-order:
+- tools
+- classnames
+- extends
+- docstrings
+- signals
+- enums
+- consts
+- staticvars
+- exports
+- pubvars
+- prvvars
+- onreadypubvars
+- onreadyprvvars
+- others
+class-load-variable-name: (([A-Z][a-z0-9]*)+|_?[a-z][a-z0-9]*(_[a-z0-9]+)*)
+class-name: ([A-Z][a-z0-9]*)+
+class-variable-name: _?[a-z][a-z0-9]*(_[a-z0-9]+)*
+comparison-with-itself: null
+constant-name: _?[A-Z][A-Z0-9]*(_[A-Z0-9]+)*
+enum-element-name: '[A-Z][A-Z0-9]*(_[A-Z0-9]+)*'
+enum-name: ([A-Z][a-z0-9]*)+
+excluded_directories: !!set
+  .git: null
+  .godot: null
+  addons: null
+  .claude: null
+  .scratch: null
+  node_modules: null
+  tmp: null
+expression-not-assigned: null
+function-argument-name: _?[a-z][a-z0-9]*(_[a-z0-9]+)*
+function-arguments-number: 10
+function-name: (_on_([A-Z][a-z0-9]*)+(_[a-z0-9]+)*|_?[a-z][a-z0-9]*(_[a-z0-9]+)*)
+function-preload-variable-name: ([A-Z][a-z0-9]*)+
+function-variable-name: '[a-z][a-z0-9]*(_[a-z0-9]+)*'
+load-constant-name: (([A-Z][a-z0-9]*)+|_?[A-Z][A-Z0-9]*(_[A-Z0-9]+)*)
+loop-variable-name: _?[a-z][a-z0-9]*(_[a-z0-9]+)*
+max-file-lines: 1000
+max-line-length: 120
+max-public-methods: 20
+max-returns: 6
+mixed-tabs-and-spaces: null
+no-elif-return: null
+no-else-return: null
+signal-name: '[a-z][a-z0-9]*(_[a-z0-9]+)*'
+sub-class-name: _?([A-Z][a-z0-9]*)+
+tab-characters: 1
+trailing-whitespace: null
+unnecessary-pass: null
+unused-argument: null
+disable:
+- max-line-length
+- class-definitions-order
+- max-returns
+- unused-argument
+- max-file-lines
+- max-public-methods
+- signal-name
+- duplicated-load
+- function-variable-name

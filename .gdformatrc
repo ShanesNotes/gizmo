@@ -1,0 +1,13 @@
+# gdformat defaults, line_length matched to .gdlintrc's max-line-length.
+# Nothing in these repos has been reformatted yet; this only fixes the settings.
+line_length: 120
+safety_checks: null
+use_spaces: null
+excluded_directories: !!set
+  .git: null
+  .godot: null
+  addons: null
+  .claude: null
+  .scratch: null
+  node_modules: null
+  tmp: null
