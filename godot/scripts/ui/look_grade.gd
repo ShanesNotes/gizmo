@@ -11,7 +11,7 @@ extends ColorRect
 ##   (combat ember-tense), sanctuary.frame #e0c17a (cleared relief-gold).
 
 const SETTING_PAINT_ENABLED := "gizmo/look/gouache_paint_enabled"
-const PAINT_STRENGTH_DEFAULT := 0.45
+const PAINT_STRENGTH_DEFAULT := 0.22
 const TINT_TWEEN_SECONDS := 1.2
 
 ## Tints pre-normalized toward unit luma by _normalized() at apply time.
