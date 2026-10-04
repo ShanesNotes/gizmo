@@ -22,7 +22,7 @@ folders:
     - implementation handoffs
     read_first:
     - AGENTS.md
-    - CONTEXT.md
+    - GLOSSARY.md
     - CLAUDE.md
   lore:
     path: /home/ark/gizmo/lore
@@ -152,7 +152,7 @@ seam_matrix:
     owner_files: [canon/LORE_CANON.md, canon/glossary.yaml]
     current_state: premise canon present; copy handoffs ad hoc
   game_to_all:
-    what: read-only game truth (CONTEXT.md + godot/ runtime probes)
+    what: read-only game truth (GLOSSARY.md + godot/ runtime probes)
     mechanism: siblings read this repo or hold dated snapshots; runtime evidence, never canon
     current_state: authoritative on the gizmo-3d branch only (remote main is the stale teaching line)
 cross_domain_protocol:

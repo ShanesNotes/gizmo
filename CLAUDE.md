@@ -9,14 +9,14 @@ available when the user explicitly asks to resume teaching.
 
 Prior 2.5D, sprite-first, or orthographic-presentation attempts are **inactive
 history** unless the user explicitly reactivates them. When stale docs disagree
-with the clean-slate 3D direction, `CONTEXT.md` wins.
+with the clean-slate 3D direction, `GLOSSARY.md` wins.
 
 ## Read first (source anchors)
-- `CONTEXT.md` — orientation keystone: the game, the 3D direction, **the loop**, v1 scope,
+- `GLOSSARY.md` — orientation keystone: the game, the 3D direction, **the loop**, v1 scope,
   and where each truth lives. If docs disagree, it wins.
 - `design-handoff/NARRATIVE.md` — premise/story canon: a **rogue-lite** where Gizmo the
   clanker preserves the **spark of humanity** in a gouache cosmos of lost tech. If it uses
-  "waves" language, treat that as older escalation wording; `CONTEXT.md`'s no-wave correction wins.
+  "waves" language, treat that as older escalation wording; `GLOSSARY.md`'s no-wave correction wins.
 - `design-handoff/ART_DIRECTION.md` + `design-handoff/gizmo-hud.png` — the look (gouache cosmos, brass UI,
   the HUD to match). `godot/assets/gizmo.glb` — the character (meshy.ai, 53-bone rig, no
   animation clips yet; v1 moves it with code, clips are a later lesson).
@@ -40,7 +40,7 @@ when the user asks for a teaching session:
 | deciding how a ported piece should be shaped (seams, deep modules, AI-navigable GDScript) | **`codebase-design`** |
 | porting/writing logic that can run headless (e.g. `simulation.gd`) | **`tdd`** — red→green→refactor |
 | chasing a bug, crash, or perf regression | **`diagnosing-bugs`** |
-| pinning down domain terms / system↔fiction language | **`domain-modeling`** (language grows into `CONTEXT.md`) |
+| pinning down domain terms / system↔fiction language | **`domain-modeling`** (language grows into `GLOSSARY.md`) |
 | stress-testing a plan or scope *before* building (scope-creep guard) | **`grilling`** |
 | reviewing a finished slice's diff (standards + spec) | **`review`** |
 | drafting/sharpening a lesson explainer or writing about the build | **`writing-shape`**, **`writing-beats`**, **`writing-fragments`** |
@@ -132,7 +132,7 @@ through teaching mode. How hands-on they are is their call, slice by slice.
 
 ## Project conventions ("set up like that")
 - **Decisions** → `docs/adr/` (one ADR per locked choice; recorded via `domain-modeling`).
-  **Domain language** grows into `CONTEXT.md` — add a term only once the learner can use it.
+  **Domain language** grows into `GLOSSARY.md` — add a term only once the learner can use it.
 - **Issues / PRDs** → GitHub issues (`ShanesNotes/gizmo`). Use `ready-for-agent`,
   `ready-for-human`, and `needs-info` labels for handoff state. `.scratch/` is
   ignored local scratch/backups, not durable tracker state.
@@ -146,7 +146,7 @@ through teaching mode. How hands-on they are is their call, slice by slice.
 - Do not attempt a full port in one lesson. Do not expand past v1 scope until v1 ships.
 
 ## Next lesson workflow
-1. Run `/teach`; read `learning-records/` (zone of proximal development) and `CONTEXT.md` (v1 scope spine).
+1. Run `/teach`; read `learning-records/` (zone of proximal development) and `GLOSSARY.md` (v1 scope spine).
 2. Cite the `simulation.ts` file/line for the slice; if shaping a module, pull in
    `codebase-design`; if it's testable logic, `tdd` it.
 3. Co-develop the slice in `godot/` — small enough to absorb; capture it as HTML in `lessons/`.

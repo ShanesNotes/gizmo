@@ -73,7 +73,7 @@ views first (known drift failure).
 
 ## Provenance anchors
 
-- Game loop/mechanics: `gizmo/CONTEXT.md`, `docs/path-a-shattered-meridian-spec.md`, ADRs 0005–0008
+- Game loop/mechanics: `gizmo/GLOSSARY.md`, `docs/path-a-shattered-meridian-spec.md`, ADRs 0005–0008
 - Visual law: `gizmo-design-system/canon/{CANON.md,motifs.yaml,bindings.yaml,acceptance-gates.md,concordance.yaml}`, `tokens/tokens.json`
 - Narrative law: `gizmo-lore/canon/{LORE_CANON.md,glossary.yaml,fiction-mechanics.yaml,copy-rules.yaml}`
 - Spatial law: `gizmo-level-design/canon/` (gates L1–L12, route-grammar, pressure-zones)

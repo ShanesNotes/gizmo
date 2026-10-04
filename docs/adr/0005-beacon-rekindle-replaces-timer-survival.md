@@ -28,7 +28,7 @@ Path A's win condition is **traverse-to-objective**, not survive-the-clock.
   are different games, and code gravity pulls back toward the arena unless the win
   condition itself moves.
 - A visible countdown is the round-counter the project already ruled out (ADR 0003;
-  `CONTEXT.md` no-wave correction; world-graph `validation_priority`: "no
+  `GLOSSARY.md` no-wave correction; world-graph `validation_priority`: "no
   player-facing round counter UI").
 - Canon: *"The Beacon is not a finish line; it is a hearth that must be rekindled
   while the cold world pushes back."* The channel makes the destination an

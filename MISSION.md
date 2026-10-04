@@ -9,7 +9,7 @@ camera**, *co-developing it with an AI teacher* and deliberately slowing down to
 understand each piece instead of being handed a black box. The journey doubles as a
 from-zero guide to co-developing a game in Godot with Claude Code and the teach skill.
 First-time game developer; the real goal is to **finish and ship a small game** —
-scope discipline over ambition. Orientation: `CONTEXT.md`.
+scope discipline over ambition. Orientation: `GLOSSARY.md`.
 
 ## Success looks like
 - Comfortable in Godot 3D: creating a project, scenes, GDScript, a `Camera3D` rig

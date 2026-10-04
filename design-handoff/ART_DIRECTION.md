@@ -65,7 +65,7 @@ Top-left, clockwise:
 ## Shattered Meridian reconciliation (2026-06-21)
 
 The look above still governs; this aligns it with the active world direction
-(`CONTEXT.md`, `docs/path-a-shattered-meridian-spec.md`).
+(`GLOSSARY.md`, `docs/path-a-shattered-meridian-spec.md`).
 
 - **World = painterly floating islands in the Shattered Meridian** — a gouache cosmos
   of lost tech. Path A is a **flat combat-readability layer with dramatic non-walkable

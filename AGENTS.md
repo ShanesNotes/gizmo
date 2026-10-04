@@ -24,7 +24,7 @@ Earlier attempts to build Gizmo as **2.5D**, sprite-first, or orthographic
 presentation-first are **inactive history**. Do not treat old 2.5D docs, archived
 OMX state, backup folders, or git-history scaffolding as active requirements unless
 the user explicitly reactivates them. If old material conflicts with the current
-3D direction, `CONTEXT.md` wins.
+3D direction, `GLOSSARY.md` wins.
 
 ## No-wave rule
 
@@ -32,11 +32,11 @@ Do **not** treat "WAVE x/5", discrete wave rounds, or "waves → elites → boss
 from stale concept art / older docs as active design. The active v1 model is
 director-driven enemy pressure: spawning and intensity ramp under a director (time
 plus place-aware exposure, per ADR 0006) without a player-facing wave-round
-structure. See `CONTEXT.md` and ADRs 0003/0006.
+structure. See `GLOSSARY.md` and ADRs 0003/0006.
 
 ## Active source anchors
 
-- `CONTEXT.md` — orientation keystone: game direction, loop, v1 scope, truth map.
+- `GLOSSARY.md` — orientation keystone: game direction, loop, v1 scope, truth map.
 - `CLAUDE.md` — agent-development memory and operating contract.
 - `MISSION.md`, `NOTES.md`, `RESOURCES.md` — teaching history/preferences/resources.
 - `design-handoff/NARRATIVE.md` — premise/story canon.

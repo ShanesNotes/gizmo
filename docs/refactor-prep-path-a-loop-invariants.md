@@ -6,7 +6,7 @@ that the refactor must preserve or deliberately replace with tests.
 
 ## Source artifacts
 
-- `CONTEXT.md` — active Path A direction and truth map.
+- `GLOSSARY.md` — active Path A direction and truth map.
 - `AGENTS.md` — workspace operating rules and no-wave rule.
 - `docs/adr/0001-sparks-hp-spark-of-humanity-are-distinct.md` — HP/Sparks/Spark of Humanity separation.
 - `docs/adr/0002-simulation-owns-rules-scene-renders.md` — simulation owns rules; scene renders.

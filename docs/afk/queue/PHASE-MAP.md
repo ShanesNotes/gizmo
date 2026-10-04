@@ -2,7 +2,7 @@
 
 The whole road from today's build to the finished game. Every phase is a band of tickets in this
 folder; a phase opens when its gate ticket is green. World facts from
-`docs/reference/shattered-meridian-region-graph.json`; loop law from CONTEXT.md + ADRs 0001–0009.
+`docs/reference/shattered-meridian-region-graph.json`; loop law from GLOSSARY.md + ADRs 0001–0009.
 
 ## Phases
 

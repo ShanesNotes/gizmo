@@ -39,4 +39,4 @@ say "the Spark flares/surges", never "spend the Spark".
 - HZ-103 implements: vitals/abilities-side charge accounting, the Surge ability through
   the existing ability-kit seam (ADR 0011 router action), HUD `render_spark`, and
   red-first tests (charge bands, full-gauge gate, empty-on-use/death, room persistence).
-- `CONTEXT.md` domain language gains **Spark Surge** once implemented and playable.
+- `GLOSSARY.md` domain language gains **Spark Surge** once implemented and playable.

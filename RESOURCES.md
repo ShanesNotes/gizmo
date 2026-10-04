@@ -10,7 +10,7 @@
   Curated Godot 4.x knowledge modules — `player-controller`, `3d-essentials`,
   `camera-system`, `hud-system`, `state-machine`, `godot-testing`, and more. Use for:
   grounding any Godot slice before teaching it; see CLAUDE.md for the phase→skill map.
-- `CONTEXT.md` (repo)
+- `GLOSSARY.md` (repo)
   Orientation keystone — what the game is, the 3D direction, v1 scope, where each
   truth lives. Use for: getting oriented; resolving "where does this live?".
 - `design-handoff/NARRATIVE.md` (repo)

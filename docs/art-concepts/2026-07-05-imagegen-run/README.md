@@ -20,7 +20,7 @@ for:
 
 - `AGENTS.md`
 - `gizmo-ecosystem.yaml`
-- `CONTEXT.md`
+- `GLOSSARY.md`
 - `CLAUDE.md`
 - `design-handoff/ART_DIRECTION.md`
 - `design-handoff/NARRATIVE.md`

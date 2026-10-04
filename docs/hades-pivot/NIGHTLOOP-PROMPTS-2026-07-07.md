@@ -27,7 +27,7 @@ descriptions, ship in waves. Mission: make the RUN LOOP feel like Hades — prog
 meta-XP, damage numbers, upgrades with real trade-offs and synergies, weapon mechanics,
 input feel. The systems exist; tonight they get depth and dopamine.
 
-BOOT (read first): CLAUDE.md + CONTEXT.md (repo root), reference/game-balance-reference.md
+BOOT (read first): CLAUDE.md + GLOSSARY.md (repo root), reference/game-balance-reference.md
 (TTK bands + upgrade math — the tuning north star), game-src-phaser/src/game/simulation.ts
 (mechanics source of truth), docs/hades-pivot/queue/INDEX.md,
 docs/hades-pivot/design/OVERHAUL-PLAN-playtest2.md (Shane's standing critique). Standing

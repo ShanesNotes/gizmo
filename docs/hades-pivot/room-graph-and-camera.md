@@ -15,7 +15,7 @@ reference-only per the ADR until a later implementation slice.
   (ADR 0006) become optional per-room set dressing rather than a
   run-spanning spatial field — a room is small enough that "near the door" vs
   "room center" is the whole spatial story, if it's needed at all.
-- **The single traversed island (`main.tscn`, Path A spec, CONTEXT.md's
+- **The single traversed island (`main.tscn`, Path A spec, GLOSSARY.md's
   "Path A" section).** Replaced by a run-scoped graph of discrete room
   scenes connected by one-way doors. `WalkableRegion` (ADR 0006) becomes a
   per-room concern (each room scene defines its own walkable footprint) —

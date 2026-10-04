@@ -26,4 +26,4 @@ rogue-lite loop, HUD, and win/lose spine are stable.
 
 ## Related
 - ADR 0002: Simulation owns rules; scene renders.
-- `CONTEXT.md`: active no-wave correction.
+- `GLOSSARY.md`: active no-wave correction.

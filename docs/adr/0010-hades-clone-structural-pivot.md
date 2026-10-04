@@ -14,7 +14,7 @@ is unchanged and still governed by `design-handoff/NARRATIVE.md` and the
 
 This overrides, on structure only:
 - **Camera/level model**: the Path A "one large traversed island" model
-  (CONTEXT.md, ADR 0005–0008) is superseded by Hades' room-to-room graph.
+  (GLOSSARY.md, ADR 0005–0008) is superseded by Hades' room-to-room graph.
   Director-driven pressure (ADR 0003) and guard-over-HP (ADR 0007) survive as
   *combat* mechanics but now operate per-room, not over a whole-island pressure
   clock.
@@ -40,7 +40,7 @@ nodes, `godot/` containment, branch off `gizmo-3d`).
 
 Standing creative mandate (2026-07-05): Gizmo has always been aimed at Hades'
 flat-gouache look and combat feel; that intent was never written into
-`CONTEXT.md`/`design-handoff/`. The current prototype's structure (static
+`GLOSSARY.md`/`design-handoff/`. The current prototype's structure (static
 arena, wave-free pressure clock, auto-fire, leveling) was built toward a
 simpler loop that cannot be incrementally bent into a room-graph +
 boon-draft + dash-kit shape without more churn than a clean rebuild of just
@@ -53,7 +53,7 @@ those systems.
   reference for salvageable balance math only; a new Hades-structure queue
   supersedes it (tracked going forward; this ADR is the pointer until that
   queue is written).
-- Silently dropping old canon: `CONTEXT.md` still describes the Path A model
+- Silently dropping old canon: `GLOSSARY.md` still describes the Path A model
   until it is rewritten to reflect this pivot (tracked as follow-up); readers
   should treat this ADR as authoritative on structure in the interim.
 - Rewriting lore, narrative, or art direction — only structure/mechanics

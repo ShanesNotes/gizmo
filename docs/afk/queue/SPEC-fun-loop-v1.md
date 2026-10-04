@@ -6,7 +6,7 @@ Branch: all work branches off `gizmo-3d`. Tickets: `GZ-*.md` in this folder; DAG
 
 ## Decision 1 — locked v1 architecture (no anchor edits required)
 
-ADR-0002 stands unchanged: **`Simulation` (headless `RefCounted`, `godot/scripts/simulation.gd`) owns all rules; scenes render; `GameController` bridges.** No CONTEXT.md or ADR edit is needed — every decision below derives from existing anchors.
+ADR-0002 stands unchanged: **`Simulation` (headless `RefCounted`, `godot/scripts/simulation.gd`) owns all rules; scenes render; `GameController` bridges.** No GLOSSARY.md or ADR edit is needed — every decision below derives from existing anchors.
 
 Authoritative v1 system list and owners:
 

@@ -6,7 +6,7 @@ This repo uses **GitHub issues**, not a local markdown tracker.
 - Triage state: the issue's open/closed state plus the house labels (`needs-triage` · `needs-info` · `ready-for-agent` · `ready-for-human` · `wontfix`)
 - Comments go on the GitHub issue.
 - `.scratch/` is **gitignored** here (see `.gitignore`) — it holds local scratch and backups, never durable tracker state. Anything that must survive the machine goes in a GitHub issue or in `docs/`.
-- ADRs live in `docs/adr/`; domain context is `CONTEXT.md`.
+- ADRs live in `docs/adr/`; domain context is `GLOSSARY.md`.
 - Use `gh issue list`, `gh issue create`, `gh issue comment` from the repo root; `gh` is authenticated as `ShanesNotes`.
 
 ## Wayfinding operations (`/wayfinder`)

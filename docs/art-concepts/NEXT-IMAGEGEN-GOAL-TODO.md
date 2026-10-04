@@ -54,7 +54,7 @@ without expanding scope beyond the AFK queue.
 
 Useful anchors:
 
-- `CONTEXT.md`
+- `GLOSSARY.md`
 - `docs/path-a-shattered-meridian-spec.md`
 - `docs/afk/queue/PHASE-MAP.md`
 - `docs/afk/queue/SPEC-fun-loop-v1.md`

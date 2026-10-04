@@ -39,7 +39,7 @@ for the Path A refactor:
 | Path | Why archive-candidate |
 |---|---|
 | `docs/enemy-visual-log.md` | Meshy enemy integration log for Nibbler 01; useful provenance, but tied to art-stream scene/script files not in the clean committed gate. |
-| `docs/gizmo-animation-log.md` | Walk-sheet/rig animation experiment log; useful teaching record, but animation clips are later scope per `CONTEXT.md`. |
+| `docs/gizmo-animation-log.md` | Walk-sheet/rig animation experiment log; useful teaching record, but animation clips are later scope per `GLOSSARY.md`. |
 | `docs/meshy-world-kit-generation-log.md` | Credit/task provenance for first floor/pylon Meshy kit; keep as generation history, not active layout authority. |
 | `docs/meshy-image-reference-generation-log.md` | Credit/task provenance for generated reference/Meshy north-beacon work; useful, but asset promotion depends on later art-stream decision. |
 | `godot/_quarantine/2026-06-21-pre-art-refactor/` | Already a quarantine/rollback archive containing art/audio/world-kit experiments and originals. Do not pull from it blindly during the loop refactor. |
@@ -60,7 +60,7 @@ for the Path A refactor:
 
 - Do not archive/move anything yet; this pass only classifies.
 - During the Path A loop refactor, read art-stream docs as optional design context, not as source of truth.
-- The active implementation authority remains `CONTEXT.md`, ADRs 0003/0005/0006/0008, and committed Godot code/tests.
+- The active implementation authority remains `GLOSSARY.md`, ADRs 0003/0005/0006/0008, and committed Godot code/tests.
 - Promote art/audio/world files only through the owning sibling lab and in small,
   test-backed game-repo handoff slices after the loop refactor has a stable
   simulation/HUD seam.

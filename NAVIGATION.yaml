@@ -1,6 +1,6 @@
 # NAVIGATION.yaml — derived navigation index for AI agents working in the gizmo game repo.
 # Regenerated 2026-07-05 against the ACTIVE `gizmo-3d` branch (3D rogue-lite, Godot 4.7 Forward+).
-# NOT canon: on conflict AGENTS.md / CONTEXT.md / CLAUDE.md / docs/adr win. Paths are repo-relative
+# NOT canon: on conflict AGENTS.md / GLOSSARY.md / CLAUDE.md / docs/adr win. Paths are repo-relative
 # (sibling labs referenced as ../<lab>) so the index is machine-independent.
 #
 # BRANCH NOTE: this describes the active gizmo-3d line (Path A). The remote `main` branch is the
@@ -13,7 +13,7 @@ role: >-
   Diablo-style camera where Gizmo the clanker preserves the spark of humanity under
   director-driven enemy pressure, in a gouache cosmos of lost tech. Rebuilt in Godot 4.7
   (Forward+) from a Phaser/TS seed. Default mode is bounded AFK coding-agent slices
-  (CONTEXT.md operating-mode pivot 2026-07-04); the /teach lesson path is resumable history.
+  (GLOSSARY.md operating-mode pivot 2026-07-04); the /teach lesson path is resumable history.
 authority:
   owns:
     - godot/ project, scenes, scripts, and its five test suites
@@ -25,7 +25,7 @@ authority:
 read_order:
   tier0_always:
     - {path: AGENTS.md, why: governing operating directive - clean-slate 3D rule, AFK-agent default, no-wave rule, gizmo-3d branch authority, cost: S}
-    - {path: CONTEXT.md, why: orientation keystone - the game, the loop (Path A beacon-rekindle), v1 scope, truth map; wins doc conflicts, cost: M}
+    - {path: GLOSSARY.md, why: orientation keystone - the game, the loop (Path A beacon-rekindle), v1 scope, truth map; wins doc conflicts, cost: M}
     - {path: CLAUDE.md, why: Claude agent-development memory - skills routing, GodotPrompter grounding, Godot rules, commands/gates, teaching contract (explicit /teach only), cost: M}
   tier1_per_task:
     - {path: docs/adr/, why: locked decisions 0001-0013 (0001 Sparks/HP/Spark-of-Humanity distinct; 0003 director-not-waves; 0005 beacon-rekindle replaces timer; 0006 spatial pressure zones; 0007 guard-over-HP; 0009 Godot 4.7; 0010 hades-clone pivot; 0011 ability-input-router; 0012 spark-surge-meter; 0013 benefactor-seam-role-ids), cost: M, task: any design decision}
@@ -75,7 +75,7 @@ seams:
   # gizmo consumer side, verified on gizmo-3d 2026-07-04. Sibling paths are ../<lab> relative to this repo's parent.
   gizmo-design-system:
     consumes: ["published HUD Theme witness -> godot/scenes/hud_theme.tres (PRESENT on gizmo-3d)"]
-    produces: ["read-only game truth for their extraction: CONTEXT.md, godot/ runtime probes (evidence, never canon)"]
+    produces: ["read-only game truth for their extraction: GLOSSARY.md, godot/ runtime probes (evidence, never canon)"]
     mechanism: "explicit publish only (their ADR 0002: make publish-godot-theme wrapping tools/gen_godot_theme.py); never hand-edit the generated .tres"
     key_files: ["godot/scenes/hud_theme.tres", "../gizmo-design-system/tools/gen_godot_theme.py", "../gizmo-design-system/canon/CANON.md", "../gizmo-design-system/canon/concordance.yaml"]
   gizmo-asset-pipeline:
@@ -106,7 +106,7 @@ do_not_load:
   - "docs/_archive/ wholesale (pre-2026-06-20-reset pipeline logs; archaeology only)"
   - "game-src-phaser/src/phaser/*.ts whole-file (large scene files; read PORT-anchored slices)"
 afk_entry: >-
-  Read AGENTS.md, then CONTEXT.md (the loop + v1 scope + truth map), then CLAUDE.md; consult
+  Read AGENTS.md, then GLOSSARY.md (the loop + v1 scope + truth map), then CLAUDE.md; consult
   gizmo-ecosystem.yaml to route any cross-domain work by specialty. First command:
   tools/godot/run_all_checks.sh - it imports godot/, syntax-checks runtime scripts plus test
   runners, runs all five headless suites, and smoke-loads main.tscn; green is the starting line. The active branch is

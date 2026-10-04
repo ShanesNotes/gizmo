@@ -13,7 +13,7 @@ systems rebuild from scratch per ADR 0010.
 `gh issue create -R ShanesNotes/gizmo -F <file> -l <status-label>` when GitHub is reachable.
 
 ## Decision 1 (locked; no anchor edits)
-ADR 0010 + CONTEXT.md pivot banner: Hades-structural clone reskinned with existing Gizmo
+ADR 0010 + GLOSSARY.md pivot banner: Hades-structural clone reskinned with existing Gizmo
 lore. **Room-graph** traversal replaces the whole-island model; **dash/attack/special/cast**
 replaces auto-fire + leveling; **boon draft between rooms** (run-scoped) plus
 **death → hub → new run** meta-progression replace the beacon-rekindle win loop.

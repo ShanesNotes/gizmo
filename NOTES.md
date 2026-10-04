@@ -1,6 +1,6 @@
 # Teaching notes — Gizmo (3D)
 
-Working scratchpad for the preserved `/teach` path. Not canon — `CONTEXT.md` wins.
+Working scratchpad for the preserved `/teach` path. Not canon — `GLOSSARY.md` wins.
 As of 2026-07-04, default development is AFK coding-agent-driven; this roadmap is
 only active when the user explicitly resumes teaching mode.
 
